@@ -460,9 +460,12 @@ try {
 
 try {
   const r = spawnSync(process.execPath, [cli, "--format", "json", "node", "-e", "process.kill(process.pid, 'SIGTERM')"], { encoding: "utf8" });
-  assert.equal(r.status, 143);
+  // Windows does not expose POSIX signal termination through child_process;
+  // the same command exits with its native status code instead.
+  const expectedStatus = process.platform === "win32" ? 1 : 143;
+  assert.equal(r.status, expectedStatus);
   const json = JSON.parse(r.stdout);
-  assert.equal(json.exitCode, 143);
+  assert.equal(json.exitCode, expectedStatus);
   console.log("  ok   signal termination is represented as a shell-compatible exit code");
   pass++;
 } catch (e) { console.log(`  FAIL signal termination\n       ${e.message}`); fail++; }
