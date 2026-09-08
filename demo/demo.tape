@@ -1,4 +1,4 @@
-# Regenerate with:  vhs demo.tape
+# Regenerate with:  ./record.sh   (not vhs directly - it needs the staged dir)
 Output demo.gif
 
 Set Shell bash
