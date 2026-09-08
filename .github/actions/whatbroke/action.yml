@@ -1,0 +1,29 @@
+name: whatbroke
+description: Distill a command's failure output into compact, clickable GitHub Actions annotations
+inputs:
+  command:
+    description: Shell command to run and summarize
+    required: true
+  version:
+    description: whatbroke npm version to use
+    required: false
+    default: latest
+  working-directory:
+    description: Directory in which to run the command
+    required: false
+    default: .
+runs:
+  using: composite
+  steps:
+    - name: Run command with whatbroke
+      working-directory: ${{ inputs.working-directory }}
+      shell: bash
+      env:
+        WHATBROKE_COMMAND: ${{ inputs.command }}
+        WHATBROKE_VERSION: ${{ inputs.version }}
+      run: |
+        set +e
+        npx --yes "@jeanlevon/whatbroke@${WHATBROKE_VERSION}" \
+          --format github -- bash -eo pipefail -c "$WHATBROKE_COMMAND"
+        status=$?
+        exit "$status"

@@ -1,0 +1,8 @@
+[INFO] --- maven-compiler-plugin:3.11.0:compile (default-compile) @ billing ---
+[ERROR] COMPILATION ERROR :
+[ERROR] /workspace/src/main/java/com/acme/Invoice.java:[18,21] incompatible types: java.lang.String cannot be converted to int
+[ERROR] /workspace/src/main/java/com/acme/Invoice.java:[27,9] cannot find symbol
+[ERROR]   symbol:   variable total
+[ERROR] -> [Help 1]
+[ERROR] Failed to execute goal org.apache.maven.plugins:maven-compiler-plugin:3.11.0:compile (default-compile) on project billing: Compilation failure
+[ERROR] For more information about the errors and possible solutions, please read the following articles:

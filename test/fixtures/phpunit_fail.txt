@@ -1,0 +1,13 @@
+There were 2 failures:
+
+1) Tests\InvoiceTest::testTotal
+Failed asserting that 1049 matches expected 1050.
+
+/workspace/tests/InvoiceTest.php:17
+
+2) Tests\AuthTest::testExpiredToken
+Failed asserting that true is false.
+
+/workspace/tests/AuthTest.php:29
+
+Tests: 2, Assertions: 2, Failures: 2.

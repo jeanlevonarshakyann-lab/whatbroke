@@ -1,6 +1,6 @@
 {
   "name": "@jeanlevon/whatbroke",
-  "version": "0.1.1",
+  "version": "0.2.0",
   "description": "You ran a command. It printed 400 lines. whatbroke prints the ones that matter.",
   "type": "module",
   "bin": {
@@ -11,10 +11,13 @@
     "bin",
     "src",
     "README.md",
+    "CHANGELOG.md",
+    "CONTRIBUTING.md",
     "LICENSE"
   ],
   "scripts": {
-    "test": "node test/run.js"
+    "test": "node test/run.js",
+    "prepublishOnly": "npm test"
   },
   "keywords": [
     "cli",
@@ -22,10 +25,13 @@
     "test-output",
     "stack-trace",
     "pytest",
-    "developer-tools"
+    "developer-tools",
+    "github-actions",
+    "ci",
+    "json"
   ],
   "engines": {
-    "node": ">=20"
+    "node": ">=18"
   },
   "license": "MIT",
   "repository": {

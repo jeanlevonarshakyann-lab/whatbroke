@@ -1,0 +1,8 @@
+clang++ -Wall -Wextra main.cpp -o app
+main.cpp:7:12: error: use of undeclared identifier 'total'
+    return total(items);
+           ^
+main.cpp:11:5: warning: unused variable 'debug' [-Wunused-variable]
+    int debug = 1;
+    ^
+1 warning and 1 error generated.

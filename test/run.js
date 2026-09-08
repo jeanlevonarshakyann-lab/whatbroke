@@ -2,10 +2,12 @@ import { readFileSync, readdirSync } from "node:fs";
 import { fileURLToPath } from "node:url";
 import { dirname, join } from "node:path";
 import assert from "node:assert/strict";
+import { spawnSync } from "node:child_process";
 import { analyse } from "../src/index.js";
 
 const here = dirname(fileURLToPath(import.meta.url));
 const fx = (n) => readFileSync(join(here, "fixtures", n), "utf8");
+const cli = join(here, "..", "bin", "whatbroke.js");
 
 const CASES = [
   { file: "pytest_fail.txt", tool: "pytest", n: 3, check: (r) => {
@@ -149,6 +151,59 @@ const CASES = [
       const cargo = analyse(fx("cargobuild_fail.txt"));
       assert.equal(cargo.tool, "cargo", "cargo output must not be claimed by ruff");
     } },
+  { file: "mypy_fail.txt", tool: "mypy", n: 2, check: (r) => {
+      assert.equal(r.summary, "2 errors in 1 files — 1 warning hidden");
+      assert.equal(r.failures[0].title, "assignment");
+      assert.equal(r.failures[0].file, "shop.py");
+      assert.equal(r.failures[0].line, 4);
+      assert.match(r.failures[1].message, /Argument 1/);
+      assert.ok(!r.failures.some((f) => /Revealed type/.test(f.message)), "notes should not be failures");
+    } },
+  { file: "clang_fail.txt", tool: "clang", n: 1, check: (r) => {
+      assert.equal(r.summary, "1 error — 1 warning hidden");
+      assert.equal(r.failures[0].title, "error");
+      assert.equal(r.failures[0].file, "main.cpp");
+      assert.equal(r.failures[0].line, 7);
+      assert.equal(r.failures[0].col, 12);
+      assert.match(r.failures[0].message, /undeclared identifier/);
+    } },
+  { file: "rspec_fail.txt", tool: "rspec", n: 2, check: (r) => {
+      assert.equal(r.summary, "2 examples, 2 failures");
+      assert.equal(r.failures[0].title, "Invoice total calculates tax correctly");
+      assert.equal(r.failures[0].file, "./spec/invoice_spec.rb");
+      assert.equal(r.failures[0].line, 12);
+      assert.match(r.failures[0].message, /expected: 1050/);
+      assert.equal(r.failures[1].line, 27);
+    } },
+  { file: "maven_fail.txt", tool: "maven", n: 2, check: (r) => {
+      assert.equal(r.summary, "build failed");
+      assert.equal(r.failures[0].file, "/workspace/src/main/java/com/acme/Invoice.java");
+      assert.equal(r.failures[0].line, 18);
+      assert.equal(r.failures[0].col, 21);
+      assert.match(r.failures[0].message, /incompatible types/);
+    } },
+  { file: "gradle_fail.txt", tool: "gradle", n: 2, check: (r) => {
+      assert.equal(r.summary, "build failed");
+      assert.equal(r.failures[0].file, "/workspace/src/main/kotlin/com/acme/Invoice.kt");
+      assert.equal(r.failures[0].line, 14);
+      assert.equal(r.failures[0].col, 17);
+      assert.match(r.failures[1].message, /Unresolved reference/);
+    } },
+  { file: "dotnet_fail.txt", tool: "dotnet", n: 2, check: (r) => {
+      assert.equal(r.summary, "2 errors — 1 warning hidden");
+      assert.equal(r.failures[0].title, "CS0029");
+      assert.equal(r.failures[0].file, "/workspace/src/Invoice.cs");
+      assert.equal(r.failures[0].line, 18);
+      assert.equal(r.failures[0].col, 21);
+      assert.match(r.failures[1].message, /does not exist/);
+    } },
+  { file: "phpunit_fail.txt", tool: "phpunit", n: 2, check: (r) => {
+      assert.equal(r.summary, "2 failures");
+      assert.equal(r.failures[0].title, "Tests\\InvoiceTest::testTotal");
+      assert.equal(r.failures[0].file, "/workspace/tests/InvoiceTest.php");
+      assert.equal(r.failures[0].line, 17);
+      assert.match(r.failures[1].message, /true is false/);
+    } },
 ];
 
 let pass = 0, fail = 0;
@@ -235,6 +290,162 @@ try {
   console.log("  ok   clean run yields nothing");
   pass++;
 } catch (e) { console.log(`  FAIL clean run\n       ${e.message}`); fail++; }
+
+// JSON is a stable automation interface, including the wrapped command's exit code.
+try {
+  const r = spawnSync(process.execPath, [cli, "--json", "node", "-e",
+    "try { null.x } catch (e) { console.error(e.stack); process.exit(3) }"], { encoding: "utf8" });
+  assert.equal(r.status, 3);
+  const json = JSON.parse(r.stdout);
+  assert.equal(json.version, 1);
+  assert.equal(json.tool, "node");
+  assert.equal(json.exitCode, 3);
+  assert.equal(json.truncated, false);
+  assert.ok(Array.isArray(json.failures));
+  assert.equal(r.stderr.includes("TypeError"), true);
+  assert.equal(r.stdout.startsWith("{"), true);
+  console.log("  ok   JSON output has a stable envelope and preserves exit code");
+  pass++;
+} catch (e) { console.log(`  FAIL JSON output\n       ${e.message}`); fail++; }
+
+try {
+  const r = spawnSync(process.execPath, [cli, "--format", "json", "--max-bytes", "1024",
+    "node", "-e", "console.error('x'.repeat(5000)); process.exit(1)"], { encoding: "utf8" });
+  assert.equal(r.status, 1);
+  const json = JSON.parse(r.stdout);
+  assert.equal(json.truncated, true);
+  console.log("  ok   large output is bounded and reports truncation");
+  pass++;
+} catch (e) { console.log(`  FAIL bounded output\n       ${e.message}`); fail++; }
+
+try {
+  const r = spawnSync(process.execPath, [cli, "--quiet", "--max-bytes", "1024",
+    "node", "-e", "console.error('x'.repeat(5000)); process.exit(1)"], { encoding: "utf8" });
+  assert.equal(r.status, 1);
+  assert.match(r.stdout, /output capture limit reached/);
+  console.log("  ok   terminal output reports truncation");
+  pass++;
+} catch (e) { console.log(`  FAIL terminal truncation\n       ${e.message}`); fail++; }
+
+try {
+  const r = spawnSync(process.execPath, [cli, "--github-actions", "node", "-e",
+    "try { null.x } catch (e) { console.error(e.stack); process.exit(1) }"], { encoding: "utf8" });
+  assert.equal(r.status, 1);
+  assert.match(r.stdout, /::error file=\[eval\],line=1,col=12,title=TypeError::/);
+  console.log("  ok   GitHub Actions output contains clickable annotations");
+  pass++;
+} catch (e) { console.log(`  FAIL GitHub Actions output\n       ${e.message}`); fail++; }
+
+try {
+  const { mkdtempSync, readFileSync, rmSync } = await import("node:fs");
+  const { tmpdir } = await import("node:os");
+  const { join } = await import("node:path");
+  const dir = mkdtempSync(join(tmpdir(), "whatbroke-summary-"));
+  const summary = join(dir, "summary.md");
+  const r = spawnSync(process.execPath, [cli, "--github-actions", "node", "-e",
+    "null.x"], { encoding: "utf8", env: { ...process.env, GITHUB_STEP_SUMMARY: summary } });
+  assert.equal(r.status, 1);
+  assert.match(readFileSync(summary, "utf8"), /## whatbroke/);
+  assert.ok(!/[^\n]\\\*/.test(readFileSync(summary, "utf8")), "summary should remain valid markdown");
+  rmSync(dir, { recursive: true, force: true });
+  console.log("  ok   GitHub Actions summary is written");
+  pass++;
+} catch (e) { console.log(`  FAIL GitHub Actions summary\n       ${e.message}`); fail++; }
+
+try {
+  const r = spawnSync(process.execPath, [cli, "--quiet", "--max-bytes", "1024",
+    "node", "-e", "console.error('x'.repeat(5000)); process.exit(1)"], { encoding: "utf8" });
+  assert.ok(!/\x1b\[33m/.test(r.stdout), "non-TTY output must not contain ANSI color codes");
+  console.log("  ok   non-TTY truncation warning stays plain text");
+  pass++;
+} catch (e) { console.log(`  FAIL non-TTY truncation\n       ${e.message}`); fail++; }
+
+try {
+  const r = spawnSync(process.execPath, [cli, "--format=json", "node", "-e",
+    "console.log('must not corrupt stdout'); process.exit(4)"], { encoding: "utf8" });
+  assert.equal(r.status, 4);
+  const json = JSON.parse(r.stdout);
+  assert.equal(json.version, 1);
+  assert.equal(json.exitCode, 4);
+  console.log("  ok   explicit format selector keeps JSON valid");
+  pass++;
+} catch (e) { console.log(`  FAIL format selector\n       ${e.message}`); fail++; }
+
+try {
+  const r = spawnSync(process.execPath, [cli, "--format", "invalid"], { encoding: "utf8" });
+  assert.equal(r.status, 2);
+  assert.match(r.stderr, /unknown format/);
+  console.log("  ok   invalid format is rejected clearly");
+  pass++;
+} catch (e) { console.log(`  FAIL invalid format\n       ${e.message}`); fail++; }
+
+try {
+  const duplicate = "fatal: broken\nfatal: broken\n";
+  const { analyse } = await import("../src/index.js");
+  const r = analyse(duplicate);
+  assert.equal(r.failures.length, 1);
+  assert.equal(r.guessed, true);
+  console.log("  ok   duplicate diagnostics are collapsed");
+  pass++;
+} catch (e) { console.log(`  FAIL duplicate diagnostics\n       ${e.message}`); fail++; }
+
+try {
+  const r = spawnSync(process.execPath, [cli, "--no-source", "node", "-e",
+    "null.x"], { encoding: "utf8" });
+  assert.equal(r.status, 1);
+  assert.match(r.stdout, /Cannot read properties of null/);
+  assert.match(r.stdout, /\[eval\]:1/);
+  assert.ok(!/│ null\.x/.test(r.stdout), "source context must be disabled");
+  console.log("  ok   no-source mode avoids reading source context");
+  pass++;
+} catch (e) { console.log(`  FAIL no-source mode\n       ${e.message}`); fail++; }
+
+try {
+  const r = spawnSync(process.execPath, [cli, "--format"], { encoding: "utf8" });
+  assert.equal(r.status, 2);
+  assert.match(r.stderr, /--format requires/);
+  console.log("  ok   missing format value is rejected clearly");
+  pass++;
+} catch (e) { console.log(`  FAIL missing format\n       ${e.message}`); fail++; }
+
+try {
+  const r = spawnSync(process.execPath, [cli, "--format", "json", "whatbroke-command-does-not-exist"], { encoding: "utf8" });
+  assert.equal(r.status, 127);
+  assert.match(r.stderr, /whatbroke-command-does-not-exist/);
+  const json = JSON.parse(r.stdout);
+  assert.equal(json.exitCode, 127);
+  assert.match(json.error, /whatbroke-command-does-not-exist/);
+  console.log("  ok   command-not-found preserves a distinct 127 failure");
+  pass++;
+} catch (e) { console.log(`  FAIL command-not-found\n       ${e.message}`); fail++; }
+
+try {
+  const r = spawnSync(process.execPath, [cli, "--format", "json", "node", "-e", "process.kill(process.pid, 'SIGTERM')"], { encoding: "utf8" });
+  assert.equal(r.status, 143);
+  const json = JSON.parse(r.stdout);
+  assert.equal(json.exitCode, 143);
+  console.log("  ok   signal termination is represented as a shell-compatible exit code");
+  pass++;
+} catch (e) { console.log(`  FAIL signal termination\n       ${e.message}`); fail++; }
+
+try {
+  const { analyse } = await import("../src/index.js");
+  const malformed = [
+    "", "\0\0", "\u001b[31m", "error:", "Found NaN errors", "file:not-a-line",
+    "1) incomplete", "e: :::: ", "[ERROR] [1,2]", "!!!".repeat(1000),
+  ];
+  for (const input of malformed) assert.doesNotThrow(() => analyse(input));
+  console.log("  ok   malformed and hostile logs never throw");
+  pass++;
+} catch (e) { console.log(`  FAIL malformed logs\n       ${e.message}`); fail++; }
+
+try {
+  const r = spawnSync(process.execPath, [cli, "--version"], { encoding: "utf8" });
+  assert.equal(r.status, 0);
+  assert.match(r.stdout.trim(), /^\d+\.\d+\.\d+$/);
+  console.log("  ok   version flag reports the package version");
+  pass++;
+} catch (e) { console.log(`  FAIL version flag\n       ${e.message}`); fail++; }
 
 // every fixture must be covered
 const files = readdirSync(join(here, "fixtures"));

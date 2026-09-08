@@ -26,7 +26,7 @@ setColor(false);
 
 const pad = (n, w) => String(n).padStart(w);
 
-export function render(result, { max = 5, cwd = true } = {}) {
+export function render(result, { max = 5, cwd = true, source = true } = {}) {
   const out = [];
   const fails = result.failures;
   let lastSnip = null;   // don't reprint the same source region twice in a row
@@ -51,9 +51,9 @@ export function render(result, { max = 5, cwd = true } = {}) {
       if (m.trim()) out.push(`    ${C.red}${m}${C.reset}`);
     }
 
-    const drifted = stale(f.file, f.line, f.stmt);
+    const drifted = source && stale(f.file, f.line, f.stmt);
     const near = !drifted && lastSnip && lastSnip.file === f.file && Math.abs(lastSnip.line - f.line) <= 2;
-    const snip = near || drifted ? null : snippet(f.file, f.line);
+    const snip = !source || near || drifted ? null : snippet(f.file, f.line);
     if (drifted) {
       out.push(`      ${C.dim}│${C.reset} ${f.stmt}`);
       out.push(`      ${C.yellow}! ${relPath(f.file)} has changed since this ran — source not shown${C.reset}`);
@@ -78,7 +78,7 @@ export function render(result, { max = 5, cwd = true } = {}) {
         out.push(`      ${num} ${bar} ${txt}`);
         if (s.hit && f.col) out.push(`      ${" ".repeat(w)} ${C.dim}│${C.reset} ${" ".repeat(Math.max(0, f.col - 1))}${C.red}^${C.reset}`);
       }
-    } else if (f.stmt && !drifted) {
+    } else if (source && f.stmt && !drifted) {
       out.push(`      ${C.dim}│${C.reset} ${f.stmt}`);
     }
 

@@ -1,0 +1,8 @@
+> Task :app:compileKotlin FAILED
+e: /workspace/src/main/kotlin/com/acme/Invoice.kt:14:17: Type mismatch: inferred type is String but Int was expected
+e: /workspace/src/main/kotlin/com/acme/Invoice.kt:22:9: Unresolved reference: total
+
+FAILURE: Build failed with an exception.
+
+* What went wrong:
+Execution failed for task ':app:compileKotlin'.

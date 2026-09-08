@@ -1,0 +1,20 @@
+Failures:
+
+  1) Invoice total calculates tax correctly
+     Failure/Error: expect(total([1000, 49], 0.5)).to eq(1050)
+     
+       expected: 1050
+            got: 1049
+     
+       (compared using ==)
+     # ./spec/invoice_spec.rb:12:in `block (2 levels) in <top (required)>'
+
+  2) Authentication rejects expired tokens
+     Failure/Error: expect(token.expired?).to be(false)
+     
+       expected false
+            got true
+     # ./spec/auth_spec.rb:27:in `block (2 levels) in <top (required)>'
+
+Finished in 0.014 seconds (files took 0.08 seconds to load)
+2 examples, 2 failures
