@@ -3,9 +3,11 @@ export const stripAnsi = (s) => s.replace(ANSI, "");
 
 /** Node/py internals and vendored code are almost never what you're looking for. */
 const NOISE = [
-  /node:internal/, /[/\\]node_modules[/\\]/, /[/\\]site-packages[/\\]/,
+  /^node:/, /node:internal/, /[/\\]node_modules[/\\]/, /[/\\]site-packages[/\\]/,
   /[/\\]lib[/\\]python3\.\d+[/\\]/, /<frozen [a-z_.]+>/,
   /\.pnpm[/\\]/,
+  // node's own eval/REPL machinery — the [eval]:N frame is real, its wrapper is not
+  /^\[eval\]-wrapper/, /^evalmachine/, /^\[stdin\]-wrapper/,
 ];
 export const isNoise = (p) => !!p && NOISE.some((re) => re.test(p));
 

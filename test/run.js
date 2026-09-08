@@ -43,6 +43,16 @@ const CASES = [
       assert.equal(r.failures[0].col, 52);
       assert.match(r.summary, /3 errors in 1 file/);
     } },
+  { file: "node_eval.txt", tool: "node", n: 1, check: (r) => {
+      const f = r.failures[0];
+      assert.equal(f.title, "TypeError");
+      assert.equal(f.file, "[eval]");
+      assert.equal(f.stmt, "null.x");
+      // node's own eval wrapper must never be shown as user code
+      assert.ok(!f.trace.some((t) => /\[eval\]-wrapper|node:internal/.test(t)),
+        `wrapper frame leaked: ${JSON.stringify(f.trace)}`);
+      assert.equal(f.hiddenFrames, 7);
+    } },
 ];
 
 let pass = 0, fail = 0;
