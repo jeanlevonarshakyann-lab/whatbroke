@@ -330,6 +330,21 @@ const CASES = [
         "YAML plumbing must not survive into the message");
       assert.equal(r.failures[1].title, "rate-limit events fire only once per transition");
     } },
+  { file: "gradle_script_fail.txt", tool: "gradle", n: 1, check: (r) => {
+      // real `gradle test` on stleary/JSON-java under Gradle 9, which removed the
+      // sourceCompatibility property. The build script fails to evaluate - a very
+      // common failure - and whatbroke printed NOTHING at all: jvm.js detected the
+      // output but extracted no failure, and the generic fallback does not match
+      // "FAILURE:" (no word boundary after FAIL) or "with an exception." (no colon).
+      const f = r.failures[0];
+      assert.equal(f.title, "build script");
+      assert.match(f.file, /build\.gradle$/);
+      assert.equal(f.line, 55);
+      assert.match(f.message, /A problem occurred evaluating root project/);
+      // the "> " detail line carries the actual cause and must not be dropped
+      assert.match(f.message, /Could not set unknown property 'sourceCompatibility'/);
+      assert.ok(!/^>/m.test(f.message), "gradle's leading > is punctuation, not content");
+    } },
 ];
 
 let pass = 0, fail = 0;

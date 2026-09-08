@@ -48,6 +48,21 @@ export default {
           message: m[4].trim(),
         });
       }
+      // A build script that fails to evaluate - wrong Gradle version, bad plugin -
+      // names its file, its line, and the cause under "* What went wrong:". Without
+      // this the whole run produced no output at all.
+      if (!failures.length) {
+        const where = s.match(/^(?:Build file|Script|Settings file)\s+'(.+?)'\s+line:\s*(\d+)/m);
+        const wrong = s.match(/^\* What went wrong:\s*\n([\s\S]*?)(?=\n\* |\n\s*BUILD FAILED|(?![\s\S]))/m);
+        if (wrong) {
+          const detail = wrong[1].split("\n").map((l) => l.trim())
+            .filter(Boolean).map((l) => l.replace(/^>\s*/, "")).slice(0, 3);
+          failures.push({
+            file: where?.[1], line: where ? +where[2] : undefined,
+            title: "build script", message: detail.join("\n"),
+          });
+        }
+      }
       if (!failures.length) {
         const testFailure = s.match(/^\[ERROR\]\s+Tests run:.*?(?:Failures|Errors):\s*(\d+)/m);
         if (testFailure) failures.push({ title: "test failure", message: testFailure[0].replace(/^\[ERROR\]\s+/, "") });
