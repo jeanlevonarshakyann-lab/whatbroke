@@ -1,5 +1,6 @@
 import { relPath } from "./util.js";
 import { snippet, contextFor } from "./snippet.js";
+import { normTitle } from "./cluster.js";
 
 // A failure message line longer than this is padding - pytest lists every
 // available fixture, rustc lists every trait impl. Keep the head, drop the rest.
@@ -33,10 +34,20 @@ setColor(false);
 
 const pad = (n, w) => String(n).padStart(w);
 
-export function render(result, { max = 5, cwd = true, source = true } = {}) {
+const SITES_SHOWN = 3;   // how many extra sites to name before "+ N more"
+
+export function render(result, { max = 5, cwd = true, source = true, cluster = true } = {}) {
   const out = [];
   const fails = result.failures;
   let lastSnip = null;   // don't reprint the same source region twice in a row
+
+  // A unit is a cluster when we are confident enough to claim one, otherwise a single
+  // failure. With nothing reported this is exactly the old failure list, in order, so
+  // the output is byte-identical to before clustering existed.
+  const units = (cluster && result.clusters)
+    ? result.clusters
+    : fails.map((_, i) => ({ size: 1, members: [i], exemplar: i, reported: false }));
+  const reported = units.filter((u) => u.reported);
 
   if (result.summary) {
     out.push(`  ${C.red}${C.bold}✗${C.reset} ${C.bold}${result.summary}${C.reset}`);
@@ -45,14 +56,30 @@ export function render(result, { max = 5, cwd = true, source = true } = {}) {
     out.push(`  ${C.red}${C.bold}✗${C.reset} ${C.bold}${n} error${n > 1 ? "s" : ""}${C.reset}` +
              `${result.guessed ? ` ${C.dim}(no parser for this tool — best guess)${C.reset}` : ""}`);
   }
+  if (reported.length) {
+    const sites = reported.reduce((n, u) => n + u.size, 0);
+    const others = fails.length - sites;
+    out.push(`    ${C.yellow}${reported.length} likely cause${reported.length > 1 ? "s" : ""}, ` +
+             `${sites} site${sites > 1 ? "s" : ""}${others ? ` (+${others} other${others > 1 ? "s" : ""})` : ""}${C.reset}`);
+  }
   out.push("");
 
-  for (const f of fails.slice(0, max)) {
+  for (const unit of units.slice(0, max)) {
+    const f = fails[unit.exemplar];
+    const kin = unit.members.filter((i) => i !== unit.exemplar);
+    // when every member shares a title once its [param] is stripped, it is one
+    // parametrized family and reads better as "(N cases)" than "(+N more sites)"
+    const family = unit.reported &&
+      unit.members.every((i) => normTitle(fails[i].title) === normTitle(f.title));
     const loc = f.file
       ? `${C.cyan}${cwd ? relPath(f.file) : f.file}${C.reset}${C.dim}:${f.line ?? "?"}${C.reset}`
       : "";
-    const title = f.title ? `  ${C.bold}${f.title}${C.reset}` : "";
-    if (loc || title) out.push(`  ${loc}${title}`);
+    const label = family ? normTitle(f.title) : f.title;
+    const title = label ? `  ${C.bold}${label}${C.reset}` : "";
+    const more = unit.reported
+      ? `  ${C.yellow}${family ? `(${unit.size} cases)` : `(+${kin.length} more site${kin.length > 1 ? "s" : ""})`}${C.reset}`
+      : "";
+    if (loc || title) out.push(`  ${loc}${title}${more}`);
 
     for (const m of String(f.message ?? "").split("\n")) {
       if (!m.trim()) continue;
@@ -101,11 +128,34 @@ export function render(result, { max = 5, cwd = true, source = true } = {}) {
     if (f.hiddenFrames > 0) {
       out.push(`      ${C.grey}+ ${f.hiddenFrames} internal frame${f.hiddenFrames > 1 ? "s" : ""} hidden${C.reset}`);
     }
+    if (unit.reported && kin.length) {
+      const where = (i) => {
+        const g = fails[i];
+        return g.file ? `${cwd ? relPath(g.file) : g.file}:${g.line ?? "?"}` : (g.title || "?");
+      };
+      // Parametrized cases share a source line, so the raw member list repeats one
+      // location. Name each distinct place once, and say nothing when every sibling
+      // sits on the line already printed above.
+      const here = where(unit.exemplar);
+      const elsewhere = [...new Set(kin.map(where))].filter((w) => w !== here);
+      if (elsewhere.length) {
+        const shown = max === Infinity ? elsewhere : elsewhere.slice(0, SITES_SHOWN);
+        out.push(`      ${C.grey}also ${shown.join(", ")}${C.reset}`);
+        if (elsewhere.length > shown.length) {
+          out.push(`      ${C.grey}+ ${elsewhere.length - shown.length} more places (whatbroke --all)${C.reset}`);
+        }
+      }
+    }
     out.push("");
   }
 
-  if (fails.length > max) {
-    out.push(`  ${C.dim}… ${fails.length - max} more (whatbroke --all)${C.reset}`);
+  if (units.length > max) {
+    const hidden = units.slice(max);
+    const hiddenFails = hidden.reduce((n, u) => n + u.size, 0);
+    const causes = hidden.filter((u) => u.reported).length;
+    out.push(causes
+      ? `  ${C.dim}… ${causes} more cause${causes > 1 ? "s" : ""}, ${hiddenFails} more failures (whatbroke --all)${C.reset}`
+      : `  ${C.dim}… ${hiddenFails} more (whatbroke --all)${C.reset}`);
     out.push("");
   }
   return out.join("\n");

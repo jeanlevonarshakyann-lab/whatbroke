@@ -16,6 +16,7 @@ import gotest from "./extractors/gotest.js";
 import cargo from "./extractors/cargo.js";
 import generic from "./extractors/generic.js";
 import { stripAnsi } from "./util.js";
+import { clusterFailures } from "./cluster.js";
 
 // order matters: most specific first, generic last
 export const EXTRACTORS = [pytest, jest, vitest, unittest, traceback, eslint, ruff, mypy, clang, rspec, jvm, dotnet, phpunit, cargo, gotest, node, tsc, generic];
@@ -33,7 +34,7 @@ function dedupeFailures(failures) {
   });
 }
 
-export function analyse(raw) {
+export function analyse(raw, { cluster = true } = {}) {
   // Windows tools, and logs pasted out of Windows CI, arrive with CRLF. Every
   // parser anchors on $, so a stray \r makes all of them silently match nothing.
   const s = stripAnsi(raw).replace(/\r\n?/g, "\n");
@@ -41,8 +42,11 @@ export function analyse(raw) {
     if (!ex.detect(s)) continue;
     const r = ex.extract(s);
     if (r?.failures?.length) {
+      // dedupe first: it collapses the SAME diagnostic printed twice, so cluster
+      // sizes end up counting real distinct sites rather than print repetitions.
       const failures = dedupeFailures(r.failures);
-      return failures.length === r.failures.length ? r : { ...r, failures };
+      const clusters = cluster ? clusterFailures(failures, r.tool) : null;
+      return { ...r, failures, clusters };
     }
   }
   return null;

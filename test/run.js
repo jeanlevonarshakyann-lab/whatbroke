@@ -324,6 +324,202 @@ try {
   pass++;
 } catch (e) { console.log(`  FAIL long line clipping\n       ${e.message}`); fail++; }
 
+// ---------------------------------------------------------------- clustering
+
+// skeleton() is pinned exactly: these are the rules, and they must not drift.
+try {
+  const { skeleton } = await import("../src/cluster.js");
+  const table = [
+    [`assert 'Error: Missing argument' in "Usage:\ncli"`, "assert <str> in <str>"],
+    ["KeyError: 'exp'", "KeyError: exp"],
+    ["Cannot read properties of null (reading 'id')", "Cannot read properties of null (reading id)"],
+    ["<click.testing.CliRunner object at 0x10c3f4d90>", "<click.testing.CliRunner object at <addr>>"],
+    ["assert 1049 == 1050", "assert <num> == <num>"],
+    ["expected `String`, found integer", "expected String, found integer"],
+    ["test_shop.py:4: AssertionError", "<path>:<num>: AssertionError"],
+    ["cart.total is not a function", "cart.total is not a function"],
+    [`Argument 1 to "total" has incompatible type "str"`, "Argument <num> to total has incompatible type str"],
+    ["doesn't exist on type 'User'", "doesn't exist on type User"],
+    ["assert total([1000, 49], 0.5) == 1050", "assert total([<num>*], <num>) == <num>"],
+    ["error[E0308] TS2551 i64 utf8", "error[E0308] TS2551 i64 utf8"],
+  ];
+  for (const [input, want] of table) {
+    assert.equal(skeleton(input), want, `skeleton(${JSON.stringify(input)})`);
+  }
+  console.log(`  ok   skeleton normalises ${table.length} known shapes exactly`);
+  pass++;
+} catch (e) { console.log(`  FAIL skeleton table\n       ${e.message}`); fail++; }
+
+// Every rule gets a pair: one that MUST join (fails if the rule is deleted) and one
+// that MUST split (fails if the rule is widened). Pinned from both sides.
+try {
+  const { skeleton } = await import("../src/cluster.js");
+  const same = (a, b) => skeleton(a) === skeleton(b);
+  const join = [
+    ["numbers", "assert cart.total() == 1050", "assert cart.total() == 1051"],
+    ["quoted data", `assert 'Error: A' in out`, `assert 'Error: B B' in out`],
+    ["quote style", `KeyError: 'exp'`, `KeyError: "exp"`],
+    ["paths", "at tests/a/b.py line 1", "at src/c/d.py line 99"],
+    ["addresses", "<X object at 0x1a2b>", "<X object at 0xffee>"],
+    ["numeric runs", "call([1, 2, 3])", "call([7, 8, 9])"],
+  ];
+  const split = [
+    ["diagnostic codes survive <num>", "TS2551 not assignable", "TS2339 not assignable"],
+    ["quoted identifiers kept", "KeyError: 'exp'", "KeyError: 'sub'"],
+    ["type names kept", `type 'string' bad`, `type 'Buffer' bad`],
+    ["attribute access is not a path", "cart.total is not a function", "user.save is not a function"],
+    ["hex needs a digit", "defaced the value", "deadbee the value"],
+    ["brackets in messages kept", "expected list[int]", "expected list[str]"],
+    ["apostrophe lookbehind", "doesn't exist on type 'User'", "doesn't exist on type 'Post'"],
+  ];
+  for (const [why, a, b] of join) assert.ok(same(a, b), `must JOIN (${why}): ${skeleton(a)} vs ${skeleton(b)}`);
+  for (const [why, a, b] of split) assert.ok(!same(a, b), `must SPLIT (${why}): both ${skeleton(a)}`);
+  console.log(`  ok   ${join.length} must-join and ${split.length} must-split rules hold`);
+  pass++;
+} catch (e) { console.log(`  FAIL join/split pairs\n       ${e.message}`); fail++; }
+
+// Clusters must partition the failures: nothing lost, nothing double counted.
+try {
+  let checked = 0;
+  for (const file of readdirSync(join(here, "fixtures"))) {
+    const r = analyse(fx(file));
+    if (!r) continue;
+    checked++;
+    const members = r.clusters.flatMap((c) => c.members).sort((a, b) => a - b);
+    assert.deepEqual(members, [...r.failures.keys()], `${file}: not a partition`);
+    for (const c of r.clusters) {
+      assert.equal(c.size, c.members.length, `${file}: size disagrees with members`);
+      assert.ok(c.members.includes(c.exemplar), `${file}: exemplar outside its cluster`);
+    }
+    assert.equal(r.clusters.reduce((n, c) => n + c.size, 0), r.failures.length, `${file}: sizes do not sum`);
+  }
+  console.log(`  ok   clusters partition every failure across ${checked} fixtures`);
+  pass++;
+} catch (e) { console.log(`  FAIL cluster partition\n       ${e.message}`); fail++; }
+
+// A normalisation rule that eats its own output looks fine until it silently
+// changes results. Idempotence catches that class outright.
+try {
+  const { skeleton } = await import("../src/cluster.js");
+  let n = 0;
+  for (const file of readdirSync(join(here, "fixtures"))) {
+    const r = analyse(fx(file));
+    if (!r) continue;
+    for (const f of r.failures) {
+      for (const t of [f.message, f.stmt, f.title]) {
+        const once = skeleton(t);
+        assert.equal(skeleton(once), once, `${file}: skeleton not idempotent on ${JSON.stringify(String(t).slice(0, 60))}`);
+        n++;
+      }
+    }
+  }
+  console.log(`  ok   skeleton is idempotent over ${n} real strings`);
+  pass++;
+} catch (e) { console.log(`  FAIL skeleton idempotence\n       ${e.message}`); fail++; }
+
+// Clustering must not change what anyone already sees. Any fixture that legitimately
+// grows a cluster belongs in this list, with a reason - so a merge can never appear
+// silently in someone's terminal.
+try {
+  const { render, setColor } = await import("../src/render.js");
+  setColor(false);
+  const EXPECTED_TO_CLUSTER = [];   // empty: no current fixture has 3 failures sharing a cause
+  let checked = 0;
+  for (const file of readdirSync(join(here, "fixtures"))) {
+    const raw = fx(file);
+    const on = analyse(raw), off = analyse(raw, { cluster: false });
+    if (!on) continue;
+    checked++;
+    const differs = render(on, {}) !== render(off, { cluster: false });
+    if (EXPECTED_TO_CLUSTER.includes(file)) assert.ok(differs, `${file}: expected to cluster but did not`);
+    else assert.ok(!differs, `${file}: clustering changed existing output`);
+  }
+  console.log(`  ok   clustering leaves all ${checked} fixture renders byte-identical`);
+  pass++;
+} catch (e) { console.log(`  FAIL byte identity\n       ${e.message}`); fail++; }
+
+// A new extractor must not silently inherit a title policy. Adding one forces a choice.
+try {
+  const { TOOL_TITLE_SETS } = await import("../src/cluster.js");
+  const { TITLE_IS_CODE, TITLE_IS_SITE, TITLE_IS_CONST } = TOOL_TITLE_SETS;
+  const tools = new Set();
+  for (const file of readdirSync(join(here, "fixtures"))) {
+    const r = analyse(fx(file));
+    if (r) tools.add(r.tool);
+  }
+  for (const t of tools) {
+    const hits = [TITLE_IS_CODE, TITLE_IS_SITE, TITLE_IS_CONST].filter((s) => s.has(t)).length;
+    assert.equal(hits, 1, `tool ${JSON.stringify(t)} is in ${hits} title sets, must be exactly 1`);
+  }
+  console.log(`  ok   all ${tools.size} tools declare a title policy exactly once`);
+  pass++;
+} catch (e) { console.log(`  FAIL title policy coverage\n       ${e.message}`); fail++; }
+
+// The guards against over-merging, which is the fatal direction.
+try {
+  const { clusterFailures, MIN_CLUSTER } = await import("../src/cluster.js");
+  // 40 numeric assertions from 40 unrelated bugs must never become "1 likely cause"
+  const bare = Array.from({ length: 40 }, (_, i) => ({ title: `t${i}`, message: `assert ${i} == ${i + 1}` }));
+  assert.ok(clusterFailures(bare, "pytest").every((c) => !c.reported),
+    "a bare numeric assertion carries no information and must not be a reported cause");
+
+  // three failures that really do share a cause
+  const real = Array.from({ length: 3 }, (_, i) => ({ title: `t${i}`, file: `a${i}.py`, line: i + 1, message: "KeyError: 'exp'" }));
+  const got = clusterFailures(real, "pytest").filter((c) => c.reported);
+  assert.equal(got.length, 1, "three matching failures should be one reported cause");
+  assert.equal(got[0].size, 3);
+
+  // two is coincidence, not a cause
+  assert.equal(MIN_CLUSTER, 3);
+  assert.ok(clusterFailures(real.slice(0, 2), "pytest").every((c) => !c.reported), "two must not be reported");
+  console.log("  ok   the information gate and minimum size both refuse weak merges");
+  pass++;
+} catch (e) { console.log(`  FAIL merge guards\n       ${e.message}`); fail++; }
+
+// Rendering a real cluster: header, one exemplar, distinct sites only.
+try {
+  const { render, setColor } = await import("../src/render.js");
+  const { clusterFailures } = await import("../src/cluster.js");
+  setColor(false);
+  const failures = [
+    { title: "test_a", file: "t/one.py", line: 10, message: "KeyError: 'exp'" },
+    { title: "test_b", file: "t/two.py", line: 20, message: "KeyError: 'exp'" },
+    { title: "test_c", file: "t/two.py", line: 20, message: "KeyError: 'exp'" },
+    { title: "test_d", file: "t/three.py", line: 30, message: "KeyError: 'exp'" },
+  ];
+  const out = render({ tool: "pytest", failures, clusters: clusterFailures(failures, "pytest") }, { source: false });
+  assert.match(out, /1 likely cause, 4 sites/, "header must state the cause count");
+  assert.equal((out.match(/KeyError/g) || []).length, 1, "the exemplar message prints once, not once per member");
+  assert.match(out, /also t\/two\.py:20, t\/three\.py:30/, "sibling sites are named");
+  assert.equal((out.match(/t\/two\.py:20/g) || []).length, 1, "a repeated location is named once, not per member");
+  console.log("  ok   a cluster renders one exemplar and its distinct sites");
+  pass++;
+} catch (e) { console.log(`  FAIL cluster rendering\n       ${e.message}`); fail++; }
+
+// Hostile input must still yield a valid partition, not merely avoid throwing.
+try {
+  const hostile = ["", "\0\0", "[31m", "!!!".repeat(1000), "a".repeat(50000),
+    "assert 'unterminated in x", "{}", "::::", "\n\n\n", "error: " + "x".repeat(5000)];
+  for (const h of hostile) {
+    const r = analyse(h);
+    if (!r) continue;
+    const members = r.clusters.flatMap((c) => c.members).sort((a, b) => a - b);
+    assert.deepEqual(members, [...r.failures.keys()], `hostile input broke the partition: ${JSON.stringify(h.slice(0, 20))}`);
+  }
+  console.log("  ok   hostile input still produces a valid partition");
+  pass++;
+} catch (e) { console.log(`  FAIL hostile partition\n       ${e.message}`); fail++; }
+
+// --no-cluster must mean no clustering everywhere, not "clustered but hidden".
+try {
+  const off = spawnSync(process.execPath, [cli, "--format", "json", "--no-cluster", "--", process.execPath, "-e", "null.x"], { encoding: "utf8" });
+  assert.equal(JSON.parse(off.stdout).clusters, null, "--no-cluster must null the clusters field in JSON too");
+  const on = spawnSync(process.execPath, [cli, "--format", "json", "--", process.execPath, "-e", "null.x"], { encoding: "utf8" });
+  assert.ok(Array.isArray(JSON.parse(on.stdout).clusters), "clustering is on by default");
+  console.log("  ok   --no-cluster disables clustering in every format");
+  pass++;
+} catch (e) { console.log(`  FAIL --no-cluster flag\n       ${e.message}`); fail++; }
+
 // CRLF input must parse identically to LF - Windows, and logs pasted from Windows CI
 try {
   for (const name of ["pytest_fail.txt", "gotest_fail.txt", "cargobuild_fail.txt", "node_stack.txt"]) {
