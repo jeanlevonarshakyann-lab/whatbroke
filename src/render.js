@@ -1,5 +1,5 @@
 import { relPath } from "./util.js";
-import { snippet } from "./snippet.js";
+import { snippet, contextFor } from "./snippet.js";
 
 /** Tools print the source line they saw. If the file on disk no longer matches,
  *  it changed since the command ran and showing it would be a lie. */
@@ -51,9 +51,11 @@ export function render(result, { max = 5, cwd = true, source = true } = {}) {
       if (m.trim()) out.push(`    ${C.red}${m}${C.reset}`);
     }
 
+    const ctx = contextFor(f.message);
     const drifted = source && stale(f.file, f.line, f.stmt);
-    const near = !drifted && lastSnip && lastSnip.file === f.file && Math.abs(lastSnip.line - f.line) <= 2;
-    const snip = !source || near || drifted ? null : snippet(f.file, f.line);
+    // "same region" is however far the last snippet actually reached, not a fixed 2
+    const near = !drifted && lastSnip && lastSnip.file === f.file && Math.abs(lastSnip.line - f.line) <= lastSnip.ctx;
+    const snip = !source || near || drifted ? null : snippet(f.file, f.line, ctx);
     if (drifted) {
       out.push(`      ${C.dim}│${C.reset} ${f.stmt}`);
       out.push(`      ${C.yellow}! ${relPath(f.file)} has changed since this ran — source not shown${C.reset}`);
@@ -68,7 +70,7 @@ export function render(result, { max = 5, cwd = true, source = true } = {}) {
       }
     }
     if (snip) {
-      lastSnip = { file: f.file, line: f.line };
+      lastSnip = { file: f.file, line: f.line, ctx };
       out.push("");
       const w = String(snip.at(-1).n).length;
       for (const s of snip) {
