@@ -416,6 +416,21 @@ const CASES = [
       const reported = r.clusters.filter((c) => c.reported);
       assert.ok(reported.length >= 3, `expected a cause per lint, got ${reported.length}`);
     } },
+  { file: "rspec_profile_fail.txt", tool: "rspec", n: 1, check: (r) => {
+      // real rspec run of piotrmurach/tty-color with the default colour mode changed.
+      // Two bugs this caught: the summary was rebuilt from the numbers and so always
+      // said "failures", where rspec itself writes "1 failure"; and rspec prints its
+      // profiling block between the failures and "Finished in", so "Top 2 slowest
+      // examples" was absorbed into the last failure's message.
+      assert.equal(r.summary, "60 examples, 1 failure");
+      const f = r.failures[0];
+      assert.equal(f.file, "./spec/unit/mode_spec.rb");
+      assert.equal(f.line, 16);
+      assert.match(f.message, /expected: 8/);
+      assert.match(f.message, /got: 16/);
+      assert.ok(!/slowest|seconds average/.test(f.message),
+        "profiling output must not land inside a failure");
+    } },
 ];
 
 let pass = 0, fail = 0;
