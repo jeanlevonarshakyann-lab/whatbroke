@@ -197,8 +197,11 @@ so it will only ever read files **inside the directory you ran it in**. Crafted 
 naming `/etc/passwd` or `~/.ssh/id_rsa` gets the error printed, never the file.
 
 It runs your command without a shell (`spawn`, not `sh -c`), so nothing in a filename
-or argument is expanded. It has zero dependencies, makes no network calls, and never
-writes to disk.
+or argument is expanded. It has zero dependencies and makes no network calls.
+
+It writes to disk in exactly one case: when `GITHUB_STEP_SUMMARY` is set — which
+GitHub Actions sets for you — `--format github` appends a run summary to that file.
+Nowhere else, and never outside CI unless you set that variable yourself.
 
 ## Why it isn't an LLM
 

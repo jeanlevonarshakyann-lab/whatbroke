@@ -1,8 +1,7 @@
-clang++ -Wall -Wextra main.cpp -o app
-main.cpp:7:12: error: use of undeclared identifier 'total'
-    return total(items);
-           ^
-main.cpp:11:5: warning: unused variable 'debug' [-Wunused-variable]
-    int debug = 1;
-    ^
-1 warning and 1 error generated.
+/home/dev/bad2.c:2:17: error: incompatible pointer to integer conversion initializing 'int' with an expression of type 'char[4]' [-Wint-conversion]
+    2 | int main(){ int x = "str"; return y; }
+      |                 ^   ~~~~~
+/home/dev/bad2.c:2:35: error: use of undeclared identifier 'y'
+    2 | int main(){ int x = "str"; return y; }
+      |                                   ^
+2 errors generated.

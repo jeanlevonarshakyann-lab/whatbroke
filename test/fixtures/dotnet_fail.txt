@@ -1,9 +1,13 @@
   Determining projects to restore...
   All projects are up-to-date for restore.
-/workspace/src/Invoice.cs(18,21): error CS0029: Cannot implicitly convert type 'string' to 'int' [/workspace/src/Billing.csproj]
-/workspace/src/Invoice.cs(27,9): warning CS0219: The variable 'debug' is assigned but its value is never used [/workspace/src/Billing.csproj]
-/workspace/src/Invoice.cs(31,13): error CS0103: The name 'total' does not exist in the current context [/workspace/src/Billing.csproj]
-/workspace/src/Invoice.cs(18,21): error CS0029: Cannot implicitly convert type 'string' to 'int' [/workspace/src/Billing.csproj]
-/workspace/src/Invoice.cs(31,13): error CS0103: The name 'total' does not exist in the current context [/workspace/src/Billing.csproj]
+/home/dev/cs/app/Program.cs(5,20): error CS0029: Cannot implicitly convert type 'int' to 'string' [/home/dev/cs/app/app.csproj]
+/home/dev/cs/app/Program.cs(6,16): error CS0103: The name 'UndefinedMethod' does not exist in the current context [/home/dev/cs/app/app.csproj]
 
 Build FAILED.
+
+/home/dev/cs/app/Program.cs(5,20): error CS0029: Cannot implicitly convert type 'int' to 'string' [/home/dev/cs/app/app.csproj]
+/home/dev/cs/app/Program.cs(6,16): error CS0103: The name 'UndefinedMethod' does not exist in the current context [/home/dev/cs/app/app.csproj]
+    0 Warning(s)
+    2 Error(s)
+
+Time Elapsed 00:00:01.49

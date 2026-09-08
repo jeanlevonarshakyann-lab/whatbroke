@@ -1,5 +1,4 @@
-shop.py:4: error: Incompatible types in assignment (expression has type "str", variable has type "int")  [assignment]
-shop.py:7: error: Argument 1 to "total" has incompatible type "float"; expected "int"  [arg-type]
-shop.py:9: warning: Unused "type: ignore" comment  [unused-ignore]
-shop.py:10: note: Revealed type is "builtins.str"
-Found 2 errors in 1 file (checked 1 source file)
+typed.py:2: error: Incompatible return value type (got "float", expected "int")  [return-value]
+typed.py:6: error: Incompatible types in assignment (expression has type "str", variable has type "int")  [assignment]
+typed.py:7: error: Argument 1 to "total" has incompatible type "str"; expected "list[int]"  [arg-type]
+Found 3 errors in 1 file (checked 1 source file)

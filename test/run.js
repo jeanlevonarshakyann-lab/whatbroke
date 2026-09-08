@@ -151,43 +151,47 @@ const CASES = [
       const cargo = analyse(fx("cargobuild_fail.txt"));
       assert.equal(cargo.tool, "cargo", "cargo output must not be claimed by ruff");
     } },
-  { file: "mypy_fail.txt", tool: "mypy", n: 2, check: (r) => {
-      assert.equal(r.summary, "2 errors in 1 file — 1 warning hidden");
-      assert.equal(r.failures[0].title, "assignment");
-      assert.equal(r.failures[0].file, "shop.py");
-      assert.equal(r.failures[0].line, 4);
-      assert.match(r.failures[1].message, /Argument 1/);
-      assert.ok(!r.failures.some((f) => /Revealed type/.test(f.message)), "notes should not be failures");
+  { file: "mypy_fail.txt", tool: "mypy", n: 3, check: (r) => {
+      assert.equal(r.summary, "3 errors in 1 file");          // "1 file", not "1 files"
+      assert.equal(r.failures[0].file, "typed.py");
+      assert.equal(r.failures[0].line, 2);
+      assert.equal(r.failures[0].title, "return-value");       // mypy's [code] becomes the title
+      assert.match(r.failures[2].message, /Argument 1 to "total"/);
+      assert.ok(!r.failures.some((f) => /note:/.test(f.message)), "notes are not errors");
     } },
-  { file: "clang_fail.txt", tool: "clang", n: 1, check: (r) => {
-      assert.equal(r.summary, "1 error — 1 warning hidden");
-      assert.equal(r.failures[0].title, "error");
-      assert.equal(r.failures[0].file, "main.cpp");
-      assert.equal(r.failures[0].line, 7);
-      assert.equal(r.failures[0].col, 12);
-      assert.match(r.failures[0].message, /undeclared identifier/);
+  { file: "clang_fail.txt", tool: "clang", n: 2, check: (r) => {
+      assert.equal(r.failures[0].title, "-Wint-conversion");
+      assert.equal(r.failures[0].col, 17);
+      // an error with no [-Wflag] must still be clang's, not claimed by mypy
+      assert.equal(r.failures[1].title, "error");
+      assert.match(r.failures[1].message, /use of undeclared identifier 'y'/);
+      assert.equal(r.tool, "clang", "clang output must not be claimed by the mypy parser");
     } },
   { file: "rspec_fail.txt", tool: "rspec", n: 2, check: (r) => {
-      assert.equal(r.summary, "2 examples, 2 failures");
-      assert.equal(r.failures[0].title, "Invoice total calculates tax correctly");
-      assert.equal(r.failures[0].file, "./spec/invoice_spec.rb");
-      assert.equal(r.failures[0].line, 12);
-      assert.match(r.failures[0].message, /expected: 1050/);
-      assert.equal(r.failures[1].line, 27);
+      assert.equal(r.summary, "3 examples, 2 failures");
+      assert.equal(r.failures[0].title, "shop totals an invoice");
+      assert.equal(r.failures[0].file, "./spec/shop_spec.rb");
+      assert.equal(r.failures[0].line, 7);
+      // the KeyError frame list has two entries; the deepest user line wins
+      assert.equal(r.failures[1].line, 12);
+      assert.match(r.failures[1].message, /key not found: "exp"/);
     } },
   { file: "maven_fail.txt", tool: "maven", n: 2, check: (r) => {
-      assert.equal(r.summary, "build failed");
-      assert.equal(r.failures[0].file, "/workspace/src/main/java/com/acme/Invoice.java");
-      assert.equal(r.failures[0].line, 18);
-      assert.equal(r.failures[0].col, 21);
-      assert.match(r.failures[0].message, /incompatible types/);
+      // maven prints every error twice; the second copy must be collapsed
+      assert.equal(r.failures.length, 2);
+      assert.match(r.failures[0].file, /Shop\.java$/);
+      assert.equal(r.failures[0].line, 4);
+      assert.equal(r.failures[0].col, 20);
+      assert.match(r.failures[1].message, /cannot find symbol/);
     } },
   { file: "gradle_fail.txt", tool: "gradle", n: 2, check: (r) => {
-      assert.equal(r.summary, "build failed");
-      assert.equal(r.failures[0].file, "/workspace/src/main/kotlin/com/acme/Invoice.kt");
-      assert.equal(r.failures[0].line, 14);
-      assert.equal(r.failures[0].col, 17);
-      assert.match(r.failures[1].message, /Unresolved reference/);
+      // real gradle javac output, printed once plainly and once indented under
+      // "What went wrong" - both copies must collapse to two failures
+      assert.equal(r.failures.length, 2);
+      assert.match(r.failures[0].file, /Shop\.java$/);
+      assert.equal(r.failures[0].line, 4);
+      assert.match(r.failures[0].message, /incompatible types/);
+      assert.equal(r.tool, "gradle", "gradle javac output must not be claimed by mypy");
     } },
   { file: "gradle_java_fail.txt", tool: "gradle", n: 2, check: (r) => {
       assert.equal(r.summary, "build failed");
@@ -197,21 +201,23 @@ const CASES = [
       assert.match(r.failures[1].message, /cannot find symbol/);
     } },
   { file: "dotnet_fail.txt", tool: "dotnet", n: 2, check: (r) => {
-      assert.equal(r.summary, "2 errors — 1 warning hidden");
+      // dotnet prints each error twice; summary and list must agree
+      assert.equal(r.summary, "2 errors");
+      assert.equal(r.failures.length, 2);
       assert.equal(r.failures[0].title, "CS0029");
-      assert.equal(r.failures[0].file, "/workspace/src/Invoice.cs");
-      assert.equal(r.failures[0].line, 18);
-      assert.equal(r.failures[0].col, 21);
-      assert.ok(r.failures.every((f) => !/\.csproj/.test(f.message)), "project metadata must not leak");
-      assert.match(r.failures[1].message, /does not exist/);
+      assert.equal(r.failures[0].line, 5);
+      // the trailing [/path/app.csproj] is noise, not part of the message
+      assert.ok(!r.failures.some((f) => /csproj/.test(f.message)),
+        "the project path must be stripped from the message");
     } },
   { file: "phpunit_fail.txt", tool: "phpunit", n: 2, check: (r) => {
       assert.equal(r.summary, "2 failures");
-      assert.equal(r.failures[0].title, "Tests\\InvoiceTest::testTotal");
-      assert.equal(r.failures[0].file, "/workspace/tests/InvoiceTest.php");
-      assert.equal(r.failures[0].line, 17);
-      assert.match(r.failures[1].message, /true is false/);
-      assert.ok(r.failures.every((f) => !/Tests:/.test(f.message)), "summary must not be swallowed");
+      assert.equal(r.failures[0].title, "ShopTest::testInvoiceTotal");
+      assert.equal(r.failures[0].line, 8);
+      assert.match(r.failures[0].message, /1049 is identical to 1050/);
+      // the trailing "FAILURES! / Tests: 3, Assertions: 3" must not land in a message
+      assert.ok(!r.failures.some((f) => /FAILURES!|Assertions:/.test(f.message)),
+        "the run summary must not be absorbed into the last failure");
     } },
 ];
 

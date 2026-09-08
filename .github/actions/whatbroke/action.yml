@@ -5,9 +5,11 @@ inputs:
     description: Shell command to run and summarize
     required: true
   version:
-    description: whatbroke npm version to use
+    description: >-
+      whatbroke npm version to use. Pinned by default: a floating "latest" means
+      a release you have not reviewed can change your CI output.
     required: false
-    default: latest
+    default: 0.1.1
   working-directory:
     description: Directory in which to run the command
     required: false
