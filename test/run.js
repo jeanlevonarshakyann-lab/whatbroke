@@ -219,6 +219,18 @@ const CASES = [
       assert.ok(!r.failures.some((f) => /FAILURES!|Assertions:/.test(f.message)),
         "the run summary must not be absorbed into the last failure");
     } },
+  { file: "gotest_cluster_fail.txt", tool: "go test", n: 7, check: (r) => {
+      // real `go test` run of spf13/cobra after renaming one error string.
+      // Three tests share one assertion shape; the rest fail differently.
+      const reported = r.clusters.filter((c) => c.reported);
+      assert.equal(reported.length, 1, "the shared cause should be one cluster");
+      assert.equal(reported[0].size, 3);
+      assert.match(reported[0].signature, /Expected: <str>, got: <str>/);
+      assert.ok(reported[0].members.every((i) => /args_test\.go$/.test(r.failures[i].file)),
+        "all three sites are in args_test.go");
+      // and the four unrelated failures must NOT have been swept in
+      assert.equal(r.clusters.filter((c) => !c.reported).length, 4);
+    } },
 ];
 
 let pass = 0, fail = 0;
@@ -423,7 +435,9 @@ try {
 try {
   const { render, setColor } = await import("../src/render.js");
   setColor(false);
-  const EXPECTED_TO_CLUSTER = [];   // empty: no current fixture has 3 failures sharing a cause
+  // Fixtures that legitimately group. Anything not listed here must render
+  // byte-identically with clustering on, so a merge can never appear silently.
+  const EXPECTED_TO_CLUSTER = ["gotest_cluster_fail.txt"];
   let checked = 0;
   for (const file of readdirSync(join(here, "fixtures"))) {
     const raw = fx(file);
@@ -434,7 +448,7 @@ try {
     if (EXPECTED_TO_CLUSTER.includes(file)) assert.ok(differs, `${file}: expected to cluster but did not`);
     else assert.ok(!differs, `${file}: clustering changed existing output`);
   }
-  console.log(`  ok   clustering leaves all ${checked} fixture renders byte-identical`);
+  console.log(`  ok   clustering changes ${EXPECTED_TO_CLUSTER.length} of ${checked} fixture renders, the ${EXPECTED_TO_CLUSTER.length === 1 ? "one" : "ones"} expected to`);
   pass++;
 } catch (e) { console.log(`  FAIL byte identity\n       ${e.message}`); fail++; }
 
