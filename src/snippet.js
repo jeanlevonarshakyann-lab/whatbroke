@@ -1,10 +1,23 @@
 import { readFileSync } from "node:fs";
+import { resolve, sep } from "node:path";
+
+/** Output can come from anywhere - a pasted log, a CI artifact, another machine.
+ *  Only ever read source from inside the directory we were run in, so crafted
+ *  input cannot make us open and print arbitrary files. */
+function insideCwd(file) {
+  try {
+    const root = resolve(process.cwd());
+    const target = resolve(root, file);
+    return target === root || target.startsWith(root + sep);
+  } catch { return false; }
+}
 
 const cache = new Map();
 /** Files are read once per run. Tests that rewrite a file mid-process need this. */
 export const resetSnippetCache = () => cache.clear();
 function readLines(file) {
   if (cache.has(file)) return cache.get(file);
+  if (!insideCwd(file)) { cache.set(file, null); return null; }
   let lines = null;
   try { lines = readFileSync(file, "utf8").split("\n"); } catch { lines = null; }
   cache.set(file, lines);

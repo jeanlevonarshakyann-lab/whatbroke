@@ -83,6 +83,17 @@ Source context is read from the file on disk. If the file has changed since the 
 ran — you edited it, or you piped in saved output — whatbroke says so and shows the line
 the tool itself reported, rather than confidently pointing a caret at the wrong code.
 
+## Safety
+
+whatbroke reads source context from disk to show you the lines around a failure.
+Output can come from anywhere — a pasted log, a CI artifact, someone else's machine —
+so it will only ever read files **inside the directory you ran it in**. Crafted output
+naming `/etc/passwd` or `~/.ssh/id_rsa` gets the error printed, never the file.
+
+It runs your command without a shell (`spawn`, not `sh -c`), so nothing in a filename
+or argument is expanded. It has zero dependencies, makes no network calls, and never
+writes to disk.
+
 ## Why it isn't an LLM
 
 Because you already know what's wrong the instant you can see it. The problem was never comprehension, it was that the answer is on line 312 of 400. A parser that knows pytest's format is faster, free, offline, deterministic, and never invents a stack frame.

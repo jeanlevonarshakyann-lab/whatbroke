@@ -144,6 +144,22 @@ for (const c of CASES) {
   }
 }
 
+// crafted output must not be able to make us read files outside the working dir
+try {
+  const { render, setColor } = await import("../src/render.js");
+  const { resetSnippetCache } = await import("../src/snippet.js");
+  const { writeFileSync } = await import("node:fs");
+  const { tmpdir } = await import("node:os");
+  setColor(false);
+  const outside = join(tmpdir(), "whatbroke-must-not-read.txt");
+  writeFileSync(outside, "TOP SECRET CONTENTS\n");
+  resetSnippetCache();
+  const out = render({ tool: "tsc", failures: [{ file: outside, line: 1, title: "TS1", message: "x" }] }, {});
+  assert.ok(!/TOP SECRET/.test(out), "read a file outside the working directory");
+  console.log("  ok   refuses to read source outside the working directory");
+  pass++;
+} catch (e) { console.log(`  FAIL path confinement\n       ${e.message}`); fail++; }
+
 // CRLF input must parse identically to LF - Windows, and logs pasted from Windows CI
 try {
   for (const name of ["pytest_fail.txt", "gotest_fail.txt", "cargobuild_fail.txt", "node_stack.txt"]) {
@@ -164,10 +180,10 @@ try {
 try {
   const { render, setColor } = await import("../src/render.js");
   const { resetSnippetCache } = await import("../src/snippet.js");
-  const { writeFileSync, mkdtempSync } = await import("node:fs");
-  const { tmpdir } = await import("node:os");
+  const { writeFileSync, mkdtempSync, rmSync } = await import("node:fs");
   setColor(false);
-  const dir = mkdtempSync(join(tmpdir(), "whatbroke-"));
+  // must live under cwd: source reads outside it are refused by design
+  const dir = mkdtempSync(join(process.cwd(), ".tmp-test-"));
   const file = join(dir, "a.rs");
 
   writeFileSync(file, "let s: String = 42;\n");
@@ -183,6 +199,7 @@ try {
   assert.match(drifted, /has changed since this ran/, "changed file must warn");
   assert.ok(!/something else entirely/.test(drifted), "must not print the new file's contents");
   assert.equal((drifted.match(/let s: String = 42;/g) || []).length, 1, "line printed exactly once");
+  rmSync(dir, { recursive: true, force: true });
   console.log("  ok   stale source is detected, not shown");
   pass++;
 } catch (e) { console.log(`  FAIL stale source\n       ${e.message}`); fail++; }

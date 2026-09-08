@@ -6,3 +6,5 @@ demo/.venv/
 demo/.pytest_cache/
 demo/__pycache__/
 *.tgz
+*.tmp-test-*/
+.tmp-test-*/
