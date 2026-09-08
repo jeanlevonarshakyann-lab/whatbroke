@@ -1,0 +1,42 @@
+npm notice run 'jest' --ci
+● Validation Warning:
+
+  Unknown option "watchPlugins" with value ["/home/dev/jest-dom/node_modules/jest-watch-typeahead/build/file_name_plugin/plugin.js", "/home/dev/jest-dom/node_modules/jest-watch-typeahead/build/test_name_plugin/plugin.js"] was found.
+  This is probably a typing mistake. Fixing it will remove this message.
+
+  Configuration Documentation:
+  https://jestjs.io/docs/configuration
+
+
+FAIL jsdom src/__tests__/to-contain-html.js
+  ● .toContainHTML › throws with an expected text
+
+    expect(received).toMatchInlineSnapshot(snapshot)
+
+    Snapshot name: `.toContainHTML throws with an expected text 1`
+
+    - Snapshot  - 3
+    + Received  + 3
+
+    - <dim>expect(</><red>element</><dim>).toContainHTML()</>
+    + expect(element).toContainHTML()
+      Expected:
+    -   <green><div> non-existant element </div></>
+    +   <div> non-existant element </div>
+      Received:
+    -   <red><span data-testid="child" /></>
+    +   <span data-testid="child" />
+
+      102 |     }
+      103 |
+    > 104 |     expect(errorMessage).toMatchInlineSnapshot(`
+          |                          ^
+      105 | <dim>expect(</><red>element</><dim>).toContainHTML()</>
+      106 | Expected:
+      107 |   <green><div> non-existant element </div></>
+
+      at Object.toMatchInlineSnapshot (src/__tests__/to-contain-html.js:104:26)
+
+ › 1 snapshot failed.
+Test Suites: 14 failed, 50 passed, 64 total
+Tests:       94 failed, 538 passed, 632 total

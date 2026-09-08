@@ -288,6 +288,33 @@ const CASES = [
       assert.ok(r.failures.every((g) => !/System\.Reflection/.test(g.file ?? "")));
       assert.equal(r.failures[2].line, 152);
     } },
+  { file: "jest_snapshot_fail.txt", tool: "jest", n: 1, check: (r) => {
+      // real jest run of testing-library/jest-dom after inverting one matcher.
+      assert.equal(r.summary, "94 failed, 538 passed, 632 total");
+      const f = r.failures[0];
+      // "FAIL jsdom src/a.js" - with multiple jest projects the display name comes
+      // first, and taking the first token made every file the project name
+      assert.equal(f.file, "src/__tests__/to-contain-html.js");
+      assert.equal(f.line, 104);
+      // jest uses the same bullet for config complaints as for failed tests
+      assert.ok(!/Validation Warning|watchPlugins/.test(f.title + f.message),
+        "a config warning must not be reported as a failed test");
+      // a snapshot diff opens with count headers and a hunk header, and restates
+      // the test name; none of those are the diff
+      assert.ok(!/^[-+]\s*(Snapshot|Received)\s+[-+]\s*\d+$/m.test(f.message), "count header kept");
+      assert.ok(!/^@@ /m.test(f.message), "hunk header kept");
+      assert.ok(!/^Snapshot name:/m.test(f.message), "the title was restated in the message");
+      assert.match(f.message, /toContainHTML/);
+
+      // The file usually comes from the stack frame; the "FAIL <project> <path>"
+      // header is the fallback when there is no frame. Strip the frames from this
+      // same real output to exercise it - otherwise the fallback is never tested,
+      // and with several jest projects it yielded the project name as the filename.
+      const frameless = fx("jest_snapshot_fail.txt").split("\n").filter((l) => !/^\s+at /.test(l)).join("\n");
+      const g = analyse(frameless).failures[0];
+      assert.equal(g.file, "src/__tests__/to-contain-html.js",
+        "with no stack frame the FAIL header must yield the path, not the project name");
+    } },
 ];
 
 let pass = 0, fail = 0;

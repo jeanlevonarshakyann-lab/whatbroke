@@ -1,5 +1,8 @@
-const FILE_RE = /^\s*(?:FAIL|PASS)\s+(\S+)/;
-const TEST_RE = /^\s*●\s+(?!Console)(.+?)\s*$/;
+// With multiple jest projects the display name comes first: "FAIL jsdom src/a.js".
+// Take the last token, which is always the path.
+const FILE_RE = /^\s*(?:FAIL|PASS)\s+(?:\S+\s+)*?(\S+)\s*$/;
+// jest uses the same bullet for config complaints as for failed tests
+const TEST_RE = /^\s*●\s+(?!Console|Validation Warning|Deprecation Warning|Invalid testPattern)(.+?)\s*$/;
 const AT_RE = /^\s+at .*?\(?([^\s()]+):(\d+):(\d+)\)?\s*$/;
 
 export default {
@@ -31,6 +34,12 @@ export default {
         if (!t) continue;
         if (/^\d+\s*\|/.test(t) || /^>\s*\d+\s*\|/.test(t) || /^\|/.test(t) || /^\^+$/.test(t)) continue;
         if (/^at /.test(t)) continue;
+        // snapshot diffs open with a pair of count headers - "- Snapshot  - 3" and
+        // "+ Received  + 3". Keeping those spends the budget before the actual diff.
+        if (/^[-+]\s*(Snapshot|Received)\s+[-+]\s*\d+\s*$/.test(t)) continue;
+        if (/^@@ [-+\d, ]+ @@$/.test(t)) continue;                   // diff hunk header
+        // "Snapshot name: `<the test name> 1`" restates the title we already print
+        if (/^Snapshot name:/.test(t)) continue;
         msg.push(t);
         if (msg.length >= 3) break;
       }
