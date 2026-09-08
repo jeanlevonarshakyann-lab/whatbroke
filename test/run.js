@@ -231,6 +231,19 @@ const CASES = [
       // and the four unrelated failures must NOT have been swept in
       assert.equal(r.clusters.filter((c) => !c.reported).length, 4);
     } },
+  { file: "vitest_cluster_fail.txt", tool: "vitest", n: 3, check: (r) => {
+      // real vitest run of pillarjs/path-to-regexp after making a trailing-delimiter
+      // group mandatory. vitest labels its diff "- Expected:" / "+ Received:" WITH a
+      // colon; those headers must never survive as message content, because without
+      // their values they promise a diff and show none.
+      assert.equal(r.summary, "191 failed | 293 passed (484)");
+      for (const f of r.failures) {
+        assert.ok(!/^[-+]\s*(Expected|Received):?\s*$/m.test(f.message ?? ""),
+          `a bare diff header leaked into a message: ${JSON.stringify(f.message)}`);
+      }
+      assert.match(r.failures[0].message, /expected false to deeply equal/);
+      assert.equal(r.failures[0].file, "src/index.spec.ts");
+    } },
 ];
 
 let pass = 0, fail = 0;
@@ -374,6 +387,9 @@ try {
     ["paths", "at tests/a/b.py line 1", "at src/c/d.py line 99"],
     ["addresses", "<X object at 0x1a2b>", "<X object at 0xffee>"],
     ["numeric runs", "call([1, 2, 3])", "call([7, 8, 9])"],
+    // "/route.json" hits the extension rule and "/foo/bar" the separator rule; if the
+    // extension rule leaves the leading slash behind they never cluster together
+    ["path shape is consistent across sub-rules", "equal { path: '/route.json' }", "equal { path: '/foo/bar' }"],
   ];
   const split = [
     ["diagnostic codes survive <num>", "TS2551 not assignable", "TS2339 not assignable"],

@@ -48,7 +48,9 @@ export function skeleton(text) {
   //    extension. Otherwise "cart.total" and "result.output" get eaten.
   s = s.replace(/\b[A-Za-z]:[\\/][^\s'"]+/g, "<path>")
        .replace(/(?:[\w.@+~-]+)?(?:[/\\][\w.@+~-]+){2,}/g, "<path>")
-       .replace(new RegExp(String.raw`\b[\w.@+-]+\.(?:${SRC_EXT})\b`, "g"), "<path>");
+       // take a leading separator with it, or "/route.json" normalises to "/<path>"
+       // while "/foo/bar" normalises to "<path>" and the two never cluster
+       .replace(new RegExp(String.raw`(?:[/\\])?\b[\w.@+-]+\.(?:${SRC_EXT})\b`, "g"), "<path>");
 
   // 4. machine identifiers, before numbers. The lookahead on <hex> requires a digit so
   //    it cannot eat English words spelled only with a-f ("defaced").

@@ -24,7 +24,9 @@ export default {
         if (lm) { loc = { file: lm[1], line: +lm[2], col: +lm[3] }; break; }
         if (!message && l.trim() && !SEP_RE.test(l)) { message = l.trim(); continue; }
         // vitest prints a "- Expected / + Received" diff; keep the values, drop the header
-        if (/^\s*[-+]\s*\S/.test(l) && !/^[-+]\s*(Expected|Received)\s*$/.test(l.trim())) {
+        // vitest labels its diff "- Expected:" / "+ Received:" - with a colon. Keeping
+        // those headers without their values promises a diff and shows none.
+        if (/^\s*[-+]\s*\S/.test(l) && !/^[-+]\s*(Expected|Received):?\s*$/.test(l.trim())) {
           diff.push(l.trim());
         }
       }
