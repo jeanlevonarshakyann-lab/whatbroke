@@ -40,14 +40,16 @@ Real reductions, measured on the fixtures in this repo:
 ## Install
 
 ```bash
-npm install -g whatbroke
+npm install -g @jeanlevon/whatbroke
 ```
 
 Or don't install anything:
 
 ```bash
-npx whatbroke pytest
+npx @jeanlevon/whatbroke pytest
 ```
+
+Either way the command is `whatbroke` (or `wb`).
 
 ## Use
 
