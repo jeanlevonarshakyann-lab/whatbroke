@@ -14,7 +14,9 @@ import { stripAnsi } from "./util.js";
 export const EXTRACTORS = [pytest, jest, vitest, unittest, traceback, eslint, cargo, gotest, node, tsc, generic];
 
 export function analyse(raw) {
-  const s = stripAnsi(raw);
+  // Windows tools, and logs pasted out of Windows CI, arrive with CRLF. Every
+  // parser anchors on $, so a stray \r makes all of them silently match nothing.
+  const s = stripAnsi(raw).replace(/\r\n?/g, "\n");
   for (const ex of EXTRACTORS) {
     if (!ex.detect(s)) continue;
     const r = ex.extract(s);

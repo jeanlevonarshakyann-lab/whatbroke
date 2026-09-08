@@ -144,6 +144,22 @@ for (const c of CASES) {
   }
 }
 
+// CRLF input must parse identically to LF - Windows, and logs pasted from Windows CI
+try {
+  for (const name of ["pytest_fail.txt", "gotest_fail.txt", "cargobuild_fail.txt", "node_stack.txt"]) {
+    const lf = analyse(fx(name));
+    const crlf = analyse(fx(name).replace(/\n/g, "\r\n"));
+    assert.ok(crlf, `${name}: nothing extracted from CRLF input`);
+    assert.equal(crlf.tool, lf.tool, `${name}: CRLF changed the detected tool`);
+    assert.equal(crlf.failures.length, lf.failures.length, `${name}: CRLF changed the failure count`);
+    assert.deepEqual(crlf.failures.map((f) => f.line), lf.failures.map((f) => f.line),
+      `${name}: CRLF changed the line numbers`);
+    assert.ok(!JSON.stringify(crlf).includes("\\r"), `${name}: a carriage return survived into the output`);
+  }
+  console.log("  ok   CRLF input parses identically to LF");
+  pass++;
+} catch (e) { console.log(`  FAIL CRLF input\n       ${e.message}`); fail++; }
+
 // source that changed since the run must not be shown as if it were current
 try {
   const { render, setColor } = await import("../src/render.js");
