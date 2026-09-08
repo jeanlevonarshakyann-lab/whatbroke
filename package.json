@@ -1,0 +1,12 @@
+{
+  "name": "whatbroke",
+  "version": "0.1.0",
+  "description": "You ran a command. It printed 400 lines. whatbroke prints the ones that matter.",
+  "type": "module",
+  "bin": { "whatbroke": "./bin/whatbroke.js", "wb": "./bin/whatbroke.js" },
+  "files": ["bin", "src", "README.md"],
+  "scripts": { "test": "node test/run.js" },
+  "keywords": ["cli", "errors", "test-output", "stack-trace", "pytest", "developer-tools"],
+  "engines": { "node": ">=20" },
+  "license": "MIT"
+}

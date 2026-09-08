@@ -1,0 +1,24 @@
+test_expired_token (test_billing.T.test_expired_token) ... FAIL
+test_invoice_total (test_billing.T.test_invoice_total) ... FAIL
+test_ok (test_billing.T.test_ok) ... ok
+
+======================================================================
+FAIL: test_expired_token (test_billing.T.test_expired_token)
+----------------------------------------------------------------------
+Traceback (most recent call last):
+  File "/home/dev/fx/test_billing.py", line 8, in test_expired_token
+    self.assertIn("exp", tok)
+AssertionError: 'exp' not found in {'sub': 'u1'}
+
+======================================================================
+FAIL: test_invoice_total (test_billing.T.test_invoice_total)
+----------------------------------------------------------------------
+Traceback (most recent call last):
+  File "/home/dev/fx/test_billing.py", line 5, in test_invoice_total
+    self.assertEqual(total([1000, 49], 0.5), 1050)
+AssertionError: 1049 != 1050
+
+----------------------------------------------------------------------
+Ran 3 tests in 0.000s
+
+FAILED (failures=2)

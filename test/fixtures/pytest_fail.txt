@@ -1,0 +1,40 @@
+============================= test session starts ==============================
+platform darwin -- Python 3.12.8, pytest-9.1.1, pluggy-1.6.0
+rootdir: /home/dev/fx
+collected 5 items
+
+test_shop.py FF..F                                                       [100%]
+
+=================================== FAILURES ===================================
+______________________________ test_invoice_total ______________________________
+
+    def test_invoice_total():
+>       assert total([1000, 49], 0.5) == 1050
+E       assert 1049 == 1050
+E        +  where 1049 = total([1000, 49], 0.5)
+
+test_shop.py:4: AssertionError
+______________________________ test_expired_token ______________________________
+
+    def test_expired_token():
+        tok = {"sub": "u1"}
+>       assert tok["exp"] == 1
+               ^^^^^^^^^^
+E       KeyError: 'exp'
+
+test_shop.py:7: KeyError
+________________________________ test_param[2] _________________________________
+
+n = 2
+
+    @pytest.mark.parametrize("n", [1, 2])
+    def test_param(n):
+>       assert n < 2
+E       assert 2 < 2
+
+test_shop.py:12: AssertionError
+=========================== short test summary info ============================
+FAILED test_shop.py::test_invoice_total - assert 1049 == 1050
+FAILED test_shop.py::test_expired_token - KeyError: 'exp'
+FAILED test_shop.py::test_param[2] - assert 2 < 2
+========================= 3 failed, 2 passed in 0.01s ==========================

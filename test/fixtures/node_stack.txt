@@ -1,0 +1,17 @@
+/home/dev/fx/boom.js:1
+function total(items, tax) { return items.reduce((a,b)=>a+b,0) + tax.rate; }
+                                                                     ^
+
+TypeError: Cannot read properties of null (reading 'rate')
+    at total (/home/dev/fx/boom.js:1:70)
+    at main (/home/dev/fx/boom.js:2:49)
+    at Object.<anonymous> (/home/dev/fx/boom.js:3:1)
+    at Module._compile (node:internal/modules/cjs/loader:1781:14)
+    at Object..js (node:internal/modules/cjs/loader:1913:10)
+    at Module.load (node:internal/modules/cjs/loader:1505:32)
+    at Function._load (node:internal/modules/cjs/loader:1309:12)
+    at wrapModuleLoad (node:internal/modules/cjs/loader:254:19)
+    at Function.executeUserEntryPoint [as runMain] (node:internal/modules/run_main:171:5)
+    at node:internal/main/run_main_module:36:49
+
+Node.js v22.23.2
