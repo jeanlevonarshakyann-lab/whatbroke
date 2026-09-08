@@ -1,0 +1,131 @@
+[INFO] Scanning for projects...
+[INFO] Inspecting build with total of 1 modules
+[INFO] Installing Central Publishing features
+[INFO] 
+[INFO] ---------------------------< org.json:json >----------------------------
+[INFO] Building JSON in Java 20260814
+[INFO]   from pom.xml
+[INFO] -------------------------------[ bundle ]-------------------------------
+[WARNING] Ignoring incompatible plugin version 4.0.0-beta-1: 
+The plugin org.apache.maven.plugins:maven-resources-plugin:4.0.0-beta-1 has unmet prerequisites: 
+	Required Maven version 4.0.0-beta-3 is not met by current version 3.9.16
+[INFO] Latest version of plugin org.apache.maven.plugins:maven-resources-plugin failed compatibility check
+[INFO] Looking for compatible RELEASE version of plugin org.apache.maven.plugins:maven-resources-plugin
+[INFO] Selected plugin org.apache.maven.plugins:maven-resources-plugin:3.5.0
+[WARNING] Ignoring incompatible plugin version 4.0.0-beta-2: 
+The plugin org.apache.maven.plugins:maven-install-plugin:4.0.0-beta-2 has unmet prerequisites: 
+	Required Maven version 4.0.0-rc-2 is not met by current version 3.9.16
+[INFO] Latest version of plugin org.apache.maven.plugins:maven-install-plugin failed compatibility check
+[INFO] Looking for compatible RELEASE version of plugin org.apache.maven.plugins:maven-install-plugin
+[WARNING] Ignoring incompatible plugin version 4.0.0-beta-1: 
+The plugin org.apache.maven.plugins:maven-install-plugin:4.0.0-beta-1 has unmet prerequisites: 
+	Required Maven version 4.0.0-beta-3 is not met by current version 3.9.16
+[INFO] Selected plugin org.apache.maven.plugins:maven-install-plugin:3.1.4
+[WARNING] Ignoring incompatible plugin version 4.0.0-beta-2: 
+The plugin org.apache.maven.plugins:maven-deploy-plugin:4.0.0-beta-2 has unmet prerequisites: 
+	Required Maven version 4.0.0-rc-2 is not met by current version 3.9.16
+[INFO] Latest version of plugin org.apache.maven.plugins:maven-deploy-plugin failed compatibility check
+[INFO] Looking for compatible RELEASE version of plugin org.apache.maven.plugins:maven-deploy-plugin
+[WARNING] Ignoring incompatible plugin version 4.0.0-beta-1: 
+The plugin org.apache.maven.plugins:maven-deploy-plugin:4.0.0-beta-1 has unmet prerequisites: 
+	Required Maven version 4.0.0-beta-3 is not met by current version 3.9.16
+[INFO] Selected plugin org.apache.maven.plugins:maven-deploy-plugin:3.1.4
+[INFO] 
+[INFO] --- resources:3.5.0:resources (default-resources) @ json ---
+[INFO] skip non existing resourceDirectory /home/dev/corpus/JSON-java/src/main/resources
+[INFO] 
+[INFO] --- compiler:3.11.0:compile (default-compile) @ json ---
+[INFO] Nothing to compile - all classes are up to date
+[INFO] 
+[INFO] --- resources:3.5.0:testResources (default-testResources) @ json ---
+[INFO] Copying 9 resources from src/test/resources to target/test-classes
+[INFO] 
+[INFO] --- compiler:3.11.0:testCompile (default-testCompile) @ json ---
+[INFO] Nothing to compile - all classes are up to date
+[INFO] 
+[INFO] --- surefire:3.6.0:test (default-test) @ json ---
+[INFO] Using auto detected provider org.apache.maven.surefire.junitplatform.JUnitPlatformProvider
+[INFO] 
+[INFO] -------------------------------------------------------
+[INFO]  T E S T S
+[INFO] -------------------------------------------------------
+[INFO] Running org.json.junit.XMLTest
+[INFO] Tests run: 71, Failures: 0, Errors: 0, Skipped: 0, Time elapsed: 0.077 s -- in org.json.junit.XMLTest
+[INFO] Running org.json.junit.CDLTest
+[INFO] Tests run: 21, Failures: 0, Errors: 0, Skipped: 0, Time elapsed: 0.007 s -- in org.json.junit.CDLTest
+[INFO] Running org.json.junit.JSONPointerTest
+[INFO] Tests run: 33, Failures: 0, Errors: 0, Skipped: 0, Time elapsed: 0.017 s -- in org.json.junit.JSONPointerTest
+[INFO] Running org.json.junit.XMLTokenerTest
+[INFO] Tests run: 6, Failures: 0, Errors: 0, Skipped: 0, Time elapsed: 0.003 s -- in org.json.junit.XMLTokenerTest
+[INFO] Running org.json.junit.JSONMLTest
+[INFO] Tests run: 36, Failures: 0, Errors: 0, Skipped: 0, Time elapsed: 0.019 s -- in org.json.junit.JSONMLTest
+[INFO] Running org.json.junit.JSONTokenerTest
+[INFO] Tests run: 10, Failures: 0, Errors: 0, Skipped: 0, Time elapsed: 0.022 s -- in org.json.junit.JSONTokenerTest
+[INFO] Running org.json.junit.CookieTest
+[INFO] Tests run: 11, Failures: 0, Errors: 0, Skipped: 0, Time elapsed: 0.004 s -- in org.json.junit.CookieTest
+[INFO] Running org.json.junit.JSONObjectTest
+SLF4J(W): No SLF4J providers were found.
+SLF4J(W): Defaulting to no-operation (NOP) logger implementation
+SLF4J(W): See https://www.slf4j.org/codes.html#noProviders for further details.
+new BigDecimal(testData[]) : 23 ms
+NUMBER_PATTERN.matcher(testData[]).matches() : 16 ms
+[ERROR] Tests run: 164, Failures: 1, Errors: 0, Skipped: 1, Time elapsed: 0.254 s <<< FAILURE! -- in org.json.junit.JSONObjectTest
+[ERROR] org.json.junit.JSONObjectTest.jsonObjectNonAndWrongValues -- Time elapsed: 0.002 s <<< FAILURE!
+org.junit.ComparisonFailure: expecting an exception message expected:<...SONObject["nonKey"] [not found].> but was:<...SONObject["nonKey"] [is absent].>
+	at org.junit.Assert.assertEquals(Assert.java:117)
+	at org.json.junit.JSONObjectTest.jsonObjectNonAndWrongValues(JSONObjectTest.java:1055)
+	at java.base/java.lang.reflect.Method.invoke(Method.java:565)
+
+[INFO] Running org.json.junit.JSONArrayTest
+[WARNING] Tests run: 52, Failures: 0, Errors: 0, Skipped: 1, Time elapsed: 0.010 s -- in org.json.junit.JSONArrayTest
+[INFO] Running org.json.junit.StringBuilderWriterTest
+[INFO] Tests run: 7, Failures: 0, Errors: 0, Skipped: 0, Time elapsed: 0 s -- in org.json.junit.StringBuilderWriterTest
+[INFO] Running org.json.junit.JSONStringTest
+[INFO] Tests run: 8, Failures: 0, Errors: 0, Skipped: 0, Time elapsed: 0.002 s -- in org.json.junit.JSONStringTest
+[INFO] Running org.json.junit.PropertyTest
+[INFO] Tests run: 5, Failures: 0, Errors: 0, Skipped: 0, Time elapsed: 0.001 s -- in org.json.junit.PropertyTest
+[INFO] Running org.json.junit.JSONStringerTest
+[INFO] Tests run: 10, Failures: 0, Errors: 0, Skipped: 0, Time elapsed: 0.002 s -- in org.json.junit.JSONStringerTest
+[INFO] Running org.json.junit.HTTPTest
+[INFO] Tests run: 9, Failures: 0, Errors: 0, Skipped: 0, Time elapsed: 0.001 s -- in org.json.junit.HTTPTest
+[INFO] Running org.json.junit.JSONObjectRecordTest
+[WARNING] Tests run: 8, Failures: 0, Errors: 0, Skipped: 4, Time elapsed: 0.001 s -- in org.json.junit.JSONObjectRecordTest
+[INFO] Running org.json.junit.CookieListTest
+[INFO] Tests run: 9, Failures: 0, Errors: 0, Skipped: 0, Time elapsed: 0.002 s -- in org.json.junit.CookieListTest
+[INFO] Running org.json.junit.JSONParserConfigurationTest
+[INFO] Tests run: 45, Failures: 0, Errors: 0, Skipped: 0, Time elapsed: 0.015 s -- in org.json.junit.JSONParserConfigurationTest
+[INFO] Running org.json.junit.EnumTest
+[INFO] Tests run: 8, Failures: 0, Errors: 0, Skipped: 0, Time elapsed: 0.002 s -- in org.json.junit.EnumTest
+[INFO] Running org.json.junit.JSONObjectNumberTest
+[INFO] Tests run: 216, Failures: 0, Errors: 0, Skipped: 0, Time elapsed: 0.040 s -- in org.json.junit.JSONObjectNumberTest
+[INFO] Running org.json.junit.XMLConfigurationTest
+[INFO] Tests run: 53, Failures: 0, Errors: 0, Skipped: 0, Time elapsed: 0.021 s -- in org.json.junit.XMLConfigurationTest
+[INFO] Running org.json.junit.HTTPTokenerTest
+[INFO] Tests run: 9, Failures: 0, Errors: 0, Skipped: 0, Time elapsed: 0.005 s -- in org.json.junit.HTTPTokenerTest
+[INFO] Running org.json.junit.JSONObjectLocaleTest
+[INFO] Tests run: 1, Failures: 0, Errors: 0, Skipped: 0, Time elapsed: 0.001 s -- in org.json.junit.JSONObjectLocaleTest
+[INFO] 
+[INFO] Results:
+[INFO] 
+[ERROR] Failures: 
+[ERROR]   JSONObjectTest.jsonObjectNonAndWrongValues:1055 expecting an exception message expected:<...SONObject["nonKey"] [not found].> but was:<...SONObject["nonKey"] [is absent].>
+[INFO] 
+[ERROR] Tests run: 792, Failures: 1, Errors: 0, Skipped: 6
+[INFO] 
+[INFO] ------------------------------------------------------------------------
+[INFO] BUILD FAILURE
+[INFO] ------------------------------------------------------------------------
+[INFO] Total time:  1.378 s
+[INFO] Finished at: 2026-09-09T09:04:26+10:00
+[INFO] ------------------------------------------------------------------------
+[ERROR] Failed to execute goal org.apache.maven.plugins:maven-surefire-plugin:3.6.0:test (default-test) on project json: There are test failures.
+[ERROR] 
+[ERROR] See /home/dev/corpus/JSON-java/target/surefire-reports for the individual test results.
+[ERROR] See dump files (if any exist) [date].dump, [date]-jvmRun[N].dump and [date].dumpstream.
+[ERROR] -> [Help 1]
+[ERROR] 
+[ERROR] To see the full stack trace of the errors, re-run Maven with the -e switch.
+[ERROR] Re-run Maven using the -X switch to enable full debug logging.
+[ERROR] 
+[ERROR] For more information about the errors and possible solutions, please read the following articles:
+[ERROR] [Help 1] http://cwiki.apache.org/confluence/display/MAVEN/MojoFailureException

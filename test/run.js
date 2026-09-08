@@ -258,6 +258,19 @@ const CASES = [
       assert.match(r.failures[0].message, /\+ Syntax:/, "the added line must be shown");
       assert.match(r.failures[0].file, /conflicts\.rs$|app_settings\.rs$|subcommands\.rs$/);
     } },
+  { file: "maven_test_fail.txt", tool: "maven", n: 1, check: (r) => {
+      // real `mvn test` on stleary/JSON-java after changing one exception message.
+      // Surefire test failures used to fall through to a counter - "Tests run: 164,
+      // Failures: 1" - which names no test, no line and no assertion.
+      assert.equal(r.summary, "Tests run: 792, Failures: 1, Errors: 0, Skipped: 6",
+        "the run total, not the first per-class line");
+      const f = r.failures[0];
+      assert.equal(f.title, "JSONObjectTest.jsonObjectNonAndWrongValues");
+      assert.equal(f.file, "JSONObjectTest.java");
+      assert.equal(f.line, 1055);
+      assert.match(f.message, /expected:<.*not found.*> but was:<.*is absent.*>/);
+      assert.ok(!/Tests run:/.test(f.message), "the counter is a summary, not a failure message");
+    } },
 ];
 
 let pass = 0, fail = 0;
