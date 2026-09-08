@@ -1,0 +1,51 @@
+F401 [*] `os` imported but unused
+ --> messy.py:1:8
+  |
+1 | import os
+  |        ^^
+2 | import sys
+  |
+help: Remove unused import: `os`
+  |
+  - import os
+1 | import sys
+  |
+
+F401 [*] `sys` imported but unused
+ --> messy.py:2:8
+  |
+1 | import os
+2 | import sys
+  |        ^^^
+help: Remove unused import: `sys`
+  |
+1 | import os
+  - import sys
+2 |
+  |
+
+F841 Local variable `x` is assigned to but never used
+ --> messy.py:6:5
+  |
+5 | def f(a):
+6 |     x = 1
+  |     ^
+7 |     if a == None:
+8 |         return
+  |
+help: Remove assignment to unused variable `x`
+
+E711 Comparison to `None` should be `cond is None`
+ --> messy.py:7:13
+  |
+5 | def f(a):
+6 |     x = 1
+7 |     if a == None:
+  |             ^^^^
+8 |         return
+9 |     return a
+  |
+help: Replace with `cond is None`
+
+Found 4 errors.
+[*] 2 fixable with the `--fix` option (2 hidden fixes can be enabled with the `--unsafe-fixes` option).

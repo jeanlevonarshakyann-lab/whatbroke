@@ -76,6 +76,7 @@ Exit code is passed straight through, so `whatbroke` is safe to leave in a Makef
 | **go build** | compile errors with source context |
 | **cargo test** | test name, `file:line`, the assertion and its left/right values |
 | **cargo build** | error code and the inline annotation — not the 25 lines of trait impls |
+| **ruff** | rule code, `file:line`, the message and ruff's own fix hint |
 | **tsc** | errors grouped by file with source context |
 | *anything else* | best-effort: lines that look like errors, marked as a guess |
 

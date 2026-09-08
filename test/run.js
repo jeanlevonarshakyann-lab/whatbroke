@@ -136,6 +136,19 @@ const CASES = [
       assert.equal(r.failures[1].title, "TestTable/many");
       assert.ok(!r.failures.some((f) => f.title === "TestTable"), "parent must not be reported");
     } },
+  { file: "ruff_fail.txt", tool: "ruff", n: 4, check: (r) => {
+      assert.equal(r.summary, "4 errors");
+      assert.equal(r.failures[0].title, "F401");
+      assert.equal(r.failures[0].file, "messy.py");
+      assert.equal(r.failures[0].line, 1);
+      assert.equal(r.failures[0].col, 8);
+      assert.match(r.failures[0].message, /`os` imported but unused/);
+      assert.match(r.failures[0].message, /Remove unused import/);  // keeps ruff's fix hint
+      assert.equal(r.failures[3].title, "E711");
+      // ruff and cargo share the " --> file:line:col" shape; they must not cross-detect
+      const cargo = analyse(fx("cargobuild_fail.txt"));
+      assert.equal(cargo.tool, "cargo", "cargo output must not be claimed by ruff");
+    } },
 ];
 
 let pass = 0, fail = 0;
