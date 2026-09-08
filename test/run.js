@@ -183,6 +183,36 @@ try {
   pass++;
 } catch (e) { console.log(`  FAIL path confinement\n       ${e.message}`); fail++; }
 
+// context width adapts to how much the message explains, and never crosses a blank line
+try {
+  const { render, setColor } = await import("../src/render.js");
+  const { resetSnippetCache } = await import("../src/snippet.js");
+  const { writeFileSync, mkdtempSync, rmSync } = await import("node:fs");
+  setColor(false);
+  const dir = mkdtempSync(join(process.cwd(), ".tmp-ctx-"));
+  const file = join(dir, "t.py");
+  writeFileSync(file,
+    "def setup():\n    a = 1\n    b = 2\n    return a\n\n\ndef other():\n    pass\n");
+
+  resetSnippetCache();
+  const bare = render({ tool: "t", failures: [
+    { file, line: 4, title: "x", message: "KeyError: 'exp'" }] }, {});
+  assert.match(bare, /def setup/, "a bare message should reach back for context");
+  assert.ok(!/def other/.test(bare), "context must not spill into the next block");
+
+  resetSnippetCache();
+  const wordy = render({ tool: "t", failures: [
+    { file, line: 4, title: "x",
+      message: "Argument 1 to \"total\" has incompatible type \"str\"; expected \"list[int]\"" }] }, {});
+  const count = (t) => (t.match(/^\s+\d+ \u2502/gm) || []).length;   // numbered source lines
+  assert.ok(count(wordy) < count(bare),
+    `a self-explanatory message should show less code (${count(wordy)} vs ${count(bare)})`);
+
+  rmSync(dir, { recursive: true, force: true });
+  console.log("  ok   context width adapts and stops at block boundaries");
+  pass++;
+} catch (e) { console.log(`  FAIL adaptive context\n       ${e.message}`); fail++; }
+
 // CRLF input must parse identically to LF - Windows, and logs pasted from Windows CI
 try {
   for (const name of ["pytest_fail.txt", "gotest_fail.txt", "cargobuild_fail.txt", "node_stack.txt"]) {

@@ -24,6 +24,26 @@ function readLines(file) {
   return lines;
 }
 
+/** How many lines of source a failure needs either side of the hit.
+ *
+ *  The message and the source are two ways of answering the same question, and
+ *  they compete for the same vertical space. "Argument of type 'string' is not
+ *  assignable to parameter of type 'number'." has already answered it — more
+ *  source is just noise pushed between you and the next error. "KeyError: 'exp'"
+ *  has answered nothing; the code has to do the explaining, so give it room.
+ *
+ *  Length is a crude proxy for "how much did the tool tell me", but it is the
+ *  one signal every extractor produces. Line count counts double on purpose: a
+ *  message already three lines tall has both said a lot and spent the budget. */
+export function contextFor(message) {
+  const msg = String(message ?? "").trim();
+  if (!msg) return 3;                                  // said nothing at all
+  const lines = msg.split("\n").filter((l) => l.trim()).length;
+  if (lines >= 3 || msg.length >= 70) return 1;        // explains itself, and it's tall
+  if (msg.length >= 40) return 2;                      // says something useful
+  return 4;                                            // bare — the source is the explanation
+}
+
 /** Return [{n,text,hit}] around `line`, or null if unreadable. */
 export function snippet(file, line, ctx = 2) {
   if (!file || !line) return null;
@@ -33,6 +53,22 @@ export function snippet(file, line, ctx = 2) {
   const end = Math.min(all.length, line + ctx);
   const out = [];
   for (let n = start; n <= end; n++) out.push({ n, text: all[n - 1] ?? "", hit: n === line });
+  // Wide context must not spill into the next function. A blank line is the
+  // cheapest block boundary that holds across every language we parse.
+  if (ctx > 2) {
+    const hit = out.findIndex((o) => o.hit);
+    let end = out.length;
+    for (let i = hit + 1; i < out.length; i++) {
+      if (out[i].text.trim() === "") { end = i; break; }
+    }
+    let start = 0;
+    for (let i = hit - 1; i >= 0; i--) {
+      if (out[i].text.trim() === "") { start = i + 1; break; }
+    }
+    out.splice(end);
+    out.splice(0, start);
+  }
+
   while (out.length && out[0].text.trim() === "" && !out[0].hit) out.shift();
   while (out.length && out.at(-1).text.trim() === "" && !out.at(-1).hit) out.pop();
   return out.length ? out : null;
