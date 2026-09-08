@@ -126,6 +126,16 @@ const CASES = [
       assert.ok(r.failures.every((f) => !/could not compile/.test(f.message)),
         "the error tally must not be counted as an error");
     } },
+  { file: "gosub_fail.txt", tool: "go test", n: 2, check: (r) => {
+      // the parent "--- FAIL: TestTable" is a container, not a third failure
+      assert.equal(r.summary, "2 tests failed");
+      assert.equal(r.failures[0].title, "TestTable/one");
+      assert.equal(r.failures[0].file, "sub_test.go");
+      assert.equal(r.failures[0].line, 18);
+      assert.match(r.failures[0].message, /Total\(\[5\]\) = 5, want 6/);
+      assert.equal(r.failures[1].title, "TestTable/many");
+      assert.ok(!r.failures.some((f) => f.title === "TestTable"), "parent must not be reported");
+    } },
 ];
 
 let pass = 0, fail = 0;

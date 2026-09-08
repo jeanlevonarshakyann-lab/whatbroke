@@ -1,6 +1,6 @@
 {
   "name": "@jeanlevon/whatbroke",
-  "version": "0.1.0",
+  "version": "0.1.1",
   "description": "You ran a command. It printed 400 lines. whatbroke prints the ones that matter.",
   "type": "module",
   "bin": {

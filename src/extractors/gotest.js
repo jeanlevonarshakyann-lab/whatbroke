@@ -50,9 +50,10 @@ export default {
       failures.push({ file, line, title: name, message: msg.join("\n") });
     }
 
-    let summary;
-    const counts = lines.filter((l) => FAIL_RE.test(l) && /--- FAIL/.test(l)).length;
-    if (counts) summary = `${counts} test${counts > 1 ? "s" : ""} failed`;
+    // count what we actually report: a parent of subtests prints its own
+    // "--- FAIL" line but carries no failure of its own
+    const n = failures.length;
+    const summary = n ? `${n} test${n > 1 ? "s" : ""} failed` : undefined;
     if (!failures.length) return null;
     return { tool: "go test", summary, failures };
   },

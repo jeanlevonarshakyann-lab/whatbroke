@@ -1,0 +1,8 @@
+--- FAIL: TestTable (0.00s)
+    --- FAIL: TestTable/one (0.00s)
+        sub_test.go:18: Total([5]) = 5, want 6
+    --- FAIL: TestTable/many (0.00s)
+        sub_test.go:18: Total([10 20]) = 30, want 31
+FAIL
+FAIL	shop	0.430s
+FAIL
