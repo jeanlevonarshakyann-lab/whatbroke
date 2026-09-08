@@ -174,8 +174,9 @@ them.
 | **mypy** | error code, `file:line`, the type-checking message; notes and warnings set aside |
 | **GCC/Clang** | compiler errors with `file:line:column`; warnings and notes set aside |
 | **RSpec** | example name, failure message, and `spec/file:line` location |
-| **Maven/Gradle** | JVM compiler errors with `file:line:column` locations |
+| **Maven/Gradle** | JVM compiler errors, and Surefire test failures with the test, line and assertion |
 | **.NET** | compiler error codes with `file:line:column`; warnings set aside |
+| **dotnet test** | test name, `file:line`, the assertion; reflection frames dropped |
 | **PHPUnit** | test name, assertion message, and `file:line` location |
 | **tsc** | errors grouped by file with source context |
 | *anything else* | best-effort: lines that look like errors, marked as a guess |
