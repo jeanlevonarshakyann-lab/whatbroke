@@ -371,6 +371,22 @@ const CASES = [
       // warnings are counted and set aside, so failures are errors only
       assert.equal(r.failures.length, 90);
     } },
+  { file: "mypy_notes_fail.txt", tool: "mypy", n: 41, check: (r) => {
+      // real mypy run over psf/requests. mypy attaches its explanation as separate
+      // "note:" lines at the SAME file and line - for a call-overload failure those
+      // notes carry the valid signatures, which is the entire answer. They were
+      // dropped, leaving "no overload variant matches" and nothing to act on.
+      assert.equal(r.summary, "41 errors in 10 files");
+      const overload = r.failures.find((f) => /No overload variant/.test(f.message));
+      assert.ok(overload, "the overload error should be present");
+      assert.match(overload.message, /Possible overload variants:/,
+        "the note explaining the error must be attached to it");
+      assert.match(overload.message, /def iter_content/);
+      // notes are an explanation, not extra errors
+      assert.equal(r.failures.length, 41, "notes must not inflate the failure count");
+      assert.equal(r.failures.filter((f) => /^Possible overload/.test(f.message)).length, 0,
+        "a note must never become a failure of its own");
+    } },
 ];
 
 let pass = 0, fail = 0;
@@ -583,6 +599,7 @@ try {
   const EXPECTED_TO_CLUSTER = [
     "gotest_cluster_fail.txt",   // three tests share one assertion shape
     "eslint_bulk_fail.txt",      // one rule broken in twenty-two places
+    "mypy_notes_fail.txt",       // several type errors repeat across modules
   ];
   let checked = 0;
   for (const file of readdirSync(join(here, "fixtures"))) {
