@@ -1,0 +1,35 @@
+
+> Task :compileJava FAILED
+/home/dev/gr/src/main/java/demo/Shop.java:4: error: incompatible types: int cannot be converted to String
+        String s = 42;
+                   ^
+/home/dev/gr/src/main/java/demo/Shop.java:5: error: cannot find symbol
+        return undefinedMethod(items);
+               ^
+  symbol:   method undefinedMethod(int[])
+  location: class Shop
+2 errors
+
+[Incubating] Problems report is available at: file:///home/dev/gr/build/reports/problems/problems-report.html
+
+FAILURE: Build failed with an exception.
+
+* What went wrong:
+Execution failed for task ':compileJava' (registered by plugin class 'org.gradle.api.plugins.JavaBasePlugin').
+> Compilation failed; see the compiler output below.
+  /home/dev/gr/src/main/java/demo/Shop.java:4: error: incompatible types: int cannot be converted to String
+          String s = 42;
+                     ^
+  /home/dev/gr/src/main/java/demo/Shop.java:5: error: cannot find symbol
+          return undefinedMethod(items);
+                 ^
+    symbol:   method undefinedMethod(int[])
+    location: class Shop
+  2 errors
+
+* Try:
+> Check your code and dependencies to fix the compilation error(s)
+> Run with --scan to get full insights from a Build Scan (powered by Develocity).
+
+BUILD FAILED in 312ms
+1 actionable task: 1 executed

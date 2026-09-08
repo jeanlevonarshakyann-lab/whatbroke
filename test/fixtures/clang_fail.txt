@@ -1,0 +1,7 @@
+/home/dev/bad2.c:2:17: error: incompatible pointer to integer conversion initializing 'int' with an expression of type 'char[4]' [-Wint-conversion]
+    2 | int main(){ int x = "str"; return y; }
+      |                 ^   ~~~~~
+/home/dev/bad2.c:2:35: error: use of undeclared identifier 'y'
+    2 | int main(){ int x = "str"; return y; }
+      |                                   ^
+2 errors generated.

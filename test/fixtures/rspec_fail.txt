@@ -1,0 +1,29 @@
+FF.
+
+Failures:
+
+  1) shop totals an invoice
+     Failure/Error: expect(total([1000, 49], 0.5)).to eq(1050)
+
+       expected: 1050
+            got: 1049
+
+       (compared using ==)
+     # ./spec/shop_spec.rb:7:in `block (2 levels) in <top (required)>'
+
+  2) shop has an exp claim
+     Failure/Error: expect(tok.fetch("exp")).to eq(1)
+
+     KeyError:
+       key not found: "exp"
+     # ./spec/shop_spec.rb:12:in `fetch'
+     # ./spec/shop_spec.rb:12:in `block (2 levels) in <top (required)>'
+
+Finished in 0.00356 seconds (files took 0.03602 seconds to load)
+3 examples, 2 failures
+
+Failed examples:
+
+rspec ./spec/shop_spec.rb:6 # shop totals an invoice
+rspec ./spec/shop_spec.rb:10 # shop has an exp claim
+
