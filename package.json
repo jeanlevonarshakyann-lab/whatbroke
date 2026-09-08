@@ -4,8 +4,8 @@
   "description": "You ran a command. It printed 400 lines. whatbroke prints the ones that matter.",
   "type": "module",
   "bin": {
-    "whatbroke": "./bin/whatbroke.js",
-    "wb": "./bin/whatbroke.js"
+    "whatbroke": "bin/whatbroke.js",
+    "wb": "bin/whatbroke.js"
   },
   "files": [
     "bin",
