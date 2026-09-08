@@ -1,5 +1,6 @@
 const ERR_RE = /^error(?:\[(E\d+)\])?: (.+)$/;
 const ARROW_RE = /^\s*-->\s+(.+?):(\d+):(\d+)\s*$/;
+const DIFF_CONTEXT_RE = /^\s*\d+\s+\d+\s*\|/;
 const PANIC_RE = /^thread '(.+?)'(?: \(\d+\))? panicked at (.+?):(\d+):(\d+):$/;
 const STDLIB = /\/rustlib\/|\/\.cargo\/registry\//;
 // "could not compile ... due to N previous errors" is a tally, not a distinct error
@@ -22,6 +23,10 @@ export default {
         const t = lines[j].trim();
         if (!t) { if (msg.length) break; else continue; }
         if (/^note: run with `RUST_BACKTRACE/.test(t) || /^----/.test(t) || /^failures:/.test(t)) break;
+        // Snapshot assertions (snapbox, insta) print a diff whose context lines carry
+        // BOTH line numbers and a bar - those are the parts that matched. Keeping them
+        // fills the budget before the "-"/"+" lines that say what actually changed.
+        if (DIFF_CONTEXT_RE.test(t)) continue;
         msg.push(t);
         if (msg.length >= 4) break;
       }

@@ -244,6 +244,20 @@ const CASES = [
       assert.match(r.failures[0].message, /expected false to deeply equal/);
       assert.equal(r.failures[0].file, "src/index.spec.ts");
     } },
+  { file: "cargotest_snapshot_fail.txt", tool: "cargo test", n: 3, check: (r) => {
+      // real `cargo test` run of clap-rs/clap after renaming the "Usage:" prefix.
+      // snapbox prints a diff whose CONTEXT lines carry both line numbers and a bar;
+      // those are the parts that matched, and keeping them filled the four-line
+      // message budget before reaching the -/+ lines that say what changed.
+      assert.equal(r.summary, "824 passed; 88 failed");
+      for (const f of r.failures) {
+        assert.ok(!/^\s*\d+\s+\d+\s*\|/m.test(f.message ?? ""),
+          `a diff context line survived: ${JSON.stringify(f.message)}`);
+      }
+      assert.match(r.failures[0].message, /- Usage:/, "the removed line must be shown");
+      assert.match(r.failures[0].message, /\+ Syntax:/, "the added line must be shown");
+      assert.match(r.failures[0].file, /conflicts\.rs$|app_settings\.rs$|subcommands\.rs$/);
+    } },
 ];
 
 let pass = 0, fail = 0;

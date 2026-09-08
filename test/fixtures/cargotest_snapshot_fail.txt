@@ -1,0 +1,50 @@
+---- app_settings::sub_command_required_error stdout ----
+
+thread 'app_settings::sub_command_required_error' (8538558) panicked at tests/builder/app_settings.rs:76:5:
+
+[31m--- Expected[0m
+[32m++++ actual:   In-memory[0m
+[2m   1[0m [2m   1[0m [2m|[0m [2merror: 'sc_required' requires a subcommand but one was not provided
+[0m[2m   2[0m [2m   2[0m [2m|[0m [2m  [subcommands: sub1, help]
+[0m[2m   3[0m [2m   3[0m [2m|[0m [2m
+[0m[2m   4[0m      [31m-[0m [4m[31mUsage:[0m[31m sc_required <COMMAND>
+[0m     [2m   4[0m [32m+[0m [4m[32mSyntax:[0m[32m sc_required <COMMAND>
+[0m[2m   5[0m [2m   5[0m [2m|[0m [2m
+[0m[2m   6[0m [2m   6[0m [2m|[0m [2mFor more information, try '--help'.
+[0m
+
+
+
+---- conflicts::conflict_output_repeat stdout ----
+
+thread 'conflicts::conflict_output_repeat' (8538597) panicked at tests/builder/conflicts.rs:369:5:
+
+[31m--- Expected[0m
+[32m++++ actual:   In-memory[0m
+[2m   1[0m [2m   1[0m [2m|[0m [2merror: the argument '-F' cannot be used multiple times
+[0m[2m   2[0m [2m   2[0m [2m|[0m [2m
+[0m[2m   3[0m      [31m-[0m [4m[31mUsage:[0m[31m clap-test [OPTIONS] [positional] [positional2] [positional3]... [COMMAND]
+[0m     [2m   3[0m [32m+[0m [4m[32mSyntax:[0m[32m clap-test [OPTIONS] [positional] [positional2] [positional3]... [COMMAND]
+[0m[2m   4[0m [2m   4[0m [2m|[0m [2m
+[0m[2m   5[0m [2m   5[0m [2m|[0m [2mFor more information, try '--help'.
+[0m
+
+
+
+---- conflicts::conflict_output stdout ----
+
+thread 'conflicts::conflict_output' (8538596) panicked at tests/builder/conflicts.rs:331:5:
+
+[31m--- Expected[0m
+[32m++++ actual:   In-memory[0m
+[2m   1[0m [2m   1[0m [2m|[0m [2merror: the argument '--flag...' cannot be used with '-F'
+[0m[2m   2[0m [2m   2[0m [2m|[0m [2m
+[0m[2m   3[0m      [31m-[0m [4m[31mUsage:[0m[31m clap-test --flag... --long-option-2 <option2> <positional> <positional2> [positional3]...
+[0m     [2m   3[0m [32m+[0m [4m[32mSyntax:[0m[32m clap-test --flag... --long-option-2 <option2> <positional> <positional2> [positional3]...
+[0m[2m   4[0m [2m   4[0m [2m|[0m [2m
+[0m[2m   5[0m [2m   5[0m [2m|[0m [2mFor more information, try '--help'.
+[0m
+
+
+
+test result: FAILED. 824 passed; 88 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.01s
