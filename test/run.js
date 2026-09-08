@@ -315,6 +315,21 @@ const CASES = [
       assert.equal(g.file, "src/__tests__/to-contain-html.js",
         "with no stack frame the FAIL header must yield the path, not the project name");
     } },
+  { file: "nodetest_fail.txt", tool: "node --test", n: 2, check: (r) => {
+      // real `node --test` (TAP) run of sindresorhus/p-queue with the default
+      // concurrency changed. This output was not supported at all - it fell through
+      // to the generic guess and printed "error: |-", a YAML block marker.
+      assert.equal(r.summary, "11 failed, 195 passed");
+      const f = r.failures[0];
+      assert.equal(f.title, "isRateLimited property");
+      assert.match(f.file, /advanced\.ts$/);
+      // `error: |-` is a YAML block scalar; its content is the deeper-indented lines
+      assert.match(f.message, /^AssertionError: Expected values to be strictly equal:/);
+      assert.match(f.message, /false !== true/);
+      assert.ok(!/\|-|duration_ms|failureType|code:/.test(f.message),
+        "YAML plumbing must not survive into the message");
+      assert.equal(r.failures[1].title, "rate-limit events fire only once per transition");
+    } },
 ];
 
 let pass = 0, fail = 0;

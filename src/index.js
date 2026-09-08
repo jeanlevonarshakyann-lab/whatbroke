@@ -1,6 +1,7 @@
 import pytest from "./extractors/pytest.js";
 import { traceback, unittest } from "./extractors/python.js";
 import node from "./extractors/node.js";
+import nodetest from "./extractors/nodetest.js";
 import tsc from "./extractors/tsc.js";
 import jest from "./extractors/jest.js";
 import vitest from "./extractors/vitest.js";
@@ -20,7 +21,7 @@ import { stripAnsi } from "./util.js";
 import { clusterFailures } from "./cluster.js";
 
 // order matters: most specific first, generic last
-export const EXTRACTORS = [pytest, jest, vitest, unittest, traceback, eslint, ruff, mypy, clang, rspec, jvm, dotnettest, dotnet, phpunit, cargo, gotest, node, tsc, generic];
+export const EXTRACTORS = [pytest, nodetest, jest, vitest, unittest, traceback, eslint, ruff, mypy, clang, rspec, jvm, dotnettest, dotnet, phpunit, cargo, gotest, node, tsc, generic];
 
 function dedupeFailures(failures) {
   const seen = new Set();

@@ -12,7 +12,7 @@ export const MIN_CLUSTER = 3;   // two failures sharing a shape is usually coinc
 // of the site (the axis we cluster across - drop it). This is a table and not a
 // heuristic because no heuristic separates "no-unused-vars" from "test_invoice_total".
 const TITLE_IS_CODE = new Set(["tsc", "mypy", "ruff", "clang", "dotnet", "cargo", "eslint", "node"]);
-const TITLE_IS_SITE = new Set(["pytest", "unittest", "python", "jest", "vitest", "go test", "cargo test", "rspec", "phpunit", "dotnet test"]);
+const TITLE_IS_SITE = new Set(["pytest", "unittest", "python", "jest", "vitest", "go test", "cargo test", "rspec", "phpunit", "dotnet test", "node --test"]);
 const TITLE_IS_CONST = new Set(["go build", "gradle", "maven", "output"]);
 export const TOOL_TITLE_SETS = { TITLE_IS_CODE, TITLE_IS_SITE, TITLE_IS_CONST };
 

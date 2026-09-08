@@ -1,0 +1,82 @@
+not ok 52 - isRateLimited property
+  ---
+  duration_ms: 29.322
+  type: 'test'
+  location: '/home/dev/p-queue/test/advanced.ts:1:28530'
+  failureType: 'testCodeFailure'
+  error: |-
+    Expected values to be strictly equal:
+    
+    false !== true
+    
+  code: 'ERR_ASSERTION'
+  name: 'AssertionError'
+  expected: true
+  actual: false
+  operator: 'strictEqual'
+  stack: |-
+    TestContext.<anonymous> (/home/dev/p-queue/test/advanced.ts:1402:9)
+    async Test.run (node:internal/test_runner/test:1054:7)
+    async Test.processPendingSubtests (node:internal/test_runner/test:744:7)
+  ...
+# Subtest: rate-limit event emission
+ok 53 - rate-limit event emission
+  ---
+  duration_ms: 1202.710834
+  type: 'test'
+  ...
+# Subtest: onRateLimit() promise helper
+ok 54 - onRateLimit() promise helper
+  ---
+  duration_ms: 12.263
+  type: 'test'
+  ...
+# Subtest: onRateLimitCleared() promise helper
+ok 55 - onRateLimitCleared() promise helper
+  ---
+  duration_ms: 501.216875
+  type: 'test'
+  ...
+# Subtest: rate-limit works with pause/start
+ok 56 - rate-limit works with pause/start
+  ---
+  duration_ms: 1164.643875
+  type: 'test'
+  ...
+# Subtest: rate-limit with high concurrency
+ok 57 - rate-limit with high concurrency
+  ---
+  duration_ms: 1555.828709
+  type: 'test'
+  ...
+# Subtest: rate-limit with queue.clear() while rate-limited
+ok 58 - rate-limit with queue.clear() while rate-limited
+  ---
+  duration_ms: 51.697958
+  type: 'test'
+  ...
+# Subtest: rate-limit events fire only once per transition
+not ok 59 - rate-limit events fire only once per transition
+  ---
+  duration_ms: 1055.022083
+  type: 'test'
+  location: '/home/dev/p-queue/test/advanced.ts:1:32121'
+  failureType: 'testCodeFailure'
+  error: |-
+    Expected values to be strictly equal:
+    
+    2 !== 1
+    
+  code: 'ERR_ASSERTION'
+  name: 'AssertionError'
+  expected: 1
+  actual: 2
+  operator: 'strictEqual'
+  stack: |-
+    TestContext.<anonymous> (/home/dev/p-queue/test/advanced.ts:1608:9)
+    async Test.run (node:internal/test_runner/test:1054:7)
+    async Test.processPendingSubtests (node:internal/test_runner/test:744:7)
+  ...
+# Subtest: rate-limit with interval boundary conditions
+# pass 195
+# fail 11
