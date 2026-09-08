@@ -2,11 +2,7 @@
 
 **You ran a command. It printed 400 lines. These are the ones that matter.**
 
-```
-$ whatbroke -q pytest
-```
-
-<!-- demo.gif goes here -->
+![whatbroke turning 38 lines of pytest output into 20](demo/demo.gif)
 
 ```
   ✗ 3 failed, 2 passed in 0.01s
