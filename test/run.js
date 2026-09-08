@@ -361,6 +361,16 @@ const CASES = [
       assert.ok(!/error TS/.test(f.message), "a following diagnostic leaked into the chain");
       assert.equal(r.failures[1].line, 1237);
     } },
+  { file: "eslint_bulk_fail.txt", tool: "eslint", n: 90, check: (r) => {
+      // real eslint run over axios/lib. This is the case clustering exists for:
+      // one rule broken in many places is one thing to fix, not twenty-two.
+      assert.match(r.summary, /117 problems \(90 errors, 27 warnings\)/);
+      const reported = r.clusters.filter((c) => c.reported);
+      assert.ok(reported.length >= 3, `expected several causes, got ${reported.length}`);
+      assert.ok(reported[0].size >= 20, `largest cause should be large, got ${reported[0].size}`);
+      // warnings are counted and set aside, so failures are errors only
+      assert.equal(r.failures.length, 90);
+    } },
 ];
 
 let pass = 0, fail = 0;
@@ -570,7 +580,10 @@ try {
   setColor(false);
   // Fixtures that legitimately group. Anything not listed here must render
   // byte-identically with clustering on, so a merge can never appear silently.
-  const EXPECTED_TO_CLUSTER = ["gotest_cluster_fail.txt"];
+  const EXPECTED_TO_CLUSTER = [
+    "gotest_cluster_fail.txt",   // three tests share one assertion shape
+    "eslint_bulk_fail.txt",      // one rule broken in twenty-two places
+  ];
   let checked = 0;
   for (const file of readdirSync(join(here, "fixtures"))) {
     const raw = fx(file);
@@ -666,6 +679,23 @@ try {
   console.log("  ok   --no-cluster disables clustering in every format");
   pass++;
 } catch (e) { console.log(`  FAIL --no-cluster flag\n       ${e.message}`); fail++; }
+
+// no rendered line may run away, however long the paths in a cluster's site list
+try {
+  const { render, setColor } = await import("../src/render.js");
+  setColor(false);
+  const long = (n) => `packages/some-workspace/src/adapters/very/deep/module-${n}.js`;
+  const failures = Array.from({ length: 12 }, (_, i) => ({
+    file: long(i), line: 100 + i, title: "eqeqeq", message: "Expected '===' and instead saw '=='",
+  }));
+  const { clusterFailures } = await import("../src/cluster.js");
+  const out = render({ tool: "eslint", failures, clusters: clusterFailures(failures, "eslint") }, { source: false });
+  const longest = Math.max(...out.split("\n").map((l) => l.length));
+  assert.ok(longest <= 240, `a site list ran to ${longest} characters`);
+  assert.match(out, /more places/, "the sites that did not fit are counted");
+  console.log("  ok   a cluster's site list stays within a line");
+  pass++;
+} catch (e) { console.log(`  FAIL site list width\n       ${e.message}`); fail++; }
 
 // CRLF input must parse identically to LF - Windows, and logs pasted from Windows CI
 try {

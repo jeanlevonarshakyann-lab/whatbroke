@@ -139,7 +139,16 @@ export function render(result, { max = 5, cwd = true, source = true, cluster = t
       const here = where(unit.exemplar);
       const elsewhere = [...new Set(kin.map(where))].filter((w) => w !== here);
       if (elsewhere.length) {
-        const shown = max === Infinity ? elsewhere : elsewhere.slice(0, SITES_SHOWN);
+        // Long paths make three sites a 480-character line. Fill a line's worth and
+        // roll the rest into the count, rather than naming a fixed number of them.
+        const shown = [];
+        let width = 0;
+        for (const w of elsewhere) {
+          if (max !== Infinity && (shown.length >= SITES_SHOWN || width + w.length > MAX_MESSAGE_LINE)) break;
+          shown.push(w);
+          width += w.length + 2;
+        }
+        if (!shown.length) shown.push(elsewhere[0]);
         out.push(`      ${C.grey}also ${shown.join(", ")}${C.reset}`);
         if (elsewhere.length > shown.length) {
           out.push(`      ${C.grey}+ ${elsewhere.length - shown.length} more places (whatbroke --all)${C.reset}`);
