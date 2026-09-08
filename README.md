@@ -83,6 +83,10 @@ Exit code is passed straight through, so `whatbroke` is safe to leave in a Makef
 
 Unrecognised output is never silently swallowed — you get a labelled guess, or the raw text back.
 
+Source context is read from the file on disk. If the file has changed since the command
+ran — you edited it, or you piped in saved output — whatbroke says so and shows the line
+the tool itself reported, rather than confidently pointing a caret at the wrong code.
+
 ## Why it isn't an LLM
 
 Because you already know what's wrong the instant you can see it. The problem was never comprehension, it was that the answer is on line 312 of 400. A parser that knows pytest's format is faster, free, offline, deterministic, and never invents a stack frame.

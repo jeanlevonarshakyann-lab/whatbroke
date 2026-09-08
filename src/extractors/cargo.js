@@ -47,7 +47,7 @@ export default {
       const m = lines[i].match(ERR_RE);
       if (!m || TALLY_RE.test(m[2])) continue;
 
-      let loc = null, note = "";
+      let loc = null, note = "", stmt = "";
       for (let j = i + 1; j < lines.length && !ERR_RE.test(lines[j]); j++) {
         const am = lines[j].match(ARROW_RE);
         if (am && !STDLIB.test(am[1])) { loc ??= { file: am[1], line: +am[2], col: +am[3] }; continue; }
@@ -55,10 +55,13 @@ export default {
         const cm = lines[j].match(/^\s*\|\s*[\^~-]+\s+(.+)$/);
         if (cm && !note && !STDLIB.test(lines[j])) note = cm[1].trim();
         if (/^help: /.test(lines[j].trim()) && !note) note = lines[j].trim();
+        // rustc echoes the offending line as "N | <source>"
+        const sm = lines[j].match(/^\s*(\d+)\s\|\s?(.*)$/);
+        if (sm && loc && +sm[1] === loc.line && !stmt) stmt = sm[2];
       }
       failures.push({
         file: loc?.file, line: loc?.line, col: loc?.col,
-        title: m[1] ?? "", message: [m[2], note].filter(Boolean).join("\n"),
+        title: m[1] ?? "", message: [m[2], note].filter(Boolean).join("\n"), stmt,
       });
     }
 

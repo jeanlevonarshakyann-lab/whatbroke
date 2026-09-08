@@ -1,6 +1,8 @@
 import { readFileSync } from "node:fs";
 
 const cache = new Map();
+/** Files are read once per run. Tests that rewrite a file mid-process need this. */
+export const resetSnippetCache = () => cache.clear();
 function readLines(file) {
   if (cache.has(file)) return cache.get(file);
   let lines = null;

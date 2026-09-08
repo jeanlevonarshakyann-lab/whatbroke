@@ -144,6 +144,33 @@ for (const c of CASES) {
   }
 }
 
+// source that changed since the run must not be shown as if it were current
+try {
+  const { render, setColor } = await import("../src/render.js");
+  const { resetSnippetCache } = await import("../src/snippet.js");
+  const { writeFileSync, mkdtempSync } = await import("node:fs");
+  const { tmpdir } = await import("node:os");
+  setColor(false);
+  const dir = mkdtempSync(join(tmpdir(), "whatbroke-"));
+  const file = join(dir, "a.rs");
+
+  writeFileSync(file, "let s: String = 42;\n");
+  const result = { tool: "cargo", failures: [{ file, line: 1, title: "E0308",
+    message: "mismatched types", stmt: "let s: String = 42;" }] };
+  const fresh = render(result, {});
+  assert.match(fresh, /1 . let s: String = 42;/, "matching file should show the snippet");
+  assert.ok(!/has changed/.test(fresh), "matching file must not warn");
+
+  writeFileSync(file, "something else entirely\n");
+  resetSnippetCache();
+  const drifted = render(result, {});
+  assert.match(drifted, /has changed since this ran/, "changed file must warn");
+  assert.ok(!/something else entirely/.test(drifted), "must not print the new file's contents");
+  assert.equal((drifted.match(/let s: String = 42;/g) || []).length, 1, "line printed exactly once");
+  console.log("  ok   stale source is detected, not shown");
+  pass++;
+} catch (e) { console.log(`  FAIL stale source\n       ${e.message}`); fail++; }
+
 // a clean run must not be mistaken for a failure
 const CLEAN = "============ test session starts ============\ncollected 2 items\n\ntest_a.py ..    [100%]\n\n============ 2 passed in 0.01s ============\n";
 try {

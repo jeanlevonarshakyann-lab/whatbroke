@@ -1,6 +1,18 @@
 import { relPath } from "./util.js";
 import { snippet } from "./snippet.js";
 
+/** Tools print the source line they saw. If the file on disk no longer matches,
+ *  it changed since the command ran and showing it would be a lie. */
+function stale(file, line, toolText) {
+  if (!toolText) return false;
+  const one = snippet(file, line, 0);
+  if (!one) return false;
+  const disk = one[0].text.trim().replace(/\s+/g, " ");
+  const tool = toolText.trim().replace(/\s+/g, " ").replace(/[…]+$/, "");
+  if (!tool) return false;
+  return !(disk === tool || disk.startsWith(tool) || tool.startsWith(disk));
+}
+
 const E = String.fromCharCode(27);
 let C = {};
 export function setColor(on) {
@@ -39,8 +51,14 @@ export function render(result, { max = 5, cwd = true } = {}) {
       if (m.trim()) out.push(`    ${C.red}${m}${C.reset}`);
     }
 
-    const near = lastSnip && lastSnip.file === f.file && Math.abs(lastSnip.line - f.line) <= 2;
-    const snip = near ? null : snippet(f.file, f.line);
+    const drifted = stale(f.file, f.line, f.stmt);
+    const near = !drifted && lastSnip && lastSnip.file === f.file && Math.abs(lastSnip.line - f.line) <= 2;
+    const snip = near || drifted ? null : snippet(f.file, f.line);
+    if (drifted) {
+      out.push(`      ${C.dim}│${C.reset} ${f.stmt}`);
+      out.push(`      ${C.yellow}! ${relPath(f.file)} has changed since this ran — source not shown${C.reset}`);
+      lastSnip = null;
+    }
     if (near) {
       const one = snippet(f.file, f.line, 0);
       if (one) {
@@ -60,7 +78,7 @@ export function render(result, { max = 5, cwd = true } = {}) {
         out.push(`      ${num} ${bar} ${txt}`);
         if (s.hit && f.col) out.push(`      ${" ".repeat(w)} ${C.dim}│${C.reset} ${" ".repeat(Math.max(0, f.col - 1))}${C.red}^${C.reset}`);
       }
-    } else if (f.stmt) {
+    } else if (f.stmt && !drifted) {
       out.push(`      ${C.dim}│${C.reset} ${f.stmt}`);
     }
 
