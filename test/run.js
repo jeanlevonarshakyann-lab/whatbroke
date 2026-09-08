@@ -283,6 +283,47 @@ try {
   pass++;
 } catch (e) { console.log(`  FAIL adaptive context\n       ${e.message}`); fail++; }
 
+// pytest -q prints its summary with no === decoration; it must still be found
+try {
+  const q = [
+    "FF..",
+    "=================================== FAILURES ===================================",
+    "______________________________ test_one ______________________________",
+    "",
+    "    def test_one():",
+    ">       assert 1 == 2",
+    "E       assert 1 == 2",
+    "",
+    "t.py:2: AssertionError",
+    "=========================== short test summary info ============================",
+    "FAILED t.py::test_one - assert 1 == 2",
+    // -q ends with a bare totals line, no === decoration around it
+    "85 failed, 1973 passed, 25 skipped, 31000 deselected, 1 xfailed in 3.58s",
+  ].join("\n");
+  const r = analyse(q);
+  assert.ok(r, "quiet pytest output must still parse");
+  assert.equal(r.tool, "pytest");
+  assert.match(r.summary, /^85 failed, 1973 passed/,
+    "the real totals must be reported, not a count of parsed blocks");
+  console.log("  ok   pytest -q summary is found without the === decoration");
+  pass++;
+} catch (e) { console.log(`  FAIL pytest -q summary\n       ${e.message}`); fail++; }
+
+// a single absurdly long boilerplate line must not blow up the output
+try {
+  const { render, setColor } = await import("../src/render.js");
+  setColor(false);
+  const long = "available fixtures: " + Array.from({ length: 60 }, (_, i) => `fixture_${i}`).join(", ");
+  const out = render({ tool: "pytest", failures: [
+    { title: "t", message: "recursive dependency detected", stmt: long }] }, {});
+  const longest = Math.max(...out.split("\n").map((l) => l.length));
+  assert.ok(longest < 240, `a padding line was printed in full (${longest} chars)`);
+  assert.match(out, /\u2026/, "truncation should be visible");
+  assert.match(out, /available fixtures: fixture_0/, "the head of the line must survive");
+  console.log("  ok   overlong boilerplate lines are clipped");
+  pass++;
+} catch (e) { console.log(`  FAIL long line clipping\n       ${e.message}`); fail++; }
+
 // CRLF input must parse identically to LF - Windows, and logs pasted from Windows CI
 try {
   for (const name of ["pytest_fail.txt", "gotest_fail.txt", "cargobuild_fail.txt", "node_stack.txt"]) {

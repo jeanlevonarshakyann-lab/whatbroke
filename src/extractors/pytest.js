@@ -39,10 +39,12 @@ export default {
       });
     }
 
-    // "===== 3 failed, 2 passed in 0.01s ====="
+    // "===== 3 failed, 2 passed in 0.01s =====", or with -q the same line
+    // with no decoration at all: "85 failed, 1973 passed, 25 skipped in 3.58s"
     let summary;
     for (let i = lines.length - 1; i >= 0; i--) {
-      const m = lines[i].match(/^=+\s+(.*?(?:failed|passed|error).*?)\s+=+$/i);
+      const m = lines[i].match(/^=+\s+(.*?(?:failed|passed|error).*?)\s+=+$/i)
+             || lines[i].match(/^((?:\d+ (?:failed|passed|skipped|deselected|xfailed|xpassed|error|errors|warning|warnings)(?:, )?)+ in [\d.]+s.*)$/i);
       if (m) { summary = m[1]; break; }
     }
     if (!failures.length && !summary) return null;

@@ -1,6 +1,13 @@
 import { relPath } from "./util.js";
 import { snippet, contextFor } from "./snippet.js";
 
+// A failure message line longer than this is padding - pytest lists every
+// available fixture, rustc lists every trait impl. Keep the head, drop the rest.
+const MAX_MESSAGE_LINE = 200;
+const clip = (t) => t.length > MAX_MESSAGE_LINE
+  ? t.slice(0, MAX_MESSAGE_LINE - 1).replace(/\s+\S*$/, "") + "\u2026"
+  : t;
+
 /** Tools print the source line they saw. If the file on disk no longer matches,
  *  it changed since the command ran and showing it would be a lie. */
 function stale(file, line, toolText) {
@@ -48,7 +55,10 @@ export function render(result, { max = 5, cwd = true, source = true } = {}) {
     if (loc || title) out.push(`  ${loc}${title}`);
 
     for (const m of String(f.message ?? "").split("\n")) {
-      if (m.trim()) out.push(`    ${C.red}${m}${C.reset}`);
+      if (!m.trim()) continue;
+      // Some tools pad a failure with a very long boilerplate line - pytest lists
+      // every available fixture, rustc lists every trait impl. Keep the head of it.
+      out.push(`    ${C.red}${clip(m)}${C.reset}`);
     }
 
     const ctx = contextFor(f.message);
@@ -57,7 +67,7 @@ export function render(result, { max = 5, cwd = true, source = true } = {}) {
     const near = !drifted && lastSnip && lastSnip.file === f.file && Math.abs(lastSnip.line - f.line) <= lastSnip.ctx;
     const snip = !source || near || drifted ? null : snippet(f.file, f.line, ctx);
     if (drifted) {
-      out.push(`      ${C.dim}│${C.reset} ${f.stmt}`);
+      out.push(`      ${C.dim}│${C.reset} ${clip(f.stmt)}`);
       out.push(`      ${C.yellow}! ${relPath(f.file)} has changed since this ran — source not shown${C.reset}`);
       lastSnip = null;
     }
@@ -81,7 +91,7 @@ export function render(result, { max = 5, cwd = true, source = true } = {}) {
         if (s.hit && f.col) out.push(`      ${" ".repeat(w)} ${C.dim}│${C.reset} ${" ".repeat(Math.max(0, f.col - 1))}${C.red}^${C.reset}`);
       }
     } else if (source && f.stmt && !drifted) {
-      out.push(`      ${C.dim}│${C.reset} ${f.stmt}`);
+      out.push(`      ${C.dim}│${C.reset} ${clip(f.stmt)}`);
     }
 
     if (f.trace?.length > 1) {
