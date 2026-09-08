@@ -387,6 +387,19 @@ const CASES = [
       assert.equal(r.failures.filter((f) => /^Possible overload/.test(f.message)).length, 0,
         "a note must never become a failure of its own");
     } },
+  { file: "clang_bulk_fail.txt", tool: "clang", n: 14, check: (r) => {
+      // real clang run over DaveGamble/cJSON after dropping an argument at every
+      // call site of one function. One signature, fourteen callers - the clearest
+      // case in the suite of many failures being a single thing to fix.
+      const reported = r.clusters.filter((c) => c.reported);
+      assert.equal(reported.length, 1, "fourteen callers of one function is one cause");
+      assert.equal(reported[0].size, 14);
+      assert.match(r.failures[0].message, /too few arguments to function call/);
+      // clang's note points at the declaration, a DIFFERENT line, so unlike mypy's
+      // same-location notes it is a separate remark and must not become a failure
+      assert.equal(r.failures.length, 14, "notes must not be counted as errors");
+      assert.ok(!r.failures.some((f) => /declared here/.test(f.message)));
+    } },
 ];
 
 let pass = 0, fail = 0;
@@ -600,6 +613,7 @@ try {
     "gotest_cluster_fail.txt",   // three tests share one assertion shape
     "eslint_bulk_fail.txt",      // one rule broken in twenty-two places
     "mypy_notes_fail.txt",       // several type errors repeat across modules
+    "clang_bulk_fail.txt",       // one signature change, fourteen call sites
   ];
   let checked = 0;
   for (const file of readdirSync(join(here, "fixtures"))) {

@@ -1,0 +1,85 @@
+cJSON.c:1166:27: error: too few arguments to function call, single argument 'hooks' was not specified
+ 1166 |     item = cJSON_New_Item();
+      |            ~~~~~~~~~~~~~~ ^
+cJSON.c:241:15: note: 'cJSON_New_Item' declared here
+  241 | static cJSON *cJSON_New_Item(const internal_hooks * const hooks)
+      |               ^              ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+cJSON.c:2463:34: error: too few arguments to function call, single argument 'hooks' was not specified
+ 2463 |     cJSON *item = cJSON_New_Item();
+      |                   ~~~~~~~~~~~~~~ ^
+cJSON.c:241:15: note: 'cJSON_New_Item' declared here
+  241 | static cJSON *cJSON_New_Item(const internal_hooks * const hooks)
+      |               ^              ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+cJSON.c:2474:34: error: too few arguments to function call, single argument 'hooks' was not specified
+ 2474 |     cJSON *item = cJSON_New_Item();
+      |                   ~~~~~~~~~~~~~~ ^
+cJSON.c:241:15: note: 'cJSON_New_Item' declared here
+  241 | static cJSON *cJSON_New_Item(const internal_hooks * const hooks)
+      |               ^              ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+cJSON.c:2485:34: error: too few arguments to function call, single argument 'hooks' was not specified
+ 2485 |     cJSON *item = cJSON_New_Item();
+      |                   ~~~~~~~~~~~~~~ ^
+cJSON.c:241:15: note: 'cJSON_New_Item' declared here
+  241 | static cJSON *cJSON_New_Item(const internal_hooks * const hooks)
+      |               ^              ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+cJSON.c:2496:34: error: too few arguments to function call, single argument 'hooks' was not specified
+ 2496 |     cJSON *item = cJSON_New_Item();
+      |                   ~~~~~~~~~~~~~~ ^
+cJSON.c:241:15: note: 'cJSON_New_Item' declared here
+  241 | static cJSON *cJSON_New_Item(const internal_hooks * const hooks)
+      |               ^              ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+cJSON.c:2507:34: error: too few arguments to function call, single argument 'hooks' was not specified
+ 2507 |     cJSON *item = cJSON_New_Item();
+      |                   ~~~~~~~~~~~~~~ ^
+cJSON.c:241:15: note: 'cJSON_New_Item' declared here
+  241 | static cJSON *cJSON_New_Item(const internal_hooks * const hooks)
+      |               ^              ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+cJSON.c:2533:34: error: too few arguments to function call, single argument 'hooks' was not specified
+ 2533 |     cJSON *item = cJSON_New_Item();
+      |                   ~~~~~~~~~~~~~~ ^
+cJSON.c:241:15: note: 'cJSON_New_Item' declared here
+  241 | static cJSON *cJSON_New_Item(const internal_hooks * const hooks)
+      |               ^              ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+cJSON.c:2550:34: error: too few arguments to function call, single argument 'hooks' was not specified
+ 2550 |     cJSON *item = cJSON_New_Item();
+      |                   ~~~~~~~~~~~~~~ ^
+cJSON.c:241:15: note: 'cJSON_New_Item' declared here
+  241 | static cJSON *cJSON_New_Item(const internal_hooks * const hooks)
+      |               ^              ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+cJSON.c:2562:34: error: too few arguments to function call, single argument 'hooks' was not specified
+ 2562 |     cJSON *item = cJSON_New_Item();
+      |                   ~~~~~~~~~~~~~~ ^
+cJSON.c:241:15: note: 'cJSON_New_Item' declared here
+  241 | static cJSON *cJSON_New_Item(const internal_hooks * const hooks)
+      |               ^              ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+cJSON.c:2572:34: error: too few arguments to function call, single argument 'hooks' was not specified
+ 2572 |     cJSON *item = cJSON_New_Item();
+      |                   ~~~~~~~~~~~~~~ ^
+cJSON.c:241:15: note: 'cJSON_New_Item' declared here
+  241 | static cJSON *cJSON_New_Item(const internal_hooks * const hooks)
+      |               ^              ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+cJSON.c:2583:34: error: too few arguments to function call, single argument 'hooks' was not specified
+ 2583 |     cJSON *item = cJSON_New_Item();
+      |                   ~~~~~~~~~~~~~~ ^
+cJSON.c:241:15: note: 'cJSON_New_Item' declared here
+  241 | static cJSON *cJSON_New_Item(const internal_hooks * const hooks)
+      |               ^              ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+cJSON.c:2600:34: error: too few arguments to function call, single argument 'hooks' was not specified
+ 2600 |     cJSON *item = cJSON_New_Item();
+      |                   ~~~~~~~~~~~~~~ ^
+cJSON.c:241:15: note: 'cJSON_New_Item' declared here
+  241 | static cJSON *cJSON_New_Item(const internal_hooks * const hooks)
+      |               ^              ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+cJSON.c:2611:34: error: too few arguments to function call, single argument 'hooks' was not specified
+ 2611 |     cJSON *item = cJSON_New_Item();
+      |                   ~~~~~~~~~~~~~~ ^
+cJSON.c:241:15: note: 'cJSON_New_Item' declared here
+  241 | static cJSON *cJSON_New_Item(const internal_hooks * const hooks)
+      |               ^              ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+cJSON.c:2802:30: error: too few arguments to function call, single argument 'hooks' was not specified
+ 2802 |     newitem = cJSON_New_Item();
+      |               ~~~~~~~~~~~~~~ ^
+cJSON.c:241:15: note: 'cJSON_New_Item' declared here
+  241 | static cJSON *cJSON_New_Item(const internal_hooks * const hooks)
+      |               ^              ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+14 errors generated.
