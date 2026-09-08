@@ -5,3 +5,4 @@ dist/
 demo/.venv/
 demo/.pytest_cache/
 demo/__pycache__/
+*.tgz
