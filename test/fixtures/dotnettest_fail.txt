@@ -1,0 +1,86 @@
+Running tests from /home/dev/Scrutor/test/Scrutor.Tests/bin/Debug/net10.0/Scrutor.Tests.dll (net10.0|arm64)
+failed Scrutor.Tests.ScanningTests.AutoRegisterAsMatchingInterface (11ms)
+  Assert.All() Failure: 2 out of 2 items in the collection did not pass.
+[0]: Item:  ServiceType: Scrutor.Tests.ITransientService Lifetime: Singleton ImplementationType: UnwantedNamespace.TransientService
+     Error: Assert.Equal() Failure: Values differ
+            Expected: Transient
+            Actual:   Singleton
+[1]: Item:  ServiceType: Scrutor.Tests.ITransientService Lifetime: Singleton ImplementationType: Scrutor.Tests.TransientService
+     Error: Assert.Equal() Failure: Values differ
+            Expected: Transient
+            Actual:   Singleton
+  from /home/dev/Scrutor/test/Scrutor.Tests/bin/Debug/net10.0/Scrutor.Tests.dll (net10.0|arm64)
+  Assert.All() Failure: 2 out of 2 items in the collection did not pass.
+  [0]: Item:  ServiceType: Scrutor.Tests.ITransientService Lifetime: Singleton ImplementationType: UnwantedNamespace.TransientService
+       Error: Assert.Equal() Failure: Values differ
+              Expected: Transient
+              Actual:   Singleton
+  [1]: Item:  ServiceType: Scrutor.Tests.ITransientService Lifetime: Singleton ImplementationType: Scrutor.Tests.TransientService
+       Error: Assert.Equal() Failure: Values differ
+              Expected: Transient
+              Actual:   Singleton
+    at Scrutor.Tests.ScanningTests.AutoRegisterAsMatchingInterface() in /home/dev/Scrutor/test/Scrutor.Tests/ScanningTests.cs:395
+    at System.Reflection.MethodBaseInvoker.InterpretedInvoke_Method(Object obj, IntPtr* args)
+    at System.Reflection.MethodBaseInvoker.InvokeWithNoArgs(Object obj, BindingFlags invokeAttr)
+failed Scrutor.Tests.ScanningTests.AutoRegisterAsMatchingInterfaceSameNamespaceOnly (0ms)
+  Assert.Equal() Failure: Values differ
+Expected: Transient
+Actual:   Singleton
+  from /home/dev/Scrutor/test/Scrutor.Tests/bin/Debug/net10.0/Scrutor.Tests.dll (net10.0|arm64)
+  Assert.Equal() Failure: Values differ
+  Expected: Transient
+  Actual:   Singleton
+    at Scrutor.Tests.ScanningTests.AutoRegisterAsMatchingInterfaceSameNamespaceOnly() in /home/dev/Scrutor/test/Scrutor.Tests/ScanningTests.cs:415
+    at System.Reflection.MethodBaseInvoker.InterpretedInvoke_Method(Object obj, IntPtr* args)
+    at System.Reflection.MethodBaseInvoker.InvokeWithNoArgs(Object obj, BindingFlags invokeAttr)
+failed Scrutor.Tests.ScanningTests.CanFilterTypesToScan (0ms)
+  Assert.All() Failure: 4 out of 4 items in the collection did not pass.
+[0]: Item:  ServiceType: Scrutor.Tests.ITransientService Lifetime: Singleton ImplementationType: UnwantedNamespace.TransientService
+     Error: Assert.Equal() Failure: Values differ
+            Expected: Transient
+            Actual:   Singleton
+[1]: Item:  ServiceType: Scrutor.Tests.ITransientService Lifetime: Singleton ImplementationType: Scrutor.Tests.TransientService1
+     Error: Assert.Equal() Failure: Values differ
+            Expected: Transient
+            Actual:   Singleton
+[2]: Item:  ServiceType: Scrutor.Tests.ITransientService Lifetime: Singleton ImplementationType: Scrutor.Tests.TransientService2
+     Error: Assert.Equal() Failure: Values differ
+            Expected: Transient
+            Actual:   Singleton
+[3]: Item:  ServiceType: Scrutor.Tests.ITransientService Lifetime: Singleton ImplementationType: Scrutor.Tests.TransientService
+     Error: Assert.Equal() Failure: Values differ
+            Expected: Transient
+            Actual:   Singleton
+  from /home/dev/Scrutor/test/Scrutor.Tests/bin/Debug/net10.0/Scrutor.Tests.dll (net10.0|arm64)
+  Assert.All() Failure: 4 out of 4 items in the collection did not pass.
+  [0]: Item:  ServiceType: Scrutor.Tests.ITransientService Lifetime: Singleton ImplementationType: UnwantedNamespace.TransientService
+       Error: Assert.Equal() Failure: Values differ
+              Expected: Transient
+              Actual:   Singleton
+  [1]: Item:  ServiceType: Scrutor.Tests.ITransientService Lifetime: Singleton ImplementationType: Scrutor.Tests.TransientService1
+       Error: Assert.Equal() Failure: Values differ
+              Expected: Transient
+              Actual:   Singleton
+  [2]: Item:  ServiceType: Scrutor.Tests.ITransientService Lifetime: Singleton ImplementationType: Scrutor.Tests.TransientService2
+       Error: Assert.Equal() Failure: Values differ
+              Expected: Transient
+              Actual:   Singleton
+  [3]: Item:  ServiceType: Scrutor.Tests.ITransientService Lifetime: Singleton ImplementationType: Scrutor.Tests.TransientService
+       Error: Assert.Equal() Failure: Values differ
+              Expected: Transient
+              Actual:   Singleton
+    at Scrutor.Tests.ScanningTests.CanFilterTypesToScan() in /home/dev/Scrutor/test/Scrutor.Tests/ScanningTests.cs:152
+    at System.Reflection.MethodBaseInvoker.InterpretedInvoke_Method(Object obj, IntPtr* args)
+    at System.Reflection.MethodBaseInvoker.InvokeWithNoArgs(Object obj, BindingFlags invokeAttr)
+/home/dev/Scrutor/test/Scrutor.Tests/bin/Debug/net10.0/Scrutor.Tests.dll (net10.0|arm64) failed with 3 error(s) (329ms)
+Exit code: 2
+  Standard output: xUnit.net v3 Microsoft.Testing.Platform v2 Runner v3.2.0+9e422989c1 (64-bit .NET 10.0.11)
+  
+
+Test run summary: Failed!
+  total: 80
+  failed: 3
+  succeeded: 77
+  skipped: 0
+  duration: 499ms
+Test run completed with non-success exit code: 2 (see: https://aka.ms/testingplatform/exitcodes)

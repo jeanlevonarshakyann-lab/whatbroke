@@ -11,6 +11,7 @@ import clang from "./extractors/clang.js";
 import rspec from "./extractors/rspec.js";
 import jvm from "./extractors/jvm.js";
 import dotnet from "./extractors/dotnet.js";
+import dotnettest from "./extractors/dotnettest.js";
 import phpunit from "./extractors/phpunit.js";
 import gotest from "./extractors/gotest.js";
 import cargo from "./extractors/cargo.js";
@@ -19,7 +20,7 @@ import { stripAnsi } from "./util.js";
 import { clusterFailures } from "./cluster.js";
 
 // order matters: most specific first, generic last
-export const EXTRACTORS = [pytest, jest, vitest, unittest, traceback, eslint, ruff, mypy, clang, rspec, jvm, dotnet, phpunit, cargo, gotest, node, tsc, generic];
+export const EXTRACTORS = [pytest, jest, vitest, unittest, traceback, eslint, ruff, mypy, clang, rspec, jvm, dotnettest, dotnet, phpunit, cargo, gotest, node, tsc, generic];
 
 function dedupeFailures(failures) {
   const seen = new Set();

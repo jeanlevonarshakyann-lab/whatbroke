@@ -271,6 +271,23 @@ const CASES = [
       assert.match(f.message, /expected:<.*not found.*> but was:<.*is absent.*>/);
       assert.ok(!/Tests run:/.test(f.message), "the counter is a summary, not a failure message");
     } },
+  { file: "dotnettest_fail.txt", tool: "dotnet test", n: 3, check: (r) => {
+      // real `dotnet test` (Microsoft.Testing.Platform + xUnit) on khellang/Scrutor
+      // after changing one default lifetime. This output used to fall through to the
+      // generic guess: one "error", no test name, no file, no line.
+      assert.equal(r.summary, "3 failed, 77 passed (80)");
+      const f = r.failures[0];
+      assert.equal(f.title, "ScanningTests.AutoRegisterAsMatchingInterface");
+      assert.match(f.file, /ScanningTests\.cs$/);
+      assert.equal(f.line, 395);
+      assert.match(f.message, /Assert\.All\(\) Failure/);
+      // the runner prints each message twice, plainly and re-indented under "from"
+      assert.equal((f.message.match(/Assert\.All\(\) Failure/g) || []).length, 1,
+        "the repeated copy of the message must not be collected");
+      // and the location must come from the user's frame, not the reflection runner
+      assert.ok(r.failures.every((g) => !/System\.Reflection/.test(g.file ?? "")));
+      assert.equal(r.failures[2].line, 152);
+    } },
 ];
 
 let pass = 0, fail = 0;
