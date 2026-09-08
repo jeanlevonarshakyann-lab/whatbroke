@@ -1,0 +1,14 @@
+src/cases.spec.ts(333,16): error TS2322: Type '() => string' is not assignable to type 'false | Encode | undefined'.
+  Type '() => string' is not assignable to type 'Encode'.
+    Type 'string' is not assignable to type 'number'.
+src/cases.spec.ts(1237,7): error TS2322: Type '(uri: string) => string' is not assignable to type 'Encode'.
+  Type 'string' is not assignable to type 'number'.
+src/index.ts(163,9): error TS2322: Type 'string | number' is not assignable to type 'string'.
+  Type 'number' is not assignable to type 'string'.
+src/index.ts(275,55): error TS2345: Argument of type 'false | Encode | ((uriComponent: string | number | boolean) => string)' is not assignable to parameter of type 'false | Encode'.
+  Type '(uriComponent: string | number | boolean) => string' is not assignable to type 'false | Encode'.
+    Type '(uriComponent: string | number | boolean) => string' is not assignable to type 'Encode'.
+      Type 'string' is not assignable to type 'number'.
+src/index.ts(373,3): error TS2322: Type '(data: Partial<Record<string, string | string[]>>, missing: string[]) => string | number' is not assignable to type 'TokenEncoder'.
+  Type 'string | number' is not assignable to type 'string'.
+    Type 'number' is not assignable to type 'string'.

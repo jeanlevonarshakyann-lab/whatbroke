@@ -345,6 +345,22 @@ const CASES = [
       assert.match(f.message, /Could not set unknown property 'sourceCompatibility'/);
       assert.ok(!/^>/m.test(f.message), "gradle's leading > is punctuation, not content");
     } },
+  { file: "tsc_chain_fail.txt", tool: "tsc", n: 5, check: (r) => {
+      // real tsc run of pillarjs/path-to-regexp after changing one type alias.
+      // tsc explains an assignability failure as an indented chain, and the LAST
+      // line is the actual reason. Only the head line was kept, which is the least
+      // specific thing tsc said.
+      assert.equal(r.summary, "5 errors in 2 files");
+      const f = r.failures[0];
+      assert.equal(f.title, "TS2322");
+      assert.equal(f.line, 333);
+      assert.match(f.message, /not assignable to type 'false \| Encode \| undefined'/);
+      assert.match(f.message, /Type 'string' is not assignable to type 'number'\./,
+        "the deepest line is the root cause and must survive");
+      // the chain must not swallow the next error's head line
+      assert.ok(!/error TS/.test(f.message), "a following diagnostic leaked into the chain");
+      assert.equal(r.failures[1].line, 1237);
+    } },
 ];
 
 let pass = 0, fail = 0;
