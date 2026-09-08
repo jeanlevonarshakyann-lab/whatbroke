@@ -185,6 +185,48 @@ Unrecognised output is never silently swallowed — you get a labelled guess, or
 Repeated identical diagnostics are shown once. Distinct tests or diagnostics
 that happen to share a file and line are preserved.
 
+## One bug, or eighty?
+
+Change one string in a library and eighty tests fail. They are one bug. Every tool
+in this space will show you the first five and let you work out the rest.
+
+whatbroke groups failures that share a likely cause and leads with the count:
+
+```
+  ✗ 85 failed, 1973 passed, 25 skipped in 3.58s
+    2 likely causes, 14 sites (+15 others)
+
+  tests/test_basic.py:642  test_choice_argument_none  (+9 more sites)
+    assert "Error: Missing argument" in "...Failure: Missing argument"
+      also tests/test_options.py:1951
+```
+
+**Over-splitting is cheap; over-merging is fatal.** Split one cause in two and you
+read an extra block. Merge two causes into one and you fix the exemplar, rerun, and
+watch the rest still fail — after which the "likely cause" line is worth nothing
+anywhere. So the grouping refuses whenever it is unsure, and it is designed to be
+able to say nothing at all.
+
+It is deterministic — an exact fingerprint, no similarity score, no model. A fuzzy
+threshold would let the same suite report a different number of causes run to run,
+and "these share this signature" is something you can check by eye in a way that
+"these scored 0.72" is not.
+
+What keeps it honest:
+
+- Quoted text that is short and has no spaces is a **name** and is kept, so
+  `KeyError: 'exp'` never merges with `KeyError: 'sub'`. Longer quoted text is data
+  and is abstracted away.
+- A path must prove itself with separators or a known extension, so `cart.total` is
+  never mistaken for a filename.
+- A signature carrying fewer than two real words is refused outright — forty
+  unrelated `assert 1 == 2` failures do not become "one likely cause".
+- Three sites minimum. Two failures sharing a shape is usually coincidence.
+
+Nothing is hidden: `failures` is unchanged in `--json` and every annotation is still
+emitted in `--format github`. Grouping only decides which failures the terminal
+spends its five slots on. `--no-cluster` turns it off everywhere.
+
 Source context is read from the file on disk. If the file has changed since the command
 ran — you edited it, or you piped in saved output — whatbroke says so and shows the line
 the tool itself reported, rather than confidently pointing a caret at the wrong code.
