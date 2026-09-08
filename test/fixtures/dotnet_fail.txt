@@ -3,5 +3,7 @@
 /workspace/src/Invoice.cs(18,21): error CS0029: Cannot implicitly convert type 'string' to 'int' [/workspace/src/Billing.csproj]
 /workspace/src/Invoice.cs(27,9): warning CS0219: The variable 'debug' is assigned but its value is never used [/workspace/src/Billing.csproj]
 /workspace/src/Invoice.cs(31,13): error CS0103: The name 'total' does not exist in the current context [/workspace/src/Billing.csproj]
+/workspace/src/Invoice.cs(18,21): error CS0029: Cannot implicitly convert type 'string' to 'int' [/workspace/src/Billing.csproj]
+/workspace/src/Invoice.cs(31,13): error CS0103: The name 'total' does not exist in the current context [/workspace/src/Billing.csproj]
 
 Build FAILED.

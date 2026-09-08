@@ -482,6 +482,15 @@ try {
 } catch (e) { console.log(`  FAIL malformed logs\n       ${e.message}`); fail++; }
 
 try {
+  const { analyse } = await import("../src/index.js");
+  const r = analyse("main.cpp:7:12: error: use of undeclared identifier 'total'\n");
+  assert.equal(r.tool, "clang");
+  assert.equal(r.failures[0].col, 12);
+  console.log("  ok   compiler diagnostics do not cross-detect as mypy");
+  pass++;
+} catch (e) { console.log(`  FAIL compiler/mypy collision\n       ${e.message}`); fail++; }
+
+try {
   const r = spawnSync(process.execPath, [cli, "--version"], { encoding: "utf8" });
   assert.equal(r.status, 0);
   assert.match(r.stdout.trim(), /^\d+\.\d+\.\d+$/);

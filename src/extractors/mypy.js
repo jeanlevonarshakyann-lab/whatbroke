@@ -4,6 +4,7 @@ export default {
   name: "mypy",
   detect: (s) =>
     !/(?:clang|gcc|\bg\+\+|cc1|ld:|^> Task .+ FAILED$|^FAILURE: Build failed)/im.test(s) &&
+    !/^\S.+:\d+:\d+:\s+(?:error|warning|note):\s+/m.test(s) &&
     (/^\s*Found \d+ errors? in \d+ files?/m.test(s) ||
       /^\S.+:\d+(?::\d+)?:\s+(?:error|warning|note):\s+/m.test(s)),
 
