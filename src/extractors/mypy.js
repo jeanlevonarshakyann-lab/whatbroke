@@ -25,7 +25,7 @@ export default {
     if (!failures.length) return null;
     const summaryMatch = s.match(/^\s*Found (\d+) errors? in (\d+) files?/m);
     const summary = summaryMatch
-      ? `${summaryMatch[1]} errors in ${summaryMatch[2]} files`
+      ? `${summaryMatch[1]} error${summaryMatch[1] === "1" ? "" : "s"} in ${summaryMatch[2]} file${summaryMatch[2] === "1" ? "" : "s"}`
       : `${failures.length} errors`;
     return {
       tool: "mypy",

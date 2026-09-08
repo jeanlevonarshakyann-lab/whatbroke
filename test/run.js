@@ -152,7 +152,7 @@ const CASES = [
       assert.equal(cargo.tool, "cargo", "cargo output must not be claimed by ruff");
     } },
   { file: "mypy_fail.txt", tool: "mypy", n: 2, check: (r) => {
-      assert.equal(r.summary, "2 errors in 1 files — 1 warning hidden");
+      assert.equal(r.summary, "2 errors in 1 file — 1 warning hidden");
       assert.equal(r.failures[0].title, "assignment");
       assert.equal(r.failures[0].file, "shop.py");
       assert.equal(r.failures[0].line, 4);

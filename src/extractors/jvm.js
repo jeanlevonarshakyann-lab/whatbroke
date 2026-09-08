@@ -12,7 +12,8 @@ export default {
   extract(s) {
     const failures = [];
     const seen = new Set();
-    for (const line of s.split("\n")) {
+    for (const rawLine of s.split("\n")) {
+      const line = rawLine.trim();
       const maven = line.match(MAVEN_RE);
       const gradle = line.match(GRADLE_RE);
       const java = line.match(JAVA_RE);
@@ -24,7 +25,10 @@ export default {
             ? { file: java[1], line: +java[2], message: java[3] }
           : null;
       if (!match || /^(?:https?|file):\/\//.test(match.file)) continue;
-      const key = JSON.stringify(match);
+      // Gradle repeats compiler diagnostics in its task and failure sections.
+      // Deduplicate by diagnostic identity even when the repeated rendering
+      // changes indentation or compiler metadata.
+      const key = JSON.stringify([match.file, match.line, match.message]);
       if (seen.has(key)) continue;
       seen.add(key);
       failures.push({ ...match, title: "compile error" });
