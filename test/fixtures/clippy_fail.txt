@@ -1,0 +1,183 @@
+warning: lint `clippy::from_iter_instead_of_collect` has been removed: lint has proved problematic
+  |
+  = note: requested on the command line with `-W clippy::from_iter_instead_of_collect`
+  = note: `#[warn(renamed_and_removed_lints)]` on by default
+  = note: the `renamed_and_removed_lints` lint ignores `-D warnings`
+
+warning: `clap_lex` (lib) generated 1 warning
+    Checking clap_builder v4.6.6 (/home/dev/clap/clap_builder)
+error: unneeded `return` statement
+   --> clap_builder/src/output/usage.rs:497:60
+    |
+497 | fn lint_bait_one(v: &Vec<i32>) -> bool { if v.len() == 0 { return true; } else { return false; } }
+    |                                                            ^^^^^^^^^^^
+    |
+    = help: for further information visit https://rust-lang.github.io/rust-clippy/rust-1.98.0/index.html#needless_return
+    = note: `-D clippy::needless-return` implied by `-D warnings`
+    = help: to override `-D warnings` add `#[allow(clippy::needless_return)]`
+help: remove `return`
+    |
+497 - fn lint_bait_one(v: &Vec<i32>) -> bool { if v.len() == 0 { return true; } else { return false; } }
+497 + fn lint_bait_one(v: &Vec<i32>) -> bool { if v.len() == 0 { true} else { return false; } }
+    |
+
+error: unneeded `return` statement
+   --> clap_builder/src/output/usage.rs:497:82
+    |
+497 | fn lint_bait_one(v: &Vec<i32>) -> bool { if v.len() == 0 { return true; } else { return false; } }
+    |                                                                                  ^^^^^^^^^^^^
+    |
+    = help: for further information visit https://rust-lang.github.io/rust-clippy/rust-1.98.0/index.html#needless_return
+help: remove `return`
+    |
+497 - fn lint_bait_one(v: &Vec<i32>) -> bool { if v.len() == 0 { return true; } else { return false; } }
+497 + fn lint_bait_one(v: &Vec<i32>) -> bool { if v.len() == 0 { return true; } else { false} }
+    |
+
+error: writing `&Vec` instead of `&[_]` involves a new object where a slice will do
+   --> clap_builder/src/output/usage.rs:497:21
+    |
+497 | fn lint_bait_one(v: &Vec<i32>) -> bool { if v.len() == 0 { return true; } else { return false; } }
+    |                     ^^^^^^^^^
+    |
+    = help: for further information visit https://rust-lang.github.io/rust-clippy/rust-1.98.0/index.html#ptr_arg
+    = note: `-D clippy::ptr-arg` implied by `-D warnings`
+    = help: to override `-D warnings` add `#[allow(clippy::ptr_arg)]`
+help: change this to
+    |
+497 - fn lint_bait_one(v: &Vec<i32>) -> bool { if v.len() == 0 { return true; } else { return false; } }
+497 + fn lint_bait_one(v: &[i32]) -> bool { if v.len() == 0 { return true; } else { return false; } }
+    |
+
+error: this if-then-else expression returns a bool literal
+   --> clap_builder/src/output/usage.rs:497:42
+    |
+497 | fn lint_bait_one(v: &Vec<i32>) -> bool { if v.len() == 0 { return true; } else { return false; } }
+    |                                          ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ help: you can reduce it to: `return v.len() == 0`
+    |
+    = help: for further information visit https://rust-lang.github.io/rust-clippy/rust-1.98.0/index.html#needless_bool
+    = note: `-D clippy::needless-bool` implied by `-D warnings`
+    = help: to override `-D warnings` add `#[allow(clippy::needless_bool)]`
+
+error: length comparison to zero
+   --> clap_builder/src/output/usage.rs:497:45
+    |
+497 | fn lint_bait_one(v: &Vec<i32>) -> bool { if v.len() == 0 { return true; } else { return false; } }
+    |                                             ^^^^^^^^^^^^ help: using `is_empty` is clearer and more explicit: `v.is_empty()`
+    |
+    = help: for further information visit https://rust-lang.github.io/rust-clippy/rust-1.98.0/index.html#len_zero
+    = note: `-D clippy::len-zero` implied by `-D warnings`
+    = help: to override `-D warnings` add `#[allow(clippy::len_zero)]`
+
+error: unneeded `return` statement
+   --> clap_builder/src/output/usage.rs:499:60
+    |
+499 | fn lint_bait_two(v: &Vec<i32>) -> bool { if v.len() == 0 { return true; } else { return false; } }
+    |                                                            ^^^^^^^^^^^
+    |
+    = help: for further information visit https://rust-lang.github.io/rust-clippy/rust-1.98.0/index.html#needless_return
+help: remove `return`
+    |
+499 - fn lint_bait_two(v: &Vec<i32>) -> bool { if v.len() == 0 { return true; } else { return false; } }
+499 + fn lint_bait_two(v: &Vec<i32>) -> bool { if v.len() == 0 { true} else { return false; } }
+    |
+
+error: unneeded `return` statement
+   --> clap_builder/src/output/usage.rs:499:82
+    |
+499 | fn lint_bait_two(v: &Vec<i32>) -> bool { if v.len() == 0 { return true; } else { return false; } }
+    |                                                                                  ^^^^^^^^^^^^
+    |
+    = help: for further information visit https://rust-lang.github.io/rust-clippy/rust-1.98.0/index.html#needless_return
+help: remove `return`
+    |
+499 - fn lint_bait_two(v: &Vec<i32>) -> bool { if v.len() == 0 { return true; } else { return false; } }
+499 + fn lint_bait_two(v: &Vec<i32>) -> bool { if v.len() == 0 { return true; } else { false} }
+    |
+
+error: writing `&Vec` instead of `&[_]` involves a new object where a slice will do
+   --> clap_builder/src/output/usage.rs:499:21
+    |
+499 | fn lint_bait_two(v: &Vec<i32>) -> bool { if v.len() == 0 { return true; } else { return false; } }
+    |                     ^^^^^^^^^
+    |
+    = help: for further information visit https://rust-lang.github.io/rust-clippy/rust-1.98.0/index.html#ptr_arg
+help: change this to
+    |
+499 - fn lint_bait_two(v: &Vec<i32>) -> bool { if v.len() == 0 { return true; } else { return false; } }
+499 + fn lint_bait_two(v: &[i32]) -> bool { if v.len() == 0 { return true; } else { return false; } }
+    |
+
+error: this if-then-else expression returns a bool literal
+   --> clap_builder/src/output/usage.rs:499:42
+    |
+499 | fn lint_bait_two(v: &Vec<i32>) -> bool { if v.len() == 0 { return true; } else { return false; } }
+    |                                          ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ help: you can reduce it to: `return v.len() == 0`
+    |
+    = help: for further information visit https://rust-lang.github.io/rust-clippy/rust-1.98.0/index.html#needless_bool
+
+error: length comparison to zero
+   --> clap_builder/src/output/usage.rs:499:45
+    |
+499 | fn lint_bait_two(v: &Vec<i32>) -> bool { if v.len() == 0 { return true; } else { return false; } }
+    |                                             ^^^^^^^^^^^^ help: using `is_empty` is clearer and more explicit: `v.is_empty()`
+    |
+    = help: for further information visit https://rust-lang.github.io/rust-clippy/rust-1.98.0/index.html#len_zero
+
+error: unneeded `return` statement
+   --> clap_builder/src/output/usage.rs:501:62
+    |
+501 | fn lint_bait_three(v: &Vec<i32>) -> bool { if v.len() == 0 { return true; } else { return false; } }
+    |                                                              ^^^^^^^^^^^
+    |
+    = help: for further information visit https://rust-lang.github.io/rust-clippy/rust-1.98.0/index.html#needless_return
+help: remove `return`
+    |
+501 - fn lint_bait_three(v: &Vec<i32>) -> bool { if v.len() == 0 { return true; } else { return false; } }
+501 + fn lint_bait_three(v: &Vec<i32>) -> bool { if v.len() == 0 { true} else { return false; } }
+    |
+
+error: unneeded `return` statement
+   --> clap_builder/src/output/usage.rs:501:84
+    |
+501 | fn lint_bait_three(v: &Vec<i32>) -> bool { if v.len() == 0 { return true; } else { return false; } }
+    |                                                                                    ^^^^^^^^^^^^
+    |
+    = help: for further information visit https://rust-lang.github.io/rust-clippy/rust-1.98.0/index.html#needless_return
+help: remove `return`
+    |
+501 - fn lint_bait_three(v: &Vec<i32>) -> bool { if v.len() == 0 { return true; } else { return false; } }
+501 + fn lint_bait_three(v: &Vec<i32>) -> bool { if v.len() == 0 { return true; } else { false} }
+    |
+
+error: writing `&Vec` instead of `&[_]` involves a new object where a slice will do
+   --> clap_builder/src/output/usage.rs:501:23
+    |
+501 | fn lint_bait_three(v: &Vec<i32>) -> bool { if v.len() == 0 { return true; } else { return false; } }
+    |                       ^^^^^^^^^
+    |
+    = help: for further information visit https://rust-lang.github.io/rust-clippy/rust-1.98.0/index.html#ptr_arg
+help: change this to
+    |
+501 - fn lint_bait_three(v: &Vec<i32>) -> bool { if v.len() == 0 { return true; } else { return false; } }
+501 + fn lint_bait_three(v: &[i32]) -> bool { if v.len() == 0 { return true; } else { return false; } }
+    |
+
+error: this if-then-else expression returns a bool literal
+   --> clap_builder/src/output/usage.rs:501:44
+    |
+501 | fn lint_bait_three(v: &Vec<i32>) -> bool { if v.len() == 0 { return true; } else { return false; } }
+    |                                            ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ help: you can reduce it to: `return v.len() == 0`
+    |
+    = help: for further information visit https://rust-lang.github.io/rust-clippy/rust-1.98.0/index.html#needless_bool
+
+error: length comparison to zero
+   --> clap_builder/src/output/usage.rs:501:47
+    |
+501 | fn lint_bait_three(v: &Vec<i32>) -> bool { if v.len() == 0 { return true; } else { return false; } }
+    |                                               ^^^^^^^^^^^^ help: using `is_empty` is clearer and more explicit: `v.is_empty()`
+    |
+    = help: for further information visit https://rust-lang.github.io/rust-clippy/rust-1.98.0/index.html#len_zero
+
+warning: `clap_builder` (lib) generated 1 warning (1 duplicate)
+error: could not compile `clap_builder` (lib) due to 15 previous errors; 1 warning emitted

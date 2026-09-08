@@ -52,7 +52,7 @@ export default {
       const m = lines[i].match(ERR_RE);
       if (!m || TALLY_RE.test(m[2])) continue;
 
-      let loc = null, note = "", stmt = "";
+      let loc = null, note = "", stmt = "", lint = "";
       for (let j = i + 1; j < lines.length && !ERR_RE.test(lines[j]); j++) {
         const am = lines[j].match(ARROW_RE);
         if (am && !STDLIB.test(am[1])) { loc ??= { file: am[1], line: +am[2], col: +am[3] }; continue; }
@@ -60,13 +60,19 @@ export default {
         const cm = lines[j].match(/^\s*\|\s*[\^~-]+\s+(.+)$/);
         if (cm && !note && !STDLIB.test(lines[j])) note = cm[1].trim();
         if (/^help: /.test(lines[j].trim()) && !note) note = lines[j].trim();
+        // clippy diagnostics carry no E-code. The lint name is the useful handle -
+        // what you would search for, or put in an #[allow(...)]. Take it from the
+        // doc-link fragment, which every diagnostic carries; the "-D clippy::name"
+        // note appears only once per lint, so repeats would come out untitled.
+        const lm = lines[j].match(/rust-clippy\/.*#([a-z_]+)\b/);
+        if (lm && !lint) lint = `clippy::${lm[1]}`;
         // rustc echoes the offending line as "N | <source>"
         const sm = lines[j].match(/^\s*(\d+)\s\|\s?(.*)$/);
         if (sm && loc && +sm[1] === loc.line && !stmt) stmt = sm[2];
       }
       failures.push({
         file: loc?.file, line: loc?.line, col: loc?.col,
-        title: m[1] ?? "", message: [m[2], note].filter(Boolean).join("\n"), stmt,
+        title: m[1] ?? lint ?? "", message: [m[2], note].filter(Boolean).join("\n"), stmt,
       });
     }
 

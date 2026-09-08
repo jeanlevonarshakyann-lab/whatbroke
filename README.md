@@ -171,6 +171,7 @@ them.
 | **go build** | compile errors with source context |
 | **cargo test** | test name, `file:line`, the assertion and its left/right values |
 | **cargo build** | error code and the inline annotation — not the 25 lines of trait impls |
+| **cargo clippy** | the lint name as the title, so you know what to fix or allow |
 | **ruff** | rule code, `file:line`, the message and ruff's own fix hint |
 | **mypy** | error code, `file:line`, the type-checking message; notes and warnings set aside |
 | **GCC/Clang** | compiler errors with `file:line:column`; warnings and notes set aside |

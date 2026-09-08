@@ -18,7 +18,14 @@ export const TOOL_TITLE_SETS = { TITLE_IS_CODE, TITLE_IS_SITE, TITLE_IS_CONST };
 
 /** Unknown tools KEEP the title: a new extractor whose title is a test name then gets
  *  no clustering at all, rather than wrong clustering. Inert beats harmful. */
-export const titlePolicy = (tool) => ({ title: !TITLE_IS_SITE.has(tool) });
+export const titlePolicy = (tool) => ({
+  title: !TITLE_IS_SITE.has(tool),
+  // For a compiler or linter the echoed source line is the INSTANCE, not the
+  // identity - the code and message already say which problem it is, and the same
+  // lint in forty places is one thing to fix. For a test runner the failing
+  // expression is the strongest discriminator there is, so it stays.
+  stmt: !TITLE_IS_CODE.has(tool),
+});
 
 // Quoted content that is short and has no whitespace is a NAME - unquote and keep it,
 // so KeyError: 'exp' stays distinct from KeyError: 'sub'. Anything else is DATA.
@@ -72,7 +79,7 @@ export const normTitle = (t) => String(t ?? "").replace(/\[[^\]]*\]\s*$/, "[…]
 const part = (f, policy) => [
   policy.title ? String(f.title ?? "") : "",
   skeleton(f.message),
-  skeleton(f.stmt),
+  policy.stmt === false ? "" : skeleton(f.stmt),
 ];
 
 export const keyOf = (f, policy) => JSON.stringify(part(f, policy));

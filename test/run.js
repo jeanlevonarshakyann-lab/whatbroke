@@ -400,6 +400,22 @@ const CASES = [
       assert.equal(r.failures.length, 14, "notes must not be counted as errors");
       assert.ok(!r.failures.some((f) => /declared here/.test(f.message)));
     } },
+  { file: "clippy_fail.txt", tool: "cargo", n: 15, check: (r) => {
+      // real `cargo clippy -- -D warnings` on clap-rs/clap, the way CI runs it.
+      // clippy diagnostics carry no E-code, so every one of them was untitled. The
+      // lint name is the handle you actually want - it is what you search for and
+      // what goes in an #[allow(...)].
+      assert.equal(r.failures.filter((f) => !f.title).length, 0, "every clippy error must name its lint");
+      const lints = new Set(r.failures.map((f) => f.title));
+      assert.ok(lints.has("clippy::needless_return"), [...lints].join(","));
+      assert.ok(lints.has("clippy::ptr_arg"));
+      // the "-D clippy::name" note appears once per lint, so repeats would come out
+      // untitled; the doc-link fragment appears on every diagnostic
+      assert.equal(r.failures.filter((f) => f.title === "clippy::needless_return").length, 6);
+      // one lint in several places is one thing to fix
+      const reported = r.clusters.filter((c) => c.reported);
+      assert.ok(reported.length >= 3, `expected a cause per lint, got ${reported.length}`);
+    } },
 ];
 
 let pass = 0, fail = 0;
@@ -614,6 +630,7 @@ try {
     "eslint_bulk_fail.txt",      // one rule broken in twenty-two places
     "mypy_notes_fail.txt",       // several type errors repeat across modules
     "clang_bulk_fail.txt",       // one signature change, fourteen call sites
+    "clippy_fail.txt",           // one lint in several places is one fix
   ];
   let checked = 0;
   for (const file of readdirSync(join(here, "fixtures"))) {
