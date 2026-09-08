@@ -1,0 +1,22 @@
+--- FAIL: TestInvoiceTotal (0.00s)
+    shop_test.go:8: Total() = 1049, want 1050
+--- FAIL: TestExpiredToken (0.00s)
+    shop_test.go:15: missing exp claim in map[sub:1]
+--- FAIL: TestPanics (0.00s)
+panic: assignment to entry in nil map [recovered, repanicked]
+
+goroutine 37 [running]:
+testing.tRunner.func1.2({0x10316a568, 0x1031a1100})
+	/opt/homebrew/Cellar/go/1.27.1/libexec/src/testing/testing.go:2123 +0x1a0
+testing.tRunner.func1()
+	/opt/homebrew/Cellar/go/1.27.1/libexec/src/testing/testing.go:2126 +0x2c8
+panic({0x10316a568?, 0x1031a1100?})
+	/opt/homebrew/Cellar/go/1.27.1/libexec/src/runtime/panic.go:859 +0x120
+shop.TestPanics(0x10711c8d4908?)
+	/home/dev/gop/shop_test.go:27 +0x34
+testing.tRunner(0x10711c8d4908, 0x103187420)
+	/opt/homebrew/Cellar/go/1.27.1/libexec/src/testing/testing.go:2193 +0xc4
+created by testing.(*T).Run in goroutine 1
+	/opt/homebrew/Cellar/go/1.27.1/libexec/src/testing/testing.go:2258 +0x3b8
+FAIL	shop	0.385s
+FAIL

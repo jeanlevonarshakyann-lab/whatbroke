@@ -30,6 +30,17 @@ $ whatbroke -q pytest
 
 No LLM. No API key. No network. Just parsers that know what each tool's output looks like.
 
+Real reductions, measured on the fixtures in this repo:
+
+| | before | after |
+|---|---|---|
+| `cargo build` | 51 lines | 10 |
+| `vitest` | 59 lines | 12 |
+| `pytest` | 40 lines | 20 |
+| `jest` | 37 lines | 9 |
+| `go test` | 22 lines | 12 |
+| `node -e` | 15 lines | 4 |
+
 ## Install
 
 ```bash
@@ -63,6 +74,10 @@ Exit code is passed straight through, so `whatbroke` is safe to leave in a Makef
 | **jest** | test name, `file:line`, the matcher, expected vs received |
 | **vitest** | same, with the real source line — not vitest's truncated `…` version |
 | **eslint** | errors only; warnings counted and set aside |
+| **go test** | test name, `file:line`, the message; panics resolved past the runtime frames |
+| **go build** | compile errors with source context |
+| **cargo test** | test name, `file:line`, the assertion and its left/right values |
+| **cargo build** | error code and the inline annotation — not the 25 lines of trait impls |
 | **tsc** | errors grouped by file with source context |
 | *anything else* | best-effort: lines that look like errors, marked as a guess |
 
@@ -78,7 +93,7 @@ Extractors are ~40 lines and self-contained. Drop a file in `src/extractors/`, e
 
 Real captured output only — no hand-written samples. Every parser in here was built against output actually produced on a real machine, which is why they work.
 
-Wanted: `go test`, `cargo`, `rspec`, `gradle`, `maven`, `webpack`, `clang`, `ruff`, `mypy`.
+Wanted: `rspec`, `gradle`, `maven`, `webpack`, `clang`, `ruff`, `mypy`, `phpunit`, `dotnet test`.
 
 ## Test
 

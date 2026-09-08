@@ -84,6 +84,48 @@ const CASES = [
       assert.match(f.message, /Received: 1049/);
       assert.equal(r.failures[1].title, "expired token");
     } },
+  { file: "gotest_fail.txt", tool: "go test", n: 3, check: (r) => {
+      assert.match(r.summary, /3 tests failed/);
+      assert.equal(r.failures[0].title, "TestInvoiceTotal");
+      assert.equal(r.failures[0].line, 8);
+      assert.match(r.failures[0].message, /Total\(\) = 1049, want 1050/);
+      const panic = r.failures[2];
+      assert.equal(panic.title, "TestPanics");
+      assert.match(panic.message, /panic: assignment to entry in nil map/);
+      // must resolve past Go's runtime/testing frames to the user's line
+      assert.equal(panic.line, 27);
+      assert.match(panic.file, /shop_test\.go$/);
+    } },
+  { file: "gobuild_fail.txt", tool: "go build", n: 3, check: (r) => {
+      assert.match(r.summary, /3 compile errors/);
+      assert.equal(r.failures[0].file, "broken.go");   // leading "./" stripped
+      assert.equal(r.failures[0].line, 4);
+      assert.equal(r.failures[0].col, 17);
+      assert.match(r.failures[1].message, /undefined: undefinedCall/);
+    } },
+  { file: "cargotest_fail.txt", tool: "cargo test", n: 2, check: (r) => {
+      assert.equal(r.summary, "1 passed; 2 failed");   // zero-count noise dropped
+      const f = r.failures.find((x) => x.title === "tests::invoice_total");
+      assert.ok(f, "invoice_total not found");
+      assert.equal(f.file, "src/lib.rs");
+      assert.equal(f.line, 11);
+      assert.match(f.message, /assertion `left == right` failed/);
+      assert.match(f.message, /left: 1049/);
+      assert.ok(!/RUST_BACKTRACE/.test(f.message), "backtrace note should be dropped");
+    } },
+  { file: "cargobuild_fail.txt", tool: "cargo", n: 3, check: (r) => {
+      assert.equal(r.failures[0].title, "E0308");
+      assert.equal(r.failures[0].file, "src/lib.rs");
+      assert.equal(r.failures[0].line, 2);
+      assert.match(r.failures[0].message, /expected `String`, found integer/);
+      // E0277 prints 25 lines of trait impls from rustlib; none may leak through
+      const e0277 = r.failures[1];
+      assert.equal(e0277.title, "E0277");
+      assert.equal(e0277.line, 3);
+      assert.ok(!/rustlib|internal_macros/.test(e0277.message), "rustlib noise leaked");
+      assert.ok(r.failures.every((f) => !/could not compile/.test(f.message)),
+        "the error tally must not be counted as an error");
+    } },
 ];
 
 let pass = 0, fail = 0;

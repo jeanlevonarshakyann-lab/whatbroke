@@ -1,0 +1,51 @@
+   Compiling rustshop v0.1.0 (/home/dev/rustshop)
+error[E0308]: mismatched types
+ --> src/lib.rs:2:21
+  |
+2 |     let s: String = 42;
+  |            ------   ^^ expected `String`, found integer
+  |            |
+  |            expected due to this
+  |
+help: try using a conversion method
+  |
+2 |     let s: String = 42.to_string();
+  |                       ++++++++++++
+
+error[E0277]: cannot add `f64` to `i64`
+   --> src/lib.rs:3:31
+    |
+  3 |     items.iter().sum::<i64>() + tax
+    |                               ^ no implementation for `i64 + f64`
+    |
+    = help: the trait `Add<f64>` is not implemented for `i64`
+help: the following other types implement trait `Add<Rhs>`
+   --> /opt/homebrew/Cellar/rust/1.98.0/lib/rustlib/src/rust/library/core/src/internal_macros.rs:22:9
+    |
+ 22 |         const impl $imp<$u> for &$t {
+    |         ^^^^^^^^^^^^^^^^^^^^^^^^^^^ `&i64` implements `Add<i64>`
+...
+ 33 |         const impl $imp<&$u> for $t {
+    |         ^^^^^^^^^^^^^^^^^^^^^^^^^^^ `i64` implements `Add<&i64>`
+...
+ 44 |         const impl $imp<&$u> for &$t {
+    |         ^^^^^^^^^^^^^^^^^^^^^^^^^^^^ `&i64` implements `Add`
+    |
+   ::: /opt/homebrew/Cellar/rust/1.98.0/lib/rustlib/src/rust/library/core/src/ops/arith.rs:98:9
+    |
+ 98 |         const impl Add for $t {
+    |         ^^^^^^^^^^^^^^^^^^^^^ `i64` implements `Add`
+...
+113 | add_impl! { usize u8 u16 u32 u64 u128 isize i8 i16 i32 i64 i128 f16 f32 f64 f128 }
+    | ---------------------------------------------------------------------------------- in this macro invocation
+    = note: this error originates in the macro `forward_ref_binop` which comes from the expansion of the macro `add_impl` (in Nightly builds, run with -Z macro-backtrace for more info)
+
+error[E0425]: cannot find function `undefined_call` in this scope
+ --> src/lib.rs:7:5
+  |
+7 |     undefined_call();
+  |     ^^^^^^^^^^^^^^ not found in this scope
+
+Some errors have detailed explanations: E0277, E0308, E0425.
+For more information about an error, try `rustc --explain E0277`.
+error: could not compile `rustshop` (lib) due to 3 previous errors

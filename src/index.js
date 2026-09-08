@@ -5,11 +5,13 @@ import tsc from "./extractors/tsc.js";
 import jest from "./extractors/jest.js";
 import vitest from "./extractors/vitest.js";
 import eslint from "./extractors/eslint.js";
+import gotest from "./extractors/gotest.js";
+import cargo from "./extractors/cargo.js";
 import generic from "./extractors/generic.js";
 import { stripAnsi } from "./util.js";
 
 // order matters: most specific first, generic last
-export const EXTRACTORS = [pytest, jest, vitest, unittest, traceback, eslint, node, tsc, generic];
+export const EXTRACTORS = [pytest, jest, vitest, unittest, traceback, eslint, cargo, gotest, node, tsc, generic];
 
 export function analyse(raw) {
   const s = stripAnsi(raw);

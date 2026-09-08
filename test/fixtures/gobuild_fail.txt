@@ -1,0 +1,4 @@
+# shop
+./broken.go:4:17: cannot use 42 (untyped int constant) as string value in variable declaration
+./broken.go:5:2: undefined: undefinedCall
+./broken.go:6:9: cannot use s (variable of type string) as int value in return statement
