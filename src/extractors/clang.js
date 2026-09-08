@@ -5,7 +5,7 @@ export default {
   name: "clang",
   detect: (s) =>
     /^\S.+:\d+:\d+:\s+(?:error|fatal error|warning|note):\s+/m.test(s) &&
-    /(?:clang|gcc|g\+\+|cc1|ld:)/i.test(s),
+    /(?:clang|gcc|g\+\+|cc1|ld:|[\w.-]+\.(?:c|cc|cpp|cxx|h|hpp|m|mm):)/i.test(s),
 
   extract(s) {
     const failures = [];

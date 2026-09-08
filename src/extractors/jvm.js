@@ -1,5 +1,6 @@
 const MAVEN_RE = /^\[ERROR\]\s+(.+?):\[(\d+),(\d+)\]\s+(.+)$/;
 const GRADLE_RE = /^(?:e: )?(.+?):(\d+):(\d+):\s+(.+)$/;
+const JAVA_RE = /^(.+?\.java):(\d+):\s+(?:error|warning):\s+(.+)$/;
 
 export default {
   name: "jvm",
@@ -14,10 +15,13 @@ export default {
     for (const line of s.split("\n")) {
       const maven = line.match(MAVEN_RE);
       const gradle = line.match(GRADLE_RE);
+      const java = line.match(JAVA_RE);
       const match = maven
         ? { file: maven[1], line: +maven[2], col: +maven[3], message: maven[4] }
         : gradle
           ? { file: gradle[1], line: +gradle[2], col: +gradle[3], message: gradle[4] }
+          : java
+            ? { file: java[1], line: +java[2], message: java[3] }
           : null;
       if (!match || /^(?:https?|file):\/\//.test(match.file)) continue;
       const key = JSON.stringify(match);

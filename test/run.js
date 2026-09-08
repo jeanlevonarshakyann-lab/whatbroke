@@ -189,12 +189,20 @@ const CASES = [
       assert.equal(r.failures[0].col, 17);
       assert.match(r.failures[1].message, /Unresolved reference/);
     } },
+  { file: "gradle_java_fail.txt", tool: "gradle", n: 2, check: (r) => {
+      assert.equal(r.summary, "build failed");
+      assert.equal(r.failures[0].file, "/workspace/src/main/java/com/acme/Invoice.java");
+      assert.equal(r.failures[0].line, 18);
+      assert.equal(r.failures[0].col, undefined);
+      assert.match(r.failures[1].message, /cannot find symbol/);
+    } },
   { file: "dotnet_fail.txt", tool: "dotnet", n: 2, check: (r) => {
       assert.equal(r.summary, "2 errors — 1 warning hidden");
       assert.equal(r.failures[0].title, "CS0029");
       assert.equal(r.failures[0].file, "/workspace/src/Invoice.cs");
       assert.equal(r.failures[0].line, 18);
       assert.equal(r.failures[0].col, 21);
+      assert.ok(r.failures.every((f) => !/\.csproj/.test(f.message)), "project metadata must not leak");
       assert.match(r.failures[1].message, /does not exist/);
     } },
   { file: "phpunit_fail.txt", tool: "phpunit", n: 2, check: (r) => {
@@ -203,6 +211,7 @@ const CASES = [
       assert.equal(r.failures[0].file, "/workspace/tests/InvoiceTest.php");
       assert.equal(r.failures[0].line, 17);
       assert.match(r.failures[1].message, /true is false/);
+      assert.ok(r.failures.every((f) => !/Tests:/.test(f.message)), "summary must not be swallowed");
     } },
 ];
 

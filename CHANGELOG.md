@@ -14,6 +14,7 @@
 - Added Maven and Gradle JVM compiler diagnostics.
 - Added .NET compiler diagnostics.
 - Added a first-class PHPUnit failure parser.
+- Hardened PHPUnit summary boundaries, .NET project metadata handling, Clang detection, and Gradle Java diagnostics.
 - Added a reusable GitHub problem matcher configuration.
 - Added contributor guidance for safe, fixture-backed parser additions.
 - Added GitHub Actions job-summary output when `GITHUB_STEP_SUMMARY` is available.

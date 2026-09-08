@@ -12,10 +12,11 @@ export default {
     for (const line of s.split("\n")) {
       const match = line.match(DIAGNOSTIC_RE);
       if (!match) continue;
+      const message = match[6].replace(/\s+\[[^\]]+\.csproj\]\s*$/, "");
       if (match[4] === "warning") { warnings++; continue; }
       failures.push({
         file: match[1], line: +match[2], col: +match[3],
-        title: match[5], message: match[6],
+        title: match[5], message,
       });
     }
     if (!failures.length) return null;
