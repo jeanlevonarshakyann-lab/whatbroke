@@ -53,6 +53,37 @@ const CASES = [
         `wrapper frame leaked: ${JSON.stringify(f.trace)}`);
       assert.equal(f.hiddenFrames, 7);
     } },
+  { file: "vitest_fail.txt", tool: "vitest", n: 3, check: (r) => {
+      assert.match(r.summary, /3 failed \| 1 passed/);
+      const f = r.failures[0];
+      assert.equal(f.title, "invoice total");
+      assert.equal(f.line, 3);
+      assert.equal(f.col, 62);
+      assert.match(f.message, /expected 1049 to be 1050/);
+      assert.match(f.message, /1050/);          // keeps the expected/received diff
+      assert.equal(r.failures[2].title, "throws");
+      assert.match(r.failures[2].message, /TypeError/);
+    } },
+  { file: "eslint_fail.txt", tool: "eslint", n: 3, check: (r) => {
+      // warnings are not errors: 4 problems reported, 3 shown
+      assert.match(r.summary, /1 warning hidden/);
+      assert.equal(r.failures[0].title, "no-unused-vars");
+      assert.equal(r.failures[0].line, 1);
+      assert.equal(r.failures[0].col, 7);
+      assert.ok(r.failures.every((f) => /messy\.js$/.test(f.file)), "file must attach to each problem");
+      assert.equal(r.failures[2].title, "no-undef");
+    } },
+  { file: "jest_fail.txt", tool: "jest", n: 2, check: (r) => {
+      assert.match(r.summary, /2 failed, 1 passed/);
+      const f = r.failures[0];
+      assert.equal(f.title, "invoice total");
+      assert.equal(f.file, "sum.test.js");
+      assert.equal(f.line, 2);
+      assert.match(f.message, /toBe\(expected\)/);
+      assert.match(f.message, /Expected: 1050/);
+      assert.match(f.message, /Received: 1049/);
+      assert.equal(r.failures[1].title, "expired token");
+    } },
 ];
 
 let pass = 0, fail = 0;

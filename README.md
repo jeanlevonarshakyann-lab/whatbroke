@@ -60,6 +60,9 @@ Exit code is passed straight through, so `whatbroke` is safe to leave in a Makef
 | **unittest** | same, with the deepest *your-code* frame — not the harness |
 | **Python tracebacks** | the frame in your code, not the 9 in site-packages |
 | **Node stack traces** | the error, the caret, your frames; `node:internal` hidden |
+| **jest** | test name, `file:line`, the matcher, expected vs received |
+| **vitest** | same, with the real source line — not vitest's truncated `…` version |
+| **eslint** | errors only; warnings counted and set aside |
 | **tsc** | errors grouped by file with source context |
 | *anything else* | best-effort: lines that look like errors, marked as a guess |
 
@@ -75,7 +78,7 @@ Extractors are ~40 lines and self-contained. Drop a file in `src/extractors/`, e
 
 Real captured output only — no hand-written samples. Every parser in here was built against output actually produced on a real machine, which is why they work.
 
-Wanted: `go test`, `cargo`, `jest`, `vitest`, `eslint`, `rspec`, `gradle`, `maven`, `webpack`, `clang`.
+Wanted: `go test`, `cargo`, `rspec`, `gradle`, `maven`, `webpack`, `clang`, `ruff`, `mypy`.
 
 ## Test
 

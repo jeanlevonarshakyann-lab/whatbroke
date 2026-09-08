@@ -1,0 +1,59 @@
+
+ RUN  v5.0.0 /home/dev/js
+
+ ❯ shop.test.js (4 tests | 3 failed) 4ms
+   × invoice total 3ms
+   × expired token 0ms
+   ✓ ok 0ms
+   × throws 0ms
+
+⎯⎯⎯⎯⎯⎯⎯ Failed Tests 3 ⎯⎯⎯⎯⎯⎯⎯
+
+ FAIL  shop.test.js > invoice total
+AssertionError: expected 1049 to be 1050 // Object.is equality
+
+- Expected
++ Received
+
+- 1050
++ 1049
+
+ ❯ shop.test.js:3:62
+      1| import { expect, test } from "vitest";
+      2| const total = (items, tax) => items.reduce((a, b) => a + b, 0) + Math.…
+      3| test("invoice total", () => { expect(total([1000, 49], 0.5)).toBe(1050…
+       |                                                              ^
+      4| test("expired token", () => { const tok = { sub: "u1" }; expect(tok.ex…
+      5| test("ok", () => { expect(1).toBe(1); });
+
+⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯[1/3]⎯
+
+ FAIL  shop.test.js > expired token
+AssertionError: expected undefined to be defined
+ ❯ shop.test.js:4:74
+      2| const total = (items, tax) => items.reduce((a, b) => a + b, 0) + Math.…
+      3| test("invoice total", () => { expect(total([1000, 49], 0.5)).toBe(1050…
+      4| test("expired token", () => { const tok = { sub: "u1" }; expect(tok.ex…
+       |                                                                          ^
+      5| test("ok", () => { expect(1).toBe(1); });
+      6| test("throws", () => { const cfg = null; expect(cfg.rate).toBe(0.2); }…
+
+⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯[2/3]⎯
+
+ FAIL  shop.test.js > throws
+TypeError: Cannot read properties of null (reading 'rate')
+ ❯ shop.test.js:6:53
+      4| test("expired token", () => { const tok = { sub: "u1" }; expect(tok.ex…
+      5| test("ok", () => { expect(1).toBe(1); });
+      6| test("throws", () => { const cfg = null; expect(cfg.rate).toBe(0.2); }…
+       |                                                     ^
+      7|
+
+⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯[3/3]⎯
+
+
+ Test Files  1 failed (1)
+      Tests  3 failed | 1 passed (4)
+   Start at  14:19:17
+   Duration  87ms (transform 46%, import 24%, tests 22%, worker 8%)
+

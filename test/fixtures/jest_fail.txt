@@ -1,0 +1,37 @@
+FAIL ./sum.test.js
+  ● invoice total
+
+    expect(received).toBe(expected) // Object.is equality
+
+    Expected: 1050
+    Received: 1049
+
+      1 | const total = (items, tax) => items.reduce((a, b) => a + b, 0) + Math.trunc(tax);
+    > 2 | test("invoice total", () => { expect(total([1000, 49], 0.5)).toBe(1050); });
+        |                                                              ^
+      3 | test("expired token", () => { const tok = { sub: "u1" }; expect(tok.exp).toBeDefined(); });
+      4 | test("ok", () => { expect(1).toBe(1); });
+      5 |
+
+      at Object.toBe (sum.test.js:2:62)
+
+  ● expired token
+
+    expect(received).toBeDefined()
+
+    Received: undefined
+
+      1 | const total = (items, tax) => items.reduce((a, b) => a + b, 0) + Math.trunc(tax);
+      2 | test("invoice total", () => { expect(total([1000, 49], 0.5)).toBe(1050); });
+    > 3 | test("expired token", () => { const tok = { sub: "u1" }; expect(tok.exp).toBeDefined(); });
+        |                                                                          ^
+      4 | test("ok", () => { expect(1).toBe(1); });
+      5 |
+
+      at Object.toBeDefined (sum.test.js:3:74)
+
+Test Suites: 1 failed, 1 total
+Tests:       2 failed, 1 passed, 3 total
+Snapshots:   0 total
+Time:        0.143 s
+Ran all test suites matching sum.test.js.

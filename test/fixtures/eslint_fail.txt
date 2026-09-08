@@ -1,0 +1,9 @@
+
+/home/dev/js/messy.js
+  1:7   error    'unused' is assigned a value but never used  no-unused-vars
+  3:9   error    Expected '===' and instead saw '=='          eqeqeq
+  3:26  error    'undefinedThing' is not defined              no-undef
+  4:10  warning  Empty block statement                        no-empty
+
+✖ 4 problems (3 errors, 1 warning)
+

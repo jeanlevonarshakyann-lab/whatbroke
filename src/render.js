@@ -17,6 +17,7 @@ const pad = (n, w) => String(n).padStart(w);
 export function render(result, { max = 5, cwd = true } = {}) {
   const out = [];
   const fails = result.failures;
+  let lastSnip = null;   // don't reprint the same source region twice in a row
 
   if (result.summary) {
     out.push(`  ${C.red}${C.bold}✗${C.reset} ${C.bold}${result.summary}${C.reset}`);
@@ -38,8 +39,18 @@ export function render(result, { max = 5, cwd = true } = {}) {
       if (m.trim()) out.push(`    ${C.red}${m}${C.reset}`);
     }
 
-    const snip = snippet(f.file, f.line);
+    const near = lastSnip && lastSnip.file === f.file && Math.abs(lastSnip.line - f.line) <= 2;
+    const snip = near ? null : snippet(f.file, f.line);
+    if (near) {
+      const one = snippet(f.file, f.line, 0);
+      if (one) {
+        const w = String(one[0].n).length;
+        out.push(`      ${C.dim}${pad(one[0].n, w)}${C.reset} ${C.red}│${C.reset} ${one[0].text}`);
+        if (f.col) out.push(`      ${" ".repeat(w)} ${C.dim}│${C.reset} ${" ".repeat(Math.max(0, f.col - 1))}${C.red}^${C.reset}`);
+      }
+    }
     if (snip) {
+      lastSnip = { file: f.file, line: f.line };
       out.push("");
       const w = String(snip.at(-1).n).length;
       for (const s of snip) {
