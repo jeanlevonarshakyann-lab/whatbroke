@@ -1,10 +1,10 @@
-const DIAGNOSTIC_RE = /^(.+?)\((\d+),(\d+)\):\s+(error|warning)\s+([A-Z]\w*\d+):\s+(.+)$/;
+const DIAGNOSTIC_RE = /^(.+?\.(?:cs|fs|vb))\((\d+),(\d+)\):\s+(error|warning)\s+([A-Z]\w*\d+):\s+(.+)$/m;
 
 export default {
   name: "dotnet",
-  detect: (s) =>
-    /^\s*Determining projects to restore\.\.\./m.test(s) &&
-    /^\S.+\(\d+,\d+\):\s+(?:error|warning)\s+[A-Z]\w*\d+:/m.test(s),
+  // A --no-restore build has no restore banner. Source extensions distinguish
+  // these diagnostics from TypeScript's otherwise identical location syntax.
+  detect: (s) => DIAGNOSTIC_RE.test(s),
 
   extract(s) {
     const failures = [];

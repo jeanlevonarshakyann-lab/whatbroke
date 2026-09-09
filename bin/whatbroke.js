@@ -2,6 +2,7 @@
 import { spawn } from "node:child_process";
 import { appendFileSync } from "node:fs";
 import { createRequire } from "node:module";
+import { constants as osConstants } from "node:os";
 import { analyse } from "../src/index.js";
 import { render, setColor } from "../src/render.js";
 const { version } = createRequire(import.meta.url)("../package.json");
@@ -205,7 +206,7 @@ if (argv.length === 0) {
   });
   child.on("close", (code, signal) => {
     if (code === 0 && !json) process.exit(0);
-    const signalCode = signal ? 128 + ({ SIGHUP: 1, SIGINT: 2, SIGQUIT: 3, SIGTERM: 15 }[signal] ?? 1) : null;
+    const signalCode = signal ? 128 + (osConstants.signals?.[signal] ?? 1) : null;
     report(buf, code ?? signalCode ?? 1, truncated);
   });
 }

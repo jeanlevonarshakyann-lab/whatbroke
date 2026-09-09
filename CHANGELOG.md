@@ -2,6 +2,10 @@
 
 ## Unreleased
 
+- Fixed: standalone javac diagnostics route to the JVM parser, and Gradle compiler warnings are excluded from failures.
+- Fixed: .NET diagnostics no longer require a restore banner; mypy detection preserves `.py` and `.pyi` diagnostics with optional columns and no summary.
+- Fixed: `--no-source` retains statements captured in the log without reading source files.
+- Fixed: signal exit codes use the platform's signal numbers, including exit code 137 for `SIGKILL`.
 - Fixed: Node assertion boilerplate could group unrelated numeric failures as one likely cause.
 - Fixed: nested Node test suites emitted duplicate parent failures alongside their failing tests.
 - Group failures that share a likely cause, and lead with the number of causes

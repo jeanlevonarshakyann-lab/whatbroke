@@ -178,7 +178,7 @@ them.
 | **mypy** | error code, `file:line`, the type-checking message; notes and warnings set aside |
 | **GCC/Clang** | compiler errors with `file:line:column`; warnings and notes set aside |
 | **RSpec** | example name, failure message, and `spec/file:line` location |
-| **Maven/Gradle** | JVM compiler errors, Surefire test failures, and build scripts that fail to evaluate |
+| **javac / Maven / Gradle** | JVM compiler errors with warnings excluded, Surefire test failures, and build scripts that fail to evaluate |
 | **.NET** | compiler error codes with `file:line:column`; warnings set aside |
 | **dotnet test** | test name, `file:line`, the assertion; reflection frames dropped |
 | **PHPUnit** | test name, assertion message, and `file:line` location |
