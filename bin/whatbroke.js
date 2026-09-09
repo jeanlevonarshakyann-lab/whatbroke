@@ -5,6 +5,7 @@ import { createRequire } from "node:module";
 import { constants as osConstants } from "node:os";
 import { analyse } from "../src/index.js";
 import { render, setColor } from "../src/render.js";
+import { normTitle } from "../src/cluster.js";
 const { version } = createRequire(import.meta.url)("../package.json");
 
 const argv = process.argv.slice(2);
@@ -87,10 +88,14 @@ const noCluster = has("--no-cluster");
 const quiet = has("-q", "--quiet") || json;
 const opts = { max: has("-a", "--all") ? Infinity : 5 };
 
-const escapeAnnotation = (value) => String(value)
+// The runner unescapes only these three in a message body. Escaping a colon there
+// too leaves "AssertionError%3A expected 1" on screen, so : and , are escaped in
+// property values only - where the , and :: separators genuinely need it.
+const escapeData = (value) => String(value)
   .replace(/%/g, "%25")
   .replace(/\r/g, "%0D")
-  .replace(/\n/g, "%0A")
+  .replace(/\n/g, "%0A");
+const escapeAnnotation = (value) => escapeData(value)
   .replace(/:/g, "%3A")
   .replace(/,/g, "%2C");
 
@@ -100,22 +105,72 @@ function annotation(f) {
   if (f.line) params.push(`line=${f.line}`);
   if (f.col) params.push(`col=${f.col}`);
   if (f.title) params.push(`title=${escapeAnnotation(f.title)}`);
-  const message = escapeAnnotation(f.message ?? f.stmt ?? "Command failed");
+  const message = escapeData(f.message ?? f.stmt ?? "Command failed");
   return `::error${params.length ? ` ${params.join(",")}` : ""}::${message}`;
 }
 
+// The step summary is the one screen a human actually reads in CI, so it leads with
+// causes exactly like the terminal does. Annotations stay one per failure - each is a
+// marker on a line in the diff view, and dropping one hides a line - so nothing here
+// removes information, it only decides what sits above the fold.
 function writeGithubSummary(result, truncated) {
   const target = process.env.GITHUB_STEP_SUMMARY;
   if (!target || !result) return;
   const markdown = (value) => String(value)
     .replace(/\\/g, "\\\\")
-    .replace(/([`*_{}\[\]()#+\-.!|>])/g, "\\$1")
+    .replace(/([`*_{}\[\]()#+\-.!|<>])/g, "\\$1")
     .replace(/\r?\n/g, " ");
-  const lines = [`## whatbroke`, "", result.summary ? `**${markdown(result.summary)}**` : ""];
-  for (const f of result.failures) {
-    const location = f.file ? ` [${markdown(f.file)}${f.line ? `:${f.line}` : ""}]` : "";
-    lines.push(`- **${markdown(f.title || "failure")}**${location}: ${markdown(String(f.message ?? f.stmt ?? "").split("\n")[0])}`);
+  // A code span needs no escaping and must not receive any. It must also not contain
+  // a backtick, or the span closes early and the rest of the path becomes markup.
+  const code = (value) => "`" + String(value).replace(/[`\r\n]/g, " ").trim() + "`";
+  const fails = result.failures;
+  const at = (f) => (f.file ? `${f.file}${f.line ? `:${f.line}` : ""}` : (f.title || "?"));
+  const head = (f) => markdown(String(f.message ?? f.stmt ?? "").split("\n")[0]);
+  const plural = (n, word) => `${n} ${word}${n > 1 ? "s" : ""}`;
+
+  // Same fallback as the terminal: with clustering off this is the old flat list.
+  const units = result.clusters
+    ?? fails.map((_, i) => ({ size: 1, members: [i], exemplar: i, reported: false }));
+  const reported = units.filter((u) => u.reported);
+
+  const lines = ["## whatbroke", ""];
+  if (result.summary) lines.push(`**${markdown(result.summary)}**`, "");
+  if (reported.length) {
+    const sites = reported.reduce((n, u) => n + u.size, 0);
+    const others = fails.length - sites;
+    lines.push(`**${plural(reported.length, "likely cause")}, ${plural(sites, "site")}` +
+               `${others ? ` (+${plural(others, "other")})` : ""}**`, "");
   }
+
+  reported.forEach((u, n) => {
+    const f = fails[u.exemplar];
+    // one parametrized family reads as "N cases", not "N sites" - as in the terminal
+    const family = u.members.every((i) => normTitle(fails[i].title) === normTitle(f.title));
+    lines.push(`### ${n + 1}. ${markdown((family ? normTitle(f.title) : f.title) || "failure")}`, "");
+    lines.push(`${code(at(f))} — ${head(f)}`, "");
+    // Parametrized cases share a source line, so the member count and the number of
+    // distinct places differ. Label the disclosure with what is actually inside it -
+    // "6 sites" above a list of three is the tool contradicting its own evidence.
+    const sites = [...new Set(u.members.map((i) => at(fails[i])))];
+    const label = sites.length === u.size
+      ? plural(u.size, family ? "case" : "site")
+      : `${plural(u.size, "case")} at ${plural(sites.length, "site")}`;
+    lines.push(`<details><summary>${label}</summary>`, "");
+    for (const s of sites) lines.push(`- ${code(s)}`);
+    lines.push("", "</details>", "");
+  });
+
+  const rest = units.filter((u) => !u.reported).map((u) => u.exemplar);
+  if (rest.length) {
+    if (reported.length) lines.push("### Other failures", "");
+    const body = rest.map((i) => `- **${markdown(fails[i].title || "failure")}**` +
+      `${fails[i].file ? ` ${code(at(fails[i]))}` : ""}: ${head(fails[i])}`);
+    // A long ungrouped tail buries the causes above it. Fold it, never drop it: the
+    // summary stays a complete account of everything that failed.
+    if (body.length > 10) lines.push(`<details><summary>${body.length} more</summary>`, "", ...body, "", "</details>", "");
+    else lines.push(...body, "");
+  }
+
   if (truncated) lines.push("", "> Output capture limit reached. Increase `--max-bytes` for complete diagnostics.");
   appendFileSync(target, `${lines.join("\n")}\n`);
 }
@@ -139,7 +194,13 @@ function report(raw, code, truncated = false, executionError = null) {
     process.stdout.write(JSON.stringify(payload, null, 2) + "\n");
   } else if (githubActions && r) {
     for (const f of r.failures) process.stdout.write(`${annotation(f)}\n`);
-    if (r.summary) process.stdout.write(`::notice title=whatbroke::${r.summary}\n`);
+    // the notice is the line shown at the top of the run - it says causes, not just count
+    const causes = (r.clusters ?? []).filter((c) => c.reported);
+    const sites = causes.reduce((n, c) => n + c.size, 0);
+    const lead = [r.summary, causes.length &&
+      `${causes.length} likely cause${causes.length > 1 ? "s" : ""}, ${sites} site${sites > 1 ? "s" : ""}`]
+      .filter(Boolean).join(" \u2014 ");
+    if (lead) process.stdout.write(`::notice title=whatbroke::${escapeData(lead)}\n`);
     writeGithubSummary(r, truncated);
   } else if (r) {
     process.stdout.write("\n" + render(r, { ...opts, source: !noSource, cluster: !noCluster }));

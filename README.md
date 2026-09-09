@@ -97,8 +97,10 @@ To turn parsed failures into clickable annotations in the Actions UI:
   run: npx --yes @jeanlevon/whatbroke --github-actions npm test
 ```
 
-When GitHub provides `GITHUB_STEP_SUMMARY`, the same mode also adds a compact
-Markdown report to the job's Summary tab.
+When GitHub provides `GITHUB_STEP_SUMMARY`, the same mode also writes a report to the
+job's Summary tab. That report leads with the likely causes, one section each, with
+their sites folded behind a disclosure — the same shape the terminal prints. Failures
+that were not grouped follow it, so the summary stays a complete account of the run.
 
 For workflows that prefer GitHub's problem matcher protocol, add
 `.github/whatbroke.problem-matcher.json` with:
@@ -244,9 +246,11 @@ What keeps it honest:
   unrelated `assert 1 == 2` failures do not become "one likely cause".
 - Three sites minimum. Two failures sharing a shape is usually coincidence.
 
-Nothing is hidden: `failures` is unchanged in `--json` and every annotation is still
-emitted in `--format github`. Grouping only decides which failures the terminal
-spends its five slots on. `--no-cluster` turns it off everywhere.
+Nothing is hidden: `failures` is unchanged in `--json`, and `--format github` still
+emits one annotation per failure — each one is a marker on a line in the diff view, and
+dropping one would hide a line. Grouping only decides what leads: the terminal's five
+slots, the job summary's sections, and the run's notice line. `--no-cluster` turns it
+off everywhere.
 
 Source context is read from the file on disk. If the file has changed since the command
 ran — you edited it, or you piped in saved output — whatbroke says so and shows the line

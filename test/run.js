@@ -1160,6 +1160,86 @@ try {
   pass++;
 } catch (e) { console.log(`  FAIL GitHub Actions summary\n       ${e.message}`); fail++; }
 
+// The step summary is what a human reads in CI, so it leads with causes like the
+// terminal does - while the annotations below it stay one per failure, because each
+// one is a marker on a line and dropping one hides a line.
+try {
+  const { mkdtempSync, readFileSync, rmSync } = await import("node:fs");
+  const { tmpdir } = await import("node:os");
+  const { join } = await import("node:path");
+  const dir = mkdtempSync(join(tmpdir(), "whatbroke-cluster-summary-"));
+  const summary = join(dir, "summary.md");
+  const raw = fx("eslint_bulk_fail.txt");
+  const r = spawnSync(process.execPath, [cli, "--format", "github"], {
+    input: raw, encoding: "utf8", env: { ...process.env, GITHUB_STEP_SUMMARY: summary },
+  });
+  const md = readFileSync(summary, "utf8");
+  const analysed = analyse(raw);
+  const causes = analysed.clusters.filter((c) => c.reported);
+  assert.ok(causes.length >= 2, "fixture must actually cluster for this test to mean anything");
+  assert.match(md, new RegExp(`\\*\\*${causes.length} likely causes, \\d+ sites`),
+    "summary must lead with the cause count");
+  assert.match(md, /^### 1\. /m, "each cause gets its own section");
+  assert.match(md, /<details><summary>\d+ (?:case|site)s<\/summary>/, "sites are folded, not listed flat");
+  // nothing is hidden: every failure still reaches the summary and the annotations
+  for (const f of analysed.failures) assert.ok(md.includes(`${f.file}:${f.line}`), `${f.file}:${f.line} missing`);
+  assert.equal((r.stdout.match(/^::error /gm) ?? []).length, analysed.failures.length);
+  assert.match(r.stdout, /^::notice title=whatbroke::.* likely causes, \d+ sites$/m);
+  rmSync(dir, { recursive: true, force: true });
+  console.log("  ok   GitHub summary leads with clusters and hides nothing");
+  pass++;
+} catch (e) { console.log(`  FAIL GitHub clustered summary\n       ${e.message}`); fail++; }
+
+// A disclosure that says "6 sites" over a list of three is the tool contradicting its
+// own evidence, which is the one thing clustering must never do. Members and distinct
+// places diverge whenever parametrized cases share a source line.
+try {
+  const { mkdtempSync, readFileSync, rmSync } = await import("node:fs");
+  const { tmpdir } = await import("node:os");
+  const { join } = await import("node:path");
+  const dir = mkdtempSync(join(tmpdir(), "whatbroke-labels-"));
+  let checked = 0;
+  for (const name of readdirSync(join(here, "fixtures"))) {
+    const summary = join(dir, `${name}.md`);
+    spawnSync(process.execPath, [cli, "--format", "github"], {
+      input: fx(name), encoding: "utf8", env: { ...process.env, GITHUB_STEP_SUMMARY: summary },
+    });
+    const md = readFileSync(summary, "utf8");
+    for (const [, label, body] of md.matchAll(/<details><summary>(.*?)<\/summary>\n(.*?)<\/details>/gs)) {
+      const listed = body.split("\n").filter((l) => l.startsWith("- ")).length;
+      const claimed = Number((label.match(/\d+/g) ?? []).at(-1));
+      assert.equal(claimed, listed, `"${label}" in ${name} sits above ${listed} entries`);
+      checked++;
+    }
+  }
+  assert.ok(checked > 5, "the corpus must actually produce disclosures for this to test anything");
+  rmSync(dir, { recursive: true, force: true });
+  console.log(`  ok   every GitHub summary disclosure counts what it lists (${checked} checked)`);
+  pass++;
+} catch (e) { console.log(`  FAIL GitHub summary disclosure counts\n       ${e.message}`); fail++; }
+
+// A workflow command unescapes only %25/%0D/%0A in a message body, so escaping a
+// colon there leaves "KeyError%3A 'exp'" on screen. Property values still need it.
+try {
+  const r = spawnSync(process.execPath, [cli, "--format", "github"], {
+    input: fx("pytest_fail.txt"), encoding: "utf8",
+    env: { ...process.env, GITHUB_STEP_SUMMARY: "" },
+  });
+  const errors = r.stdout.match(/^::error .*$/gm) ?? [];
+  assert.ok(errors.some((l) => l.endsWith("::KeyError: 'exp'")), "message colons stay literal");
+  for (const line of errors) {
+    const [props, ...rest] = line.slice("::error ".length).split("::");
+    assert.doesNotMatch(rest.join("::"), /%3A|%2C/, "message must not carry property escapes");
+    // a raw comma or colon inside a value would be read as the next property, or as
+    // the end of the property block - so those two stay escaped here
+    for (const prop of props.split(",")) {
+      assert.doesNotMatch(prop.slice(prop.indexOf("=") + 1), /[:,]/, "property values must stay escaped");
+    }
+  }
+  console.log("  ok   annotation messages keep colons that property values escape");
+  pass++;
+} catch (e) { console.log(`  FAIL annotation escaping\n       ${e.message}`); fail++; }
+
 try {
   const r = spawnSync(process.execPath, [cli, "--quiet", "--max-bytes", "1024",
     "node", "-e", "console.error('x'.repeat(5000)); process.exit(1)"], { encoding: "utf8" });
