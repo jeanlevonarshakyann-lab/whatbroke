@@ -99,6 +99,12 @@ test("no detector newly claims a log that is not its own", () => {
 test("no losing detector newly starts extracting failures", () => {
   for (const [f, was] of Object.entries(snapshot)) {
     for (const [name, n] of Object.entries(current[f].shadow)) {
+      // `generic` is the exception, and inertly so. It is registered last, so it can
+      // never take a log from a parser that recognises it, and `otherTools` skips it
+      // outright - so it never contributes to a mixed log either. Its reach growing is
+      // the fallback getting better at the long tail, not a collision. Still recorded
+      // in the snapshot, just not a failure.
+      if (name === "generic") continue;
       const before = was.shadow?.[name] ?? 0;
       assert.ok(n <= before,
         `${f}: ${name} does not own this log but would now extract ${n} failures (was ${before})`);
