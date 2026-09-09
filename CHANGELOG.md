@@ -2,6 +2,13 @@
 
 ## Unreleased
 
+- Fixed: a log relayed through a line-prefixing runner — Turborepo, Docker BuildKit,
+  pnpm, kubectl — produced no diagnosis at all, because every parser anchors on the start
+  of a line. Uniform prefixes are now detected and removed, and reported on the result.
+  A prefix is only removed when removing it lets a real parser find something it could
+  not find before, so a tool's own uniform prefix (`npm error `, mypy's repeated source
+  directory) is left intact.
+
 - Fixed: a log containing a long run of blank or whitespace-only lines took tens of
   seconds to analyse. `\s` matches a newline, so a line-anchored pattern like
   `/^\s+at /m` consumed every remaining newline at each blank line and then backtracked
