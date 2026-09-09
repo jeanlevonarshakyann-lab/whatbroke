@@ -71,9 +71,15 @@ function otherTools(s, winner, mine, cluster) {
       .filter((f) => !claimed.has(exact(f)))
       // A tool's CLI wrapper reports that the tool exited non-zero, and that stack sits
       // entirely in node internals. It is the same failure a second time, told worse.
-      // The winner's own failures are never filtered this way - if node internals are
-      // all a log has, that is still the answer.
-      .filter((f) => !isNoise(f.file)));
+      .filter((f) => !isNoise(f.file))
+      // A diagnostic with no location and no code, from a tool that does NOT own this
+      // log, is a stray match on somebody else's text far more often than a finding.
+      // bun prints `error: expect(received).toEqual(expected)` and cargo's `^error:`
+      // claims it, which is why bun.js asks to be registered ahead of cargo - ordering
+      // settles who WINS, but every other parser is still asked, so the same collision
+      // arrives here instead. The winner is never filtered this way: when cargo owns a
+      // log, an unanchored `error: linking with cc failed` is exactly the answer.
+      .filter((f) => f.file || f.code || f.subject || f.label));
     if (!fresh.length) continue;
     // Between two OTHER tools the location alone is too blunt: eslint and tsc can flag
     // the same line for entirely different reasons, and dropping one of those loses a
