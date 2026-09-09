@@ -874,6 +874,26 @@ try {
   pass++;
 } catch (e) { console.log(`  FAIL parser overlap\n       ${e.message}`); fail++; }
 
+// on Windows these tools emit backslash separators; parsing must not depend on /
+try {
+  const cases = {
+    "tsc_chain_fail.txt": (t) => t.replace(/src\//g, "src\\"),
+    "eslint_bulk_fail.txt": (t) => t.replace(/lib\//g, "lib\\").replace(/adapters\//g, "adapters\\"),
+    "dotnet_fail.txt": (t) => t.replace(/\//g, "\\"),
+  };
+  for (const [file, toWindows] of Object.entries(cases)) {
+    const unix = analyse(fx(file));
+    const win = analyse(toWindows(fx(file)));
+    assert.ok(win, `${file}: windows paths stopped it parsing`);
+    assert.equal(win.tool, unix.tool, `${file}: windows paths changed the tool`);
+    assert.equal(win.failures.length, unix.failures.length, `${file}: windows paths changed the count`);
+    assert.deepEqual(win.failures.map((f) => f.line), unix.failures.map((f) => f.line));
+    assert.match(win.failures[0].file, /\\/, `${file}: the backslash path should be preserved`);
+  }
+  console.log("  ok   windows backslash paths parse the same as posix ones");
+  pass++;
+} catch (e) { console.log(`  FAIL windows paths\n       ${e.message}`); fail++; }
+
 // CRLF input must parse identically to LF - Windows, and logs pasted from Windows CI
 try {
   for (const name of ["pytest_fail.txt", "gotest_fail.txt", "cargobuild_fail.txt", "node_stack.txt"]) {
