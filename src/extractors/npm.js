@@ -38,7 +38,13 @@ export default {
     return {
       tool: "npm",
       summary: undefined,
-      failures: [{ title: code, code, severity: "error", message: msg.join("\n") }],
+      // npm only sometimes prints a code (ENOENT, ELIFECYCLE). Without one the failure
+      // still has to say what it is, or it reads as unclassified and gets filtered as an
+      // unanchored claim when it turns up alongside another tool's output.
+      failures: [{
+        title: code, ...(code ? { code } : { label: "npm" }),
+        severity: "error", message: msg.join("\n"),
+      }],
     };
   },
 };

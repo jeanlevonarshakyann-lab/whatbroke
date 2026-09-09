@@ -257,6 +257,17 @@ The same diagnosis is never reported twice: unittest prints its failures *as* Py
 tracebacks, and that is one failure read two ways, not two failures. Two different tools
 flagging the same line for different reasons are both kept, because they are.
 
+A tool that does not own the log has to say where its failure is, or what it is — a
+diagnostic with no location and no identifier is a stray match on somebody else's text
+far more often than a finding. The tool that *does* own the log is never filtered that
+way, so `error: linking with cc failed`, which has neither, is still the answer when
+cargo owns the output.
+
+One honest limit: parsers are asked about the whole log rather than the region they own,
+so in a concatenated log a parser can still match a fragment of another tool's output —
+a Python `KeyError:` line read as a Node exception, for instance. The winning tool's
+failures are unaffected.
+
 CI stamps every line — GitHub Actions prefixes an ISO timestamp, and `gh run view --log`
 puts the job and step in front of that. Every parser here anchors on the start of a line,
 so a stamped log would match nothing at all. whatbroke strips a uniform prefix before

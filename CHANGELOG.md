@@ -2,6 +2,14 @@
 
 ## Unreleased
 
+- Fixed: a tool that does not own the log could contribute a failure with no location
+  and no identifier, which is a stray match on another tool's text far more often than a
+  finding. bun prints `error: expect(received).toEqual(expected)` and cargo's `^error:`
+  claimed it, so a bun log showed a fourth cargo compile error that does not exist. The
+  winning tool is never filtered this way.
+- Fixed: an npm failure with no code declared nothing about itself, so it was treated as
+  an unanchored claim and vanished from a mixed log entirely.
+
 - Fixed: the vite parser treated any bracketed uppercase word as a rollup diagnostic
   code, so an interleaved `[INFO]` or `[WARN]` line from another tool became a build
   error. Diagnostics are now read only after vite says the build failed, and log-level

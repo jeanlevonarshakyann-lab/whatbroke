@@ -128,6 +128,42 @@ test("two tools may both flag the same line for different reasons", () => {
   assert.notEqual(online3[0].title, online3[1].title);
 });
 
+// ------------------------------------------------- claims from a losing tool
+
+test("a tool that does not own the log cannot contribute an unanchored failure", () => {
+  // bun prints `error: expect(received).toEqual(expected)` and cargo's `^error:` claims
+  // it, which is why bun asks to be registered ahead of cargo. Ordering settles who
+  // WINS, but every other parser is still asked, so the same collision arrives here.
+  const r = analyse(fx("bun_fail.txt") + "\n" + fx("cargobuild_fail.txt"));
+  assert.equal(r.tool, "bun test");
+  const cargo = r.others.find((o) => o.tool === "cargo");
+  assert.equal(cargo.failures.length, analyse(fx("cargobuild_fail.txt")).failures.length,
+    "cargo picked up bun's assertion text as a fourth compile error");
+  for (const other of r.others) {
+    for (const f of other.failures) {
+      assert.ok(f.file || f.code || f.subject,
+        `${other.tool} contributed a failure with no location and no identifier`);
+    }
+  }
+});
+
+test("a wrapper's stack is not a second tool's failures", () => {
+  // esbuild's CLI wrapper crashes after esbuild exits non-zero; that stack lives
+  // entirely in node internals and is the same failure told worse.
+  const r = analyse(fx("esbuild_syntax_fail.txt"));
+  assert.equal(r.tool, "esbuild");
+  assert.equal(r.others, undefined);
+});
+
+test("a tool whose failures never carry a file is still reported", () => {
+  // npm's failures have no file at all. Filtering the mixed-log path on location alone
+  // would drop them silently, which is hiding a failure rather than showing a weak one.
+  const r = analyse(fx("npm_fail.txt") + "\n" + fx("pytest_fail.txt"));
+  const npm = (r.others ?? []).find((o) => o.tool === "npm");
+  assert.ok(npm, "npm's failures vanished from the mixed log");
+  assert.ok(npm.failures.length > 0);
+});
+
 // ------------------------------------------------------------------ output
 
 test("a mixed log shows every tool in the terminal", () => {
