@@ -79,10 +79,22 @@ export default {
         ? [`${errName}: ${msg[0]}`, ...msg.slice(1)].join("\n")
         : msg.join("\n");
 
+      // "test failed" is node's own wording for a file that threw before declaring a
+      // test, and it says nothing. What actually happened was printed to stderr above
+      // the subtest, as TAP comments, and that is the only place it appears.
+      let detail = message;
+      if (/^(?:test failed|ERR_TEST_FAILURE)$/.test(message.trim())) {
+        for (let k = i - 1; k >= 0 && k >= i - 60; k--) {
+          const c = lines[k].match(/^#[^\S\n]+((?:[A-Z]\w*)?(?:Error|Exception)(?:[^\S\n]\[[\w_]+\])?: .+)$/);
+          if (c) { detail = c[1]; break; }
+          if (/^not ok /.test(lines[k])) break;   // a previous failure's block, not ours
+        }
+      }
+
       const start = scopeStarts.get(head[1].length);
       scopeStarts.delete(head[1].length);
       if (failureType === "subtestsFailed" && start !== undefined && failures.length > start) continue;
-      failures.push({ file, line, col, title: head[2], subject: head[2], severity: "error", message });
+      failures.push({ file, line, col, title: head[2], subject: head[2], severity: "error", message: detail });
     }
 
     if (!failures.length) return null;

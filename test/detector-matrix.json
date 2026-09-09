@@ -648,6 +648,18 @@
     ],
     "shadow": {}
   },
+  "nodetest_crash_fail.txt": {
+    "winner": "node --test",
+    "parser": "node --test",
+    "failures": 1,
+    "claimants": [
+      "node --test",
+      "generic"
+    ],
+    "shadow": {
+      "generic": 2
+    }
+  },
   "nodetest_fail.txt": {
     "winner": "node --test",
     "parser": "node --test",
@@ -951,6 +963,18 @@
     ],
     "shadow": {
       "generic": 6
+    }
+  },
+  "vitest_suite_fail.txt": {
+    "winner": "vitest",
+    "parser": "vitest",
+    "failures": 1,
+    "claimants": [
+      "vitest",
+      "generic"
+    ],
+    "shadow": {
+      "generic": 2
     }
   },
   "yarn_fail.txt": {
