@@ -16,7 +16,7 @@ export default {
     const blocks = [];
     let cur = null;
     for (const l of lines) {
-      const b = l.match(/^_{3,}[ \t]+(.+?)[ \t]+_{3,}$/);
+      const b = l.match(/^_{3,}[^\S\n]+(.+?)[^\S\n]+_{3,}$/);
       if (b) { cur = { title: b[1], body: [] }; blocks.push(cur); continue; }
       if (/^=+ .* =+$/.test(l)) { cur = null; continue; }
       if (cur) cur.body.push(l);
@@ -26,7 +26,7 @@ export default {
       // trailing "path:line: ExceptionType"
       let file, line, kind;
       for (let i = blk.body.length - 1; i >= 0; i--) {
-        const m = blk.body[i].match(/^(.+?):(\d+):[ \t]*(\w[\w.]*)?[ \t]*$/);
+        const m = blk.body[i].match(/^(.+?):(\d+):[^\S\n]*(\w[\w.]*)?[^\S\n]*$/);
         if (m && !isNoise(m[1])) { file = m[1]; line = +m[2]; kind = m[3]; break; }
       }
       // the failing statement (pytest marks it with ">") and the "E" explanation
@@ -45,7 +45,7 @@ export default {
     // with no decoration at all: "85 failed, 1973 passed, 25 skipped in 3.58s"
     let summary;
     for (let i = lines.length - 1; i >= 0; i--) {
-      const m = lines[i].match(/^=+[ \t]+(.*?(?:failed|passed|error).*?)[ \t]+=+$/i)
+      const m = lines[i].match(/^=+[^\S\n]+(.*?(?:failed|passed|error).*?)[^\S\n]+=+$/i)
              || lines[i].match(/^((?:\d+ (?:failed|passed|skipped|deselected|xfailed|xpassed|error|errors|warning|warnings)(?:, )?)+ in [\d.]+s.*)$/i);
       if (m) { summary = m[1]; break; }
     }

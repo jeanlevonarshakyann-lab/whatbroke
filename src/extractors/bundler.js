@@ -6,9 +6,9 @@
 const ESBUILD_DIAG = /^[✘▲] \[(ERROR|WARNING)\] (?:\[plugin ([^\]]+)\] )?(.+)$/;
 // esbuild puts the location on its own line, indented, with a trailing colon:
 //     src/app.js:5:24:
-const ESBUILD_LOC = /^[ \t]+(\S.*?):(\d+):(\d+):[ \t]*$/;
+const ESBUILD_LOC = /^[^\S\n]+(\S.*?):(\d+):(\d+):[^\S\n]*$/;
 // and the source under that, in a gutter:  5 │   return sum * (1 + rate;
-const ESBUILD_SRC = /^[ \t]*\d+[ \t]*│[ \t]?(.*)$/;
+const ESBUILD_SRC = /^[^\S\n]*\d+[^\S\n]*│[^\S\n]?(.*)$/;
 
 export const esbuild = {
   name: "esbuild",
@@ -53,12 +53,12 @@ export const esbuild = {
 
 // Vite (and rollup/rolldown under it) leads with a bracketed code and draws the
 // location in a box:   ╭─[ src/clean.js:1:22 ]
-const VITE_DIAG = /^\[([A-Z][A-Z0-9_]+)\][ \t]*(.*)$/;
+const VITE_DIAG = /^\[([A-Z][A-Z0-9_]+)\][^\S\n]*(.*)$/;
 // `[INFO]`, `[WARN]`, `[DEBUG]` are what every other tool in the log is printing, and
 // they match a rollup code exactly. Build logs are full of them.
 const LOG_LEVEL = /^(?:INFO|WARN|WARNING|DEBUG|TRACE|NOTICE|ERROR|FATAL|LOG)$/;
-const VITE_LOC = /^[ \t]*╭─+\[[ \t]*(\S.*?):(\d+):(\d+)[ \t]*\]/;
-const VITE_SRC = /^[ \t]*\d+[ \t]*│[ \t]?(.*)$/;
+const VITE_LOC = /^[^\S\n]*╭─+\[[^\S\n]*(\S.*?):(\d+):(\d+)[^\S\n]*\]/;
+const VITE_SRC = /^[^\S\n]*\d+[^\S\n]*│[^\S\n]?(.*)$/;
 
 export const vite = {
   name: "vite",

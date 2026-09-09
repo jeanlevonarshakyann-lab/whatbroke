@@ -1,0 +1,8 @@
+npm notice run pmtest@1.0.0 npx
+npm notice run 'pnpm' run boom
+
+> pmtest@1.0.0 boom /home/dev/app
+> node -e "process.exit(3)"
+
+ ELIFECYCLE  Command failed with exit code 3.
+ WARN   Local package.json exists, but node_modules missing, did you mean to install?

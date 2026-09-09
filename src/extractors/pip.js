@@ -6,17 +6,17 @@ import { traceback } from "./python.js";
 // error arrives as "Could not find a version…" and again as "No matching distribution
 // found for…". None of that is a second failure.
 const NOTICE = /^\[notice\]/;
-const SUBPROCESS_NOTE = /^[ \t]*note: This error originates from a subprocess/;
+const SUBPROCESS_NOTE = /^[^\S\n]*note: This error originates from a subprocess/;
 const IGNORED = /^ERROR: Ignored the following/;
 // "(from versions: 1.3.0, 1.4.1, … 300 more)" is the whole index, not the diagnosis.
-const VERSION_LIST = /[ \t]*\(from versions:[^)]*\)/;
+const VERSION_LIST = /[^\S\n]*\(from versions:[^)]*\)/;
 
-const OUTPUT_START = /^[ \t]*╰─>[ \t]*\[\d+ lines of output\]/;
-const OUTPUT_END = /^[ \t]*\[end of output\]/;
+const OUTPUT_START = /^[^\S\n]*╰─>[^\S\n]*\[\d+ lines of output\]/;
+const OUTPUT_END = /^[^\S\n]*\[end of output\]/;
 
 /** Strip the common indentation pip adds when it quotes a subprocess. */
 function dedent(lines) {
-  const width = Math.min(...lines.filter((l) => l.trim()).map((l) => l.match(/^[ \t]*/)[0].length));
+  const width = Math.min(...lines.filter((l) => l.trim()).map((l) => l.match(/^[^\S\n]*/)[0].length));
   return lines.map((l) => l.slice(width)).join("\n");
 }
 
@@ -38,7 +38,7 @@ function fromOutputBlock(lines, at) {
 }
 
 const requirementOf = (s) => s.match(/^Processing (\S+)/m)?.[1]
-  ?? s.match(/^[ \t]*Building wheel for (\S+)/m)?.[1]
+  ?? s.match(/^[^\S\n]*Building wheel for (\S+)/m)?.[1]
   ?? s.match(/^Collecting (\S+)/m)?.[1];
 
 export default {
@@ -49,7 +49,7 @@ export default {
   // `ERROR: ` alone belongs to half a dozen tools, so it has to be corroborated by
   // something only pip prints.
   detect: (s) =>
-    (/^ERROR: /m.test(s) || /^[ \t]*error: subprocess-exited-with-error/m.test(s)) &&
+    (/^ERROR: /m.test(s) || /^[^\S\n]*error: subprocess-exited-with-error/m.test(s)) &&
     /(Could not find a version that satisfies|No matching distribution found|Could not open requirements file|Invalid requirement:|subprocess-exited-with-error|ResolutionImpossible|Getting requirements to build wheel|^\[notice\] A new release of pip)/m.test(s),
 
   extract(s) {
@@ -90,15 +90,15 @@ export default {
       //   ERROR: Invalid requirement: 'requests==': Expected end or semicolon
       //       requests==
       //               ^ (from line 1 of bad.txt)
-      const bad = l.match(/^ERROR: Invalid requirement: '([^']*)': (.+?)(?:[ \t]*\(from line (\d+) of (.+?)\))?[ \t]*$/);
+      const bad = l.match(/^ERROR: Invalid requirement: '([^']*)': (.+?)(?:[^\S\n]*\(from line (\d+) of (.+?)\))?[^\S\n]*$/);
       if (bad) {
         let file = bad[4];
         let line = bad[3] ? +bad[3] : undefined;
         let stmt;
         for (let j = i + 1; j < lines.length && j <= i + 3; j++) {
-          const from = lines[j].match(/\(from line (\d+) of (.+?)\)[ \t]*$/);
+          const from = lines[j].match(/\(from line (\d+) of (.+?)\)[^\S\n]*$/);
           if (from) { line = +from[1]; file = from[2]; break; }
-          if (lines[j].trim() && !/^[ \t]*\^/.test(lines[j])) stmt ??= lines[j].trim();
+          if (lines[j].trim() && !/^[^\S\n]*\^/.test(lines[j])) stmt ??= lines[j].trim();
         }
         push({ file, line, subject: bad[1], title: "invalid requirement", message: bad[2], stmt });
         continue;

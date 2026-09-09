@@ -2,6 +2,14 @@
 
 ## Unreleased
 
+- Added pnpm and yarn parsers. Both produced no diagnosis at all before, despite being
+  among the most-run commands in a JavaScript project.
+- Fixed: the whitespace class introduced when parsers stopped backtracking across
+  newlines matched only a space and a tab, so a tool indenting with any other kind of
+  whitespace was invisible. pnpm indents with U+2009 THIN SPACE. The class is now
+  `[^\S\n]`, which cannot cross a line either and is exactly as fast, but matches every
+  kind of space a tool might print.
+
 - Fixed: a tool that does not own the log could contribute a failure with no location
   and no identifier, which is a stray match on another tool's text far more often than a
   finding. bun prints `error: expect(received).toEqual(expected)` and cargo's `^error:`

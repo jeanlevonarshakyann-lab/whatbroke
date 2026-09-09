@@ -1,4 +1,4 @@
-const DIAGNOSTIC_RE = /^(.+?\.(?:cs|fs|vb))\((\d+),(\d+)\):[ \t]+(error|warning)[ \t]+([A-Z]\w*\d+):[ \t]+(.+)$/m;
+const DIAGNOSTIC_RE = /^(.+?\.(?:cs|fs|vb))\((\d+),(\d+)\):[^\S\n]+(error|warning)[^\S\n]+([A-Z]\w*\d+):[^\S\n]+(.+)$/m;
 
 export default {
   name: "dotnet",
@@ -15,7 +15,7 @@ export default {
     for (const line of s.split("\n")) {
       const match = line.match(DIAGNOSTIC_RE);
       if (!match) continue;
-      const message = match[6].replace(/[ \t]+\[[^\]]+\.csproj\][ \t]*$/, "");
+      const message = match[6].replace(/[^\S\n]+\[[^\]]+\.csproj\][^\S\n]*$/, "");
       const failure = {
         file: match[1], line: +match[2], col: +match[3],
         title: match[5], code: match[5], severity: "error", message,

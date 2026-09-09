@@ -4,7 +4,7 @@ import { isNoise } from "../util.js";
 function parseTraceback(body) {
   const frames = [];
   for (let i = 0; i < body.length; i++) {
-    const m = body[i].match(/^[ \t]*File "(.+?)", line (\d+), in (.+)$/);
+    const m = body[i].match(/^[^\S\n]*File "(.+?)", line (\d+), in (.+)$/);
     if (m) frames.push({ file: m[1], line: +m[2], fn: m[3], code: (body[i + 1] ?? "").trim() });
   }
   let err = "";

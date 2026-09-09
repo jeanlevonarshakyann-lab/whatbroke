@@ -10,6 +10,27 @@ const fx = (n) => readFileSync(join(here, "fixtures", n), "utf8");
 const cli = join(here, "..", "bin", "whatbroke.js");
 
 const CASES = [
+  // Captured with pnpm 9 and yarn 1.22. pnpm indents its diagnostics with U+2009 THIN
+  // SPACE, not a space - a pattern written [ \t] matches none of it, which is how the
+  // whitespace class used across every parser came to be wrong.
+  { file: "pnpm_script_fail.txt", tool: "pnpm", n: 1, check: (r) => {
+      const raw = fx("pnpm_script_fail.txt");
+      assert.ok(raw.includes("\u2009"), "this fixture exists because pnpm uses a thin space");
+      assert.equal(r.failures[0].code, "ERR_PNPM_NO_SCRIPT");
+      assert.match(r.failures[0].message, /Missing script: nonexistent-script/);
+      assert.equal(r.failures[0].category, "package");
+    } },
+  { file: "pnpm_lifecycle_fail.txt", tool: "pnpm", n: 1, check: (r) => {
+      assert.equal(r.failures[0].code, "ELIFECYCLE");
+      assert.match(r.failures[0].message, /Command failed with exit code 3/);
+      // the WARN line underneath is advice, not a failure
+      assert.doesNotMatch(JSON.stringify(r.failures), /node_modules missing/);
+    } },
+  { file: "yarn_fail.txt", tool: "yarn", n: 1, check: (r) => {
+      assert.match(r.failures[0].message, /Command failed with exit code 3/);
+      // yarn ends with a documentation link; that is not a diagnosis
+      assert.doesNotMatch(JSON.stringify(r.failures), /yarnpkg\.com/);
+    } },
   // Captured with esbuild 0.27 and vite 8.2. Both wrap their real diagnostic in a Node
   // CLI stack reporting that the bundler exited non-zero; that stack is the same failure
   // told worse, and before these parsers it was the only thing whatbroke showed.

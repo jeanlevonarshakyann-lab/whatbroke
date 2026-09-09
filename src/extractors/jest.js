@@ -1,15 +1,15 @@
 // With multiple jest projects the display name comes first: "FAIL jsdom src/a.js".
 // Take the last token, which is always the path.
-const FILE_RE = /^[ \t]*(?:FAIL|PASS)[ \t]+(?:\S+[ \t]+)*?(\S+)[ \t]*$/;
+const FILE_RE = /^[^\S\n]*(?:FAIL|PASS)[^\S\n]+(?:\S+[^\S\n]+)*?(\S+)[^\S\n]*$/;
 // jest uses the same bullet for config complaints as for failed tests
-const TEST_RE = /^[ \t]*●[ \t]+(?!Console|Validation Warning|Deprecation Warning|Invalid testPattern)(.+?)[ \t]*$/;
-const AT_RE = /^[ \t]+at .*?\(?([^\s()]+):(\d+):(\d+)\)?[ \t]*$/;
+const TEST_RE = /^[^\S\n]*●[^\S\n]+(?!Console|Validation Warning|Deprecation Warning|Invalid testPattern)(.+?)[^\S\n]*$/;
+const AT_RE = /^[^\S\n]+at .*?\(?([^\s()]+):(\d+):(\d+)\)?[^\S\n]*$/;
 
 export default {
   name: "jest",
   category: "test",
   commands: ["jest"],
-  detect: (s) => /^Tests:[ \t]+\d/m.test(s) || (/^[ \t]*●[ \t]+/m.test(s) && /^[ \t]*FAIL[ \t]+/m.test(s)),
+  detect: (s) => /^Tests:[^\S\n]+\d/m.test(s) || (/^[^\S\n]*●[^\S\n]+/m.test(s) && /^[^\S\n]*FAIL[^\S\n]+/m.test(s)),
 
   extract(s) {
     const lines = s.split("\n");
@@ -34,11 +34,11 @@ export default {
       for (const l of body) {
         const t = l.trim();
         if (!t) continue;
-        if (/^\d+[ \t]*\|/.test(t) || /^>[ \t]*\d+[ \t]*\|/.test(t) || /^\|/.test(t) || /^\^+$/.test(t)) continue;
+        if (/^\d+[^\S\n]*\|/.test(t) || /^>[^\S\n]*\d+[^\S\n]*\|/.test(t) || /^\|/.test(t) || /^\^+$/.test(t)) continue;
         if (/^at /.test(t)) continue;
         // snapshot diffs open with a pair of count headers - "- Snapshot  - 3" and
         // "+ Received  + 3". Keeping those spends the budget before the actual diff.
-        if (/^[-+][ \t]*(Snapshot|Received)[ \t]+[-+][ \t]*\d+[ \t]*$/.test(t)) continue;
+        if (/^[-+][^\S\n]*(Snapshot|Received)[^\S\n]+[-+][^\S\n]*\d+[^\S\n]*$/.test(t)) continue;
         if (/^@@ [-+\d, ]+ @@$/.test(t)) continue;                   // diff hunk header
         // "Snapshot name: `<the test name> 1`" restates the title we already print
         if (/^Snapshot name:/.test(t)) continue;
@@ -61,7 +61,7 @@ export default {
       i = j - 1;
     }
 
-    const sm = s.match(/^Tests:[ \t]+(.+?)[ \t]*$/m);
+    const sm = s.match(/^Tests:[^\S\n]+(.+?)[^\S\n]*$/m);
     if (!failures.length) return null;
     return { tool: "jest", summary: sm?.[1], failures };
   },

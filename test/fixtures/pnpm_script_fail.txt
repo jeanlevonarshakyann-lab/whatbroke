@@ -1,0 +1,5 @@
+npm notice run pmtest@1.0.0 npx
+npm notice run 'pnpm' run nonexistent-script
+ ERR_PNPM_NO_SCRIPT  Missing script: nonexistent-script
+
+Command "nonexistent-script" not found.

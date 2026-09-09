@@ -1,12 +1,12 @@
-const DIAGNOSTIC_RE = /^(.+?):(\d+):(\d+):[ \t]+(error|fatal error|warning|note):[ \t]+(.+)$/;
-const CODE_RE = /[ \t]+\[(-W[\w-]+)\]$/;
+const DIAGNOSTIC_RE = /^(.+?):(\d+):(\d+):[^\S\n]+(error|fatal error|warning|note):[^\S\n]+(.+)$/;
+const CODE_RE = /[^\S\n]+\[(-W[\w-]+)\]$/;
 
 export default {
   name: "clang",
   category: "compile",
   commands: ["clang", "clang++", "gcc", "g++", "cc", "make"],
   detect: (s) =>
-    /^\S.+:\d+:\d+:[ \t]+(?:error|fatal error|warning|note):[ \t]+/m.test(s) &&
+    /^\S.+:\d+:\d+:[^\S\n]+(?:error|fatal error|warning|note):[^\S\n]+/m.test(s) &&
     /(?:clang|gcc|g\+\+|cc1|ld:|[\w.-]+\.(?:c|cc|cpp|cxx|h|hpp|m|mm):)/i.test(s),
 
   extract(s) {

@@ -1,5 +1,5 @@
 const MAX_NOTES = 2;
-const DIAGNOSTIC_RE = /^(.+?):(\d+)(?::(\d+))?:[ \t]+(error|warning|note):[ \t]+(.+?)(?:[ \t]+\[([^\]]+)\])?$/;
+const DIAGNOSTIC_RE = /^(.+?):(\d+)(?::(\d+))?:[^\S\n]+(error|warning|note):[^\S\n]+(.+?)(?:[^\S\n]+\[([^\]]+)\])?$/;
 
 export default {
   name: "mypy",
@@ -7,10 +7,10 @@ export default {
   commands: ["mypy"],
   detect: (s) =>
     !/(?:clang|gcc|\bg\+\+|cc1|ld:|^> Task .+ FAILED$|^FAILURE: Build failed)/im.test(s) &&
-    (/^[ \t]*Found \d+ errors? in \d+ files?/m.test(s) ||
+    (/^[^\S\n]*Found \d+ errors? in \d+ files?/m.test(s) ||
       // Python source and stubs can include columns and omit the summary.
       // A bare file:line diagnostic also matches javac, so require an extension.
-      /^.+\.pyi?:\d+(?::\d+)?:[ \t]+(?:error|warning|note):[ \t]+/m.test(s)),
+      /^.+\.pyi?:\d+(?::\d+)?:[^\S\n]+(?:error|warning|note):[^\S\n]+/m.test(s)),
 
   extract(s) {
     const lines = s.split("\n");
@@ -36,7 +36,7 @@ export default {
       });
     }
     if (!failures.length) return null;
-    const summaryMatch = s.match(/^[ \t]*Found (\d+) errors? in (\d+) files?/m);
+    const summaryMatch = s.match(/^[^\S\n]*Found (\d+) errors? in (\d+) files?/m);
     const summary = summaryMatch
       ? `${summaryMatch[1]} error${summaryMatch[1] === "1" ? "" : "s"} in ${summaryMatch[2]} file${summaryMatch[2] === "1" ? "" : "s"}`
       : `${failures.length} errors`;

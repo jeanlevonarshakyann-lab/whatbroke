@@ -3,12 +3,12 @@
 // Neither starts with the word "error", so the generic fallback never matched them
 // and the whole run came back silent.
 const LINE_RE = /^npm (?:error|ERR!)\s?(.*)$/;
-const CODE_RE = /^code[ \t]+(E[A-Z_]+|\d+)[ \t]*$/;
+const CODE_RE = /^code[^\S\n]+(E[A-Z_]+|\d+)[^\S\n]*$/;
 // what npm says after it has already told you the problem
 const CHATTER = [
   /^A complete log of this run can be found in/,
   /^To see a list of scripts, run/,
-  /^[ \t]*npm run[ \t]*$/,
+  /^[^\S\n]*npm run[^\S\n]*$/,
   /^This is (?:probably not )?a problem with npm/,
   /^Log files were not written/,
   /^errno\s/,
