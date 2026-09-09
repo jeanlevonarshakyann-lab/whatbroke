@@ -184,6 +184,52 @@
     ],
     "shadow": {}
   },
+  "git_conflict_fail.txt": {
+    "winner": "git",
+    "parser": "git",
+    "failures": 2,
+    "claimants": [
+      "git",
+      "generic"
+    ],
+    "shadow": {}
+  },
+  "git_norepo_fail.txt": {
+    "winner": "git",
+    "parser": "git",
+    "failures": 1,
+    "claimants": [
+      "git",
+      "generic"
+    ],
+    "shadow": {
+      "generic": 1
+    }
+  },
+  "git_overwrite_fail.txt": {
+    "winner": "git",
+    "parser": "git",
+    "failures": 1,
+    "claimants": [
+      "git",
+      "generic"
+    ],
+    "shadow": {
+      "generic": 1
+    }
+  },
+  "git_reject_fail.txt": {
+    "winner": "git",
+    "parser": "git",
+    "failures": 1,
+    "claimants": [
+      "git",
+      "generic"
+    ],
+    "shadow": {
+      "generic": 1
+    }
+  },
   "gobuild_fail.txt": {
     "winner": "go build",
     "parser": "go",

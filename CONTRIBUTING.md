@@ -15,7 +15,7 @@
 
 An extractor declares itself: `{ name, category, commands, detect, extract }`, where
 `category` is one of `test`, `lint`, `typecheck`, `compile`, `build`, `runtime`,
-`package` or `unknown`, and `commands` lists the command names that imply it.
+`package`, `vcs` or `unknown`, and `commands` lists the command names that imply it.
 
 Extractors should return `{ tool, summary, failures }`. A failure may include
 `file`, `line`, `col`, `title`, `message`, and parser-specific context fields.

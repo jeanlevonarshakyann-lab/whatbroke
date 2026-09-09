@@ -45,7 +45,14 @@ const wrap = (text, fn) => text.split("\n").map((l, i) => (l.trim() ? fn(l, i) :
 // gate. Narrow, understood, and documented in the README rather than papered over.
 const usesBareCr = (text) => /\r(?!\n)/.test(text);
 
-const corpus = readdirSync(fixtures).filter((f) => !usesBareCr(fx(f)));
+// A uniform prefix cannot be established from a single line - there is nothing to
+// compare it against, and on one line ANY leading text looks uniform. The minimum of
+// three lines is what stops a prefix search from cutting arbitrary text off a short
+// log, so a one-line failure inside a runner's prefix is not recoverable. The CLI still
+// surfaces the raw output in that case, so nothing is hidden; it just is not parsed.
+const tooShortToUnwrap = (text) => text.split("\n").filter((l) => l.trim()).length < 3;
+
+const corpus = readdirSync(fixtures).filter((f) => !usesBareCr(fx(f)) && !tooShortToUnwrap(fx(f)));
 
 // -------------------------------------------------------- the core invariant
 

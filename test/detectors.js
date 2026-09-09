@@ -118,7 +118,7 @@ test("the winner is never the generic fallback for a fixture a real parser claim
 //
 // Adding parser #24 should mean editing one file. Everything a parser needs to declare
 // about itself now lives with it: what kind of tool it is, and which commands imply it.
-const CATEGORIES = new Set(["test", "lint", "typecheck", "compile", "build", "runtime", "package", "unknown"]);
+const CATEGORIES = new Set(["test", "lint", "typecheck", "compile", "build", "runtime", "package", "vcs", "unknown"]);
 
 test("every parser declares what kind of tool it is", () => {
   for (const ex of EXTRACTORS) {

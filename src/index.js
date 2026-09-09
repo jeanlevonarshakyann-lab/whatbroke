@@ -19,6 +19,7 @@ import phpunit from "./extractors/phpunit.js";
 import gotest from "./extractors/gotest.js";
 import cargo from "./extractors/cargo.js";
 import { esbuild, vite } from "./extractors/bundler.js";
+import git from "./extractors/git.js";
 import npm from "./extractors/npm.js";
 import { pnpm, yarn } from "./extractors/pkgmanager.js";
 import pip from "./extractors/pip.js";
@@ -28,7 +29,7 @@ import { clusterFailures } from "./cluster.js";
 import { wrapperCandidates } from "./normalize.js";
 
 // order matters: most specific first, generic last
-export const EXTRACTORS = [pytest, nodetest, bun, deno, jest, vitest, unittest, traceback, eslint, ruff, mypy, clang, rspec, jvm, dotnettest, dotnet, phpunit, cargo, gotest, esbuild, vite, node, tsc, npm, pnpm, yarn, pip, generic];
+export const EXTRACTORS = [pytest, nodetest, bun, deno, jest, vitest, unittest, traceback, eslint, ruff, mypy, clang, rspec, jvm, dotnettest, dotnet, phpunit, cargo, gotest, esbuild, vite, node, tsc, git, npm, pnpm, yarn, pip, generic];
 
 function dedupeFailures(failures) {
   const seen = new Set();
