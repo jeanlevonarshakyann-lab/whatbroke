@@ -15,20 +15,20 @@
 //
 // Note bun writes "error:" at the start of a line, which the cargo parser also
 // looks for - so this must be registered ahead of it.
-const FAIL_RE = /^\(fail\)[ \t]+(.+?)(?:[ \t]+\[[\d.]+m?s\])?[ \t]*$/;
-const ERROR_RE = /^error:[ \t]*(.+)$/;
-const AT_RE = /^[ \t]*at[ \t]+.*?\((.+?):(\d+):(\d+)\)[ \t]*$/;
-const SOURCE_RE = /^[ \t]*\d+[ \t]*\|/;              // bun's echoed source context
-const CARET_RE = /^[ \t]*\^+[ \t]*$/;
-const DIFF_COUNT_RE = /^[-+][ \t]*(Expected|Received)[ \t]+[-+][ \t]*\d+[ \t]*$/;
+const FAIL_RE = /^\(fail\)[^\S\n]+(.+?)(?:[^\S\n]+\[[\d.]+m?s\])?[^\S\n]*$/;
+const ERROR_RE = /^error:[^\S\n]*(.+)$/;
+const AT_RE = /^[^\S\n]*at[^\S\n]+.*?\((.+?):(\d+):(\d+)\)[^\S\n]*$/;
+const SOURCE_RE = /^[^\S\n]*\d+[^\S\n]*\|/;              // bun's echoed source context
+const CARET_RE = /^[^\S\n]*\^+[^\S\n]*$/;
+const DIFF_COUNT_RE = /^[-+][^\S\n]*(Expected|Received)[^\S\n]+[-+][^\S\n]*\d+[^\S\n]*$/;
 const MAX_MESSAGE_LINES = 4;
 
 export default {
   name: "bun test",
   category: "test",
   commands: ["bun"],
-  detect: (s) => /^\(fail\)[ \t]+/m.test(s) &&
-    (/^Ran \d+ tests? across/m.test(s) || /^[ \t]*\d+ fail[ \t]*$/m.test(s)),
+  detect: (s) => /^\(fail\)[^\S\n]+/m.test(s) &&
+    (/^Ran \d+ tests? across/m.test(s) || /^[^\S\n]*\d+ fail[^\S\n]*$/m.test(s)),
 
   extract(s) {
     const lines = s.split("\n");
@@ -57,7 +57,7 @@ export default {
     if (!failures.length) return null;
 
     const num = (k) => {
-      const m = s.match(new RegExp(String.raw`^[ \t]*(\d+)[ \t]+${k}[ \t]*$`, "m"));
+      const m = s.match(new RegExp(String.raw`^[^\S\n]*(\d+)[^\S\n]+${k}[^\S\n]*$`, "m"));
       return m ? +m[1] : null;
     };
     const [failed, passed] = [num("fail"), num("pass")];

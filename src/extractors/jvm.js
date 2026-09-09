@@ -1,14 +1,14 @@
-const SUREFIRE_RE = /^\[ERROR\]\s{2,}([A-Z]\w*)\.(\w+):(\d+)[ \t]+(.+)$/;
-const MAVEN_RE = /^\[ERROR\][ \t]+(.+?):\[(\d+),(\d+)\][ \t]+(.+)$/;
-const GRADLE_RE = /^(?:e: )?(.+?):(\d+):(\d+):[ \t]+(?:(error|warning):[ \t]+)?(.+)$/;
-const JAVA_RE = /^(.+?\.java):(\d+):[ \t]+(error|warning):[ \t]+(.+)$/m;
+const SUREFIRE_RE = /^\[ERROR\]\s{2,}([A-Z]\w*)\.(\w+):(\d+)[^\S\n]+(.+)$/;
+const MAVEN_RE = /^\[ERROR\][^\S\n]+(.+?):\[(\d+),(\d+)\][^\S\n]+(.+)$/;
+const GRADLE_RE = /^(?:e: )?(.+?):(\d+):(\d+):[^\S\n]+(?:(error|warning):[^\S\n]+)?(.+)$/;
+const JAVA_RE = /^(.+?\.java):(\d+):[^\S\n]+(error|warning):[^\S\n]+(.+)$/m;
 
 export default {
   name: "jvm",
   category: "compile",
   commands: ["javac", "mvn", "maven", "gradle", "gradlew"],
   detect: (s) =>
-    /^\[ERROR\][ \t]+(?:Failed to execute goal|COMPILATION ERROR|Tests run:)/m.test(s) ||
+    /^\[ERROR\][^\S\n]+(?:Failed to execute goal|COMPILATION ERROR|Tests run:)/m.test(s) ||
     /^> Task .+ FAILED$/m.test(s) ||
     /^FAILURE: Build failed with an exception\./m.test(s) ||
     JAVA_RE.test(s),
@@ -57,11 +57,11 @@ export default {
       // names its file, its line, and the cause under "* What went wrong:". Without
       // this the whole run produced no output at all.
       if (!failures.length) {
-        const where = s.match(/^(?:Build file|Script|Settings file)[ \t]+'(.+?)'[ \t]+line:[ \t]*(\d+)/m);
+        const where = s.match(/^(?:Build file|Script|Settings file)[^\S\n]+'(.+?)'[^\S\n]+line:[^\S\n]*(\d+)/m);
         const wrong = s.match(/^\* What went wrong:\s*\n([\s\S]*?)(?=\n\* |\n\s*BUILD FAILED|(?![\s\S]))/m);
         if (wrong) {
           const detail = wrong[1].split("\n").map((l) => l.trim())
-            .filter(Boolean).map((l) => l.replace(/^>[ \t]*/, "")).slice(0, 3);
+            .filter(Boolean).map((l) => l.replace(/^>[^\S\n]*/, "")).slice(0, 3);
           failures.push({
             file: where?.[1], line: where ? +where[2] : undefined,
             title: "build script", label: "build script", category: "build", severity: "error", message: detail.join("\n"),
@@ -69,8 +69,8 @@ export default {
         }
       }
       if (!failures.length) {
-        const testFailure = s.match(/^\[ERROR\][ \t]+Tests run:.*?(?:Failures|Errors):[ \t]*(\d+)/m);
-        if (testFailure) failures.push({ title: "test failure", label: "test failure", category: "test", severity: "error", message: testFailure[0].replace(/^\[ERROR\][ \t]+/, "") });
+        const testFailure = s.match(/^\[ERROR\][^\S\n]+Tests run:.*?(?:Failures|Errors):[^\S\n]*(\d+)/m);
+        if (testFailure) failures.push({ title: "test failure", label: "test failure", category: "test", severity: "error", message: testFailure[0].replace(/^\[ERROR\][^\S\n]+/, "") });
       }
     }
     if (!failures.length) return null;
@@ -79,7 +79,7 @@ export default {
     const isJavac = !isMaven && JAVA_RE.test(s);
     // Surefire prints a "Tests run:" line per class and one for the whole run.
     // The last one is the run total; the first is whichever class failed first.
-    const totals = [...s.matchAll(/^\[ERROR\][ \t]+Tests run:[ \t]*(.+?)(?:,[ \t]*Time elapsed.*)?$/gm)].at(-1);
+    const totals = [...s.matchAll(/^\[ERROR\][^\S\n]+Tests run:[^\S\n]*(.+?)(?:,[^\S\n]*Time elapsed.*)?$/gm)].at(-1);
     const isTestRun = failures.some((f) => f.title?.includes(".") && /\.java$/.test(f.file ?? ""));
     const summary = totals && isTestRun ? `Tests run: ${totals[1]}` : "build failed";
     return { tool: isGradle ? "gradle" : isJavac ? "jvm" : "maven", summary, failures };

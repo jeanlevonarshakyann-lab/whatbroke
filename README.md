@@ -225,6 +225,8 @@ them.
 | **vite / rollup** | the rollup error code, `file:line:col` and the offending line |
 | **tsc** | errors grouped by file, with the assignability chain down to the real reason |
 | **npm** | its own failures — a missing script, a bad engine — without the trailing advice |
+| **pnpm** | its error code and message — indented with a thin space, which is why it needed one |
+| **yarn** | the failure without the documentation link that follows it |
 | **pip** | the exception a build backend actually raised, not `subprocess-exited-with-error`; resolution failures once rather than twice, without the package index pasted in |
 | *anything else* | best-effort: lines that look like errors, including plain unix ones like `curl: (7) Failed to connect`, marked as a guess |
 

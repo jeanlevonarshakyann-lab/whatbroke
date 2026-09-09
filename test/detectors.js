@@ -164,6 +164,31 @@ test("naming the wrong tool cannot damage a clear log", () => {
   }
 });
 
+// Whitespace is not always a space.
+//
+// pnpm indents every diagnostic with U+2009 THIN SPACE. A pattern written [ \t] matches
+// none of it, so a parser using that class sees no indentation at all and reports
+// nothing. This is the correctness half of the fix that stopped parsers backtracking
+// across newlines: [^\S\n] is equally immune - it cannot cross a line either - and
+// unlike [ \t] it still matches every kind of space a tool might print.
+test("parsers match whitespace that is not an ASCII space", () => {
+  const thin = (t) => t.split("\n").map((l) => l.replace(/^ +/, (m) => "\u2009".repeat(m.length))).join("\n");
+  const broken = [];
+  for (const name of readdirSync(fixtures)) {
+    const raw = readFileSync(join(fixtures, name), "utf8");
+    const plain = safely(() => analyse(raw), null);
+    if (!plain) continue;
+    const indented = safely(() => analyse(thin(raw)), null);
+    if (indented?.tool !== plain.tool || indented?.failures.length !== plain.failures.length) {
+      broken.push(`${name}: ${plain.tool}/${plain.failures.length} -> ${indented?.tool}/${indented?.failures.length ?? 0}`);
+    }
+  }
+  assert.deepEqual(broken, [], "re-indenting with a thin space changed the reading");
+  // and the case that found this: pnpm's own output, indented that way for real
+  const pnpm = analyse(readFileSync(join(fixtures, "pnpm_script_fail.txt"), "utf8"));
+  assert.equal(pnpm?.tool, "pnpm");
+});
+
 // Interleaving.
 //
 // stdout and stderr are separate pipes, so a second stream's lines land in the middle

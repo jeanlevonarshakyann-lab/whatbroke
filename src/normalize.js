@@ -40,7 +40,7 @@ function literalPrefix(text) {
     // Do not swallow the log's own indentation. eslint puts its problems under the
     // file they belong to, so the shared prefix runs on into that indentation - and
     // removing it takes away the very thing eslint's parser matches on.
-    p = p.replace(/[ \t]+$/, " ");
+    p = p.replace(/[^\S\n]+$/, " ");
     if (p.length > MIN_PREFIX && p.trim() && p.length > best.length) best = p;
   }
   return best;
@@ -92,7 +92,7 @@ export function wrapperCandidates(text) {
 function literalCandidates(prefix) {
   if (!prefix) return [];
   const stops = [];
-  for (const m of prefix.matchAll(/\S[ \t]+/g)) {
+  for (const m of prefix.matchAll(/\S[^\S\n]+/g)) {
     const end = m.index + m[0].length;
     if (end > MIN_PREFIX && end < prefix.length) stops.push(prefix.slice(0, end));
   }

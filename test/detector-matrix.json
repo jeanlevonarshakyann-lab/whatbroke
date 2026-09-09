@@ -492,6 +492,26 @@
       "generic": 4
     }
   },
+  "pnpm_lifecycle_fail.txt": {
+    "winner": "pnpm",
+    "parser": "pnpm",
+    "failures": 1,
+    "claimants": [
+      "pnpm",
+      "generic"
+    ],
+    "shadow": {}
+  },
+  "pnpm_script_fail.txt": {
+    "winner": "pnpm",
+    "parser": "pnpm",
+    "failures": 1,
+    "claimants": [
+      "pnpm",
+      "generic"
+    ],
+    "shadow": {}
+  },
   "py_traceback.txt": {
     "winner": "python",
     "parser": "python",
@@ -630,6 +650,18 @@
     ],
     "shadow": {
       "generic": 6
+    }
+  },
+  "yarn_fail.txt": {
+    "winner": "yarn",
+    "parser": "yarn",
+    "failures": 1,
+    "claimants": [
+      "yarn",
+      "generic"
+    ],
+    "shadow": {
+      "generic": 1
     }
   }
 }
