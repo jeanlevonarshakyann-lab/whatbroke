@@ -4,6 +4,7 @@ import { appendFileSync } from "node:fs";
 import { createRequire } from "node:module";
 import { constants as osConstants } from "node:os";
 import { analyse } from "../src/index.js";
+import { createCapture } from "../src/capture.js";
 import { causeId } from "../src/cluster.js";
 import { runIdentity, loadRun, saveRun, compare } from "../src/history.js";
 import { render, setColor } from "../src/render.js";
@@ -316,43 +317,23 @@ function report(raw, code, truncated = false, executionError = null) {
 
 if (argv.length === 0) {
   if (process.stdin.isTTY) { process.stdout.write(HELP); process.exit(0); }
-  let buf = "";
-  let bytes = 0;
-  let truncated = false;
-  process.stdin.setEncoding("utf8");
-  process.stdin.on("data", (d) => {
-    if (bytes >= maxBytes) { truncated = true; return; }
-    const remaining = maxBytes - bytes;
-    if (Buffer.byteLength(d) > remaining) {
-      buf += Buffer.from(d).subarray(0, remaining).toString();
-      bytes = maxBytes;
-      truncated = true;
-    } else {
-      buf += d;
-      bytes += Buffer.byteLength(d);
-    }
+  // No setEncoding: decoding each chunk and re-encoding it to measure bytes is what
+  // used to split multi-byte characters at the cap. Buffers in, one decode at the end.
+  const capture = createCapture(maxBytes);
+  process.stdin.on("data", (d) => capture.push(d));
+  process.stdin.on("end", () => {
+    const { text, truncated } = capture.finish();
+    report(text, 0, truncated);
   });
-  process.stdin.on("end", () => report(buf, 0, truncated));
 } else {
   const child = spawn(argv[0], argv.slice(1), { stdio: ["inherit", "pipe", "pipe"] });
-  let buf = "";
-  let bytes = 0;
-  let truncated = false;
+  // Both streams share one budget, so interleaved stdout/stderr keeps its ordering
+  // within each stream and the cap still means what --max-bytes says it means.
+  const capture = createCapture(maxBytes);
   const tap = (stream, out, suppress) => {
-    stream.setEncoding("utf8");
     stream.on("data", (d) => {
       if (!suppress) out.write(d);
-      if (bytes >= maxBytes) { truncated = true; return; }
-      const remaining = maxBytes - bytes;
-      const size = Buffer.byteLength(d);
-      if (size > remaining) {
-        buf += Buffer.from(d).subarray(0, remaining).toString();
-        bytes = maxBytes;
-        truncated = true;
-      } else {
-        buf += d;
-        bytes += size;
-      }
+      capture.push(d);
     });
   };
   tap(child.stdout, process.stdout, quiet);
@@ -365,6 +346,7 @@ if (argv.length === 0) {
   child.on("close", (code, signal) => {
     if (code === 0 && !json) { process.exitCode = 0; return; }
     const signalCode = signal ? 128 + (osConstants.signals?.[signal] ?? 1) : null;
-    report(buf, code ?? signalCode ?? 1, truncated);
+    const { text, truncated } = capture.finish();
+    report(text, code ?? signalCode ?? 1, truncated);
   });
 }
