@@ -69,9 +69,23 @@ test("wrapping a log never makes it parse worse", () => {
 
 test("an unwrapped log is left exactly as it was", () => {
   for (const name of readdirSync(fixtures)) {
+    // The BuildKit captures are wrapped by definition - that is what they are for.
+    if (name.startsWith("docker_buildkit_")) continue;
     const r = analyse(fx(name));
     if (!r) continue;
     assert.equal(r.wrappers, undefined, `${name} had a wrapper stripped from it`);
+  }
+});
+
+test("a container's frame is peeled even inside another runner's prefix", () => {
+  // A monorepo runner relaying a container relaying a test run. Peeling only the outer
+  // prefix is no improvement by itself, so a strictly greedy search gives up there.
+  const raw = fx("docker_buildkit_pytest_fail.txt");
+  for (const [runner, fn] of Object.entries(WRAPPERS)) {
+    const r = analyse(wrap(raw, fn));
+    assert.equal(r?.tool, "pytest", `${runner} around buildkit`);
+    assert.equal(r.failures.length, 3);
+    assert.ok(r.wrappers.length >= 2, `${runner}: both layers should be named, got ${JSON.stringify(r.wrappers)}`);
   }
 });
 
@@ -97,6 +111,17 @@ test("a wrapper is never stripped when doing so parses nothing", () => {
   const r = analyse(text);
   if (r) assert.notEqual(r.tool, undefined);
   assert.ok(wrapperCandidates(text).length > 0, "the prefix should still be proposed");
+});
+
+test("a region is only lifted out when the whole log says nothing", () => {
+  // Taking BuildKit's failure block throws away everything outside it, so it must never
+  // displace a reading of the whole log. A log that already parses keeps its own reading
+  // even when a block is present.
+  const withBlock = fx("docker_buildkit_pytest_fail.txt");
+  const alsoParses = `${fx("eslint_bulk_fail.txt")}\n${withBlock}`;
+  const r = analyse(alsoParses);
+  assert.equal(r.tool, "eslint", "a region candidate displaced a full-log reading");
+  assert.equal(r.wrappers, undefined);
 });
 
 // ------------------------------------------------------------- the wrappers

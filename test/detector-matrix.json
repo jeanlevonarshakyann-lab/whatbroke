@@ -96,6 +96,24 @@
       "generic": 3
     }
   },
+  "docker_buildkit_npm_fail.txt": {
+    "winner": "npm",
+    "parser": "generic",
+    "failures": 1,
+    "claimants": [
+      "generic"
+    ],
+    "shadow": {}
+  },
+  "docker_buildkit_pytest_fail.txt": {
+    "winner": "pytest",
+    "parser": "generic",
+    "failures": 3,
+    "claimants": [
+      "generic"
+    ],
+    "shadow": {}
+  },
   "dotnet_fail.txt": {
     "winner": "dotnet",
     "parser": "dotnet",

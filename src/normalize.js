@@ -14,6 +14,13 @@
 
 const SAMPLE_LINES = 200;
 const UNIFORM = 0.8;      // the share of lines a prefix must cover, as in stripCiPrefix
+// A hand-written shape may be held to a lower share than a discovered literal. Docker
+// BuildKit stamps the step's own output and nothing else - not the `------` rules, the
+// Dockerfile excerpt, or the final "failed to solve" line - so its prefix covers about
+// seven lines in ten of a failing build and would never clear the gate above. The shape
+// is proven against the whole corpus, and the improvement rule is still the backstop:
+// a strip that does not let a real parser find more is discarded either way.
+const SHAPE_UNIFORM = 0.4;
 const MIN_PREFIX = 2;
 const MAX_PREFIX = 200;
 const MAX_LITERAL_CANDIDATES = 4;   // bound the parses a single log can cost
@@ -55,15 +62,50 @@ const SHAPES = [
   { name: "docker", re: /^#\d+\s+\d+\.\d+\s/ },
 ];
 
-const uniform = (text, re) => {
+const uniform = (text, re, share = UNIFORM) => {
   const lines = sample(text);
-  return lines.length >= 3 && lines.filter((l) => re.test(l)).length >= Math.ceil(lines.length * UNIFORM);
+  return lines.length >= 3 && lines.filter((l) => re.test(l)).length >= Math.ceil(lines.length * share);
 };
 
 const stripLiteral = (text, p) =>
   text.split("\n").map((l) => (l.startsWith(p) ? l.slice(p.length) : l)).join("\n");
 
 const stripShape = (text, re) => text.split("\n").map((l) => l.replace(re, "")).join("\n");
+
+// Docker BuildKit ends a failed build by quoting the failing step's own output between
+// two rules, then states the mechanism:
+//
+//   ------
+//    > [4/4] RUN npm test:
+//   0.234 npm error Missing script: "test"
+//   ------
+//   Dockerfile:8
+//   ...
+//   ERROR: failed to solve: process "/bin/sh -c npm test" did not complete successfully
+//
+// That last line is what whatbroke reported, and it names the mechanism rather than the
+// cause. The block above it is the cause, verbatim, from whatever tool actually failed.
+// A coverage ratio cannot find it - a short npm failure is five lines inside a frame of
+// twenty - so the block is located by its own markers instead.
+const BUILDKIT_RULE = /^-{6,}[^\S\n]*$/;
+const BUILDKIT_STEP = /^[^\S\n]*>[^\S\n]+\[[^\]]+\][^\S\n]+.*:[^\S\n]*$/;
+const BUILDKIT_ELAPSED = /^\d+\.\d+[^\S\n]/;
+
+/** The failing step's output, lifted out of the frame Docker wraps it in. */
+function buildkitBlock(text) {
+  if (!/^ERROR: failed to solve:/m.test(text)) return null;
+  const lines = text.split("\n");
+  for (let i = 0; i < lines.length; i++) {
+    if (!BUILDKIT_RULE.test(lines[i]) || !BUILDKIT_STEP.test(lines[i + 1] ?? "")) continue;
+    const body = [];
+    for (let j = i + 2; j < lines.length && !BUILDKIT_RULE.test(lines[j]); j++) {
+      // each line keeps the seconds-since-step-start column; the tool never wrote it
+      body.push(lines[j].replace(BUILDKIT_ELAPSED, ""));
+    }
+    if (body.some((l) => l.trim())) return body.join("\n");
+  }
+  return null;
+}
 
 /** Every normalisation worth trying on this text. Proposals only - the caller decides.
  *
@@ -75,8 +117,12 @@ const stripShape = (text, re) => text.split("\n").map((l) => l.replace(re, "")).
 export function wrapperCandidates(text) {
   const out = [];
   for (const shape of SHAPES) {
-    if (uniform(text, shape.re)) out.push({ kind: "shape", wrapper: shape.name, text: stripShape(text, shape.re) });
+    if (uniform(text, shape.re, SHAPE_UNIFORM)) out.push({ kind: "shape", wrapper: shape.name, text: stripShape(text, shape.re) });
   }
+  const block = buildkitBlock(text);
+  // A region candidate throws away everything outside the block, so it is only ever
+  // taken when nothing real parsed from the whole text - see `better` in index.js.
+  if (block) out.push({ kind: "region", wrapper: "docker buildkit", text: block });
   for (const literal of literalCandidates(literalPrefix(text))) {
     out.push({ kind: "literal", wrapper: literal, text: stripLiteral(text, literal) });
   }

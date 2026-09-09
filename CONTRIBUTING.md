@@ -3,7 +3,10 @@
 ## Adding a parser
 
 1. Capture real output from the tool on a failing run. Do not hand-write a
-   fixture that only resembles the tool output.
+   fixture that only resembles the tool output. The two `docker_buildkit_*`
+   fixtures are the sole exception and are marked as such in `test/run.js`: their
+   step output is real, the frame around it is assembled, and they should be
+   replaced with a genuine `docker build` capture.
 2. Remove usernames, absolute home directories, repository names, tokens,
    URLs with credentials, and other sensitive values while preserving syntax.
 3. Add the capture to `test/fixtures/` with a descriptive `_fail.txt` name.
