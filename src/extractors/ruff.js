@@ -1,5 +1,10 @@
 // ruff emits rustc-style diagnostics: a header line, then " --> file:line:col".
 const HEAD_RE = /^([A-Z]+\d+)(?:[^\S\n]+\[[*x]\])?[^\S\n]+(.+)$/;
+// Not everything ruff reports has a rule code. A file it cannot parse is reported as
+// `invalid-syntax: unexpected EOF while parsing`, and requiring a code meant a run that
+// said "Found 1 error." came back with none at all - which is the ordinary case of
+// running ruff over a file with a typo in it.
+const BARE_HEAD_RE = /^([a-z][\w-]*):[^\S\n]+(.+)$/;
 const ARROW_RE = /^[^\S\n]*-->[^\S\n]+(.+?):(\d+):(\d+)[^\S\n]*$/;
 
 export default {
@@ -10,14 +15,17 @@ export default {
 
   extract(s) {
     const lines = s.split("\n");
+    // A header is only a header if a location follows it. ruff writes `help:` at column
+    // zero too, so the shape alone cannot tell a diagnostic from its own continuation.
+    const headerAt = (i) =>
+      (ARROW_RE.test(lines[i + 1] ?? "") ? (lines[i].match(HEAD_RE) ?? lines[i].match(BARE_HEAD_RE)) : null);
     const failures = [];
     for (let i = 0; i < lines.length; i++) {
-      const h = lines[i].match(HEAD_RE);
+      const h = headerAt(i);
       if (!h) continue;
-      const a = lines[i + 1]?.match(ARROW_RE);
-      if (!a) continue;                       // a header with no location isn't a diagnostic
+      const a = lines[i + 1].match(ARROW_RE);
       let fix = "";
-      for (let j = i + 2; j < lines.length && !HEAD_RE.test(lines[j]); j++) {
+      for (let j = i + 2; j < lines.length && !headerAt(j); j++) {
         const f = lines[j].match(/^[^\S\n]*help:[^\S\n]*(.+)$/);
         if (f) { fix = f[1]; break; }
       }
@@ -29,6 +37,7 @@ export default {
     }
     if (!failures.length) return null;
     const sm = s.match(/^Found (\d+) errors?\.?$/m);
-    return { tool: "ruff", summary: `${sm ? sm[1] : failures.length} errors`, failures };
+    const n = Number(sm ? sm[1] : failures.length);
+    return { tool: "ruff", summary: `${n} error${n === 1 ? "" : "s"}`, failures };
   },
 };

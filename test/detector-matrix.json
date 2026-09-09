@@ -546,6 +546,18 @@
       "generic": 3
     }
   },
+  "mypy_missing_fail.txt": {
+    "winner": "mypy",
+    "parser": "mypy",
+    "failures": 1,
+    "claimants": [
+      "mypy",
+      "generic"
+    ],
+    "shadow": {
+      "generic": 1
+    }
+  },
   "mypy_no_summary_fail.txt": {
     "winner": "mypy",
     "parser": "mypy",
@@ -805,6 +817,16 @@
     "winner": "ruff",
     "parser": "ruff",
     "failures": 4,
+    "claimants": [
+      "ruff",
+      "generic"
+    ],
+    "shadow": {}
+  },
+  "ruff_syntax_fail.txt": {
+    "winner": "ruff",
+    "parser": "ruff",
+    "failures": 1,
     "claimants": [
       "ruff",
       "generic"

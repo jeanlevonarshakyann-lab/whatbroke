@@ -13,6 +13,9 @@ export default {
       /^.+\.pyi?:\d+(?::\d+)?:[^\S\n]+(?:error|warning|note):[^\S\n]+/m.test(s)),
 
   extract(s) {
+    // mypy reports a problem with its own invocation - an unreadable file, a bad flag -
+    // as "mypy: error: ...", with no file:line for the diagnostic pattern to find.
+    const own = s.match(/^mypy: error: (.+)$/m);
     const lines = s.split("\n");
     const failures = [];
     let warnings = 0;
@@ -34,6 +37,9 @@ export default {
         title: match[6] ?? "mypy", code: match[6], severity: match[4], 
         message: [match[5], ...notes].join("\n"),
       });
+    }
+    if (own) {
+      failures.push({ title: "mypy", label: "mypy", severity: "error", message: own[1] });
     }
     if (!failures.length) return null;
     const summaryMatch = s.match(/^[^\S\n]*Found (\d+) errors? in (\d+) files?/m);

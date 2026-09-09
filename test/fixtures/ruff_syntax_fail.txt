@@ -1,0 +1,7 @@
+invalid-syntax: unexpected EOF while parsing
+ --> syn.py:1:13
+  |
+1 | def broken(
+  |            ^
+
+Found 1 error.
