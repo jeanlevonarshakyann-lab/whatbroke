@@ -15,7 +15,10 @@ function stale(file, line, toolText) {
   if (!toolText) return false;
   const one = snippet(file, line, 0);
   if (!one) return false;
-  const disk = one[0].text.trim().replace(/\s+/g, " ");
+  // Both sides may carry a truncation marker - the tool elides long lines, and so
+  // does snippet() for a minified one. Comparing the markers would report a file as
+  // changed purely because it is wide.
+  const disk = one[0].text.trim().replace(/\s+/g, " ").replace(/[…]+$/, "");
   const tool = toolText.trim().replace(/\s+/g, " ").replace(/[…]+$/, "");
   if (!tool) return false;
   return !(disk === tool || disk.startsWith(tool) || tool.startsWith(disk));

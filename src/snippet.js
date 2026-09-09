@@ -1,15 +1,59 @@
-import { readFileSync } from "node:fs";
+import { openSync, readSync, fstatSync, closeSync, realpathSync, constants } from "node:fs";
 import { resolve, sep } from "node:path";
+
+// A source file bigger than this is generated, minified or vendored, and a caret
+// inside one explains nothing. Checked with fstat before a byte is allocated, so an
+// enormous file costs a stat rather than its own size in memory.
+const MAX_FILE_BYTES = 2 * 1024 * 1024;
+// A bundle is one line megabytes wide. Keep enough of it to read, drop the rest.
+const MAX_LINE_CHARS = 512;
 
 /** Output can come from anywhere - a pasted log, a CI artifact, another machine.
  *  Only ever read source from inside the directory we were run in, so crafted
- *  input cannot make us open and print arbitrary files. */
-function insideCwd(file) {
+ *  input cannot make us open and print arbitrary files.
+ *
+ *  realpath is what makes that hold. resolve() alone collapses `..` but knows
+ *  nothing about links, so a symlink sitting inside the tree - or a symlinked
+ *  parent directory - used to pass the prefix test while pointing anywhere on the
+ *  disk. Canonicalising both sides also fixes the mirror-image case: a working
+ *  directory reached through a link (/tmp on macOS is really /private/tmp) no
+ *  longer rejects the very files it contains. */
+function safePath(file) {
   try {
-    const root = resolve(process.cwd());
-    const target = resolve(root, file);
-    return target === root || target.startsWith(root + sep);
-  } catch { return false; }
+    const root = realpathSync(resolve(process.cwd()));
+    const target = realpathSync(resolve(root, file));
+    return target === root || target.startsWith(root + sep) ? target : null;
+  } catch { return null; }
+}
+
+// O_NOFOLLOW: the canonical path contains no links by construction, so this only has
+// to survive the window between realpath and open. O_NONBLOCK: opening a FIFO for
+// reading otherwise waits for a writer that never comes, and whatbroke hangs forever
+// on a log that merely names one. Neither constant exists on Windows.
+const READ_FLAGS = constants.O_RDONLY
+  | (constants.O_NOFOLLOW ?? 0)
+  | (constants.O_NONBLOCK ?? 0);
+
+/** Read a whole regular file, or null. Every refusal is silent on purpose: the
+ *  caller keeps the diagnostic and simply shows no source. */
+function readBounded(path) {
+  let fd;
+  try {
+    fd = openSync(path, READ_FLAGS);
+    const st = fstatSync(fd);
+    // Ask the descriptor, not the path: the answer then describes the file actually
+    // opened. A directory, socket, FIFO or device is not source, and is not read.
+    if (!st.isFile() || st.size > MAX_FILE_BYTES) return null;
+    const buf = Buffer.allocUnsafe(st.size);
+    let got = 0;
+    while (got < st.size) {
+      const n = readSync(fd, buf, got, st.size - got, got);
+      if (n <= 0) break;   // truncated under us; show what we got
+      got += n;
+    }
+    return buf.subarray(0, got).toString("utf8");
+  } catch { return null; }
+  finally { if (fd !== undefined) { try { closeSync(fd); } catch { /* already gone */ } } }
 }
 
 const cache = new Map();
@@ -17,9 +61,10 @@ const cache = new Map();
 export const resetSnippetCache = () => cache.clear();
 function readLines(file) {
   if (cache.has(file)) return cache.get(file);
-  if (!insideCwd(file)) { cache.set(file, null); return null; }
-  let lines = null;
-  try { lines = readFileSync(file, "utf8").split("\n"); } catch { lines = null; }
+  const path = safePath(file);
+  const text = path === null ? null : readBounded(path);
+  const lines = text === null ? null : text.split("\n").map((l) =>
+    l.length > MAX_LINE_CHARS ? l.slice(0, MAX_LINE_CHARS) + "…" : l);
   cache.set(file, lines);
   return lines;
 }

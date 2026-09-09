@@ -2,6 +2,15 @@
 
 ## Unreleased
 
+- Fixed: source containment was enforced on the unresolved path, so a symlink inside
+  the working directory — or a symlinked parent — could make whatbroke read and print
+  a file from anywhere on disk. Both sides are now canonicalised, which also fixes a
+  working directory reached through a link rejecting its own files.
+- Source reads are now bounded before allocation: size is read from the descriptor,
+  files over 2 MiB are skipped and lines are clamped at 512 characters.
+- Only regular files are read, opened non-blocking, so a directory, device or FIFO
+  named in a log can no longer stall the run.
+
 - Fixed: standalone javac diagnostics route to the JVM parser, and Gradle compiler warnings are excluded from failures.
 - Fixed: .NET diagnostics no longer require a restore banner; mypy detection preserves `.py` and `.pyi` diagnostics with optional columns and no summary.
 - Fixed: `--no-source` retains statements captured in the log without reading source files.
