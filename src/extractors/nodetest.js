@@ -14,6 +14,8 @@
 // Everything worth showing is in there; the trick is that `error: |-` is a YAML
 // block scalar, so its content is the following lines indented one level deeper.
 const NOT_OK_RE = /^(\s*)not ok\s+\d+\s+-\s+(.+?)\s*$/;
+const SUBTEST_RE = /^(\s*)# Subtest:\s/;
+const FAILURE_TYPE_RE = /^\s*failureType:\s*'(.+?)'\s*$/;
 const LOCATION_RE = /^\s*location:\s*'(.+?):(\d+):(\d+)'\s*$/;
 const NAME_RE = /^\s*name:\s*'(.+?)'\s*$/;
 const ERROR_RE = /^(\s*)error:\s*\|-?\s*$/;
@@ -28,14 +30,22 @@ export default {
   extract(s) {
     const lines = s.split("\n");
     const failures = [];
+    // TAP prints a suite result after its children. Remember how many failures
+    // preceded each scope so only parents with captured children are redundant.
+    const scopeStarts = new Map();
 
     for (let i = 0; i < lines.length; i++) {
+      const subtest = lines[i].match(SUBTEST_RE);
+      if (subtest) scopeStarts.set(subtest[1].length, failures.length);
       const head = lines[i].match(NOT_OK_RE);
       if (!head) continue;
 
-      let file, line, col, errName = "";
+      let file, line, col, errName = "", failureType;
       const msg = [];
       for (let j = i + 1; j < lines.length && !NOT_OK_RE.test(lines[j]); j++) {
+        if (/^\s*\.\.\.\s*$/.test(lines[j])) break;
+        const type = lines[j].match(FAILURE_TYPE_RE);
+        if (type) { failureType = type[1]; continue; }
         const loc = lines[j].match(LOCATION_RE);
         if (loc) { file = loc[1]; line = +loc[2]; col = +loc[3]; continue; }
         const nm = lines[j].match(NAME_RE);
@@ -67,6 +77,9 @@ export default {
         ? [`${errName}: ${msg[0]}`, ...msg.slice(1)].join("\n")
         : msg.join("\n");
 
+      const start = scopeStarts.get(head[1].length);
+      scopeStarts.delete(head[1].length);
+      if (failureType === "subtestsFailed" && start !== undefined && failures.length > start) continue;
       failures.push({ file, line, col, title: head[2], message });
     }
 

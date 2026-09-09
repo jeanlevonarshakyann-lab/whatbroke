@@ -86,11 +86,16 @@ export const keyOf = (f, policy) => JSON.stringify(part(f, policy));
 export const signatureOf = (f, policy) => part(f, policy).filter(Boolean).join("  ·  ");
 
 const PLACEHOLDER = /<(?:str|num|path|url|hex|uuid|addr)>\*?/g;
+// Node's assertion header describes the matcher, not the bug. After numeric
+// values disappear, it must not turn an otherwise empty signature into evidence.
+// Keep the header in the fingerprint; discount it only when scoring information.
+const ASSERTION_BOILERPLATE = /\bAssertionError(?: \[ERR_ASSERTION\])?: Expected values (?:not )?to be (?:(?:strictly|loosely) )?(?:deep-)?equal:\s*/g;
 
 /** How much real content a signature carries. "assert <num> == <num>" scores 1 and is
  *  refused: forty unrelated numeric assertions must not become one "likely cause". */
 export function contentScore(sig) {
-  const words = sig.replace(PLACEHOLDER, " ").match(/[A-Za-z_][A-Za-z0-9_]*/g) ?? [];
+  const words = sig.replace(ASSERTION_BOILERPLATE, " ").replace(PLACEHOLDER, " ")
+    .match(/[A-Za-z_][A-Za-z0-9_]*/g) ?? [];
   return new Set(words).size;
 }
 

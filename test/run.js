@@ -10,6 +10,15 @@ const fx = (n) => readFileSync(join(here, "fixtures", n), "utf8");
 const cli = join(here, "..", "bin", "whatbroke.js");
 
 const CASES = [
+  { file: "nodetest_nested_fail.txt", tool: "node --test", n: 3, check: (r) => {
+      assert.equal(r.summary, "3 failed, 1 passed");
+      assert.deepEqual(r.failures.map((f) => f.title), ["addition", "multiplication", "subtraction"]);
+      assert.deepEqual(r.failures.map((f) => f.line), [5, 6, 8]);
+      assert.ok(r.failures.every((f) => f.file.endsWith("/test/nested.test.cjs")));
+      assert.match(r.failures[0].message, /2 !== 3/);
+      assert.match(r.failures[1].message, /4 !== 5/);
+      assert.match(r.failures[2].message, /6 !== 7/);
+    } },
   { file: "pytest_fail.txt", tool: "pytest", n: 3, check: (r) => {
       assert.match(r.summary, /3 failed, 2 passed/);
       const f = r.failures[0];
@@ -757,6 +766,50 @@ try {
   console.log("  ok   the information gate and minimum size both refuse weak merges");
   pass++;
 } catch (e) { console.log(`  FAIL merge guards\n       ${e.message}`); fail++; }
+
+// Captured Node assertions have a verbose matcher header, but still carry no
+// shared cause when all that remains underneath it is a numeric comparison.
+try {
+  const { render } = await import("../src/render.js");
+  const { clusterFailures } = await import("../src/cluster.js");
+  const r = analyse(fx("nodetest_nested_fail.txt"));
+  assert.ok(r.clusters.every((c) => !c.reported), "matcher boilerplate must not justify grouping");
+  const out = render(r, { source: false, max: Infinity });
+  assert.doesNotMatch(out, /likely cause/);
+  for (const comparison of ["2 !== 3", "4 !== 5", "6 !== 7"]) assert.ok(out.includes(comparison));
+  // A shared expression is still useful evidence; this must not disable all
+  // assertion clustering merely because the framework supplies a header.
+  const withExpression = r.failures.map((f) => ({ ...f, stmt: "assert.equal(cart.total(), expected)" }));
+  assert.equal(clusterFailures(withExpression, r.tool).filter((c) => c.reported).length, 1);
+  console.log("  ok   Node assertion boilerplate cannot merge unrelated numeric failures");
+  pass++;
+} catch (e) { console.log(`  FAIL Node assertion grouping\n       ${e.message}`); fail++; }
+
+// A truncated log can contain only the parent failure. Keep that diagnosis, and
+// ensure failures in a previous, unrelated suite do not cause it to be dropped.
+try {
+  const raw = fx("nodetest_nested_fail.txt");
+  const parent = raw.slice(raw.indexOf("\nnot ok 1 - arithmetic") + 1);
+  for (const input of [parent, "# Subtest: arithmetic\n" + parent,
+    fx("nodetest_fail.txt") + "\n# Subtest: arithmetic\n" + parent]) {
+    const r = analyse(input);
+    const kept = r.failures.filter((f) => f.title === "arithmetic");
+    assert.equal(kept.length, 1, "a parent without captured children must remain visible");
+    assert.equal(kept[0].message, "2 subtests failed");
+  }
+  // The same captured log must produce one annotation per actual failing test.
+  const github = spawnSync(process.execPath, [cli, "--format", "github"], {
+    input: raw, encoding: "utf8", env: { ...process.env, GITHUB_STEP_SUMMARY: "" },
+  });
+  assert.equal(github.status, 0);
+  assert.equal((github.stdout.match(/^::error /gm) ?? []).length, 3);
+  assert.doesNotMatch(github.stdout, /title=(arithmetic|first operations)/);
+  const json = spawnSync(process.execPath, [cli, "--json"], { input: raw, encoding: "utf8" });
+  assert.equal(json.status, 0);
+  assert.equal(JSON.parse(json.stdout).failures.length, 3);
+  console.log("  ok   Node parent summaries are removed only when child failures are captured");
+  pass++;
+} catch (e) { console.log(`  FAIL Node parent summaries\n       ${e.message}`); fail++; }
 
 // Rendering a real cluster: header, one exemplar, distinct sites only.
 try {
