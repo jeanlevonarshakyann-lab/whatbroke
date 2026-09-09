@@ -10,6 +10,36 @@ const fx = (n) => readFileSync(join(here, "fixtures", n), "utf8");
 const cli = join(here, "..", "bin", "whatbroke.js");
 
 const CASES = [
+  // A parser that reads one failure mode well can fall over on another. These four are
+  // real captures of the modes that are not "a test failed": a config that will not
+  // load, a suite that throws before any test runs, a module that will not import.
+  { file: "tsc_config_fail.txt", tool: "tsc", n: 3, check: (r) => {
+      // TS18003 has no file(line,col) prefix at all, so requiring one dropped it: a run
+      // that reported three errors came back with two, silently.
+      assert.ok(r.failures.some((f) => f.code === "TS18003" && !f.file),
+        "a config-level error belongs to no file and was being dropped");
+      assert.equal(r.failures.filter((f) => f.file).length, 2);
+    } },
+  { file: "jest_suite_fail.txt", tool: "jest", n: 1, check: (r) => {
+      // jest's tally reads "Tests: 0 total" when the suite never ran, and a headline of
+      // "0 total" over a real failure reads as though nothing happened.
+      assert.match(r.summary, /1 failed, 1 total \(no tests ran\)/);
+      assert.doesNotMatch(r.summary, /^0 total$/);
+      assert.equal(r.failures[0].file, "crash.test.js");
+      assert.match(r.failures[0].message, /suite blew up before any test ran/);
+    } },
+  { file: "eslint_config_fail.txt", tool: "eslint", n: 1, check: (r) => {
+      // A broken config makes eslint crash, and the stack points into its own internals.
+      assert.equal(r.summary, "configuration error");
+      assert.match(r.failures[0].message, /Could not find "no-such-rule"/);
+      assert.equal(r.failures[0].file, undefined, "eslint's own internals are not the answer");
+      assert.doesNotMatch(JSON.stringify(r), /node_modules/);
+    } },
+  { file: "pytest_collect_fail.txt", tool: "pytest", n: 1, check: (r) => {
+      assert.match(r.failures[0].message, /ModuleNotFoundError: No module named 'nonexistent_module'/);
+      assert.doesNotMatch(JSON.stringify(r.failures), /importlib|_bootstrap/,
+        "python's own import machinery is not the cause");
+    } },
   // Neither has a parser, and neither should: they are here to hold the fallback to a
   // standard. Both used to come back as nothing at all, because the pattern that spots
   // "Error:" required a capital E and these tools write it lower.
@@ -1159,6 +1189,10 @@ try {
     // because it sits entirely in node internals.
     "esbuild_syntax_fail.txt": ["esbuild", "node"],
     "esbuild_resolve_fail.txt": ["esbuild", "node"],
+    // eslint reports a broken config by crashing, so the log is a Node stack. Both
+    // parsers match by design; eslint is listed first and reports the config error
+    // rather than a line inside eslint's own internals.
+    "eslint_config_fail.txt": ["eslint", "node"],
   };
   const found = {};
   for (const file of readdirSync(join(here, "fixtures"))) {

@@ -2,6 +2,18 @@
 
 ## Unreleased
 
+- Fixed: tsc dropped every error that has no `file(line,col)` prefix, so a broken
+  tsconfig reporting three errors came back with two and said nothing about the third.
+- Fixed: a jest suite that throws before any test runs made the headline read
+  `0 total`, which looks like nothing happened. The suite tally is used instead.
+- Fixed: a broken eslint config makes eslint crash, and the failure was reported at a
+  line inside eslint's own internals. The configuration error is reported instead.
+- Fixed: a wrapper prefix could be swallowed into a filename rather than stripped —
+  `api:test: tsconfig.json` — leaving the log partly read. A prefix whose removal
+  recovers more failures is now stripped even when the same parser wins either way.
+- Fixed: the clustering fingerprint was not canonical for nested quoting, so two
+  spellings of one message could fail to meet.
+
 - Fixed: the fallback's pattern for `Error:` required a capital E, so a tool writing it
   lower produced no diagnosis at all. `jq: parse error: …` and openssl's
   `…:error:09FFF06C:PEM routines:…` both came back empty; both are now surfaced as the

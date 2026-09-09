@@ -1,0 +1,16 @@
+FAIL jt/crash.test.js
+  ● Test suite failed to run
+
+    suite blew up before any test ran
+
+    > 1 | throw new Error("suite blew up before any test ran");
+        |       ^
+      2 |
+
+      at Object.<anonymous> (crash.test.js:1:7)
+
+Test Suites: 1 failed, 1 total
+Tests:       0 total
+Snapshots:   0 total
+Time:        0.141 s
+Ran all test suites matching jt.

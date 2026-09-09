@@ -1,0 +1,16 @@
+
+Oops! Something went wrong! :(
+
+ESLint: 10.10.0
+
+TypeError: Key "rules": Key "no-such-rule": Could not find "no-such-rule" in plugin "@".
+    at throwRuleNotFoundError (/home/dev/app/node_modules/eslint/lib/config/config.js:100:16)
+    at Config.validateRulesConfig (/home/dev/app/node_modules/eslint/lib/config/config.js:691:5)
+    at new Config (/home/dev/app/node_modules/eslint/lib/config/config.js:554:9)
+    at [finalizeConfig] (/home/dev/app/node_modules/eslint/lib/config/flat-config-array.js:212:10)
+    at FlatConfigArray.getConfigWithStatus (/home/dev/app/node_modules/@eslint/config-array/dist/cjs/index.cjs:1411:55)
+    at FlatConfigArray.getConfig (/home/dev/app/node_modules/@eslint/config-array/dist/cjs/index.cjs:1429:15)
+    at /home/dev/app/node_modules/eslint/lib/eslint/eslint.js:627:27
+    at Array.map (<anonymous>)
+    at lintFilesWithoutMultithreading (/home/dev/app/node_modules/eslint/lib/eslint/eslint.js:625:13)
+    at ESLint.lintFiles (/home/dev/app/node_modules/eslint/lib/eslint/eslint.js:1071:20)
