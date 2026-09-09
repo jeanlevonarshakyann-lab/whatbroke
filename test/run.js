@@ -10,6 +10,23 @@ const fx = (n) => readFileSync(join(here, "fixtures", n), "utf8");
 const cli = join(here, "..", "bin", "whatbroke.js");
 
 const CASES = [
+  // Captured with GNU make 3.81 driving Apple clang. make itself needs no parser: the
+  // compiler underneath already has one, and `make: *** [bad.o] Error 1` restates the
+  // failure without adding to it.
+  { file: "make_compile_fail.txt", tool: "clang", n: 3, check: (r) => {
+      assert.equal(r.failures[0].file, "bad.c");
+      assert.equal(r.failures[0].line, 3);
+      assert.equal(r.failures[0].code, "-Wint-conversion");
+      assert.doesNotMatch(JSON.stringify(r.failures), /make: \*\*\*/, "make's echo is not a failure");
+    } },
+  { file: "make_driver_fail.txt", tool: "clang", n: 1, check: (r) => {
+      // The driver failed before it could compile anything, so there is no file:line to
+      // report - and "no input files" underneath only restates it.
+      assert.match(r.failures[0].message, /no such file or directory: 'nonexistent\.c'/);
+      assert.equal(r.failures[0].file, undefined);
+      assert.equal(r.failures[0].severity, "error");
+      assert.doesNotMatch(JSON.stringify(r.failures), /no input files|make: \*\*\*/);
+    } },
   // Captured with pnpm 9 and yarn 1.22. pnpm indents its diagnostics with U+2009 THIN
   // SPACE, not a space - a pattern written [ \t] matches none of it, which is how the
   // whitespace class used across every parser came to be wrong.

@@ -215,7 +215,8 @@ them.
 | **cargo clippy** | the lint name as the title, so you know what to fix or allow |
 | **ruff** | rule code, `file:line`, the message and ruff's own fix hint |
 | **mypy** | error code, `file:line`, the type-checking message; notes and warnings set aside |
-| **GCC/Clang** | compiler errors with `file:line:column`; warnings and notes set aside |
+| **GCC/Clang** | compiler errors with `file:line:column`; driver errors that never got as far as a file; warnings and notes set aside |
+| **make** | no parser of its own — the compiler underneath already has one, and `make: *** [target] Error 1` restates the failure without adding to it |
 | **RSpec** | example name, failure message, and `spec/file:line` location |
 | **javac / Maven / Gradle** | JVM compiler errors with warnings excluded, Surefire test failures, and build scripts that fail to evaluate |
 | **.NET** | compiler error codes with `file:line:column`; warnings set aside |
