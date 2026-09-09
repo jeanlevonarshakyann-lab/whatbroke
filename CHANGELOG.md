@@ -2,6 +2,13 @@
 
 ## Unreleased
 
+- Fixed: one failure read two ways was reported as two. A Python traceback's
+  `KeyError: 'x'` is also a shape Node's parser recognises, so the same failure arrived
+  twice — once located, once not. The second reading is now dropped.
+- Fixed: cargo scanned forward without limit for a diagnostic's location, so in a log
+  holding two tools an `error:` line belonging to another tool could adopt an unrelated
+  location. rustc puts the `-->` on the very next line, every time.
+
 - Fixed: the Docker BuildKit handling did not work on real Docker output. Docker writes
   `ERROR: failed to build: failed to solve:`, not `ERROR: failed to solve:`, so the
   failure block was never found; and a real build log carries image-pull progress, so

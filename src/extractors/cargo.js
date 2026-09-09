@@ -62,9 +62,19 @@ export default {
       if (!m || TALLY_RE.test(m[2])) continue;
 
       let loc = null, note = "", stmt = "", lint = "";
-      for (let j = i + 1; j < lines.length && !ERR_RE.test(lines[j]); j++) {
+      // rustc puts the `-->` on the line straight after the error, every time - the gap
+      // is exactly 1 in every captured fixture. Scanning further for one means that in a
+      // log holding more than one tool, an `error:` line belonging to somebody else can
+      // reach forward and adopt an unrelated tool's location: bun writes `error:` at
+      // line start, and ruff writes `--> file:line:col`, so the two combined produced a
+      // Rust compile error at a Python file that nothing had reported.
+      const LOCATION_WINDOW = 3;
+      // The rest of a diagnostic - notes, the echoed source, clippy's lint link - trails
+      // further, but not indefinitely.
+      const DIAGNOSTIC_WINDOW = 40;
+      for (let j = i + 1; j < lines.length && j <= i + DIAGNOSTIC_WINDOW && !ERR_RE.test(lines[j]); j++) {
         const am = lines[j].match(ARROW_RE);
-        if (am && !STDLIB.test(am[1])) { loc ??= { file: am[1], line: +am[2], col: +am[3] }; continue; }
+        if (am && !STDLIB.test(am[1])) { if (j - i <= LOCATION_WINDOW) loc ??= { file: am[1], line: +am[2], col: +am[3] }; continue; }
         // rustc's inline annotation on the caret line carries the real explanation
         const cm = lines[j].match(/^[^\S\n]*\|[^\S\n]*[\^~-]+[^\S\n]+(.+)$/);
         if (cm && !note && !STDLIB.test(lines[j])) note = cm[1].trim();

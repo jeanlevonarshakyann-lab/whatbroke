@@ -164,6 +164,51 @@ test("a tool whose failures never carry a file is still reported", () => {
   assert.ok(npm.failures.length > 0);
 });
 
+test("one failure read twice is not two failures", () => {
+  // A Python traceback ends `KeyError: 'taxrate'`, and node's parser recognises that
+  // shape as an exception. The location test cannot catch it: the echo has no location.
+  // What gives it away is that it says strictly less - its message sits inside the
+  // other's, and it knows less about where the failure is.
+  const r = analyse(fx("bun_fail.txt") + "\n" + fx("py_traceback.txt"));
+  const python = r.others.find((o) => o.tool === "python");
+  assert.ok(python, "the traceback's own reading should survive");
+  assert.match(python.failures[0].message, /KeyError: 'taxrate'/);
+  assert.equal(python.failures[0].file, "/home/dev/fx/boom.py");
+  assert.ok(!r.others.some((o) => o.tool === "node"),
+    "node's unlocated reading of the same line is the same failure told worse");
+});
+
+test("a diagnostic cannot borrow another tool's location", () => {
+  // bun writes `error:` at line start and ruff writes `--> file:line:col`. cargo matches
+  // the first and used to scan forward without limit for the second, producing a Rust
+  // compile error at a Python file that nothing had reported.
+  const r = analyse(fx("bun_fail.txt") + "\n" + fx("ruff_fail.txt"));
+  for (const other of r.others ?? []) {
+    for (const f of other.failures) {
+      if (other.tool.startsWith("cargo")) {
+        assert.fail(`cargo claimed ${f.file}: ${JSON.stringify(String(f.message).slice(0, 40))}`);
+      }
+    }
+  }
+});
+
+test("logs that really do appear together are read exactly", () => {
+  // The pair sweep concatenates arbitrary fixtures, including combinations no CI job
+  // would ever produce. These are the ones that actually co-occur.
+  const REAL = [
+    ["eslint_fail.txt", "tsc_plain.txt", "vitest_fail.txt"],
+    ["eslint_bulk_fail.txt", "jest_fail.txt"],
+    ["ruff_fail.txt", "mypy_fail.txt", "pytest_fail.txt"],
+    ["clang_fail.txt", "cargobuild_fail.txt"],
+    ["eslint_fail.txt", "tsc_plain.txt", "jest_fail.txt", "npm_fail.txt"],
+    ["ruff_fail.txt", "pytest_fail.txt", "pip_resolve_fail.txt"],
+  ];
+  for (const parts of REAL) {
+    const r = analyse(joined(parts));
+    assert.equal(recovered(r), alone(parts), `${parts.join(" + ")}`);
+  }
+});
+
 // ------------------------------------------------------------------ output
 
 test("a mixed log shows every tool in the terminal", () => {
