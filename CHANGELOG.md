@@ -2,6 +2,11 @@
 
 ## Unreleased
 
+- Fixed: the vite parser treated any bracketed uppercase word as a rollup diagnostic
+  code, so an interleaved `[INFO]` or `[WARN]` line from another tool became a build
+  error. Diagnostics are now read only after vite says the build failed, and log-level
+  names are excluded.
+
 - Added esbuild and vite/rollup parsers. Both bundlers print their real diagnostic and
   then their CLI wrapper reports that the bundler exited non-zero; whatbroke was reading
   the second one, so an esbuild syntax error came back as

@@ -164,6 +164,44 @@ test("naming the wrong tool cannot damage a clear log", () => {
   }
 });
 
+// Interleaving.
+//
+// stdout and stderr are separate pipes, so a second stream's lines land in the middle
+// of a diagnostic block. Losing some detail there is unavoidable - the block really was
+// cut in half. GAINING a failure is not: it means a parser matched a line belonging to
+// something else, and every gained failure is a claim the log does not support. This
+// sweep is what caught vite reporting `[INFO] progress 45%` as a build error, because
+// a log level is bracketed exactly like a rollup diagnostic code.
+const INTERLEAVED = ["npm warn deprecated foo@1.0.0", "Downloading package...", "[INFO] progress 45%", "> my-app@1.0.0 test"];
+
+test("interleaved output never invents a failure", () => {
+  const gained = [];
+  const lost = [];
+  let checked = 0;
+  for (const name of readdirSync(fixtures)) {
+    const raw = readFileSync(join(fixtures, name), "utf8");
+    const base = safely(() => analyse(raw), null);
+    if (!base) continue;
+    const mixed = raw.split("\n")
+      .flatMap((l, i) => (i % 7 === 3 ? [INTERLEAVED[i % INTERLEAVED.length], l] : [l]))
+      .join("\n");
+    checked++;
+    let r;
+    try { r = analyse(mixed); } catch (e) { gained.push(`${name} threw ${e.message}`); continue; }
+    const n = r?.failures.length ?? 0;
+    if (r && r.tool === base.tool && n > base.failures.length) {
+      gained.push(`${name}: ${base.failures.length} -> ${n}`);
+    } else if (n < base.failures.length) {
+      lost.push(`${name}: ${base.failures.length} -> ${n}`);
+    }
+  }
+  assert.ok(checked > 40, `only ${checked} fixtures exercised`);
+  assert.deepEqual(gained, [], "a parser matched a line that was not its own");
+  // Losing detail when a block is cut in half is honest degradation, but it should stay
+  // rare enough to notice if it spreads.
+  assert.ok(lost.length <= 3, `${lost.length} fixtures lost failures: ${lost.join("; ")}`);
+});
+
 // Runaway backtracking.
 //
 // `\s` matches a newline, so `/^\s+at /m` at a blank line consumes every remaining
