@@ -18,7 +18,7 @@ export default {
     for (const l of lines) {
       const m = l.match(BUILD_RE);
       if (m && !/^\s/.test(l)) {
-        failures.push({ file: m[1], line: +m[2], col: +m[3], title: "", message: m[4] });
+        failures.push({ file: m[1], line: +m[2], col: +m[3], title: "", severity: "error", message: m[4] });
       }
     }
     if (failures.length) {
@@ -42,7 +42,7 @@ export default {
       }
       if (!what.length) continue;
       failures.push({
-        file, line, title: "DATA RACE",
+        file, line, title: "DATA RACE", label: "DATA RACE", severity: "error",
         message: what.slice(0, 2).join(", ") + " - the same memory, without synchronisation",
       });
     }
@@ -68,7 +68,7 @@ export default {
         }
       }
       if (!msg.length && !file) continue;
-      failures.push({ file, line, title: name, message: msg.join("\n") });
+      failures.push({ file, line, title: name, subject: name, severity: "error", message: msg.join("\n") });
     }
 
     // count what we actually report: a parent of subtests prints its own

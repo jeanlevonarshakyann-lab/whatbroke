@@ -80,7 +80,7 @@ export default {
       const start = scopeStarts.get(head[1].length);
       scopeStarts.delete(head[1].length);
       if (failureType === "subtestsFailed" && start !== undefined && failures.length > start) continue;
-      failures.push({ file, line, col, title: head[2], message });
+      failures.push({ file, line, col, title: head[2], subject: head[2], severity: "error", message });
     }
 
     if (!failures.length) return null;

@@ -8,7 +8,11 @@ import { fingerprint } from "./cluster.js";
 // do not even cover the same code, so a cause missing from the second is not a cause
 // that was fixed. The identity below is therefore the whole invocation, and runs that
 // differ in any part of it simply never meet.
-const IDENTITY_VERSION = 1;
+// 2: a cause is fingerprinted from the failure's declared `code`/`label` rather than
+// its `title`, so every identity from version 1 is stale. Bumping means those records
+// are ignored outright - a mismatched cache would report every cause as newly appeared,
+// which is the tool inventing a regression out of its own upgrade.
+const IDENTITY_VERSION = 2;
 
 /** Where a run's fingerprints live. Never the project: whatbroke promises it writes
  *  nothing into your working directory, and a tool that quietly drops a state file

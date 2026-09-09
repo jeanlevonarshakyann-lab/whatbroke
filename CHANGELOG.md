@@ -2,6 +2,16 @@
 
 ## Unreleased
 
+- Failures now declare what they are: `tool`, `code`, `subject`, `label` and `severity`
+  alongside the existing fields. `title` is unchanged, so `--json` and the GitHub
+  annotation shape are unaffected. Severity was already computed by seven parsers and
+  thrown away; it is now reported, and warnings still never become failures.
+- Clustering no longer consults a hand-maintained table of 27 tool names to learn what a
+  tool's `title` meant. The policy follows the failure's own fields, so a new parser
+  cannot get wrong grouping by omission.
+- `--since-last` records from before this change are ignored rather than compared
+  against, which would have reported every cause as newly appeared.
+
 - A log holding more than one tool's output now yields every tool's failures, not just
   the winner's. They were already being extracted and then discarded: an eslint-plus-jest
   log reported 2 failures out of 92 and a line saying the other 90 existed. `failures`

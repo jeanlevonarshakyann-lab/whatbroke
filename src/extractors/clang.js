@@ -18,7 +18,7 @@ export default {
       if (match[4] === "warning") { warnings++; continue; }
       failures.push({
         file: match[1], line: +match[2], col: +match[3],
-        title: code?.[1] ?? match[4], message,
+        title: code?.[1] ?? match[4], code: code?.[1], label: code ? undefined : match[4], severity: match[4], message,
       });
     }
     if (!failures.length) return null;

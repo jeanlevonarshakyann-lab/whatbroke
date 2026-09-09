@@ -36,7 +36,7 @@ export default {
     return {
       tool: "npm",
       summary: undefined,
-      failures: [{ title: code, message: msg.join("\n") }],
+      failures: [{ title: code, code, severity: "error", message: msg.join("\n") }],
     };
   },
 };

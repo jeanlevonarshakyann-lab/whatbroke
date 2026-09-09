@@ -30,8 +30,8 @@ export default {
       seen.add(h.text);
       const loc = h.text.match(/^([^\s:]+):(\d+)(?::(\d+))?:[ \t]*(.*)$/);
       failures.push(loc
-        ? { file: loc[1], line: +loc[2], col: loc[3] ? +loc[3] : undefined, title: "", message: loc[4] }
-        : { title: "", message: h.text });
+        ? { file: loc[1], line: +loc[2], col: loc[3] ? +loc[3] : undefined, title: "", severity: "error", message: loc[4] }
+        : { title: "", severity: "error", message: h.text });
     }
     return { tool: "output", failures, guessed: true };
   },

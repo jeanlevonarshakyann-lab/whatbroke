@@ -57,7 +57,7 @@ export default {
 
       failures.push({
         file, line,
-        title: shortName(head[1]),
+        title: shortName(head[1]), subject: shortName(head[1]), severity: "error",
         message: msg.join("\n"),
       });
     }

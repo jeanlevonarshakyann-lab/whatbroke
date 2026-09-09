@@ -126,7 +126,7 @@ export function render(result, { max = 5, cwd = true, source = true, cluster = t
     const more = unit.reported
       ? `  ${C.yellow}${family ? `(${unit.size} cases)` : `(+${kin.length} more site${kin.length > 1 ? "s" : ""})`}${C.reset}`
       : "";
-    const isNew = since?.compared && since.fresh.includes(causeId(f, result.tool))
+    const isNew = since?.compared && since.fresh.includes(causeId(f))
       ? `  ${C.bold}${C.yellow}new${C.reset}` : "";
     if (loc || title) out.push(`  ${loc}${title}${more}${isNew}`);
 

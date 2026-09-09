@@ -8,25 +8,6 @@
 
 export const MIN_CLUSTER = 3;   // two failures sharing a shape is usually coincidence
 
-// A tool's `title` is either a diagnostic code (discriminating - keep it) or the name
-// of the site (the axis we cluster across - drop it). This is a table and not a
-// heuristic because no heuristic separates "no-unused-vars" from "test_invoice_total".
-const TITLE_IS_CODE = new Set(["tsc", "mypy", "ruff", "clang", "dotnet", "cargo", "eslint", "node"]);
-const TITLE_IS_SITE = new Set(["pytest", "unittest", "python", "jest", "vitest", "go test", "cargo test", "rspec", "phpunit", "dotnet test", "node --test", "bun test", "deno test"]);
-const TITLE_IS_CONST = new Set(["go build", "gradle", "maven", "jvm", "output", "npm"]);
-export const TOOL_TITLE_SETS = { TITLE_IS_CODE, TITLE_IS_SITE, TITLE_IS_CONST };
-
-/** Unknown tools KEEP the title: a new extractor whose title is a test name then gets
- *  no clustering at all, rather than wrong clustering. Inert beats harmful. */
-export const titlePolicy = (tool) => ({
-  title: !TITLE_IS_SITE.has(tool),
-  // For a compiler or linter the echoed source line is the INSTANCE, not the
-  // identity - the code and message already say which problem it is, and the same
-  // lint in forty places is one thing to fix. For a test runner the failing
-  // expression is the strongest discriminator there is, so it stays.
-  stmt: !TITLE_IS_CODE.has(tool),
-});
-
 // Quoted content that is short and has no whitespace is a NAME - unquote and keep it,
 // so KeyError: 'exp' stays distinct from KeyError: 'sub'. Anything else is DATA.
 // The lookbehind matters: without it the apostrophe in "doesn't" opens a match that
@@ -76,14 +57,30 @@ export function skeleton(text) {
  *  messages would destroy list[int], [OPTIONS] and [-Wint-conversion]. */
 export const normTitle = (t) => String(t ?? "").replace(/\[[^\]]*\]\s*$/, "[…]").trim();
 
-const part = (f, policy) => [
-  policy.title ? String(f.title ?? "") : "",
+/** What identifies a failure, as opposed to where it happened.
+ *
+ *  This used to be a table mapping each of 27 tool strings to what its `title` meant,
+ *  because `title` held a diagnostic code for a linter and a test name for a runner and
+ *  no heuristic tells "no-unused-vars" from "test_invoice_total". Parsers now say which
+ *  they produced, so the policy falls out of the failure itself:
+ *
+ *  - `code` is the identity. Keep it, and drop the echoed source line: for a compiler
+ *    the statement is the INSTANCE, and the same lint in forty places is one thing.
+ *  - `subject` is the site - the axis being clustered across - so it never enters the
+ *    key, and the failing expression stays as the strongest discriminator there is.
+ *  - `label` is a constant the tool prints for a whole class of failure. Harmless in
+ *    the key, and dropping it would cost the signature words it is scored on.
+ *
+ *  A failure declaring none of them clusters on its message alone, which is the same
+ *  inert behaviour an unknown tool used to get. */
+const part = (f) => [
+  String(f.code ?? f.label ?? ""),
   skeleton(f.message),
-  policy.stmt === false ? "" : skeleton(f.stmt),
+  f.code ? "" : skeleton(f.stmt),
 ];
 
-export const keyOf = (f, policy) => JSON.stringify(part(f, policy));
-export const signatureOf = (f, policy) => part(f, policy).filter(Boolean).join("  ·  ");
+export const keyOf = (f) => JSON.stringify(part(f));
+export const signatureOf = (f) => part(f).filter(Boolean).join("  ·  ");
 
 const PLACEHOLDER = /<(?:str|num|path|url|hex|uuid|addr)>\*?/g;
 // Node's assertion header describes the matcher, not the bug. After numeric
@@ -104,7 +101,7 @@ export function contentScore(sig) {
  *  Deliberately not a cluster's own `id`: an unreported cluster mixes its member
  *  index into that id, so the same lone failure is named differently the moment
  *  another failure appears before it. The content key is what identifies the bug. */
-export const causeId = (failure, tool) => fingerprint(keyOf(failure, titlePolicy(tool)));
+export const causeId = (failure) => fingerprint(keyOf(failure));
 
 export function fingerprint(key) {
   let h = 0x811c9dc5;
@@ -114,18 +111,17 @@ export function fingerprint(key) {
 
 /** Partition failures by shared cause. Every failure appears in exactly one cluster,
  *  including singletons, so consumers never have to reconcile two lists. */
-export function clusterFailures(failures, tool) {
-  const policy = titlePolicy(tool);
+export function clusterFailures(failures) {
   const buckets = new Map();
   failures.forEach((f, i) => {
-    const key = keyOf(f, policy);
+    const key = keyOf(f);
     const at = buckets.get(key);
     if (at) at.push(i); else buckets.set(key, [i]);
   });
 
   const clusters = [];
   for (const [key, members] of buckets) {
-    const sig = signatureOf(failures[members[0]], policy);
+    const sig = signatureOf(failures[members[0]]);
     // prefer an exemplar that can actually show source
     const located = members.find((i) => failures[i].file && failures[i].line);
     const reported = members.length >= MIN_CLUSTER && contentScore(sig) >= 2;

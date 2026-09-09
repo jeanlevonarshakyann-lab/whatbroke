@@ -29,7 +29,7 @@ export default {
       }
       failures.push({
         file: match[1], line: +match[2], col: match[3] ? +match[3] : undefined,
-        title: match[6] ?? "mypy",
+        title: match[6] ?? "mypy", code: match[6], severity: match[4], 
         message: [match[5], ...notes].join("\n"),
       });
     }

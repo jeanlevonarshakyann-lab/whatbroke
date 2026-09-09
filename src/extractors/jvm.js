@@ -35,7 +35,7 @@ export default {
       if (seen.has(key)) continue;
       seen.add(key);
       const { severity, ...failure } = match;
-      failures.push({ ...failure, title: "compile error" });
+      failures.push({ ...failure, title: "compile error", label: "compile error", severity: "error" });
     }
     if (!failures.length) {
       // Surefire lists each failed test once, compactly:
@@ -47,7 +47,7 @@ export default {
         if (!m) continue;
         failures.push({
           file: `${m[1]}.java`, line: +m[3],
-          title: `${m[1]}.${m[2]}`,
+          title: `${m[1]}.${m[2]}`, subject: `${m[1]}.${m[2]}`, severity: "error",
           message: m[4].trim(),
         });
       }
@@ -62,13 +62,13 @@ export default {
             .filter(Boolean).map((l) => l.replace(/^>[ \t]*/, "")).slice(0, 3);
           failures.push({
             file: where?.[1], line: where ? +where[2] : undefined,
-            title: "build script", message: detail.join("\n"),
+            title: "build script", label: "build script", severity: "error", message: detail.join("\n"),
           });
         }
       }
       if (!failures.length) {
         const testFailure = s.match(/^\[ERROR\][ \t]+Tests run:.*?(?:Failures|Errors):[ \t]*(\d+)/m);
-        if (testFailure) failures.push({ title: "test failure", message: testFailure[0].replace(/^\[ERROR\][ \t]+/, "") });
+        if (testFailure) failures.push({ title: "test failure", label: "test failure", severity: "error", message: testFailure[0].replace(/^\[ERROR\][ \t]+/, "") });
       }
     }
     if (!failures.length) return null;

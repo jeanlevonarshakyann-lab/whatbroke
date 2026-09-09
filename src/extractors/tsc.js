@@ -20,7 +20,7 @@ export default {
         if (chain.length >= MAX_CHAIN) break;
       }
       failures.push({
-        file: m[1], line: +m[2], col: +m[3], title: m[5],
+        file: m[1], line: +m[2], col: +m[3], title: m[5], code: m[5], severity: "error",
         message: [m[6], ...chain].join("\n"),
       });
     }

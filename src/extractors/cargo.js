@@ -39,7 +39,7 @@ export default {
       }
       failures.push({
         file: pm[2], line: +pm[3], col: +pm[4],
-        title: pm[1], message: msg.join("\n"),
+        title: pm[1], subject: pm[1], severity: "error", message: msg.join("\n"),
       });
     }
     if (failures.length) {
@@ -79,7 +79,7 @@ export default {
       }
       failures.push({
         file: loc?.file, line: loc?.line, col: loc?.col,
-        title: m[1] ?? lint ?? "", message: [m[2], note].filter(Boolean).join("\n"), stmt,
+        title: m[1] ?? lint ?? "", code: m[1] ?? (lint || undefined), severity: "error", message: [m[2], note].filter(Boolean).join("\n"), stmt,
       });
     }
 

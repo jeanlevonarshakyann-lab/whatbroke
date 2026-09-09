@@ -25,7 +25,7 @@ export default {
         if (lines[j].trim() && !/^[ \t]+# /.test(lines[j])) message.push(lines[j].trim());
       }
       failures.push({
-        file, line, title: header[1],
+        file, line, title: header[1], subject: header[1], severity: "error",
         message: message.join("\n").replace(/^Failure\/Error:[ \t]*/, ""),
       });
     }
