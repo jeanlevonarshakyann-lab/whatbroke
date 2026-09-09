@@ -10,6 +10,32 @@ const fx = (n) => readFileSync(join(here, "fixtures", n), "utf8");
 const cli = join(here, "..", "bin", "whatbroke.js");
 
 const CASES = [
+  // Captured with pip 24.3.1 on Python 3.12: a build backend that raises, a version
+  // that does not exist, and a malformed requirements file.
+  { file: "pip_build_fail.txt", tool: "pip", n: 1, check: (r) => {
+      // 42 lines of pip ceremony around one raised exception, stated twice.
+      const f = r.failures[0];
+      assert.equal(f.title, "build failed");
+      assert.equal(f.subject, "./brokenpkg");
+      assert.match(f.message, /RuntimeError: deliberate failure while building metadata/);
+      assert.doesNotMatch(f.message, /pyproject_hooks|build_meta/, "setuptools' own frames are not the cause");
+      assert.equal(f.category, "package");
+    } },
+  { file: "pip_resolve_fail.txt", tool: "pip", n: 1, check: (r) => {
+      const f = r.failures[0];
+      assert.equal(f.subject, "numpy==1.0.0");
+      assert.equal(f.title, "no matching distribution");
+      // pip says this twice and pads it with the whole index and two "Ignored" lines
+      assert.doesNotMatch(f.message, /from versions:/, "the version list is the index, not the diagnosis");
+      assert.doesNotMatch(f.message, /Ignored the following/);
+    } },
+  { file: "pip_badreq_fail.txt", tool: "pip", n: 1, check: (r) => {
+      const f = r.failures[0];
+      assert.equal(f.subject, "requests==");
+      assert.equal(f.file, "bad.txt");
+      assert.equal(f.line, 1);
+      assert.match(f.message, /Expected end or semicolon/);
+    } },
   // Captured with javac 26.0.2.1 (-Xlint:unchecked), Gradle 9.7.1 (Java plugin
   // with the same flag), and mypy 2.3.1 (--no-error-summary, with/without columns).
   { file: "javac_fail.txt", tool: "jvm", n: 1, check: (r) => {

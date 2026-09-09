@@ -1,0 +1,6 @@
+
+[notice] A new release of pip is available: 24.3.1 -> 26.2.1
+[notice] To update, run: python3.12 -m pip install --upgrade pip
+ERROR: Invalid requirement: 'requests==': Expected end or semicolon (after name and no valid version specifier)
+    requests==
+            ^ (from line 1 of bad.txt)
