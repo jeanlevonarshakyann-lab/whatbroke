@@ -192,6 +192,26 @@
     ],
     "shadow": {}
   },
+  "dotnet_noproject_fail.txt": {
+    "winner": "dotnet",
+    "parser": "dotnet",
+    "failures": 1,
+    "claimants": [
+      "dotnet",
+      "generic"
+    ],
+    "shadow": {}
+  },
+  "dotnet_restore_fail.txt": {
+    "winner": "dotnet",
+    "parser": "dotnet",
+    "failures": 1,
+    "claimants": [
+      "dotnet",
+      "generic"
+    ],
+    "shadow": {}
+  },
   "dotnettest_fail.txt": {
     "winner": "dotnet test",
     "parser": "dotnet test",
@@ -383,6 +403,18 @@
       "generic": 4
     }
   },
+  "gradle_dependency_fail.txt": {
+    "winner": "gradle",
+    "parser": "jvm",
+    "failures": 1,
+    "claimants": [
+      "jvm",
+      "generic"
+    ],
+    "shadow": {
+      "generic": 1
+    }
+  },
   "gradle_fail.txt": {
     "winner": "gradle",
     "parser": "jvm",
@@ -517,6 +549,16 @@
     "shadow": {
       "generic": 3
     }
+  },
+  "maven_dependency_fail.txt": {
+    "winner": "maven",
+    "parser": "jvm",
+    "failures": 1,
+    "claimants": [
+      "jvm",
+      "generic"
+    ],
+    "shadow": {}
   },
   "maven_fail.txt": {
     "winner": "maven",
