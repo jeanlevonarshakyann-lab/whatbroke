@@ -330,6 +330,22 @@ Nothing about tracking can change the outcome of a run. If the cache cannot be r
 written, whatbroke says nothing about history and prints the same diagnosis it always
 would.
 
+## When the log is too big
+
+`--max-bytes` caps how much output is kept (10 MB by default). The cap is spent from
+both ends: a slice of the beginning, where the command line and build banner live, and
+as much of the end as the rest of the budget allows — because the lines that say *why*
+something failed are almost always the last ones printed.
+
+What is dropped is stated, never silently stitched:
+
+```
+~~~ whatbroke: 1743102 bytes of output elided here (raise --max-bytes to keep them) ~~~
+```
+
+Cuts land on line boundaries, so a parser is never handed half a line, and multi-byte
+characters are never split.
+
 ## Safety
 
 whatbroke reads source context from disk to show you the lines around a failure.

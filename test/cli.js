@@ -195,7 +195,13 @@ export async function runCliTests(cli = fileURLToPath(new URL("../bin/whatbroke.
     const text = "x".repeat(4096);
     const result = JSON.parse(run(["--json", "--max-bytes=1024"], text).stdout);
     assert.equal(result.truncated, true);
-    assert.equal(Buffer.byteLength(result.fallback.rawOutput), 1024);
+    // Capture spends the budget from both ends and joins the halves with a marker
+    // naming the gap, so the payload is bounded by --max-bytes and the marker sits
+    // on top of it rather than eating into what was kept.
+    const captured = result.fallback.rawOutput;
+    assert.match(captured, /bytes of output elided here/, "the gap must be declared");
+    const payload = captured.replace(/\n~~~ whatbroke:[^\n]*~~~\n/, "");
+    assert.equal(Buffer.byteLength(payload), 1024);
     for (const flags of [[], ["--github-actions"]]) {
       const r = run([...flags, "--max-bytes=1024"], text);
       assert.match(r.stdout, /capture limit reached/);

@@ -2,6 +2,18 @@
 
 ## Unreleased
 
+- Fixed: capture kept the head of a large log and discarded the rest, losing exactly the
+  part that explains a failure. A 1.8 MB log with a pytest failure at the end reported no
+  diagnostic at all. The byte budget is now spent from both ends, with an explicit marker
+  naming what was dropped.
+- Fixed: slicing at the capture limit re-encoded already-decoded chunks and cut them at
+  arbitrary byte offsets, splitting multi-byte characters. Cuts now land on line
+  boundaries, which cannot fall inside a UTF-8 sequence.
+- Added a detector collision matrix (`test/detectors.js`) recording, for every fixture,
+  which parsers claim it, which one wins, and how many failures each losing claimant
+  would have extracted. A new parser that reaches into an existing fixture now fails the
+  suite immediately.
+
 - Added `--since-last`: marks the causes that were not present the last time the same
   command ran. Compares only within one command, tool and directory; withholds the
   "no longer reported" count when the run was truncated or never started, and does not

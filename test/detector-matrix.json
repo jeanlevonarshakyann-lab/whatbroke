@@ -1,0 +1,545 @@
+{
+  "bun_fail.txt": {
+    "winner": "bun test",
+    "parser": "bun test",
+    "failures": 2,
+    "claimants": [
+      "bun test",
+      "node",
+      "generic"
+    ],
+    "shadow": {
+      "generic": 1
+    }
+  },
+  "cargobuild_fail.txt": {
+    "winner": "cargo",
+    "parser": "cargo",
+    "failures": 3,
+    "claimants": [
+      "cargo",
+      "generic"
+    ],
+    "shadow": {
+      "generic": 4
+    }
+  },
+  "cargotest_fail.txt": {
+    "winner": "cargo test",
+    "parser": "cargo",
+    "failures": 2,
+    "claimants": [
+      "cargo",
+      "generic"
+    ],
+    "shadow": {
+      "generic": 1
+    }
+  },
+  "cargotest_snapshot_fail.txt": {
+    "winner": "cargo test",
+    "parser": "cargo",
+    "failures": 3,
+    "claimants": [
+      "cargo",
+      "go",
+      "generic"
+    ],
+    "shadow": {}
+  },
+  "clang_bulk_fail.txt": {
+    "winner": "clang",
+    "parser": "clang",
+    "failures": 14,
+    "claimants": [
+      "clang",
+      "generic"
+    ],
+    "shadow": {
+      "generic": 5
+    }
+  },
+  "clang_fail.txt": {
+    "winner": "clang",
+    "parser": "clang",
+    "failures": 2,
+    "claimants": [
+      "clang",
+      "generic"
+    ],
+    "shadow": {
+      "generic": 2
+    }
+  },
+  "clippy_fail.txt": {
+    "winner": "cargo",
+    "parser": "cargo",
+    "failures": 15,
+    "claimants": [
+      "cargo",
+      "generic"
+    ],
+    "shadow": {
+      "generic": 4
+    }
+  },
+  "deno_fail.txt": {
+    "winner": "deno test",
+    "parser": "deno test",
+    "failures": 2,
+    "claimants": [
+      "deno test",
+      "node",
+      "generic"
+    ],
+    "shadow": {
+      "generic": 3
+    }
+  },
+  "dotnet_fail.txt": {
+    "winner": "dotnet",
+    "parser": "dotnet",
+    "failures": 2,
+    "claimants": [
+      "dotnet",
+      "generic"
+    ],
+    "shadow": {}
+  },
+  "dotnettest_fail.txt": {
+    "winner": "dotnet test",
+    "parser": "dotnet test",
+    "failures": 3,
+    "claimants": [
+      "dotnet test",
+      "generic"
+    ],
+    "shadow": {
+      "generic": 1
+    }
+  },
+  "eslint_bulk_fail.txt": {
+    "winner": "eslint",
+    "parser": "eslint",
+    "failures": 90,
+    "claimants": [
+      "eslint",
+      "generic"
+    ],
+    "shadow": {}
+  },
+  "eslint_fail.txt": {
+    "winner": "eslint",
+    "parser": "eslint",
+    "failures": 3,
+    "claimants": [
+      "eslint",
+      "generic"
+    ],
+    "shadow": {}
+  },
+  "gobuild_fail.txt": {
+    "winner": "go build",
+    "parser": "go",
+    "failures": 3,
+    "claimants": [
+      "go",
+      "generic"
+    ],
+    "shadow": {
+      "generic": 3
+    }
+  },
+  "gorace_fail.txt": {
+    "winner": "go test",
+    "parser": "go",
+    "failures": 3,
+    "claimants": [
+      "go",
+      "generic"
+    ],
+    "shadow": {
+      "generic": 2
+    }
+  },
+  "gosub_fail.txt": {
+    "winner": "go test",
+    "parser": "go",
+    "failures": 2,
+    "claimants": [
+      "go",
+      "generic"
+    ],
+    "shadow": {
+      "generic": 2
+    }
+  },
+  "gotest_cluster_fail.txt": {
+    "winner": "go test",
+    "parser": "go",
+    "failures": 7,
+    "claimants": [
+      "go",
+      "generic"
+    ],
+    "shadow": {
+      "generic": 8
+    }
+  },
+  "gotest_fail.txt": {
+    "winner": "go test",
+    "parser": "go",
+    "failures": 3,
+    "claimants": [
+      "go",
+      "generic"
+    ],
+    "shadow": {
+      "generic": 4
+    }
+  },
+  "gradle_fail.txt": {
+    "winner": "gradle",
+    "parser": "jvm",
+    "failures": 2,
+    "claimants": [
+      "jvm",
+      "generic"
+    ],
+    "shadow": {
+      "generic": 3
+    }
+  },
+  "gradle_java_fail.txt": {
+    "winner": "gradle",
+    "parser": "jvm",
+    "failures": 2,
+    "claimants": [
+      "jvm",
+      "generic"
+    ],
+    "shadow": {
+      "generic": 3
+    }
+  },
+  "gradle_script_fail.txt": {
+    "winner": "gradle",
+    "parser": "jvm",
+    "failures": 1,
+    "claimants": [
+      "jvm",
+      "generic"
+    ],
+    "shadow": {
+      "generic": 1
+    }
+  },
+  "gradle_warnings_fail.txt": {
+    "winner": "gradle",
+    "parser": "jvm",
+    "failures": 1,
+    "claimants": [
+      "jvm",
+      "generic"
+    ],
+    "shadow": {
+      "generic": 3
+    }
+  },
+  "javac_fail.txt": {
+    "winner": "jvm",
+    "parser": "jvm",
+    "failures": 1,
+    "claimants": [
+      "jvm",
+      "generic"
+    ],
+    "shadow": {
+      "generic": 2
+    }
+  },
+  "jest_fail.txt": {
+    "winner": "jest",
+    "parser": "jest",
+    "failures": 2,
+    "claimants": [
+      "jest",
+      "go",
+      "node",
+      "generic"
+    ],
+    "shadow": {
+      "generic": 2
+    }
+  },
+  "jest_snapshot_fail.txt": {
+    "winner": "jest",
+    "parser": "jest",
+    "failures": 1,
+    "claimants": [
+      "jest",
+      "go",
+      "node",
+      "generic"
+    ],
+    "shadow": {
+      "generic": 2
+    }
+  },
+  "maven_fail.txt": {
+    "winner": "maven",
+    "parser": "jvm",
+    "failures": 2,
+    "claimants": [
+      "jvm",
+      "generic"
+    ],
+    "shadow": {}
+  },
+  "maven_test_fail.txt": {
+    "winner": "maven",
+    "parser": "jvm",
+    "failures": 1,
+    "claimants": [
+      "jvm",
+      "generic"
+    ],
+    "shadow": {
+      "generic": 1
+    }
+  },
+  "mypy_columns_fail.txt": {
+    "winner": "mypy",
+    "parser": "mypy",
+    "failures": 2,
+    "claimants": [
+      "mypy",
+      "generic"
+    ],
+    "shadow": {
+      "generic": 2
+    }
+  },
+  "mypy_fail.txt": {
+    "winner": "mypy",
+    "parser": "mypy",
+    "failures": 3,
+    "claimants": [
+      "mypy",
+      "generic"
+    ],
+    "shadow": {
+      "generic": 3
+    }
+  },
+  "mypy_no_summary_fail.txt": {
+    "winner": "mypy",
+    "parser": "mypy",
+    "failures": 2,
+    "claimants": [
+      "mypy",
+      "generic"
+    ],
+    "shadow": {
+      "generic": 2
+    }
+  },
+  "mypy_notes_fail.txt": {
+    "winner": "mypy",
+    "parser": "mypy",
+    "failures": 41,
+    "claimants": [
+      "mypy",
+      "generic"
+    ],
+    "shadow": {
+      "generic": 8
+    }
+  },
+  "node_eval.txt": {
+    "winner": "node",
+    "parser": "node",
+    "failures": 1,
+    "claimants": [
+      "node",
+      "generic"
+    ],
+    "shadow": {
+      "generic": 1
+    }
+  },
+  "node_stack.txt": {
+    "winner": "node",
+    "parser": "node",
+    "failures": 1,
+    "claimants": [
+      "node",
+      "generic"
+    ],
+    "shadow": {
+      "generic": 1
+    }
+  },
+  "nodetest_fail.txt": {
+    "winner": "node --test",
+    "parser": "node --test",
+    "failures": 2,
+    "claimants": [
+      "node --test",
+      "go",
+      "generic"
+    ],
+    "shadow": {
+      "generic": 1
+    }
+  },
+  "nodetest_nested_fail.txt": {
+    "winner": "node --test",
+    "parser": "node --test",
+    "failures": 3,
+    "claimants": [
+      "node --test",
+      "generic"
+    ],
+    "shadow": {
+      "generic": 2
+    }
+  },
+  "npm_fail.txt": {
+    "winner": "npm",
+    "parser": "npm",
+    "failures": 1,
+    "claimants": [
+      "npm",
+      "generic"
+    ],
+    "shadow": {}
+  },
+  "phpunit_fail.txt": {
+    "winner": "phpunit",
+    "parser": "phpunit",
+    "failures": 2,
+    "claimants": [
+      "jest",
+      "phpunit",
+      "generic"
+    ],
+    "shadow": {
+      "generic": 1
+    }
+  },
+  "py_traceback.txt": {
+    "winner": "python",
+    "parser": "python",
+    "failures": 1,
+    "claimants": [
+      "python",
+      "generic"
+    ],
+    "shadow": {}
+  },
+  "py_unittest.txt": {
+    "winner": "unittest",
+    "parser": "unittest",
+    "failures": 2,
+    "claimants": [
+      "unittest",
+      "python",
+      "generic"
+    ],
+    "shadow": {
+      "python": 1,
+      "generic": 5
+    }
+  },
+  "pytest_fail.txt": {
+    "winner": "pytest",
+    "parser": "pytest",
+    "failures": 3,
+    "claimants": [
+      "pytest",
+      "generic"
+    ],
+    "shadow": {
+      "generic": 6
+    }
+  },
+  "rspec_fail.txt": {
+    "winner": "rspec",
+    "parser": "rspec",
+    "failures": 2,
+    "claimants": [
+      "rspec",
+      "generic"
+    ],
+    "shadow": {
+      "generic": 2
+    }
+  },
+  "rspec_profile_fail.txt": {
+    "winner": "rspec",
+    "parser": "rspec",
+    "failures": 1,
+    "claimants": [
+      "rspec",
+      "generic"
+    ],
+    "shadow": {
+      "generic": 1
+    }
+  },
+  "ruff_fail.txt": {
+    "winner": "ruff",
+    "parser": "ruff",
+    "failures": 4,
+    "claimants": [
+      "ruff",
+      "generic"
+    ],
+    "shadow": {}
+  },
+  "tsc_chain_fail.txt": {
+    "winner": "tsc",
+    "parser": "tsc",
+    "failures": 5,
+    "claimants": [
+      "tsc",
+      "generic"
+    ],
+    "shadow": {}
+  },
+  "tsc_plain.txt": {
+    "winner": "tsc",
+    "parser": "tsc",
+    "failures": 3,
+    "claimants": [
+      "tsc",
+      "generic"
+    ],
+    "shadow": {}
+  },
+  "vitest_cluster_fail.txt": {
+    "winner": "vitest",
+    "parser": "vitest",
+    "failures": 3,
+    "claimants": [
+      "vitest",
+      "generic"
+    ],
+    "shadow": {
+      "generic": 8
+    }
+  },
+  "vitest_fail.txt": {
+    "winner": "vitest",
+    "parser": "vitest",
+    "failures": 3,
+    "claimants": [
+      "vitest",
+      "generic"
+    ],
+    "shadow": {
+      "generic": 6
+    }
+  }
+}
