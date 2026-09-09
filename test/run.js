@@ -10,6 +10,34 @@ const fx = (n) => readFileSync(join(here, "fixtures", n), "utf8");
 const cli = join(here, "..", "bin", "whatbroke.js");
 
 const CASES = [
+  // Captured from real cargo runs. Three of the four are modes that are not "a test
+  // failed", and the first is the most common Rust failure there is.
+  { file: "cargo_panic_fail.txt", tool: "cargo test", n: 1, check: (r) => {
+      // PANIC_RE carries no `m` flag because it is matched line by line - and using it
+      // in detect therefore only ever tested the FIRST line. A plain `cargo run` panic
+      // has no "test result:" line to fall back on, so it produced nothing at all.
+      assert.equal(r.failures[0].file, "src/main.rs");
+      assert.equal(r.failures[0].line, 3);
+      assert.match(r.failures[0].message, /index out of bounds: the len is 0 but the index is 3/);
+    } },
+  { file: "cargo_buildscript_fail.txt", tool: "cargo", n: 1, check: (r) => {
+      // "failed to run custom build command" is the mechanism; the panic is the cause,
+      // and cargo indents it under "--- stderr" so an anchored pattern missed it.
+      assert.equal(r.summary, "build script failed");
+      assert.equal(r.failures[0].file, "build.rs");
+      assert.match(r.failures[0].message, /build script exploded/);
+      assert.equal(r.failures[0].category, "build", "a build script is not a test");
+      assert.doesNotMatch(JSON.stringify(r), /failed to run custom build command/);
+    } },
+  { file: "cargo_resolve_fail.txt", tool: "cargo", n: 1, check: (r) => {
+      // A dependency that cannot be resolved never reaches the compiler, so there is no
+      // E-code and no --> line for detection to key on.
+      assert.match(r.failures[0].message, /no matching package named `this-crate-does-not-exist-xyz`/);
+    } },
+  { file: "cargo_manifest_fail.txt", tool: "cargo", n: 1, check: (r) => {
+      assert.equal(r.failures[0].file, "Cargo.toml");
+      assert.match(r.failures[0].message, /unclosed table, expected/);
+    } },
   // A parser that reads one failure mode well can fall over on another. These four are
   // real captures of the modes that are not "a test failed": a config that will not
   // load, a suite that throws before any test runs, a module that will not import.

@@ -1,0 +1,4 @@
+    Updating crates.io index
+error: no matching package named `this-crate-does-not-exist-xyz` found
+location searched: crates.io index
+required by package `m2 v0.1.0 (/home/dev/m2)`
