@@ -266,10 +266,17 @@ far more often than a finding. The tool that *does* own the log is never filtere
 way, so `error: linking with cc failed`, which has neither, is still the answer when
 cargo owns the output.
 
-One honest limit: parsers are asked about the whole log rather than the region they own,
-so in a concatenated log a parser can still match a fragment of another tool's output —
-a Python `KeyError:` line read as a Node exception, for instance. The winning tool's
-failures are unaffected.
+One failure read two ways is not two failures. A Python traceback ends
+`KeyError: 'taxrate'`, and Node's parser recognises that shape too — so the second
+reading is dropped, because it says strictly less: its message sits inside the other's
+and it knows less about where the failure is.
+
+One honest limit remains: parsers are asked about the whole log rather than the region
+they own, so in a concatenated log a parser can still match a fragment of another tool's
+output. Every combination that actually co-occurs in a CI job is exact; the residue is
+arbitrary pairs — a Rust build log next to a PHPUnit run — where a named second tool may
+show one failure too many. The winning tool's diagnosis is never affected. Closing it
+properly means each parser reporting which lines its findings came from.
 
 CI stamps every line — GitHub Actions prefixes an ISO timestamp, and `gh run view --log`
 puts the job and step in front of that. Every parser here anchors on the start of a line,

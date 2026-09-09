@@ -97,7 +97,35 @@ function otherTools(s, winner, mine, cluster) {
       failures: fresh.map((f) => ({ tool: r.tool, category: ex.category, ...f })),
     });
   }
-  return others;
+  return dropEchoes(mine, others);
+}
+
+/** Drop a second tool's reading of a failure another tool already reported better.
+ *
+ *  A Python traceback ends `KeyError: 'taxrate'`, and node's parser recognises that as
+ *  an exception - so the same failure arrives twice, once from python with a file and a
+ *  line, and once from node with neither. The location test above cannot see it: the
+ *  echo has no location to compare.
+ *
+ *  What gives it away is that the echo says strictly less. Its message is contained in
+ *  the other's, and it knows less about where the failure is. A tool that genuinely
+ *  found something of its own is not a substring of somebody else's finding. */
+function dropEchoes(mine, others) {
+  const anchored = [...mine, ...others.flatMap((o) => o.failures)].filter((f) => f.file);
+  if (!anchored.length) return others;
+  const echoes = (f) => !f.file && anchored.some((g) => {
+    const a = String(f.message ?? "").trim();
+    const b = String(g.message ?? "").trim();
+    return a.length > 0 && a.length < b.length && b.includes(a);
+  });
+  const kept = [];
+  for (const other of others) {
+    const failures = other.failures.filter((f) => !echoes(f));
+    if (!failures.length) continue;
+    kept.push({ ...other, count: failures.length, failures,
+      clusters: other.clusters ? other.clusters.filter((c) => c.members.every((i) => !echoes(other.failures[i]))) : null });
+  }
+  return kept;
 }
 
 /** When whatbroke launches the command itself it knows what was run, and that is
