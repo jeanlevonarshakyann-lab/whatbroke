@@ -431,6 +431,17 @@ const CASES = [
       assert.ok(!/slowest|seconds average/.test(f.message),
         "profiling output must not land inside a failure");
     } },
+  { file: "npm_fail.txt", tool: "npm", n: 1, check: (r) => {
+      // real `npm run nonexistent-script`. Modern npm prefixes every line with
+      // "npm error", which does not start with the word "error", so the generic
+      // fallback never matched and a mistyped script name produced no output at all.
+      const f = r.failures[0];
+      assert.match(f.message, /Missing script: "nonexistent-script"/);
+      // everything npm says after naming the problem is chatter
+      assert.ok(!/complete log of this run|To see a list of scripts/.test(f.message),
+        "npm's trailing advice is not the failure");
+      assert.ok(!/^npm error/m.test(f.message), "the npm prefix is plumbing, not content");
+    } },
 ];
 
 let pass = 0, fail = 0;

@@ -181,6 +181,7 @@ them.
 | **dotnet test** | test name, `file:line`, the assertion; reflection frames dropped |
 | **PHPUnit** | test name, assertion message, and `file:line` location |
 | **tsc** | errors grouped by file, with the assignability chain down to the real reason |
+| **npm** | its own failures — a missing script, a bad engine — without the trailing advice |
 | *anything else* | best-effort: lines that look like errors, marked as a guess |
 
 Unrecognised output is never silently swallowed — you get a labelled guess, or the raw text back.
