@@ -2,6 +2,13 @@
 
 ## Unreleased
 
+- Added a git parser. A merge conflict reported "Automatic merge failed" — the mechanism
+  — while the `CONFLICT` lines naming the files were dropped; a rejected push reported
+  "failed to push some refs" under five lines of `hint:`. Both now report what happened
+  and to which file or ref.
+- Fixed: a failure with a file but no line rendered as `a.txt:?`, which invents a
+  question the log never asked. A merge conflict is about the whole file.
+
 - Fixed: one failure read two ways was reported as two. A Python traceback's
   `KeyError: 'x'` is also a shape Node's parser recognises, so the same failure arrived
   twice — once located, once not. The second reading is now dropped.

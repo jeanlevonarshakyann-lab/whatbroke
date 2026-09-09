@@ -225,6 +225,7 @@ them.
 | **esbuild** | the diagnostic and its source line — not the CLI wrapper's `Command failed:` stack |
 | **vite / rollup** | the rollup error code, `file:line:col` and the offending line |
 | **tsc** | errors grouped by file, with the assignability chain down to the real reason |
+| **git** | the conflicted files, not "Automatic merge failed"; the rejected ref, not five lines of `hint:` |
 | **npm** | its own failures — a missing script, a bad engine — without the trailing advice |
 | **pnpm** | its error code and message — indented with a thin space, which is why it needed one |
 | **yarn** | the failure without the documentation link that follows it |
@@ -297,7 +298,7 @@ Every failure carries what it is, not just a display string:
 | `code` | a diagnostic identifier — `TS2551`, `no-unused-vars`, `E0308` |
 | `subject` | the name of the site that failed — a test name, a method |
 | `label` | a constant the tool prints for a class of failure — `compile error` |
-| `category` | `test`, `lint`, `typecheck`, `compile`, `build`, `runtime`, `package` |
+| `category` | `test`, `lint`, `typecheck`, `compile`, `build`, `runtime`, `package`, `vcs` |
 | `severity` | `error` or `warning`; warnings never become failures |
 | `file` `line` `col` `message` `stmt` `trace` | as before |
 

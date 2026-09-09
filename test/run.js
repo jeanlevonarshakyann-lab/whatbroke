@@ -10,6 +10,32 @@ const fx = (n) => readFileSync(join(here, "fixtures", n), "utf8");
 const cli = join(here, "..", "bin", "whatbroke.js");
 
 const CASES = [
+  // Captured from real git 2.x runs. git prints mostly advice: a conflict ends with
+  // "Automatic merge failed; fix conflicts and then commit the result", which is the
+  // mechanism, and a rejected push buries the one useful line under five hint: lines.
+  { file: "git_conflict_fail.txt", tool: "git", n: 2, check: (r) => {
+      assert.equal(r.summary, "2 conflicted files");
+      assert.deepEqual(r.failures.map((f) => f.file), ["a.txt", "b.txt"], "the files are the answer");
+      assert.equal(r.failures[0].label, "merge conflict");
+      assert.equal(r.failures[0].category, "vcs");
+      assert.doesNotMatch(JSON.stringify(r.failures), /Automatic merge failed|Auto-merging/,
+        "the mechanism and the progress lines are not failures");
+    } },
+  { file: "git_overwrite_fail.txt", tool: "git", n: 1, check: (r) => {
+      assert.equal(r.failures[0].file, "a.txt", "the file that would be lost is the answer");
+      assert.match(r.failures[0].message, /would be overwritten by merge/);
+      assert.doesNotMatch(JSON.stringify(r.failures), /Please commit|Aborting|Updating/);
+    } },
+  { file: "git_reject_fail.txt", tool: "git", n: 1, check: (r) => {
+      assert.equal(r.failures[0].label, "rejected");
+      assert.match(r.failures[0].message, /main -> main \(fetch first\)/);
+      // "failed to push some refs" only restates the rejection above it
+      assert.doesNotMatch(JSON.stringify(r.failures), /failed to push some refs|^hint:/m);
+    } },
+  { file: "git_norepo_fail.txt", tool: "git", n: 1, check: (r) => {
+      assert.equal(r.failures[0].label, "fatal");
+      assert.match(r.failures[0].message, /not a git repository/);
+    } },
   // Captured from real `docker build` runs on Docker 29.6.2 (BuildKit), one failing an
   // npm script and one failing pytest. A failing build otherwise reports only
   // "ERROR: failed to build: failed to solve", which names the mechanism, not the cause.

@@ -118,8 +118,10 @@ export function render(result, { max = 5, cwd = true, source = true, cluster = t
     // parametrized family and reads better as "(N cases)" than "(+N more sites)"
     const family = unit.reported &&
       unit.members.every((i) => normTitle(fails[i].title) === normTitle(f.title));
+    // A file with no line is not a file at an unknown line: a merge conflict is about
+    // the whole file, and printing "a.txt:?" invents a question the log never asked.
     const loc = f.file
-      ? `${C.cyan}${cwd ? relPath(f.file) : f.file}${C.reset}${C.dim}:${f.line ?? "?"}${C.reset}`
+      ? `${C.cyan}${cwd ? relPath(f.file) : f.file}${C.reset}${f.line ? `${C.dim}:${f.line}${C.reset}` : ""}`
       : "";
     const label = family ? normTitle(f.title) : f.title;
     const title = label ? `  ${C.bold}${label}${C.reset}` : "";

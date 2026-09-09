@@ -1,0 +1,5 @@
+Auto-merging a.txt
+CONFLICT (content): Merge conflict in a.txt
+Auto-merging b.txt
+CONFLICT (content): Merge conflict in b.txt
+Automatic merge failed; fix conflicts and then commit the result.

@@ -1,0 +1,5 @@
+error: Your local changes to the following files would be overwritten by merge:
+	a.txt
+Please commit your changes or stash them before you merge.
+Aborting
+Updating 937cb89..3ab49c2
