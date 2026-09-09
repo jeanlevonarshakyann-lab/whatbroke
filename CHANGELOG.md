@@ -2,6 +2,12 @@
 
 ## Unreleased
 
+- A failing `docker build` reported `ERROR: failed to solve: …`, which names the
+  mechanism and not the cause. The step's own output is now read instead, either from
+  BuildKit's `#8 0.234 ` stamps or from the failure block Docker quotes above that line.
+- Stacked wrappers are peeled a layer at a time. Removing only the outer one is often no
+  improvement by itself, so a greedy search gave up before reaching the layer that pays.
+
 - Added `test/fuzz.js`: a seeded mutation fuzzer that cuts, duplicates, reverses and
   corrupts every captured fixture and requires that no parser throws or stalls on the
   result. 19,488 parser calls per run.

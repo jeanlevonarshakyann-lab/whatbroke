@@ -1,0 +1,23 @@
+#8 [4/4] RUN npm test
+#8 0.237 npm error Missing script: "nonexistent-script"
+#8 0.374 npm error
+#8 0.511 npm error To see a list of scripts, run:
+#8 0.648 npm error   npm run
+#8 0.785 npm error A complete log of this run can be found in: /home/dev/.npm/_logs/2026-09-09T00_01_49_689Z-debug-0.log
+#8 ERROR: process "/bin/sh -c npm test" did not complete successfully: exit code: 1
+------
+ > [4/4] RUN npm test:
+0.237 npm error Missing script: "nonexistent-script"
+0.374 npm error
+0.511 npm error To see a list of scripts, run:
+0.648 npm error   npm run
+0.785 npm error A complete log of this run can be found in: /home/dev/.npm/_logs/2026-09-09T00_01_49_689Z-debug-0.log
+------
+Dockerfile:8
+--------------------
+   6 |     COPY . .
+   7 |     
+   8 | >>> RUN npm test
+   9 |     
+--------------------
+ERROR: failed to solve: process "/bin/sh -c npm test" did not complete successfully: exit code: 1

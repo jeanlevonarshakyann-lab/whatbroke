@@ -10,6 +10,28 @@ const fx = (n) => readFileSync(join(here, "fixtures", n), "utf8");
 const cli = join(here, "..", "bin", "whatbroke.js");
 
 const CASES = [
+  // PROVENANCE, because it is not the usual rule: the step output inside these is the
+  // real npm and pytest captures already in this corpus, but the BuildKit frame around
+  // it is assembled from Docker's documented shape rather than captured from a running
+  // daemon. They are here because a failing `docker build` otherwise reports only
+  // "ERROR: failed to solve", which names the mechanism and not the cause. Replace them
+  // with a real `docker build` capture when one is available.
+  { file: "docker_buildkit_npm_fail.txt", tool: "npm", n: 1, check: (r) => {
+      assert.match(r.failures[0].message, /Missing script: "nonexistent-script"/);
+      assert.doesNotMatch(JSON.stringify(r), /failed to solve/, "the mechanism is not the cause");
+      // These two take different routes, which is why both are here. npm's failure is
+      // five lines inside a twenty-line frame, so the step prefix covers too little of
+      // the log to strip and the failure block has to be lifted out by its own markers.
+      assert.deepEqual(r.wrappers, ["docker buildkit"]);
+    } },
+  { file: "docker_buildkit_pytest_fail.txt", tool: "pytest", n: 3, check: (r) => {
+      assert.equal(r.failures[0].file, "test_shop.py");
+      assert.equal(r.failures[0].line, 4);
+      assert.doesNotMatch(JSON.stringify(r), /failed to solve/);
+      // pytest's output fills most of the log, so the step prefix clears the gate and
+      // the whole thing is read after stripping it.
+      assert.deepEqual(r.wrappers, ["docker"]);
+    } },
   // Captured with GNU make 3.81 driving Apple clang. make itself needs no parser: the
   // compiler underneath already has one, and `make: *** [bad.o] Error 1` restates the
   // failure without adding to it.

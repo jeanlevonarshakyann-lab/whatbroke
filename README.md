@@ -407,6 +407,15 @@ invariant is not "strip prefixes", it is "never come out worse than going in", a
 tested by wrapping every captured fixture in every runner's prefix and requiring the same
 tool and the same failures out the other side.
 
+Docker gets the same treatment. A failing `docker build` ends with
+`ERROR: failed to solve: process "/bin/sh -c npm test" did not complete successfully`,
+which names the mechanism and not the cause — the cause is the step's own output, either
+under BuildKit's `#8 0.234 ` stamps or quoted in the block above that line. whatbroke
+reads whichever is there and hands it to the tool that actually failed.
+
+Wrappers stack, too: a monorepo runner relaying a container relaying a test run is peeled
+a layer at a time, and each layer is named on the result.
+
 One known limit: a tool that redraws a progress line with a bare carriage return packs
 many logical lines into one physical line. A runner stamps that blob once, so after the
 carriage returns are normalised most of the interior lines carry no prefix and the

@@ -143,6 +143,9 @@ const real = (hit) => !!hit && hit.extractor.name !== "generic" && hit.result.fa
  *  the paths inside them, which is data being mangled rather than a wrapper removed. */
 function better(candidate, cand, current) {
   if (!real(cand)) return false;
+  // A region candidate keeps only part of the log, so it must never displace a reading
+  // of the whole. It is for the case where the whole says nothing worth having.
+  if (candidate.kind === "region") return !real(current);
   if (candidate.kind === "shape") return true;
   if (!real(current)) return true;
   return cand.result.tool !== current.result.tool;
@@ -166,12 +169,24 @@ function unwrap(s, command) {
       if (c.kind === "literal" && literalsTaken) continue;
       const candidate = parse(c.text, command);
       if (better(c, candidate, hit)) { found = { ...c, hit: candidate }; break; }
+      // Wrappers stack: a monorepo runner relaying a container relaying a test run.
+      // Peeling only the outer one is often no improvement by itself, and a strictly
+      // greedy search rejects it there and never reaches the layer that pays off. Look
+      // one step further before giving up on a candidate.
+      if (real(candidate)) continue;
+      for (const inner of wrapperCandidates(c.text)) {
+        if (inner.kind === "literal" && (literalsTaken || c.kind === "literal")) continue;
+        const deeper = parse(inner.text, command);
+        if (better(inner, deeper, hit)) { found = { ...c, text: inner.text, wrapper: c.wrapper, hit: deeper, then: inner.wrapper }; break; }
+      }
+      if (found) break;
     }
     if (!found) break;
     if (found.kind === "literal") literalsTaken++;
     text = found.text;
     hit = found.hit;
     wrappers.push(found.wrapper);
+    if (found.then) wrappers.push(found.then);
   }
   return { text, hit, wrappers };
 }
