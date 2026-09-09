@@ -10,6 +10,31 @@ const fx = (n) => readFileSync(join(here, "fixtures", n), "utf8");
 const cli = join(here, "..", "bin", "whatbroke.js");
 
 const CASES = [
+  // Build tools fail in ways that have nothing to do with a compiler, and none of these
+  // carries a file position for a diagnostic pattern to find.
+  { file: "dotnet_noproject_fail.txt", tool: "dotnet", n: 1, check: (r) => {
+      assert.equal(r.failures[0].code, "MSB1003");
+      assert.equal(r.failures[0].file, undefined, "MSBUILD is the tool speaking, not a file");
+      assert.match(r.failures[0].message, /Specify a project or solution file/);
+    } },
+  { file: "dotnet_restore_fail.txt", tool: "dotnet", n: 1, check: (r) => {
+      // NuGet prints the same failure once as it happens and again under "Build FAILED."
+      assert.equal(r.failures[0].code, "NU1101");
+      assert.match(r.failures[0].file, /app\.csproj$/);
+      assert.match(r.failures[0].message, /Unable to find package This\.Package\.Does\.Not\.Exist\.Xyz/);
+    } },
+  { file: "maven_dependency_fail.txt", tool: "maven", n: 1, check: (r) => {
+      // Maven reports everything that is not a compiler diagnostic as a failed goal.
+      assert.equal(r.failures[0].label, "goal failed");
+      assert.match(r.failures[0].message, /Could not resolve dependencies/);
+      assert.match(r.failures[0].message, /does-not-exist-xyz/);
+      assert.doesNotMatch(r.failures[0].message, /\[Help 1\]|Re-run Maven/,
+        "how to get more output is not what went wrong");
+    } },
+  { file: "gradle_dependency_fail.txt", tool: "gradle", n: 1, check: (r) => {
+      // Already handled by the build-script branch; here so it stays that way.
+      assert.match(r.failures[0].message, /Could not resolve com\.example\.nope/);
+    } },
   { file: "rspec_load_fail.txt", tool: "rspec", n: 1, check: (r) => {
       // A spec file that raises while loading never becomes a numbered example, so it
       // is reported as prose above the tally instead.

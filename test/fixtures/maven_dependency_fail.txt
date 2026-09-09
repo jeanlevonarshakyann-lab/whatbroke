@@ -1,0 +1,11 @@
+[ERROR] Failed to execute goal on project demo: Could not resolve dependencies for project demo:demo:jar:1.0
+[ERROR] dependency: com.example.nope:does-not-exist-xyz:jar:9.9.9 (compile)
+[ERROR] 	Cannot access central (https://repo.maven.apache.org/maven2) in offline mode and the artifact com.example.nope:does-not-exist-xyz:jar:9.9.9 has not been downloaded from it before.
+[ERROR] 
+[ERROR] -> [Help 1]
+[ERROR] 
+[ERROR] To see the full stack trace of the errors, re-run Maven with the -e switch.
+[ERROR] Re-run Maven using the -X switch to enable full debug logging.
+[ERROR] 
+[ERROR] For more information about the errors and possible solutions, please read the following articles:
+[ERROR] [Help 1] http://cwiki.apache.org/confluence/display/MAVEN/DependencyResolutionException

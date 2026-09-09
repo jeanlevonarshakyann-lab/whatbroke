@@ -1,0 +1,21 @@
+Starting a Gradle Daemon (subsequent builds will be faster)
+> Task :compileJava FAILED
+
+FAILURE: Build failed with an exception.
+
+* What went wrong:
+Execution failed for task ':compileJava' (registered by plugin class 'org.gradle.api.plugins.JavaBasePlugin').
+> Could not resolve all files for configuration ':compileClasspath'.
+   > Could not resolve com.example.nope:does-not-exist-xyz:9.9.9.
+     Required by:
+         root project 'gr'
+      > No cached version of com.example.nope:does-not-exist-xyz:9.9.9 available for offline mode.
+
+* Try:
+> Run with --stacktrace option to get the stack trace.
+> Run with --info or --debug option to get more log output.
+> Run with --scan to get full insights from a Build Scan (powered by Develocity).
+> Get more help at https://help.gradle.org.
+
+BUILD FAILED in 2s
+1 actionable task: 1 executed

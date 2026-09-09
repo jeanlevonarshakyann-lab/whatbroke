@@ -68,6 +68,31 @@ export default {
           });
         }
       }
+      // Maven reports everything that is not a compiler diagnostic the same way: the
+      // goal that failed, then the reason on the lines below it. Dependency resolution,
+      // a plugin that blew up, a missing profile - none of them has a file or a line,
+      // and without this branch a build that could not resolve a dependency produced no
+      // diagnosis at all.
+      if (!failures.length) {
+        const all = s.split("\n");
+        const at = all.findIndex((l) => /^\[ERROR\][^\S\n]+Failed to execute goal/.test(l));
+        if (at >= 0) {
+          const head = all[at].replace(/^\[ERROR\][^\S\n]+/, "");
+          const detail = [];
+          for (let j = at + 1; j < all.length && detail.length < 3; j++) {
+            if (!/^\[ERROR\]/.test(all[j])) break;
+            const t = all[j].replace(/^\[ERROR\][^\S\n]*/, "").trim();
+            // everything from "-> [Help 1]" down is Maven telling you how to get more
+            // output, not telling you what went wrong
+            if (!t || /^->[^\S\n]*\[Help/.test(t) || /^(?:To see the full stack trace|Re-run Maven)/.test(t)) break;
+            detail.push(t);
+          }
+          failures.push({
+            title: "goal failed", label: "goal failed", category: "build", severity: "error",
+            message: [head, ...detail].join("\n"),
+          });
+        }
+      }
       if (!failures.length) {
         const testFailure = s.match(/^\[ERROR\][^\S\n]+Tests run:.*?(?:Failures|Errors):[^\S\n]*(\d+)/m);
         if (testFailure) failures.push({ title: "test failure", label: "test failure", category: "test", severity: "error", message: testFailure[0].replace(/^\[ERROR\][^\S\n]+/, "") });

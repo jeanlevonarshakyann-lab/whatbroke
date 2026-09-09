@@ -2,6 +2,13 @@
 
 ## Unreleased
 
+- Fixed: a .NET build with no project file, and one with a package that will not restore,
+  both produced no diagnosis at all. MSBuild and NuGet report these with a code but no
+  position, and requiring a position meant two of the commonest .NET failures went unread.
+- Fixed: a Maven build that could not resolve a dependency produced no diagnosis.
+  Everything Maven reports that is not a compiler diagnostic is a failed goal, and there
+  was no branch for one.
+
 - Fixed: PHPUnit heads an escaped exception "There was 1 error", not "1 failure", and
   only the failure wording was read — so an uncaught exception in a test, at least as
   common as a failed assertion, fell through to the guess as three errors for one
