@@ -2,6 +2,10 @@
 
 ## Unreleased
 
+- Added `test/guarantees.js`, which pins exit-code fidelity across every output mode and
+  asserts that a failed command is never presented as anything else — including when its
+  own output claims success, and when there is no output at all.
+
 - Added pnpm and yarn parsers. Both produced no diagnosis at all before, despite being
   among the most-run commands in a JavaScript project.
 - Fixed: the whitespace class introduced when parsers stopped backtracking across
