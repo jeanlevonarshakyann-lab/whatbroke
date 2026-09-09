@@ -221,6 +221,8 @@ them.
 | **.NET** | compiler error codes with `file:line:column`; warnings set aside |
 | **dotnet test** | test name, `file:line`, the assertion; reflection frames dropped |
 | **PHPUnit** | test name, assertion message, and `file:line` location |
+| **esbuild** | the diagnostic and its source line — not the CLI wrapper's `Command failed:` stack |
+| **vite / rollup** | the rollup error code, `file:line:col` and the offending line |
 | **tsc** | errors grouped by file, with the assignability chain down to the real reason |
 | **npm** | its own failures — a missing script, a bad engine — without the trailing advice |
 | **pip** | the exception a build backend actually raised, not `subprocess-exited-with-error`; resolution failures once rather than twice, without the package index pasted in |

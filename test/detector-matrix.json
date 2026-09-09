@@ -118,6 +118,34 @@
       "generic": 1
     }
   },
+  "esbuild_resolve_fail.txt": {
+    "winner": "esbuild",
+    "parser": "esbuild",
+    "failures": 1,
+    "claimants": [
+      "esbuild",
+      "node",
+      "generic"
+    ],
+    "shadow": {
+      "node": 1,
+      "generic": 1
+    }
+  },
+  "esbuild_syntax_fail.txt": {
+    "winner": "esbuild",
+    "parser": "esbuild",
+    "failures": 1,
+    "claimants": [
+      "esbuild",
+      "node",
+      "generic"
+    ],
+    "shadow": {
+      "node": 1,
+      "generic": 1
+    }
+  },
   "eslint_bulk_fail.txt": {
     "winner": "eslint",
     "parser": "eslint",
@@ -553,6 +581,32 @@
       "generic"
     ],
     "shadow": {}
+  },
+  "vite_resolve_fail.txt": {
+    "winner": "vite",
+    "parser": "vite",
+    "failures": 1,
+    "claimants": [
+      "vite",
+      "node",
+      "generic"
+    ],
+    "shadow": {
+      "generic": 1
+    }
+  },
+  "vite_syntax_fail.txt": {
+    "winner": "vite",
+    "parser": "vite",
+    "failures": 1,
+    "claimants": [
+      "vite",
+      "node",
+      "generic"
+    ],
+    "shadow": {
+      "generic": 1
+    }
   },
   "vitest_cluster_fail.txt": {
     "winner": "vitest",

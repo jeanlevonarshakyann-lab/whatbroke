@@ -10,6 +10,37 @@ const fx = (n) => readFileSync(join(here, "fixtures", n), "utf8");
 const cli = join(here, "..", "bin", "whatbroke.js");
 
 const CASES = [
+  // Captured with esbuild 0.27 and vite 8.2. Both wrap their real diagnostic in a Node
+  // CLI stack reporting that the bundler exited non-zero; that stack is the same failure
+  // told worse, and before these parsers it was the only thing whatbroke showed.
+  { file: "esbuild_syntax_fail.txt", tool: "esbuild", n: 1, check: (r) => {
+      const f = r.failures[0];
+      assert.equal(f.file, "src/app.js");
+      assert.equal(f.line, 5);
+      assert.equal(f.col, 24);
+      assert.match(f.message, /Expected "\)" but found ";"/);
+      assert.match(f.stmt, /return sum \* \(1 \+ rate;/);
+      assert.doesNotMatch(JSON.stringify(r), /node:internal/, "the wrapper's stack is not the failure");
+    } },
+  { file: "esbuild_resolve_fail.txt", tool: "esbuild", n: 1, check: (r) => {
+      assert.equal(r.failures[0].file, "src/clean.js");
+      assert.match(r.failures[0].message, /Could not resolve "\.\/also-missing\.js"/);
+      assert.equal(r.others, undefined, "the CLI wrapper's stack must not surface as a second tool");
+    } },
+  { file: "vite_syntax_fail.txt", tool: "vite", n: 1, check: (r) => {
+      const f = r.failures[0];
+      assert.equal(f.code, "PARSE_ERROR");
+      assert.equal(f.file, "src/app.js");
+      assert.equal(f.line, 5);
+      assert.match(f.message, /Expected `,` or `\)` but found `;`/);
+    } },
+  { file: "vite_resolve_fail.txt", tool: "vite", n: 1, check: (r) => {
+      const f = r.failures[0];
+      assert.equal(f.code, "UNRESOLVED_IMPORT");
+      assert.equal(f.file, "src/clean.js");
+      assert.equal(f.line, 1);
+      assert.match(f.message, /Could not resolve/);
+    } },
   // Captured with pip 24.3.1 on Python 3.12: a build backend that raises, a version
   // that does not exist, and a malformed requirements file.
   { file: "pip_build_fail.txt", tool: "pip", n: 1, check: (r) => {
@@ -1023,6 +1054,12 @@ try {
     // unittest reports its failures AS Python tracebacks, so both match by design
     // and the more specific one is listed first
     "py_unittest.txt": ["unittest", "python"],
+    // esbuild's CLI wrapper crashes after esbuild exits non-zero, so the log carries a
+    // real diagnostic AND a Node stack. Both parsers match by design; esbuild is listed
+    // first and wins, and the wrapper's stack is filtered out of the mixed-log path
+    // because it sits entirely in node internals.
+    "esbuild_syntax_fail.txt": ["esbuild", "node"],
+    "esbuild_resolve_fail.txt": ["esbuild", "node"],
   };
   const found = {};
   for (const file of readdirSync(join(here, "fixtures"))) {
@@ -1034,7 +1071,7 @@ try {
   }
   assert.deepEqual(found, KNOWN,
     `parsers competing for a fixture changed: ${JSON.stringify(found)}`);
-  console.log("  ok   only one fixture is decided by parser order, and it is expected");
+  console.log(`  ok   ${Object.keys(KNOWN).length} fixtures are decided by parser order, all expected`);
   pass++;
 } catch (e) { console.log(`  FAIL parser overlap\n       ${e.message}`); fail++; }
 

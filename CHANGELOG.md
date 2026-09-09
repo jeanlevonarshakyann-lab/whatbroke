@@ -2,6 +2,14 @@
 
 ## Unreleased
 
+- Added esbuild and vite/rollup parsers. Both bundlers print their real diagnostic and
+  then their CLI wrapper reports that the bundler exited non-zero; whatbroke was reading
+  the second one, so an esbuild syntax error came back as
+  `Command failed: …/esbuild --bundle` pointing at `node:internal/errors`, with the
+  actual error nowhere on screen.
+- Fixed: a wrapper's stack no longer surfaces as a second tool's failures in a mixed
+  log. A failure located entirely in node internals is the same failure told worse.
+
 - Added a pip parser. A failing build printed 42 lines and the best guess available was
   `error: subprocess-exited-with-error`; it now reports the exception the build backend
   actually raised. A resolution failure that pip states twice, pads with two `Ignored the

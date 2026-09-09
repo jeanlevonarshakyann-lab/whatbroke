@@ -1,0 +1,31 @@
+✘ [ERROR] Could not resolve "./also-missing.js"
+
+    src/clean.js:1:21:
+      1 │ import { nope } from "./also-missing.js";
+        ╵                      ~~~~~~~~~~~~~~~~~~~
+
+1 error
+node:child_process:955
+    throw err;
+    ^
+
+Error: Command failed: /home/dev/app/node_modules/@esbuild/darwin-arm64/bin/esbuild --bundle src/clean.js --outfile=/dev/null
+    at genericNodeError (node:internal/errors:983:15)
+    at wrappedFn (node:internal/errors:537:14)
+    at checkExecSyncError (node:child_process:916:11)
+    at Object.execFileSync (node:child_process:952:15)
+    at Object.<anonymous> (/home/dev/app/node_modules/esbuild/bin/esbuild:222:28)
+    at Module._compile (node:internal/modules/cjs/loader:1781:14)
+    at Object..js (node:internal/modules/cjs/loader:1913:10)
+    at Module.load (node:internal/modules/cjs/loader:1505:32)
+    at Function._load (node:internal/modules/cjs/loader:1309:12)
+    at wrapModuleLoad (node:internal/modules/cjs/loader:254:19) {
+  status: 1,
+  signal: null,
+  output: [ null, null, null ],
+  pid: 12345,
+  stdout: null,
+  stderr: null
+}
+
+Node.js v22.23.2
