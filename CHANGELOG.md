@@ -2,6 +2,10 @@
 
 ## Unreleased
 
+- Added `test/fuzz.js`: a seeded mutation fuzzer that cuts, duplicates, reverses and
+  corrupts every captured fixture and requires that no parser throws or stalls on the
+  result. 19,488 parser calls per run.
+
 ## 0.3.0 — 2026-09-09
 
 Everything below has been sitting unreleased: npm still serves 0.1.1, and 0.2.0 was
