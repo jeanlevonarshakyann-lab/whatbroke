@@ -74,6 +74,11 @@ function otherTools(s, winner, mine, cluster) {
       // A tool's CLI wrapper reports that the tool exited non-zero, and that stack sits
       // entirely in node internals. It is the same failure a second time, told worse.
       .filter((f) => !isNoise(f.file))
+      // A failure whose every stack frame was noise has no place in your code to point
+      // at - it happened entirely inside a runtime or a tool's own internals. From a
+      // tool that does not own the log that is a wrapper reporting the exit, not a
+      // finding. The winner keeps its own, because sometimes that really is all there is.
+      .filter((f) => !(f.hiddenFrames > 0 && f.trace?.length === 0))
       // A diagnostic with no location and no code, from a tool that does NOT own this
       // log, is a stray match on somebody else's text far more often than a finding.
       // bun prints `error: expect(received).toEqual(expected)` and cargo's `^error:`

@@ -303,6 +303,18 @@
       "generic": 3
     }
   },
+  "gopanic_fail.txt": {
+    "winner": "go",
+    "parser": "go",
+    "failures": 1,
+    "claimants": [
+      "go",
+      "generic"
+    ],
+    "shadow": {
+      "generic": 1
+    }
+  },
   "gorace_fail.txt": {
     "winner": "go test",
     "parser": "go",
@@ -570,6 +582,18 @@
       "generic": 1
     }
   },
+  "node_import_fail.txt": {
+    "winner": "node",
+    "parser": "node",
+    "failures": 1,
+    "claimants": [
+      "node",
+      "generic"
+    ],
+    "shadow": {
+      "generic": 1
+    }
+  },
   "node_stack.txt": {
     "winner": "node",
     "parser": "node",
@@ -581,6 +605,16 @@
     "shadow": {
       "generic": 1
     }
+  },
+  "node_syntax_fail.txt": {
+    "winner": "node",
+    "parser": "node",
+    "failures": 1,
+    "claimants": [
+      "node",
+      "generic"
+    ],
+    "shadow": {}
   },
   "nodetest_fail.txt": {
     "winner": "node --test",

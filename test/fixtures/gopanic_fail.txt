@@ -1,0 +1,6 @@
+panic: runtime error: index out of range [5] with length 0
+
+goroutine 1 [running]:
+main.main()
+	/home/dev/m3/main.go:7 +0x1c
+exit status 2

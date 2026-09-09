@@ -10,6 +10,32 @@ const fx = (n) => readFileSync(join(here, "fixtures", n), "utf8");
 const cli = join(here, "..", "bin", "whatbroke.js");
 
 const CASES = [
+  // A program that crashes outside a test run. Both languages report it the same way -
+  // a message, then a stack that is mostly the runtime's own machinery.
+  { file: "gopanic_fail.txt", tool: "go", n: 1, check: (r) => {
+      // `go run` output has no test tally and no --- FAIL line, so nothing in the
+      // detector fired and this produced no diagnosis at all.
+      assert.equal(r.summary, "panic");
+      assert.equal(r.failures[0].file, "/home/dev/m3/main.go");
+      assert.equal(r.failures[0].line, 7);
+      assert.match(r.failures[0].message, /index out of range \[5\] with length 0/);
+      assert.equal(r.failures[0].category, "runtime");
+    } },
+  { file: "node_syntax_fail.txt", tool: "node", n: 1, check: (r) => {
+      // A syntax error's stack is entirely node's own machinery; the only place the
+      // real location appears is the header above the caret.
+      assert.equal(r.failures[0].file, "/home/dev/m3/syn.mjs");
+      assert.equal(r.failures[0].line, 1);
+      assert.doesNotMatch(String(r.failures[0].file), /^file:\/\//, "a URL is not a path");
+      assert.doesNotMatch(String(r.failures[0].file), /node:internal/);
+    } },
+  { file: "node_import_fail.txt", tool: "node", n: 1, check: (r) => {
+      // Here even the header is node's own file. No location at all beats a location
+      // inside the runtime, which reads as though the bug were in node.
+      assert.equal(r.failures[0].file, undefined);
+      assert.match(r.failures[0].message, /Cannot find module/);
+      assert.doesNotMatch(JSON.stringify(r.failures), /node:internal\/modules/);
+    } },
   // Captured from real cargo runs. Three of the four are modes that are not "a test
   // failed", and the first is the most common Rust failure there is.
   { file: "cargo_panic_fail.txt", tool: "cargo test", n: 1, check: (r) => {
