@@ -13,8 +13,19 @@
    Keep detection specific enough that existing fixtures do not cross-detect.
 6. Add the tool to the README support table and changelog.
 
+An extractor declares itself: `{ name, category, commands, detect, extract }`, where
+`category` is one of `test`, `lint`, `typecheck`, `compile`, `build`, `runtime`,
+`package` or `unknown`, and `commands` lists the command names that imply it.
+
 Extractors should return `{ tool, summary, failures }`. A failure may include
 `file`, `line`, `col`, `title`, `message`, and parser-specific context fields.
+
+A failure should also say what it is. Set exactly one of `code` (a diagnostic
+identifier), `subject` (the name of the site that failed) or `label` (a constant the
+tool prints for a class of failure), plus `severity`. Grouping depends on this: a `code`
+identifies a problem and stays in the fingerprint, while a `subject` is the axis being
+grouped across and never enters it. Setting none means the failure clusters on its
+message alone, which is safe but inert.
 Warnings, notes, framework internals, and summary counters should not become
 failures unless they are actionable diagnostics.
 

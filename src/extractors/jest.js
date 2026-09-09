@@ -7,6 +7,8 @@ const AT_RE = /^[ \t]+at .*?\(?([^\s()]+):(\d+):(\d+)\)?[ \t]*$/;
 
 export default {
   name: "jest",
+  category: "test",
+  commands: ["jest"],
   detect: (s) => /^Tests:[ \t]+\d/m.test(s) || (/^[ \t]*●[ \t]+/m.test(s) && /^[ \t]*FAIL[ \t]+/m.test(s)),
 
   extract(s) {

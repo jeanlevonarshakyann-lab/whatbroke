@@ -8,6 +8,8 @@ const TALLY_RE = /^could not compile|^aborting due to|^test failed, to rerun/;
 
 export default {
   name: "cargo",
+  category: "compile",
+  commands: ["cargo"],
   // A bare "error: ..." line is not enough: bun test writes exactly that. Require
   // something only rustc/cargo emits - an E-code, its "-->" location line, a test
   // result tally, or a rust panic.
@@ -39,7 +41,7 @@ export default {
       }
       failures.push({
         file: pm[2], line: +pm[3], col: +pm[4],
-        title: pm[1], subject: pm[1], severity: "error", message: msg.join("\n"),
+        title: pm[1], subject: pm[1], category: "test", severity: "error", message: msg.join("\n"),
       });
     }
     if (failures.length) {

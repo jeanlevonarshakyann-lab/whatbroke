@@ -5,6 +5,8 @@ const JAVA_RE = /^(.+?\.java):(\d+):[ \t]+(error|warning):[ \t]+(.+)$/m;
 
 export default {
   name: "jvm",
+  category: "compile",
+  commands: ["javac", "mvn", "maven", "gradle", "gradlew"],
   detect: (s) =>
     /^\[ERROR\][ \t]+(?:Failed to execute goal|COMPILATION ERROR|Tests run:)/m.test(s) ||
     /^> Task .+ FAILED$/m.test(s) ||
@@ -47,7 +49,7 @@ export default {
         if (!m) continue;
         failures.push({
           file: `${m[1]}.java`, line: +m[3],
-          title: `${m[1]}.${m[2]}`, subject: `${m[1]}.${m[2]}`, severity: "error",
+          title: `${m[1]}.${m[2]}`, subject: `${m[1]}.${m[2]}`, category: "test", severity: "error",
           message: m[4].trim(),
         });
       }
@@ -62,13 +64,13 @@ export default {
             .filter(Boolean).map((l) => l.replace(/^>[ \t]*/, "")).slice(0, 3);
           failures.push({
             file: where?.[1], line: where ? +where[2] : undefined,
-            title: "build script", label: "build script", severity: "error", message: detail.join("\n"),
+            title: "build script", label: "build script", category: "build", severity: "error", message: detail.join("\n"),
           });
         }
       }
       if (!failures.length) {
         const testFailure = s.match(/^\[ERROR\][ \t]+Tests run:.*?(?:Failures|Errors):[ \t]*(\d+)/m);
-        if (testFailure) failures.push({ title: "test failure", label: "test failure", severity: "error", message: testFailure[0].replace(/^\[ERROR\][ \t]+/, "") });
+        if (testFailure) failures.push({ title: "test failure", label: "test failure", category: "test", severity: "error", message: testFailure[0].replace(/^\[ERROR\][ \t]+/, "") });
       }
     }
     if (!failures.length) return null;

@@ -25,6 +25,8 @@ const MAX_MESSAGE_LINES = 4;
 
 export default {
   name: "bun test",
+  category: "test",
+  commands: ["bun"],
   detect: (s) => /^\(fail\)[ \t]+/m.test(s) &&
     (/^Ran \d+ tests? across/m.test(s) || /^[ \t]*\d+ fail[ \t]*$/m.test(s)),
 

@@ -280,7 +280,8 @@ function report(raw, code, truncated = false, executionError = null) {
   // allowing stdout to drain instead of cutting off a large JSON/raw fallback.
   if (reported) return;
   reported = true;
-  const r = analyse(raw, { cluster: !noCluster });
+  // argv is what the user actually ran; it is evidence for detection, not decoration.
+  const r = analyse(raw, { cluster: !noCluster, command: inputMode === "command" ? argv : null });
   const since = sinceLast ? track(r, truncated, executionError) : null;
   const fallback = !r && (code !== 0 || (inputMode === "pipe" && raw.length > 0)) ? {
     reason: executionError ? "spawn-error" : raw.length ? "unrecognized-output" : "no-output",

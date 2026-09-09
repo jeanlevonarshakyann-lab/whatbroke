@@ -20,6 +20,8 @@ function parseTraceback(body) {
 
 export const traceback = {
   name: "python",
+  category: "runtime",
+  commands: ["python", "python3"],
   detect: (s) => /^Traceback \(most recent call last\):$/m.test(s),
   extract(s) {
     const lines = s.split("\n");
@@ -40,6 +42,8 @@ export const traceback = {
 
 export const unittest = {
   name: "unittest",
+  category: "test",
+  commands: ["python", "python3"],
   detect: (s) => /^Ran \d+ tests? in /m.test(s) && /^(FAIL|ERROR): /m.test(s),
   extract(s) {
     const lines = s.split("\n");

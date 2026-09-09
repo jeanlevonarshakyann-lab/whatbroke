@@ -2,6 +2,8 @@ import { isNoise } from "../util.js";
 
 export default {
   name: "pytest",
+  category: "test",
+  commands: ["pytest", "py.test"],
   detect: (s) =>
     /^=+ test session starts =+$/m.test(s) ||
     /^=+ short test summary info =+$/m.test(s),

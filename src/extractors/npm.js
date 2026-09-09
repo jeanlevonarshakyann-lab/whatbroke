@@ -17,6 +17,8 @@ const MAX_MESSAGE_LINES = 3;
 
 export default {
   name: "npm",
+  category: "package",
+  commands: ["npm", "pnpm", "yarn"],
   detect: (s) => /^npm (?:error|ERR!)\s/m.test(s),
 
   extract(s) {

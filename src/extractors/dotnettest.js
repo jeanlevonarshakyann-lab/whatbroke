@@ -25,6 +25,8 @@ function shortName(fq) {
 
 export default {
   name: "dotnet test",
+  category: "test",
+  commands: ["dotnet"],
   detect: (s) => FAILED_RE.test(s.split("\n").find((l) => FAILED_RE.test(l)) ?? "") &&
     /^[ \t]*Test run summary:/m.test(s),
 

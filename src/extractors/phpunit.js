@@ -2,6 +2,8 @@ const LOCATION_RE = /^[ \t]*(.+?):(\d+)$/;
 
 export default {
   name: "phpunit",
+  category: "test",
+  commands: ["phpunit"],
   detect: (s) =>
     /There (?:was|were) \d+ failure/.test(s) &&
     /^\d+\)[ \t]+[\w\\]+::\w+/m.test(s),

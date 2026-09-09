@@ -273,6 +273,7 @@ Every failure carries what it is, not just a display string:
 | `code` | a diagnostic identifier — `TS2551`, `no-unused-vars`, `E0308` |
 | `subject` | the name of the site that failed — a test name, a method |
 | `label` | a constant the tool prints for a class of failure — `compile error` |
+| `category` | `test`, `lint`, `typecheck`, `compile`, `build`, `runtime`, `package` |
 | `severity` | `error` or `warning`; warnings never become failures |
 | `file` `line` `col` `message` `stmt` `trace` | as before |
 
@@ -447,6 +448,17 @@ variable.
 ## Why it isn't an LLM
 
 Because you already know what's wrong the instant you can see it. The problem was never comprehension, it was that the answer is on line 312 of 400. A parser that knows pytest's format is faster, free, offline, deterministic, and never invents a stack frame.
+
+## When whatbroke runs the command itself
+
+`whatbroke vitest` tells whatbroke which tool is about to fail, and that is evidence no
+line of the log can contradict. Each parser declares the commands that imply it, and a
+named tool is tried first — including through a wrapper, so `npx vitest run` and
+`./node_modules/.bin/vitest` both count.
+
+It only reorders. The parser still has to recognise the output and find something, so
+naming a tool that did not produce the log changes nothing, and piped logs — which carry
+no command — behave exactly as before.
 
 ## Adding a tool
 

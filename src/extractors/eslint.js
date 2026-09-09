@@ -2,6 +2,8 @@ const PROB_RE = /^[ \t]+(\d+):(\d+)[ \t]+(error|warning)[ \t]+(.+?)\s{2,}([\w@/-
 
 export default {
   name: "eslint",
+  category: "lint",
+  commands: ["eslint"],
   detect: (s) => /^[ \t]*[✖x][ \t]+\d+ problems? \(/m.test(s) || PROB_RE.test(s),
 
   extract(s) {

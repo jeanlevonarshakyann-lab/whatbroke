@@ -4,6 +4,8 @@ const SEP_RE = /^[⎯─-╿\s]*(?:\[\d+\/\d+\])?[⎯─-╿\s]*$/;
 
 export default {
   name: "vitest",
+  category: "test",
+  commands: ["vitest"],
   detect: (s) => /^[ \t]*RUN[ \t]+v\d/m.test(s) || /Failed Tests \d+/.test(s) || FAIL_RE.test(s),
 
   extract(s) {

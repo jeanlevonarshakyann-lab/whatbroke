@@ -3,6 +3,8 @@ const DIAGNOSTIC_RE = /^(.+?):(\d+)(?::(\d+))?:[ \t]+(error|warning|note):[ \t]+
 
 export default {
   name: "mypy",
+  category: "typecheck",
+  commands: ["mypy"],
   detect: (s) =>
     !/(?:clang|gcc|\bg\+\+|cc1|ld:|^> Task .+ FAILED$|^FAILURE: Build failed)/im.test(s) &&
     (/^[ \t]*Found \d+ errors? in \d+ files?/m.test(s) ||
