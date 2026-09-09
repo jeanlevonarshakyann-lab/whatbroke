@@ -2,6 +2,16 @@
 
 ## Unreleased
 
+- A crash outside a test run now reports where it happened. bun, deno, PHP and Ruby all
+  print a message and then say where, on the next line or inside the message, and only
+  the message was being read. A Ruby crash produced no diagnosis at all, because Ruby
+  names the method between the location and the message so there is no space after the
+  line number.
+- Fixed: PHP writes a fatal error twice, to the error log and to stdout, and both were
+  counted — so the run appeared to fail twice as badly as it had.
+- Fixed: a wrapper prefix was never stripped from a log only the fallback could read, so
+  the prefix ended up inside the message and defeated that de-duplication.
+
 - Fixed: ruff reported nothing at all for a file it could not parse. A syntax error is
   reported without a rule code, and requiring one meant a run saying "Found 1 error."
   came back with none — the ordinary case of running ruff over a file with a typo.

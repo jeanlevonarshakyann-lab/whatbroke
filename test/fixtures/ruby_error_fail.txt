@@ -1,0 +1,2 @@
+bad.rb:2:in `f': undefined method `no_such_method' for nil:NilClass (NoMethodError)
+	from bad.rb:4:in `<main>'

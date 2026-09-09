@@ -112,11 +112,15 @@ test("no losing detector newly starts extracting failures", () => {
   }
 });
 
-test("the winner is never the generic fallback for a fixture a real parser claims", () => {
+test("the winner is never the generic fallback for a fixture a real parser can read", () => {
   for (const [f, row] of Object.entries(current)) {
     if (row.winner !== "output") continue;
-    const real = row.claimants.filter((c) => c !== "generic");
-    assert.deepEqual(real, [], `${f} fell through to the generic parser despite ${real.join(", ")}`);
+    // Claiming is not reading. bun writes `error:` in lower case over a stack that looks
+    // like Node's, so node's detector fires and its extractor then finds nothing - which
+    // is exactly the fall-through the ordering is designed to allow. What would be wrong
+    // is a parser that could have EXTRACTED something losing to the guess.
+    const able = Object.keys(row.shadow).filter((c) => c !== "generic");
+    assert.deepEqual(able, [], `${f} fell through to the guess despite ${able.join(", ")} being able to read it`);
   }
 });
 
