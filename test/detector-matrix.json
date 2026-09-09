@@ -314,6 +314,30 @@
       "generic": 2
     }
   },
+  "make_compile_fail.txt": {
+    "winner": "clang",
+    "parser": "clang",
+    "failures": 3,
+    "claimants": [
+      "clang",
+      "generic"
+    ],
+    "shadow": {
+      "generic": 3
+    }
+  },
+  "make_driver_fail.txt": {
+    "winner": "clang",
+    "parser": "clang",
+    "failures": 1,
+    "claimants": [
+      "clang",
+      "generic"
+    ],
+    "shadow": {
+      "generic": 2
+    }
+  },
   "maven_fail.txt": {
     "winner": "maven",
     "parser": "jvm",

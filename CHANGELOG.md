@@ -2,6 +2,12 @@
 
 ## Unreleased
 
+- Fixed: a compiler driver error with no source to point at — a missing input file, a
+  failed link — carried no `file:line` and so fell through to the labelled guess, which
+  then also reported make's `*** [target] Error 1` echo as a second failure. Driver
+  errors are now read by the clang parser, and `no input files`, which only restates the
+  error above it, is dropped.
+
 - Added `test/guarantees.js`, which pins exit-code fidelity across every output mode and
   asserts that a failed command is never presented as anything else — including when its
   own output claims success, and when there is no output at all.

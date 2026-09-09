@@ -1,0 +1,13 @@
+cc -c bad.c -o bad.o
+bad.c:3:9: error: incompatible pointer to integer conversion initializing 'int' with an expression of type 'char[11]' [-Wint-conversion]
+    3 |     int x = "not an int";
+      |         ^   ~~~~~~~~~~~~
+bad.c:4:5: error: call to undeclared function 'undefined_function'; ISO C99 and later do not support implicit function declarations [-Wimplicit-function-declaration]
+    4 |     undefined_function();
+      |     ^
+bad.c:5:13: error: expected ';' after return statement
+    5 |     return 0
+      |             ^
+      |             ;
+3 errors generated.
+make: *** [bad.o] Error 1
