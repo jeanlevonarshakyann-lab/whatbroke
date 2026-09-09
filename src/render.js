@@ -34,6 +34,33 @@ setColor(false);
 
 const pad = (n, w) => String(n).padStart(w);
 
+// A generated bundle is one line megabytes wide, and the column a tool reports can
+// sit deep inside it. Slide a fixed window across the snippet - the SAME offset for
+// every line, so they stay aligned with each other - centred on the column when it
+// would otherwise fall outside. The caret moves with the window: one parked a
+// hundred thousand spaces past the text it marks points at nothing.
+const SOURCE_WIDTH = 200;
+
+/** Where the window starts, chosen from the line the caret is on. */
+function windowStart(text, col) {
+  const target = col ? col - 1 : 0;
+  if (text.length <= SOURCE_WIDTH && target < SOURCE_WIDTH) return 0;
+  if (target < SOURCE_WIDTH) return 0;                 // still reachable from the head
+  return Math.max(0, Math.min(target - Math.floor(SOURCE_WIDTH / 2), text.length - SOURCE_WIDTH));
+}
+
+/** One line sliced to the window, with an ellipsis on each end that was cut. */
+function windowed(text, start) {
+  if (start === 0 && text.length <= SOURCE_WIDTH) return text;
+  const head = start > 0 ? "…" : "";
+  return head + text.slice(start, start + SOURCE_WIDTH) +
+    (start + SOURCE_WIDTH < text.length ? "…" : "");
+}
+
+/** The caret's column after the window has moved under it. */
+const windowedCol = (col, start) =>
+  Math.max(1, Math.min(col - start + (start > 0 ? 1 : 0), SOURCE_WIDTH + 1));
+
 const SITES_SHOWN = 3;   // how many extra sites to name before "+ N more"
 
 export function render(result, { max = 5, cwd = true, source = true, cluster = true } = {}) {
@@ -106,20 +133,24 @@ export function render(result, { max = 5, cwd = true, source = true, cluster = t
       const one = snippet(f.file, f.line, 0);
       if (one) {
         const w = String(one[0].n).length;
-        out.push(`      ${C.dim}${pad(one[0].n, w)}${C.reset} ${C.red}│${C.reset} ${one[0].text}`);
-        if (f.col) out.push(`      ${" ".repeat(w)} ${C.dim}│${C.reset} ${" ".repeat(Math.max(0, f.col - 1))}${C.red}^${C.reset}`);
+        const start = windowStart(one[0].text, f.col);
+        out.push(`      ${C.dim}${pad(one[0].n, w)}${C.reset} ${C.red}│${C.reset} ${windowed(one[0].text, start)}`);
+        if (f.col) out.push(`      ${" ".repeat(w)} ${C.dim}│${C.reset} ${" ".repeat(windowedCol(f.col, start) - 1)}${C.red}^${C.reset}`);
       }
     }
     if (snip) {
       lastSnip = { file: f.file, line: f.line, ctx };
       out.push("");
       const w = String(snip.at(-1).n).length;
+      // one offset for the whole block, taken from the line the caret sits on
+      const start = windowStart(snip.find((s) => s.hit)?.text ?? "", f.col);
       for (const s of snip) {
         const bar = s.hit ? `${C.red}│${C.reset}` : `${C.dim}│${C.reset}`;
         const num = s.hit ? `${C.red}${pad(s.n, w)}${C.reset}` : `${C.dim}${pad(s.n, w)}${C.reset}`;
-        const txt = s.hit ? s.text : `${C.dim}${s.text}${C.reset}`;
+        const cut = windowed(s.text, start);
+        const txt = s.hit ? cut : `${C.dim}${cut}${C.reset}`;
         out.push(`      ${num} ${bar} ${txt}`);
-        if (s.hit && f.col) out.push(`      ${" ".repeat(w)} ${C.dim}│${C.reset} ${" ".repeat(Math.max(0, f.col - 1))}${C.red}^${C.reset}`);
+        if (s.hit && f.col) out.push(`      ${" ".repeat(w)} ${C.dim}│${C.reset} ${" ".repeat(windowedCol(f.col, start) - 1)}${C.red}^${C.reset}`);
       }
     } else if (f.stmt && !drifted) {
       out.push(`      ${C.dim}│${C.reset} ${clip(f.stmt)}`);

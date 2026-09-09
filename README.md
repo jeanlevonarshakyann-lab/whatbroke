@@ -300,6 +300,23 @@ Output can come from anywhere — a pasted log, a CI artifact, someone else's ma
 so it will only ever read files **inside the directory you ran it in**. Crafted output
 naming `/etc/passwd` or `~/.ssh/id_rsa` gets the error printed, never the file.
 
+Containment is enforced on the *canonical* path, so a symlink inside the tree pointing
+somewhere else — or a symlinked parent directory — is refused rather than followed. A
+working directory that is itself reached through a link still reads its own files.
+
+Reads are bounded before anything is allocated: the size is taken from the open
+descriptor and files over 2 MiB are skipped. Lines are read whole and narrowed only for
+display — a 200-character window that slides to wherever the reported column is, so the
+caret stays beside the code it marks instead of a screen of spaces away from it. Only
+regular files are read, and they are opened non-blocking, so a directory, socket, device
+or FIFO named in a log cannot stall the run. Any of these refusals drops the snippet and
+keeps the diagnostic — you still get the error, just no source under it.
+
+One honest limit: the check resolves the path and then opens it, so a sufficiently
+determined attacker who can already write inside your working directory could swap a
+directory component in between. `O_NOFOLLOW` narrows that window but does not close it.
+Anyone with that access could simply put the content in a real file instead.
+
 It runs your command without a shell (`spawn`, not `sh -c`), so nothing in a filename
 or argument is expanded. It has zero dependencies and makes no network calls.
 
