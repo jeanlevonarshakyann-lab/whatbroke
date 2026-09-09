@@ -1,0 +1,51 @@
+
+Welcome to Gradle 9.7.1!
+
+Here are the highlights of this release:
+ - Isolated Projects graduates to incubating
+ - Broader Configuration Cache compatibility
+ - Resilient Sync helps you fix broken builds
+ - More source locations in problem reports
+
+For more details see https://docs.gradle.org/9.7.1/release-notes.html
+
+To honour the JVM settings for this build a single-use Daemon process will be forked. For more on this, please refer to https://docs.gradle.org/9.7.1/userguide/gradle_daemon.html#sec:disabling_the_daemon in the Gradle documentation.
+Daemon will be stopped at the end of the build
+
+> Task :compileJava FAILED
+Caught exception: Could not start the FSEvents stream: /project
+/project/src/main/java/Main.java:5: error: incompatible types: String cannot be converted to int
+    int total = "wrong";
+                ^
+/project/src/main/java/Main.java:4: warning: [unchecked] unchecked conversion
+    List<String> values = new ArrayList();
+                          ^
+  required: List<String>
+  found:    ArrayList
+1 error
+1 warning
+
+[Incubating] Problems report is available at: file:///project/build/reports/problems/problems-report.html
+
+FAILURE: Build failed with an exception.
+
+* What went wrong:
+Execution failed for task ':compileJava' (registered by plugin class 'org.gradle.api.plugins.JavaBasePlugin').
+> Compilation failed; see the compiler output below.
+  /project/src/main/java/Main.java:5: error: incompatible types: String cannot be converted to int
+      int total = "wrong";
+                  ^
+  /project/src/main/java/Main.java:4: warning: [unchecked] unchecked conversion
+      List<String> values = new ArrayList();
+                            ^
+    required: List<String>
+    found:    ArrayList
+  1 error
+  1 warning
+
+* Try:
+> Check your code and dependencies to fix the compilation error(s)
+> Run with --scan to get full insights from a Build Scan (powered by Develocity).
+
+BUILD FAILED in 3s
+1 actionable task: 1 executed

@@ -10,6 +10,35 @@ const fx = (n) => readFileSync(join(here, "fixtures", n), "utf8");
 const cli = join(here, "..", "bin", "whatbroke.js");
 
 const CASES = [
+  // Captured with javac 26.0.2.1 (-Xlint:unchecked), Gradle 9.7.1 (Java plugin
+  // with the same flag), and mypy 2.3.1 (--no-error-summary, with/without columns).
+  { file: "javac_fail.txt", tool: "jvm", n: 1, check: (r) => {
+      assert.equal(r.failures[0].file, "Main.java");
+      assert.equal(r.failures[0].line, 5);
+      assert.equal(r.failures[0].title, "compile error");
+      assert.match(r.failures[0].message, /String cannot be converted to int/);
+      assert.doesNotMatch(r.failures[0].message, /unchecked/);
+    } },
+  { file: "gradle_warnings_fail.txt", tool: "gradle", n: 1, check: (r) => {
+      assert.equal(r.summary, "build failed");
+      assert.equal(r.failures[0].line, 5);
+      assert.match(r.failures[0].file, /Main\.java$/);
+      assert.match(r.failures[0].message, /String cannot be converted to int/);
+      assert.doesNotMatch(r.failures[0].message, /unchecked/);
+      assert.ok(!("severity" in r.failures[0]), "parser bookkeeping must not leak into JSON");
+    } },
+  ...["mypy_no_summary_fail.txt", "mypy_columns_fail.txt"].map((file) => ({
+    file, tool: "mypy", n: 2, check: (r) => {
+      assert.equal(r.summary, "2 errors");
+      assert.deepEqual(r.failures.map((f) => f.file), ["b.pyi", "a.py"]);
+      for (const f of r.failures) {
+        assert.equal(f.line, 1);
+        assert.equal(f.col, file === "mypy_columns_fail.txt" ? 14 : undefined);
+        assert.equal(f.title, "assignment");
+        assert.match(f.message, /Incompatible types in assignment/);
+      }
+    },
+  })),
   { file: "nodetest_nested_fail.txt", tool: "node --test", n: 3, check: (r) => {
       assert.equal(r.summary, "3 failed, 1 passed");
       assert.deepEqual(r.failures.map((f) => f.title), ["addition", "multiplication", "subtraction"]);
@@ -1174,10 +1203,30 @@ try {
   assert.equal(r.status, 1);
   assert.match(r.stdout, /Cannot read properties of null/);
   assert.match(r.stdout, /\[eval\]:1/);
-  assert.ok(!/│ null\.x/.test(r.stdout), "source context must be disabled");
+  assert.match(r.stdout, /│ null\.x/, "statements captured in the log must remain visible");
   console.log("  ok   no-source mode avoids reading source context");
   pass++;
 } catch (e) { console.log(`  FAIL no-source mode\n       ${e.message}`); fail++; }
+
+try {
+  const { render } = await import("../src/render.js");
+  const fs = (await import("node:fs")).default;
+  const { syncBuiltinESMExports } = await import("node:module");
+  const originalRead = fs.readFileSync;
+  let reads = 0, out;
+  try {
+    fs.readFileSync = (...args) => { reads++; return originalRead(...args); };
+    syncBuiltinESMExports();
+    out = render({ failures: [{ file: cli, line: 1, message: "bad", stmt: "total = value" }] }, { source: false });
+  } finally {
+    fs.readFileSync = originalRead;
+    syncBuiltinESMExports();
+  }
+  assert.equal(reads, 0, "--no-source must not read files for snippets or stale-source checks");
+  assert.match(out, /total = value/);
+  console.log("  ok   no-source renders captured statements without any source reads");
+  pass++;
+} catch (e) { console.log(`  FAIL no-source read isolation\n       ${e.message}`); fail++; }
 
 try {
   const r = spawnSync(process.execPath, [cli, "--format"], { encoding: "utf8" });
@@ -1229,6 +1278,47 @@ try {
   console.log("  ok   compiler diagnostics do not cross-detect as mypy");
   pass++;
 } catch (e) { console.log(`  FAIL compiler/mypy collision\n       ${e.message}`); fail++; }
+
+try {
+  // Each line is a complete captured diagnostic: routing must work when a
+  // truncated log lacks both the tool banner and the final summary.
+  for (const fixture of ["mypy_no_summary_fail.txt", "mypy_columns_fail.txt"]) {
+    for (const line of fx(fixture).trim().split("\n")) {
+      assert.equal(analyse(line).tool, "mypy");
+      assert.equal(analyse("C:\\project\\" + line).tool, "mypy");
+    }
+  }
+  assert.equal(analyse(fx("javac_fail.txt")).tool, "jvm");
+  assert.equal(analyse(fx("clang_fail.txt")).tool, "clang");
+  console.log("  ok   isolated Python source and stub diagnostics retain routing with optional columns");
+  pass++;
+} catch (e) { console.log(`  FAIL Python diagnostic routing\n       ${e.message}`); fail++; }
+
+try {
+  const raw = fx("dotnet_fail.txt");
+  const withoutBanner = raw.slice(raw.indexOf("/home/dev/cs/app/Program.cs"));
+  const full = analyse(raw), partial = analyse(withoutBanner);
+  assert.equal(partial.tool, "dotnet");
+  assert.deepEqual(partial.failures, full.failures);
+  assert.equal(partial.summary, full.summary);
+  // A single diagnostic needs neither a restore banner nor "Build FAILED".
+  const single = analyse(withoutBanner.split("\n")[0]);
+  assert.equal(single.tool, "dotnet");
+  assert.deepEqual(single.failures, full.failures.slice(0, 1));
+  assert.equal(analyse(fx("tsc_plain.txt")).tool, "tsc");
+  console.log("  ok   .NET diagnostics need no restore banner and do not claim TypeScript");
+  pass++;
+} catch (e) { console.log(`  FAIL banner-free .NET detection\n       ${e.message}`); fail++; }
+
+try {
+  const r = spawnSync(process.execPath, [cli, "--json", process.execPath, "-e",
+    "process.kill(process.pid, 'SIGKILL')"], { encoding: "utf8" });
+  const expected = process.platform === "win32" ? 1 : 137;
+  assert.equal(r.status, expected);
+  assert.equal(JSON.parse(r.stdout).exitCode, expected);
+  console.log("  ok   SIGKILL preserves the platform's shell-compatible exit code");
+  pass++;
+} catch (e) { console.log(`  FAIL SIGKILL exit code\n       ${e.message}`); fail++; }
 
 try {
   const r = spawnSync(process.execPath, [cli, "--version"], { encoding: "utf8" });

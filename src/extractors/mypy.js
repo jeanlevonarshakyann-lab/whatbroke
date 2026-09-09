@@ -5,9 +5,10 @@ export default {
   name: "mypy",
   detect: (s) =>
     !/(?:clang|gcc|\bg\+\+|cc1|ld:|^> Task .+ FAILED$|^FAILURE: Build failed)/im.test(s) &&
-    !/^\S.+:\d+:\d+:\s+(?:error|warning|note):\s+/m.test(s) &&
     (/^\s*Found \d+ errors? in \d+ files?/m.test(s) ||
-      /^\S.+:\d+(?::\d+)?:\s+(?:error|warning|note):\s+/m.test(s)),
+      // Python source and stubs can include columns and omit the summary.
+      // A bare file:line diagnostic also matches javac, so require an extension.
+      /^.+\.pyi?:\d+(?::\d+)?:\s+(?:error|warning|note):\s+/m.test(s)),
 
   extract(s) {
     const lines = s.split("\n");

@@ -1,0 +1,10 @@
+Main.java:5: error: incompatible types: String cannot be converted to int
+    int total = "wrong";
+                ^
+Main.java:4: warning: [unchecked] unchecked conversion
+    List<String> values = new ArrayList();
+                          ^
+  required: List<String>
+  found:    ArrayList
+1 error
+1 warning
