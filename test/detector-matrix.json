@@ -45,7 +45,9 @@
       "go",
       "generic"
     ],
-    "shadow": {}
+    "shadow": {
+      "generic": 3
+    }
   },
   "clang_bulk_fail.txt": {
     "winner": "clang",
@@ -335,7 +337,7 @@
       "generic"
     ],
     "shadow": {
-      "generic": 3
+      "generic": 4
     }
   },
   "javac_fail.txt": {
@@ -378,6 +380,15 @@
       "generic": 2
     }
   },
+  "jq_fail.txt": {
+    "winner": "output",
+    "parser": "generic",
+    "failures": 1,
+    "claimants": [
+      "generic"
+    ],
+    "shadow": {}
+  },
   "make_compile_fail.txt": {
     "winner": "clang",
     "parser": "clang",
@@ -399,7 +410,7 @@
       "generic"
     ],
     "shadow": {
-      "generic": 2
+      "generic": 3
     }
   },
   "maven_fail.txt": {
@@ -410,7 +421,9 @@
       "jvm",
       "generic"
     ],
-    "shadow": {}
+    "shadow": {
+      "generic": 1
+    }
   },
   "maven_test_fail.txt": {
     "winner": "maven",
@@ -527,6 +540,15 @@
     "failures": 1,
     "claimants": [
       "npm",
+      "generic"
+    ],
+    "shadow": {}
+  },
+  "openssl_fail.txt": {
+    "winner": "output",
+    "parser": "generic",
+    "failures": 1,
+    "claimants": [
       "generic"
     ],
     "shadow": {}
@@ -700,7 +722,7 @@
       "generic"
     ],
     "shadow": {
-      "generic": 1
+      "generic": 2
     }
   },
   "vite_syntax_fail.txt": {
@@ -713,7 +735,7 @@
       "generic"
     ],
     "shadow": {
-      "generic": 1
+      "generic": 2
     }
   },
   "vitest_cluster_fail.txt": {

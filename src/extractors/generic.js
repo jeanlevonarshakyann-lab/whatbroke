@@ -1,7 +1,10 @@
 /** Last resort: no parser matched. Surface the lines most likely to matter. */
 const SIGNAL = [
   /^[^\S\n]*(error|fatal|panic|exception)\b/i,
-  /\b(Error|Exception|Panic|Assertion\w*)[^\S\n]*:/,
+  // Case-insensitive because plenty of tools write it lower: jq says "parse error:",
+  // openssl says "…:error:09FFF06C:PEM routines:…". Requiring a capital E meant a
+  // perfectly clear diagnostic came back as nothing at all.
+  /\b(error|exception|panic|assertion\w*)[^\S\n]*:/i,
   /^[^\S\n]*(FAIL|FAILED|✗|✖|×)\b/,
   /^[^\s:]+:\d+(:\d+)?:\s/,
   // The classic unix shape - "curl: (7) Failed to connect", "cp: cannot stat",

@@ -10,6 +10,19 @@ const fx = (n) => readFileSync(join(here, "fixtures", n), "utf8");
 const cli = join(here, "..", "bin", "whatbroke.js");
 
 const CASES = [
+  // Neither has a parser, and neither should: they are here to hold the fallback to a
+  // standard. Both used to come back as nothing at all, because the pattern that spots
+  // "Error:" required a capital E and these tools write it lower.
+  { file: "jq_fail.txt", tool: "output", n: 1, check: (r) => {
+      assert.equal(r.guessed, true, "a guess must say it is one");
+      assert.match(r.failures[0].message, /parse error: Expected another key-value pair at line 1, column 11/);
+    } },
+  { file: "openssl_fail.txt", tool: "output", n: 1, check: (r) => {
+      assert.equal(r.guessed, true);
+      assert.match(r.failures[0].message, /PEM routines/);
+      assert.doesNotMatch(r.failures[0].message, /^unable to load certificate$/,
+        "the line naming the routine says more than the one-line summary above it");
+    } },
   // Captured from real git 2.x runs. git prints mostly advice: a conflict ends with
   // "Automatic merge failed; fix conflicts and then commit the result", which is the
   // mechanism, and a rejected push buries the one useful line under five hint: lines.

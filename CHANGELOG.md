@@ -2,6 +2,13 @@
 
 ## Unreleased
 
+- Fixed: the fallback's pattern for `Error:` required a capital E, so a tool writing it
+  lower produced no diagnosis at all. `jq: parse error: …` and openssl's
+  `…:error:09FFF06C:PEM routines:…` both came back empty; both are now surfaced as the
+  labelled guess they are.
+- A log whose diagnostic lines contain GitHub workflow commands is now covered by a test
+  on the parsed path as well as the fallback path.
+
 - Added a git parser. A merge conflict reported "Automatic merge failed" — the mechanism
   — while the `CONFLICT` lines naming the files were dropped; a rejected push reported
   "failed to push some refs" under five lines of `hint:`. Both now report what happened

@@ -213,17 +213,31 @@ export async function runCliTests(cli = fileURLToPath(new URL("../bin/whatbroke.
   await check("GitHub fallback preserves raw text without executing workflow commands", () => {
     const dir = mkdtempSync(join(tmpdir(), "whatbroke-cli-summary-"));
     const summary = join(dir, "summary.md");
-    const text = "```\n::error::injected\n```\n";
+    // A payload with nothing that looks like a diagnostic, so this really does reach
+    // the fallback path - which is the path being tested. `::error::` is covered by the
+    // parsed path below, now that a line saying "error:" is recognised.
+    const text = "```\n::set-output name=a::b\n```\n";
     try {
       const r = run(["--github-actions"], text, { GITHUB_STEP_SUMMARY: summary });
       assert.equal(r.status, 0);
       assert.match(r.stdout, /Upstream command exit status is unknown/);
       assert.doesNotMatch(r.stdout, /^::error/gm);
-      assert.match(r.stdout, /::notice title=whatbroke captured output::```%0A::error::injected%0A```%0A/);
+      assert.match(r.stdout, /::notice title=whatbroke captured output::```%0A::set-output name=a::b%0A```%0A/);
       const markdown = readFileSync(summary, "utf8");
       assert.ok(markdown.includes("````\n" + text + "\n````"));
       assert.match(markdown, /exit status is unknown/);
     } finally { rmSync(dir, { recursive: true, force: true }); }
+  });
+
+  await check("a workflow command inside a parsed log cannot become a real one", () => {
+    // The fallback path escapes raw text. The parsed path does not go through that, so
+    // a log whose diagnostic lines contain workflow commands has to be checked too.
+    const text = 'error: x\n::error file=evil.js,line=1::pwned\n::notice::also-pwned\n';
+    const r = run(["--github-actions"], text, { GITHUB_STEP_SUMMARY: "" });
+    const commands = (r.stdout.match(/^::\w+/gm) ?? []);
+    assert.equal(commands.length, 1, `emitted ${commands.length} workflow commands: ${r.stdout}`);
+    assert.doesNotMatch(r.stdout, /file=evil\.js/, "an injected annotation became a real one");
+    assert.doesNotMatch(r.stdout, /also-pwned/);
   });
 
   await check("GitHub raw previews stay bounded while summaries retain full output", () => {
