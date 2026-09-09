@@ -27,6 +27,8 @@ const MAX_MESSAGE_LINES = 4;
 
 export default {
   name: "deno test",
+  category: "test",
+  commands: ["deno"],
   detect: (s) => /^[ \t]*ERRORS[ \t]*$/m.test(s) && SUMMARY_RE.test(s),
 
   extract(s) {

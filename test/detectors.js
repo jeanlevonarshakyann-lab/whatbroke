@@ -114,6 +114,56 @@ test("the winner is never the generic fallback for a fixture a real parser claim
   }
 });
 
+// Parser metadata.
+//
+// Adding parser #24 should mean editing one file. Everything a parser needs to declare
+// about itself now lives with it: what kind of tool it is, and which commands imply it.
+const CATEGORIES = new Set(["test", "lint", "typecheck", "compile", "build", "runtime", "package", "unknown"]);
+
+test("every parser declares what kind of tool it is", () => {
+  for (const ex of EXTRACTORS) {
+    assert.ok(CATEGORIES.has(ex.category), `${ex.name}: category ${JSON.stringify(ex.category)} is not one of the known kinds`);
+    assert.ok(Array.isArray(ex.commands), `${ex.name}: no commands declared`);
+    if (ex.name !== "generic") assert.ok(ex.commands.length > 0, `${ex.name}: declares no command that implies it`);
+  }
+});
+
+test("every failure carries a category", () => {
+  for (const name of readdirSync(fixtures)) {
+    const r = safely(() => analyse(readFileSync(join(fixtures, name), "utf8")), null);
+    for (const f of r?.failures ?? []) {
+      assert.ok(CATEGORIES.has(f.category), `${name}: failure with category ${JSON.stringify(f.category)}`);
+    }
+  }
+});
+
+// The command is evidence no log line can contradict: someone typing `whatbroke vitest`
+// is saying which tool is about to fail. It only reorders, so it can improve an
+// ambiguous log without being able to damage an unambiguous one.
+test("the command that was run breaks a tie between two parsers", () => {
+  const both = readFileSync(join(fixtures, "jest_fail.txt"), "utf8") + "\n" +
+               readFileSync(join(fixtures, "vitest_fail.txt"), "utf8");
+  assert.equal(analyse(both).tool, "jest", "with no command, list order decides");
+  assert.equal(analyse(both, { command: ["vitest"] }).tool, "vitest");
+  assert.equal(analyse(both, { command: ["jest"] }).tool, "jest");
+  // the tool's name is rarely the bare first argument
+  assert.equal(analyse(both, { command: ["npx", "vitest", "run"] }).tool, "vitest");
+  assert.equal(analyse(both, { command: ["./node_modules/.bin/vitest"] }).tool, "vitest");
+});
+
+test("naming the wrong tool cannot damage a clear log", () => {
+  for (const name of readdirSync(fixtures)) {
+    const raw = readFileSync(join(fixtures, name), "utf8");
+    const plain = safely(() => analyse(raw), null);
+    if (!plain) continue;
+    for (const command of [["vitest"], ["eslint"], ["cargo", "test"], ["mvn", "verify"]]) {
+      const hinted = safely(() => analyse(raw, { command }), null);
+      assert.equal(hinted?.tool, plain.tool, `${name} changed hands when ${command[0]} was named`);
+      assert.equal(hinted?.failures.length, plain.failures.length, `${name} lost failures when ${command[0]} was named`);
+    }
+  }
+});
+
 // Runaway backtracking.
 //
 // `\s` matches a newline, so `/^\s+at /m` at a blank line consumes every remaining

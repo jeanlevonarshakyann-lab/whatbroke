@@ -3,6 +3,8 @@ const CODE_RE = /[ \t]+\[(-W[\w-]+)\]$/;
 
 export default {
   name: "clang",
+  category: "compile",
+  commands: ["clang", "clang++", "gcc", "g++", "cc", "make"],
   detect: (s) =>
     /^\S.+:\d+:\d+:[ \t]+(?:error|fatal error|warning|note):[ \t]+/m.test(s) &&
     /(?:clang|gcc|g\+\+|cc1|ld:|[\w.-]+\.(?:c|cc|cpp|cxx|h|hpp|m|mm):)/i.test(s),

@@ -2,6 +2,8 @@ const LOCATION_RE = /^[ \t]+#[ \t]+(.+):(\d+):in\b/;
 
 export default {
   name: "rspec",
+  category: "test",
+  commands: ["rspec", "bundle"],
   detect: (s) =>
     /^[ \t]+\d+\) /m.test(s) &&
     (/Finished in .+ seconds?/m.test(s) || /^\d+ examples?, \d+ failures?/m.test(s)),

@@ -2,6 +2,14 @@
 
 ## Unreleased
 
+- Parsers declare their own `category` and the commands that imply them, and failures
+  carry that category. Everything a parser needs to say about itself now lives in its
+  own file.
+- When whatbroke launches the command, the command is used as detection evidence: a
+  named tool is tried first, including through a wrapper such as `npx`. It only
+  reorders, so naming the wrong tool cannot damage a log that is already unambiguous,
+  and piped logs are unaffected.
+
 - Failures now declare what they are: `tool`, `code`, `subject`, `label` and `severity`
   alongside the existing fields. `title` is unchanged, so `--json` and the GitHub
   annotation shape are unaffected. Severity was already computed by seven parsers and

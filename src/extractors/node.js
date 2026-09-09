@@ -4,6 +4,8 @@ const ERR_RE = /^(?:Uncaught )?((?:[A-Z]\w*)?(?:Error|Exception)(?:\s\[[\w_]+\])
 
 export default {
   name: "node",
+  category: "runtime",
+  commands: ["node"],
   detect: (s) => /^[ \t]+at .+\(.+:\d+:\d+\)$/m.test(s) || /^[ \t]+at .+:\d+:\d+$/m.test(s),
 
   extract(s) {

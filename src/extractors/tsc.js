@@ -4,6 +4,8 @@ const LINE_RE = /^(.+?)\((\d+),(\d+)\): (error|warning) (TS\d+): (.*)$/;
 
 export default {
   name: "tsc",
+  category: "typecheck",
+  commands: ["tsc", "vue-tsc"],
   detect: (s) => LINE_RE.test(s.split("\n").find((l) => LINE_RE.test(l)) ?? ""),
   extract(s) {
     const failures = [];

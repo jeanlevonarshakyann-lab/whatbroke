@@ -13,6 +13,8 @@ const NOISE = [/^[ \t]*at /, /^npm (notice|warn)/, /^[ \t]*$/, /^warning:/i];
 
 export default {
   name: "generic",
+  category: "unknown",
+  commands: [],
   detect: () => true,
   extract(s) {
     const lines = s.split("\n");

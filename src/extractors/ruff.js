@@ -4,6 +4,8 @@ const ARROW_RE = /^[ \t]*-->[ \t]+(.+?):(\d+):(\d+)[ \t]*$/;
 
 export default {
   name: "ruff",
+  category: "lint",
+  commands: ["ruff"],
   detect: (s) => /^Found \d+ errors?\.?$/m.test(s) && /^[ \t]*-->\s/m.test(s),
 
   extract(s) {

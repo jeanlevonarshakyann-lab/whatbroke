@@ -7,6 +7,8 @@ const STDLIB = /\/(libexec\/)?src\/(runtime|testing|internal)\//;
 
 export default {
   name: "go",
+  category: "compile",
+  commands: ["go"],
   detect: (s) =>
     /^[ \t]*--- FAIL: /m.test(s) || /^(ok|FAIL|---)[ \t]+\S+\s/m.test(s) || BUILD_ANY.test(s),
 
@@ -42,7 +44,7 @@ export default {
       }
       if (!what.length) continue;
       failures.push({
-        file, line, title: "DATA RACE", label: "DATA RACE", severity: "error",
+        file, line, title: "DATA RACE", label: "DATA RACE", category: "test", severity: "error",
         message: what.slice(0, 2).join(", ") + " - the same memory, without synchronisation",
       });
     }
@@ -68,7 +70,7 @@ export default {
         }
       }
       if (!msg.length && !file) continue;
-      failures.push({ file, line, title: name, subject: name, severity: "error", message: msg.join("\n") });
+      failures.push({ file, line, title: name, subject: name, category: "test", severity: "error", message: msg.join("\n") });
     }
 
     // count what we actually report: a parent of subtests prints its own

@@ -25,6 +25,8 @@ const MAX_MESSAGE_LINES = 4;
 
 export default {
   name: "node --test",
+  category: "test",
+  commands: ["node"],
   detect: (s) => /^#[ \t]+fail[ \t]+\d+[ \t]*$/m.test(s) && /^[ \t]*not ok[ \t]+\d+[ \t]+-[ \t]+/m.test(s),
 
   extract(s) {

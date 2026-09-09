@@ -2,6 +2,8 @@ const DIAGNOSTIC_RE = /^(.+?\.(?:cs|fs|vb))\((\d+),(\d+)\):[ \t]+(error|warning)
 
 export default {
   name: "dotnet",
+  category: "compile",
+  commands: ["dotnet", "msbuild"],
   // A --no-restore build has no restore banner. Source extensions distinguish
   // these diagnostics from TypeScript's otherwise identical location syntax.
   detect: (s) => DIAGNOSTIC_RE.test(s),

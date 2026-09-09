@@ -80,15 +80,29 @@ function otherTools(s, winner, mine, cluster) {
       summary: r.summary,
       // Grouping is per tool: a signature only means something within one vocabulary.
       clusters: cluster ? clusterFailures(fresh) : null,
-      failures: fresh.map((f) => ({ tool: r.tool, ...f })),
+      failures: fresh.map((f) => ({ tool: r.tool, category: ex.category, ...f })),
     });
   }
   return others;
 }
 
+/** When whatbroke launches the command itself it knows what was run, and that is
+ *  evidence no log line can contradict: someone typing `whatbroke pytest tests/` is
+ *  telling us which tool is about to fail. It only reorders - the parser still has to
+ *  claim the text and find something - so a log that turns out to be from another tool
+ *  is read correctly anyway. Piped logs carry no command and are entirely unaffected. */
+function ordered(command) {
+  if (!command?.length) return EXTRACTORS;
+  // `npx jest`, `poetry run pytest`, `./node_modules/.bin/eslint` - the tool's name is
+  // somewhere in the argv, not necessarily first, and not necessarily bare.
+  const words = new Set(command.flatMap((a) => String(a).split(/[\\/]/)).map((w) => w.replace(/\.(exe|cmd|bat)$/i, "")));
+  const hinted = EXTRACTORS.filter((ex) => ex.commands?.some((c) => words.has(c)));
+  return hinted.length ? [...hinted, ...EXTRACTORS.filter((ex) => !hinted.includes(ex))] : EXTRACTORS;
+}
+
 /** The extractor loop: first parser that claims the text AND finds something owns it. */
-function parse(s) {
-  for (const ex of EXTRACTORS) {
+function parse(s, command) {
+  for (const ex of ordered(command)) {
     let r = null;
     try { if (ex.detect(s)) r = ex.extract(s); } catch { r = null; }
     if (r?.failures?.length) return { extractor: ex, result: r };
@@ -123,9 +137,9 @@ function better(candidate, cand, current) {
 const MAX_WRAPPER_LAYERS = 3;   // CI stamps a monorepo runner that stamps a container
 
 /** Peel wrapper prefixes for as long as peeling demonstrably improves the parse. */
-function unwrap(s) {
+function unwrap(s, command) {
   let text = s;
-  let hit = parse(text);
+  let hit = parse(text, command);
   const wrappers = [];
   // At most one literal strip. Once a wrapper is off, the tool's OWN uniform prefix is
   // the next thing a literal search finds - Maven leads every line with `[INFO] ` - and
@@ -136,7 +150,7 @@ function unwrap(s) {
     let found = null;
     for (const c of wrapperCandidates(text)) {
       if (c.kind === "literal" && literalsTaken) continue;
-      const candidate = parse(c.text);
+      const candidate = parse(c.text, command);
       if (better(c, candidate, hit)) { found = { ...c, hit: candidate }; break; }
     }
     if (!found) break;
@@ -148,16 +162,16 @@ function unwrap(s) {
   return { text, hit, wrappers };
 }
 
-export function analyse(raw, { cluster = true } = {}) {
+export function analyse(raw, { cluster = true, command = null } = {}) {
   // Windows tools, and logs pasted out of Windows CI, arrive with CRLF. Every
   // parser anchors on $, so a stray \r makes all of them silently match nothing.
   const base = stripCiPrefix(stripAnsi(raw).replace(/\r\n?/g, "\n"));
-  const { text: s, hit, wrappers } = unwrap(base);
+  const { text: s, hit, wrappers } = unwrap(base, command);
   if (!hit) return null;
   const r = hit.result;
   // dedupe first: it collapses the SAME diagnostic printed twice, so cluster
   // sizes end up counting real distinct sites rather than print repetitions.
-  const failures = dedupeFailures(r.failures).map((f) => ({ tool: r.tool, ...f }));
+  const failures = dedupeFailures(r.failures).map((f) => ({ tool: r.tool, category: hit.extractor.category, ...f }));
   const clusters = cluster ? clusterFailures(failures) : null;
   const others = otherTools(s, hit.extractor, failures, cluster);
   return {
