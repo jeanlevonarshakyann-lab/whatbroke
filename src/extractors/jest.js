@@ -54,7 +54,7 @@ export default {
       if (!msg.length) continue;
       failures.push({
         file: loc?.file ?? file, line: loc?.line, col: loc?.col,
-        title: tm[1], message: msg.join("\n"),
+        title: tm[1], subject: tm[1], severity: "error", message: msg.join("\n"),
       });
       i = j - 1;
     }

@@ -25,7 +25,10 @@ const CASES = [
       assert.match(r.failures[0].file, /Main\.java$/);
       assert.match(r.failures[0].message, /String cannot be converted to int/);
       assert.doesNotMatch(r.failures[0].message, /unchecked/);
-      assert.ok(!("severity" in r.failures[0]), "parser bookkeeping must not leak into JSON");
+      // severity used to be internal bookkeeping that jvm.js stripped before emitting.
+      // It is now a declared field, so the guarantee changes from "absent" to "correct":
+      // warnings must still never reach the failure list.
+      assert.equal(r.failures[0].severity, "error", "a warning must not be reported as a failure");
     } },
   ...["mypy_no_summary_fail.txt", "mypy_columns_fail.txt"].map((file) => ({
     file, tool: "mypy", n: 2, check: (r) => {
@@ -758,22 +761,58 @@ try {
   pass++;
 } catch (e) { console.log(`  FAIL byte identity\n       ${e.message}`); fail++; }
 
-// A new extractor must not silently inherit a title policy. Adding one forces a choice.
+// A failure says what it is. `code` is a diagnostic identifier, `subject` is the name
+// of the site that failed, `label` is a constant the tool prints for a class of
+// failure - and they are mutually exclusive, because clustering treats them as opposite
+// things. Declaring two would mean the parser has not decided which it produced.
 try {
-  const { TOOL_TITLE_SETS } = await import("../src/cluster.js");
-  const { TITLE_IS_CODE, TITLE_IS_SITE, TITLE_IS_CONST } = TOOL_TITLE_SETS;
   const tools = new Set();
+  let classified = 0, total = 0;
   for (const file of readdirSync(join(here, "fixtures"))) {
     const r = analyse(fx(file));
-    if (r) tools.add(r.tool);
+    if (!r) continue;
+    tools.add(r.tool);
+    for (const f of r.failures) {
+      total++;
+      const declared = ["code", "subject", "label"].filter((k) => f[k]);
+      assert.ok(declared.length <= 1,
+        `${r.tool} declares ${declared.join(" and ")} on one failure; they are alternatives`);
+      if (declared.length) classified++;
+      assert.ok(f.severity, `${r.tool} emitted a failure with no severity`);
+      assert.notEqual(f.severity, "warning", `${r.tool} reported a warning as a failure`);
+    }
   }
-  for (const t of tools) {
-    const hits = [TITLE_IS_CODE, TITLE_IS_SITE, TITLE_IS_CONST].filter((s) => s.has(t)).length;
-    assert.equal(hits, 1, `tool ${JSON.stringify(t)} is in ${hits} title sets, must be exactly 1`);
-  }
-  console.log(`  ok   all ${tools.size} tools declare a title policy exactly once`);
+  // Almost everything should be classified; the exceptions are tools that genuinely
+  // print no identifier of any kind, such as a bare Go build error.
+  assert.ok(classified / total > 0.95, `only ${classified} of ${total} failures are classified`);
+  console.log(`  ok   ${classified} of ${total} failures across ${tools.size} tools declare what they are`);
   pass++;
-} catch (e) { console.log(`  FAIL title policy coverage\n       ${e.message}`); fail++; }
+} catch (e) { console.log(`  FAIL failure classification\n       ${e.message}`); fail++; }
+
+// The clustering policy used to be a table keyed on 27 tool strings. It now falls out
+// of what the failure declares, and these are the three behaviours that table encoded.
+try {
+  const { clusterFailures, keyOf } = await import("../src/cluster.js");
+  const msg = "AssertionError: totals disagree";
+  // a subject is the axis clustered ACROSS, so two sites with one cause group
+  const sites = [1, 2, 3].map((n) => ({ subject: `test_case_${n}`, message: msg, file: "a.py", line: n }));
+  assert.equal(clusterFailures(sites).filter((c) => c.reported).length, 1,
+    "failures differing only in subject are one cause");
+  // a code is the identity, so two codes never merge however alike the message
+  const codes = [1, 2, 3, 4, 5, 6].map((n) => ({ code: n > 3 ? "E001" : "E002", message: msg, file: "a.rs", line: n }));
+  assert.equal(clusterFailures(codes).filter((c) => c.reported).length, 2,
+    "two diagnostic codes are two causes");
+  // with a code present the echoed statement is the instance, not the identity
+  const withStmt = { code: "TS2551", message: msg, stmt: "a.b()" };
+  assert.equal(keyOf(withStmt), keyOf({ ...withStmt, stmt: "c.d()" }),
+    "the statement must not split one diagnostic code into two causes");
+  // without one it is the strongest discriminator there is, so it stays
+  const noCode = { subject: "test_x", message: msg, stmt: "assert a == b" };
+  assert.notEqual(keyOf(noCode), keyOf({ ...noCode, stmt: "assert c == d" }),
+    "without a code the statement must still discriminate");
+  console.log("  ok   clustering policy follows the failure's own fields");
+  pass++;
+} catch (e) { console.log(`  FAIL field-derived clustering policy\n       ${e.message}`); fail++; }
 
 // The guards against over-merging, which is the fatal direction.
 try {

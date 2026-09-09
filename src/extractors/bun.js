@@ -49,7 +49,7 @@ export default {
         msg.push(err ? err[1] : t);
       }
       if (!msg.length) continue;
-      failures.push({ file, line, col, title: head[1], message: msg.join("\n") });
+      failures.push({ file, line, col, title: head[1], subject: head[1], severity: "error", message: msg.join("\n") });
     }
 
     if (!failures.length) return null;

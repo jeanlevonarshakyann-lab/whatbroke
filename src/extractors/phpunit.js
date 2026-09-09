@@ -26,7 +26,7 @@ export default {
           message.push(lines[j].trim());
         }
       }
-      failures.push({ file, line, title: header[1], message: message.join("\n") });
+      failures.push({ file, line, title: header[1], subject: header[1], severity: "error", message: message.join("\n") });
     }
     if (!failures.length) return null;
     const summaryMatch = s.match(/Tests:[ \t]+.*?(\d+) failed/);

@@ -33,7 +33,7 @@ export default {
       if (!expl.length && !stmt.length) continue;
       failures.push({
         file, line,
-        title: blk.title,
+        title: blk.title, subject: blk.title, severity: "error",
         message: (expl.length ? expl : [kind ?? ""]).join("\n"),
         stmt: stmt[0],
       });

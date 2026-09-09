@@ -33,7 +33,7 @@ export default {
       if (!message) continue;
       failures.push({
         file: loc?.file ?? file, line: loc?.line, col: loc?.col,
-        title, message: [message, ...diff.slice(0, 4)].join("\n"),
+        title, subject: title, severity: "error", message: [message, ...diff.slice(0, 4)].join("\n"),
       });
     }
 

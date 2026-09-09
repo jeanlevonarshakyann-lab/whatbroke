@@ -262,7 +262,7 @@ function writeFallback(fallback, truncated, executionError) {
 function track(r, truncated, executionError) {
   if (!r) return { compared: false, reason: "nothing-parsed", fresh: [], gone: null };
   const ids = [...new Set((r.clusters ?? r.failures.map((_, i) => ({ exemplar: i })))
-    .map((u) => causeId(r.failures[u.exemplar], r.tool)))];
+    .map((u) => causeId(r.failures[u.exemplar])))];
   const identity = runIdentity({ cwd: process.cwd(), tool: r.tool, argv });
   const trustworthy = !truncated && !executionError;
   const result = compare(loadRun(identity), ids, { truncated, trustworthy });

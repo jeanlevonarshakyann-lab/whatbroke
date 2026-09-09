@@ -31,7 +31,7 @@ export const traceback = {
       tool: "python",
       failures: [{
         file: deepest?.file, line: deepest?.line,
-        title: deepest?.fn ?? "traceback",
+        title: deepest?.fn ?? "traceback", subject: deepest?.fn, severity: "error",
         message: err, stmt: deepest?.code,
       }],
     };
@@ -53,7 +53,7 @@ export const unittest = {
       const { deepest, err } = parseTraceback(body);
       failures.push({
         file: deepest?.file, line: deepest?.line,
-        title: h[2], message: err || h[1], stmt: deepest?.code,
+        title: h[2], subject: h[2], severity: "error", message: err || h[1], stmt: deepest?.code,
       });
     }
     let summary;

@@ -16,7 +16,7 @@ export default {
       const message = match[6].replace(/[ \t]+\[[^\]]+\.csproj\][ \t]*$/, "");
       const failure = {
         file: match[1], line: +match[2], col: +match[3],
-        title: match[5], message,
+        title: match[5], code: match[5], severity: "error", message,
       };
       const key = JSON.stringify(failure);
       if (match[4] === "warning") {

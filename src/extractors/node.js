@@ -35,7 +35,7 @@ export default {
       tool: "node",
       failures: [{
         file: top?.file, line: top?.line, col: top?.col,
-        title: errType, message: errMsg, stmt,
+        title: errType, code: errType, severity: "error", message: errMsg, stmt,
         trace: user.slice(0, 4).map((f) => `${f.fn} (${f.file}:${f.line}:${f.col})`),
         hiddenFrames: frames.length - user.length,
       }],

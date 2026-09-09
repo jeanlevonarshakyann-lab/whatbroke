@@ -21,7 +21,7 @@ export default {
       }
       failures.push({
         file: a[1], line: +a[2], col: +a[3],
-        title: h[1], message: [h[2], fix].filter(Boolean).join("\n"),
+        title: h[1], code: h[1], severity: "error", message: [h[2], fix].filter(Boolean).join("\n"),
       });
       i++;
     }

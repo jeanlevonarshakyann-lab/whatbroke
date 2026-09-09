@@ -108,6 +108,19 @@ test("no previous run means no comparison, not an empty one", () => {
   assert.deepEqual(c.fresh, [], "with nothing to compare against, nothing is 'new'");
 });
 
+test("a record from an older identity scheme is ignored, not misread", () => {
+  const store = cache();
+  // Cause fingerprints changed when failures began declaring `code` instead of relying
+  // on `title`. A stale record must not be compared against: every cause would look new
+  // and the tool would announce a regression it invented out of its own upgrade.
+  writeFileSync(join(store, "deadbeef.json"), JSON.stringify({
+    version: 1, ranAt: "2026-01-01T00:00:00.000Z", tool: "pytest", causes: ["aaaa1111", "bbbb2222"],
+  }));
+  const r = run(store, fx("pytest_fail.txt"));
+  assert.match(r.stdout, /first tracked run/, "an old record was treated as comparable");
+  assert.doesNotMatch(r.stdout, /new since your last run/);
+});
+
 // ------------------------------------------------------------------ identity
 
 test("different commands never compare against each other", () => {
@@ -133,8 +146,8 @@ test("a second tool in the same directory starts its own history", () => {
 test("a cause id survives a rerun but separates two different bugs", () => {
   const one = analyse(fx("pytest_fail.txt"));
   const two = analyse(fx("pytest_fail.txt"));
-  assert.equal(causeId(one.failures[0], one.tool), causeId(two.failures[0], two.tool));
-  assert.notEqual(causeId(one.failures[0], one.tool), causeId(one.failures[1], one.tool));
+  assert.equal(causeId(one.failures[0]), causeId(two.failures[0]));
+  assert.notEqual(causeId(one.failures[0]), causeId(one.failures[1]));
 });
 
 // -------------------------------------------------------------------- storage

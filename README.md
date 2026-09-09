@@ -263,6 +263,30 @@ timestamp is left exactly as it is. Paste a CI log straight in.
 Repeated identical diagnostics are shown once. Distinct tests or diagnostics
 that happen to share a file and line are preserved.
 
+## What a failure is
+
+Every failure carries what it is, not just a display string:
+
+| field | meaning |
+|---|---|
+| `tool` | which parser produced it |
+| `code` | a diagnostic identifier — `TS2551`, `no-unused-vars`, `E0308` |
+| `subject` | the name of the site that failed — a test name, a method |
+| `label` | a constant the tool prints for a class of failure — `compile error` |
+| `severity` | `error` or `warning`; warnings never become failures |
+| `file` `line` `col` `message` `stmt` `trace` | as before |
+
+`code`, `subject` and `label` are alternatives — a parser declares whichever it actually
+found, and never two. `title` is unchanged and still carries the display string, so
+anything reading it keeps working.
+
+This is what makes grouping work without a lookup table. A `code` is the identity of a
+problem, so it stays in the fingerprint and the echoed source line drops out — the same
+lint in forty places is one thing to fix. A `subject` is the axis being grouped across,
+so it never enters the fingerprint and the failing expression stays as the discriminator.
+Until recently that decision was a hand-maintained table mapping 27 tool names to what
+their `title` happened to mean.
+
 ## One bug, or eighty?
 
 Change one string in a library and eighty tests fail. They are one bug. Every tool

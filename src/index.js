@@ -79,8 +79,8 @@ function otherTools(s, winner, mine, cluster) {
       count: fresh.length,
       summary: r.summary,
       // Grouping is per tool: a signature only means something within one vocabulary.
-      clusters: cluster ? clusterFailures(fresh, r.tool) : null,
-      failures: fresh,
+      clusters: cluster ? clusterFailures(fresh) : null,
+      failures: fresh.map((f) => ({ tool: r.tool, ...f })),
     });
   }
   return others;
@@ -157,8 +157,8 @@ export function analyse(raw, { cluster = true } = {}) {
   const r = hit.result;
   // dedupe first: it collapses the SAME diagnostic printed twice, so cluster
   // sizes end up counting real distinct sites rather than print repetitions.
-  const failures = dedupeFailures(r.failures);
-  const clusters = cluster ? clusterFailures(failures, r.tool) : null;
+  const failures = dedupeFailures(r.failures).map((f) => ({ tool: r.tool, ...f }));
+  const clusters = cluster ? clusterFailures(failures) : null;
   const others = otherTools(s, hit.extractor, failures, cluster);
   return {
     ...r, failures, clusters,
