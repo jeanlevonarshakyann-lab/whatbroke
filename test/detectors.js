@@ -114,6 +114,47 @@ test("the winner is never the generic fallback for a fixture a real parser claim
   }
 });
 
+// Runaway backtracking.
+//
+// `\s` matches a newline, so `/^\s+at /m` at a blank line consumes every remaining
+// newline in the log and then walks all the way back looking for "at" - once per line.
+// A log with a long run of blank or whitespace-only lines therefore costs quadratic
+// time, and eight extractors used to spend five to seventeen seconds each on one.
+// Nothing about that input is exotic: any log with a lot of vertical space hits it.
+//
+// The budget is deliberately loose. Fixed, these finish in single-digit milliseconds;
+// broken, they took thousands. A slow CI machine cannot cross that gap.
+const HOSTILE = {
+  "blank lines": "\n".repeat(50000),
+  "space-only lines": "   \n".repeat(50000),
+  "tab-only lines": "\t\t\n".repeat(50000),
+  "whitespace around a stack frame": "  \n\t\n   at \n".repeat(20000),
+  "indented keyword lines": "   FAIL   \n".repeat(50000),
+};
+const PER_EXTRACTOR_BUDGET_MS = 2000;
+
+test("no detector backtracks on whitespace-heavy logs", () => {
+  const slow = [];
+  for (const [shape, text] of Object.entries(HOSTILE)) {
+    for (const ex of EXTRACTORS) {
+      const started = Date.now();
+      safely(() => { if (ex.detect(text)) ex.extract(text); }, null);
+      const took = Date.now() - started;
+      if (took > PER_EXTRACTOR_BUDGET_MS) slow.push(`${ex.name} took ${took}ms on ${shape}`);
+    }
+  }
+  assert.deepEqual(slow, [], "quantified \\s in a line-anchored pattern scans across newlines");
+});
+
+test("a whitespace-heavy log is analysed promptly end to end", () => {
+  for (const [shape, text] of Object.entries(HOSTILE)) {
+    const started = Date.now();
+    safely(() => analyse(text), null);
+    const took = Date.now() - started;
+    assert.ok(took < PER_EXTRACTOR_BUDGET_MS, `analyse took ${took}ms on ${shape}`);
+  }
+});
+
 const multi = Object.entries(current).filter(([, r]) => r.claimants.length > 2);
 const shadowed = Object.entries(current).filter(([, r]) => Object.keys(r.shadow).length);
 console.log(`\n  ${Object.keys(current).length} fixtures · ${multi.length} claimed by 3+ detectors · ${shadowed.length} with a losing detector that would extract`);

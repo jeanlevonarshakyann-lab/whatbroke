@@ -4,7 +4,7 @@ const ERR_RE = /^(?:Uncaught )?((?:[A-Z]\w*)?(?:Error|Exception)(?:\s\[[\w_]+\])
 
 export default {
   name: "node",
-  detect: (s) => /^\s+at .+\(.+:\d+:\d+\)$/m.test(s) || /^\s+at .+:\d+:\d+$/m.test(s),
+  detect: (s) => /^[ \t]+at .+\(.+:\d+:\d+\)$/m.test(s) || /^[ \t]+at .+:\d+:\d+$/m.test(s),
 
   extract(s) {
     const lines = s.split("\n");
@@ -18,7 +18,7 @@ export default {
     // frames after the error line
     const frames = [];
     for (let i = errIdx + 1; i < lines.length; i++) {
-      const m = lines[i].match(/^\s+at (?:(.+?) \()?(.+?):(\d+):(\d+)\)?$/);
+      const m = lines[i].match(/^[ \t]+at (?:(.+?) \()?(.+?):(\d+):(\d+)\)?$/);
       if (!m) { if (frames.length) break; else continue; }
       frames.push({ fn: m[1] ?? "<anonymous>", file: m[2], line: +m[3], col: +m[4] });
     }
@@ -28,7 +28,7 @@ export default {
     // node prints "file:line \n <source> \n <caret>" above the error for uncaught throws
     let stmt;
     for (let i = 0; i < errIdx; i++) {
-      if (/^\s*\^+\s*$/.test(lines[i]) && i >= 1) { stmt = lines[i - 1].trim(); break; }
+      if (/^[ \t]*\^+[ \t]*$/.test(lines[i]) && i >= 1) { stmt = lines[i - 1].trim(); break; }
     }
 
     return {

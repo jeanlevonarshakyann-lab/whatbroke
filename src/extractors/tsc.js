@@ -1,4 +1,4 @@
-const CHAIN_RE = /^\s+\S/;   // tsc indents each level of its explanation
+const CHAIN_RE = /^[ \t]+\S/;   // tsc indents each level of its explanation
 const MAX_CHAIN = 3;
 const LINE_RE = /^(.+?)\((\d+),(\d+)\): (error|warning) (TS\d+): (.*)$/;
 

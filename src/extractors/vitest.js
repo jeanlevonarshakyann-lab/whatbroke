@@ -1,10 +1,10 @@
-const FAIL_RE = /^\s*FAIL\s+(.+?)\s+>\s+(.+?)\s*$/;
-const LOC_RE = /^\s*[❯>]\s+(.+?):(\d+):(\d+)\s*$/;
+const FAIL_RE = /^[ \t]*FAIL[ \t]+(.+?)[ \t]+>[ \t]+(.+?)[ \t]*$/;
+const LOC_RE = /^[ \t]*[❯>][ \t]+(.+?):(\d+):(\d+)[ \t]*$/;
 const SEP_RE = /^[⎯─-╿\s]*(?:\[\d+\/\d+\])?[⎯─-╿\s]*$/;
 
 export default {
   name: "vitest",
-  detect: (s) => /^\s*RUN\s+v\d/m.test(s) || /Failed Tests \d+/.test(s) || FAIL_RE.test(s),
+  detect: (s) => /^[ \t]*RUN[ \t]+v\d/m.test(s) || /Failed Tests \d+/.test(s) || FAIL_RE.test(s),
 
   extract(s) {
     const lines = s.split("\n");
@@ -26,7 +26,7 @@ export default {
         // vitest prints a "- Expected / + Received" diff; keep the values, drop the header
         // vitest labels its diff "- Expected:" / "+ Received:" - with a colon. Keeping
         // those headers without their values promises a diff and shows none.
-        if (/^\s*[-+]\s*\S/.test(l) && !/^[-+]\s*(Expected|Received):?\s*$/.test(l.trim())) {
+        if (/^[ \t]*[-+][ \t]*\S/.test(l) && !/^[-+][ \t]*(Expected|Received):?[ \t]*$/.test(l.trim())) {
           diff.push(l.trim());
         }
       }
@@ -39,7 +39,7 @@ export default {
 
     let summary;
     for (const l of lines) {
-      const m = l.match(/^\s*Tests\s+(.+?)\s*$/);
+      const m = l.match(/^[ \t]*Tests[ \t]+(.+?)[ \t]*$/);
       if (m) { summary = m[1]; break; }
     }
     if (!failures.length) return null;

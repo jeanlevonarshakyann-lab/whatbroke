@@ -1,10 +1,10 @@
-const DIAGNOSTIC_RE = /^(.+?):(\d+):(\d+):\s+(error|fatal error|warning|note):\s+(.+)$/;
-const CODE_RE = /\s+\[(-W[\w-]+)\]$/;
+const DIAGNOSTIC_RE = /^(.+?):(\d+):(\d+):[ \t]+(error|fatal error|warning|note):[ \t]+(.+)$/;
+const CODE_RE = /[ \t]+\[(-W[\w-]+)\]$/;
 
 export default {
   name: "clang",
   detect: (s) =>
-    /^\S.+:\d+:\d+:\s+(?:error|fatal error|warning|note):\s+/m.test(s) &&
+    /^\S.+:\d+:\d+:[ \t]+(?:error|fatal error|warning|note):[ \t]+/m.test(s) &&
     /(?:clang|gcc|g\+\+|cc1|ld:|[\w.-]+\.(?:c|cc|cpp|cxx|h|hpp|m|mm):)/i.test(s),
 
   extract(s) {

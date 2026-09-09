@@ -18,16 +18,16 @@
 //
 // The header line carries the test name and its location together, which is all
 // the location we need - the stack frames below it are inside the assert library.
-const HEADER_RE = /^(\S.*?)\s+=>\s+(\S+?):(\d+):(\d+)\s*$/;
-const SUMMARY_RE = /^(?:FAILED|ok)\s*\|\s*(\d+)\s+passed\s*\|\s*(\d+)\s+failed/m;
-const ERROR_RE = /^error:\s*(.+)$/;
+const HEADER_RE = /^(\S.*?)[ \t]+=>[ \t]+(\S+?):(\d+):(\d+)[ \t]*$/;
+const SUMMARY_RE = /^(?:FAILED|ok)[ \t]*\|[ \t]*(\d+)[ \t]+passed[ \t]*\|[ \t]*(\d+)[ \t]+failed/m;
+const ERROR_RE = /^error:[ \t]*(.+)$/;
 const DIFF_LABEL_RE = /^\[Diff\]/;
 const THROW_RE = /^throw new |^\^+$/;
 const MAX_MESSAGE_LINES = 4;
 
 export default {
   name: "deno test",
-  detect: (s) => /^\s*ERRORS\s*$/m.test(s) && SUMMARY_RE.test(s),
+  detect: (s) => /^[ \t]*ERRORS[ \t]*$/m.test(s) && SUMMARY_RE.test(s),
 
   extract(s) {
     const lines = s.split("\n");
@@ -42,7 +42,7 @@ export default {
         const t = lines[j].trim();
         if (!t || msg.length >= MAX_MESSAGE_LINES) continue;
         // the FAILURES roll-call and the final tally end the block
-        if (/^FAILURES\s*$/.test(t) || SUMMARY_RE.test(t) || /^error: Test failed\s*$/.test(t)) break;
+        if (/^FAILURES[ \t]*$/.test(t) || SUMMARY_RE.test(t) || /^error: Test failed[ \t]*$/.test(t)) break;
         if (/^at\s/.test(t) || DIFF_LABEL_RE.test(t) || THROW_RE.test(t)) continue;
         const err = t.match(ERROR_RE);
         msg.push(err ? err[1] : t);

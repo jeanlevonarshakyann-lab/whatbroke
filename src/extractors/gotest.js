@@ -1,5 +1,5 @@
-const FAIL_RE = /^\s*--- (FAIL|SKIP): (\S+)/;
-const LOC_RE = /^\s+([\w./-]+\.go):(\d+):\s*(.*)$/;
+const FAIL_RE = /^[ \t]*--- (FAIL|SKIP): (\S+)/;
+const LOC_RE = /^[ \t]+([\w./-]+\.go):(\d+):[ \t]*(.*)$/;
 const BUILD_RE = /^(?:\.\/)?([\w./-]+\.go):(\d+):(\d+): (.+)$/;
 const BUILD_ANY = /^(?:\.\/)?[\w./-]+\.go:\d+:\d+: /m;   // same, but scans a whole blob
 // Go's own runtime/testing frames are never your bug
@@ -8,7 +8,7 @@ const STDLIB = /\/(libexec\/)?src\/(runtime|testing|internal)\//;
 export default {
   name: "go",
   detect: (s) =>
-    /^\s*--- FAIL: /m.test(s) || /^(ok|FAIL|---)\s+\S+\s/m.test(s) || BUILD_ANY.test(s),
+    /^[ \t]*--- FAIL: /m.test(s) || /^(ok|FAIL|---)[ \t]+\S+\s/m.test(s) || BUILD_ANY.test(s),
 
   extract(s) {
     const lines = s.split("\n");
@@ -31,13 +31,13 @@ export default {
     // the bug. The test assertion that follows only reports a wrong total, so
     // without this the output points at the symptom and drops the cause.
     for (let i = 0; i < lines.length; i++) {
-      if (!/^WARNING: DATA RACE\s*$/.test(lines[i])) continue;
+      if (!/^WARNING: DATA RACE[ \t]*$/.test(lines[i])) continue;
       let file, line;
       const what = [];
       for (let j = i + 1; j < lines.length && !/^={10,}$/.test(lines[j]); j++) {
         const op = lines[j].match(/^((?:Previous )?(?:read|write)) at 0x[0-9a-f]+ by (goroutine \d+|main goroutine)/i);
         if (op) { what.push(`${op[1]} by ${op[2]}`); continue; }
-        const at = lines[j].match(/^\s+(\S+):(\d+) \+0x[0-9a-f]+\s*$/);
+        const at = lines[j].match(/^[ \t]+(\S+):(\d+) \+0x[0-9a-f]+[ \t]*$/);
         if (at && !file && !STDLIB.test(at[1])) { file = at[1]; line = +at[2]; }
       }
       if (!what.length) continue;

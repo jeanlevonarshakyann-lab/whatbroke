@@ -2,6 +2,13 @@
 
 ## Unreleased
 
+- Fixed: a log containing a long run of blank or whitespace-only lines took tens of
+  seconds to analyse. `\s` matches a newline, so a line-anchored pattern like
+  `/^\s+at /m` consumed every remaining newline at each blank line and then backtracked
+  looking for the rest — quadratic in the number of lines. Eight extractors spent five to
+  seventeen seconds each on one such input. Quantified `\s` in these patterns is now
+  `[ \t]`, which cannot cross a line. 50,000 blank lines went from 10.1 s to 7 ms.
+
 - Fixed: capture kept the head of a large log and discarded the rest, losing exactly the
   part that explains a failure. A 1.8 MB log with a pytest failure at the end reported no
   diagnostic at all. The byte budget is now spent from both ends, with an explicit marker
