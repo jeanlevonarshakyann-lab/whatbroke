@@ -2,6 +2,11 @@
 
 ## Unreleased
 
+## 0.3.0 — 2026-09-09
+
+Everything below has been sitting unreleased: npm still serves 0.1.1, and 0.2.0 was
+version-bumped but never published, so its entries ship here too.
+
 - Fixed: a compiler driver error with no source to point at — a missing input file, a
   failed link — carried no `file:line` and so fell through to the labelled guess, which
   then also reported make's `*** [target] Error 1` echo as a second failure. Driver
