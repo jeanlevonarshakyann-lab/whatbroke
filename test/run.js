@@ -760,6 +760,33 @@ try {
   pass++;
 } catch (e) { console.log(`  FAIL site list width\n       ${e.message}`); fail++; }
 
+// a CI log stamps every line, and every parser anchors on ^
+try {
+  const { stripCiPrefix } = await import("../src/util.js");
+  const raw = fx("pytest_fail.txt");
+  const lines = raw.split("\n");
+  const plain = analyse(raw);
+
+  // GitHub Actions raw log: an ISO timestamp on every line
+  const stamped = lines.map((l) => `2026-09-09T04:47:46.0890607Z ${l}`).join("\n");
+  const a = analyse(stamped);
+  assert.ok(a, "a timestamped CI log must still parse");
+  assert.equal(a.failures.length, plain.failures.length);
+  assert.deepEqual(a.failures.map((f) => f.line), plain.failures.map((f) => f.line));
+
+  // `gh run view --log`: tab-separated job and step names before the timestamp
+  const withJob = lines.map((l) => `test (ubuntu-latest, 22)\tRun pytest\t2026-09-09T04:47:46.089Z ${l}`).join("\n");
+  assert.equal(analyse(withJob)?.failures.length, plain.failures.length,
+    "job and step columns must be stripped along with the timestamp");
+
+  // but a log that merely MENTIONS a timestamp must be left exactly alone
+  const occasional = lines.map((l, i) => (i % 9 === 0 ? `2026-09-09T04:47:46.000Z ${l}` : l)).join("\n");
+  assert.equal(stripCiPrefix(occasional), occasional, "a partial match must not be stripped");
+  assert.equal(stripCiPrefix(raw), raw, "output with no prefix must be untouched");
+  console.log("  ok   CI-stamped logs parse, and unstamped logs are untouched");
+  pass++;
+} catch (e) { console.log(`  FAIL CI log prefix\n       ${e.message}`); fail++; }
+
 // CRLF input must parse identically to LF - Windows, and logs pasted from Windows CI
 try {
   for (const name of ["pytest_fail.txt", "gotest_fail.txt", "cargobuild_fail.txt", "node_stack.txt"]) {

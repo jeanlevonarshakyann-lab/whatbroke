@@ -17,7 +17,7 @@ import phpunit from "./extractors/phpunit.js";
 import gotest from "./extractors/gotest.js";
 import cargo from "./extractors/cargo.js";
 import generic from "./extractors/generic.js";
-import { stripAnsi } from "./util.js";
+import { stripAnsi, stripCiPrefix } from "./util.js";
 import { clusterFailures } from "./cluster.js";
 
 // order matters: most specific first, generic last
@@ -39,7 +39,7 @@ function dedupeFailures(failures) {
 export function analyse(raw, { cluster = true } = {}) {
   // Windows tools, and logs pasted out of Windows CI, arrive with CRLF. Every
   // parser anchors on $, so a stray \r makes all of them silently match nothing.
-  const s = stripAnsi(raw).replace(/\r\n?/g, "\n");
+  const s = stripCiPrefix(stripAnsi(raw).replace(/\r\n?/g, "\n"));
   for (const ex of EXTRACTORS) {
     if (!ex.detect(s)) continue;
     const r = ex.extract(s);

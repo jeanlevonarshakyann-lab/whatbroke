@@ -185,6 +185,12 @@ them.
 
 Unrecognised output is never silently swallowed — you get a labelled guess, or the raw text back.
 
+CI stamps every line — GitHub Actions prefixes an ISO timestamp, and `gh run view --log`
+puts the job and step in front of that. Every parser here anchors on the start of a line,
+so a stamped log would match nothing at all. whatbroke strips a uniform prefix before
+parsing, and only when nearly every line carries one, so a log that merely mentions a
+timestamp is left exactly as it is. Paste a CI log straight in.
+
 Repeated identical diagnostics are shown once. Distinct tests or diagnostics
 that happen to share a file and line are preserved.
 
