@@ -1,6 +1,6 @@
 const ERR_RE = /^error(?:\[(E\d+)\])?: (.+)$/;
-const ARROW_RE = /^\s*-->\s+(.+?):(\d+):(\d+)\s*$/;
-const DIFF_CONTEXT_RE = /^\s*\d+\s+\d+\s*\|/;
+const ARROW_RE = /^[ \t]*-->[ \t]+(.+?):(\d+):(\d+)[ \t]*$/;
+const DIFF_CONTEXT_RE = /^[ \t]*\d+[ \t]+\d+[ \t]*\|/;
 const PANIC_RE = /^thread '(.+?)'(?: \(\d+\))? panicked at (.+?):(\d+):(\d+):$/;
 const STDLIB = /\/rustlib\/|\/\.cargo\/registry\//;
 // "could not compile ... due to N previous errors" is a tally, not a distinct error
@@ -13,7 +13,7 @@ export default {
   // result tally, or a rust panic.
   detect: (s) =>
     /^error\[E\d+\]: /m.test(s) ||
-    (/^error: /m.test(s) && /^\s*-->\s+\S+:\d+:\d+\s*$/m.test(s)) ||
+    (/^error: /m.test(s) && /^[ \t]*-->[ \t]+\S+:\d+:\d+[ \t]*$/m.test(s)) ||
     /^test result: /m.test(s) ||
     PANIC_RE.test(s),
 
@@ -45,7 +45,7 @@ export default {
     if (failures.length) {
       // "FAILED. 1 passed; 2 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.00s"
       // -> "1 passed; 2 failed"
-      const sm = s.match(/^test result: \w+\.\s*(.+?)\s*$/m);
+      const sm = s.match(/^test result: \w+\.[ \t]*(.+?)[ \t]*$/m);
       const summary = sm?.[1]
         .split(";")
         .map((p) => p.trim())
@@ -64,7 +64,7 @@ export default {
         const am = lines[j].match(ARROW_RE);
         if (am && !STDLIB.test(am[1])) { loc ??= { file: am[1], line: +am[2], col: +am[3] }; continue; }
         // rustc's inline annotation on the caret line carries the real explanation
-        const cm = lines[j].match(/^\s*\|\s*[\^~-]+\s+(.+)$/);
+        const cm = lines[j].match(/^[ \t]*\|[ \t]*[\^~-]+[ \t]+(.+)$/);
         if (cm && !note && !STDLIB.test(lines[j])) note = cm[1].trim();
         if (/^help: /.test(lines[j].trim()) && !note) note = lines[j].trim();
         // clippy diagnostics carry no E-code. The lint name is the useful handle -
@@ -74,7 +74,7 @@ export default {
         const lm = lines[j].match(/rust-clippy\/.*#([a-z_]+)\b/);
         if (lm && !lint) lint = `clippy::${lm[1]}`;
         // rustc echoes the offending line as "N | <source>"
-        const sm = lines[j].match(/^\s*(\d+)\s\|\s?(.*)$/);
+        const sm = lines[j].match(/^[ \t]*(\d+)\s\|\s?(.*)$/);
         if (sm && loc && +sm[1] === loc.line && !stmt) stmt = sm[2];
       }
       failures.push({

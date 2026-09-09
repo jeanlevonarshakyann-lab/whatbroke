@@ -1,15 +1,15 @@
 /** Last resort: no parser matched. Surface the lines most likely to matter. */
 const SIGNAL = [
-  /^\s*(error|fatal|panic|exception)\b/i,
-  /\b(Error|Exception|Panic|Assertion\w*)\s*:/,
-  /^\s*(FAIL|FAILED|✗|✖|×)\b/,
+  /^[ \t]*(error|fatal|panic|exception)\b/i,
+  /\b(Error|Exception|Panic|Assertion\w*)[ \t]*:/,
+  /^[ \t]*(FAIL|FAILED|✗|✖|×)\b/,
   /^[^\s:]+:\d+(:\d+)?:\s/,
   // The classic unix shape - "curl: (7) Failed to connect", "cp: cannot stat",
   // "ssh: ... Connection refused". A bare "prog: message" is far too broad to
   // treat as an error, so it must also say that something did not work.
   /^[a-z][\w.+-]*:\s.*\b(?:failed|failure|cannot|can't|not found|refused|denied|no such|unable to|invalid|missing|timed out|unreachable|does not exist|permission)\b/i,
 ];
-const NOISE = [/^\s*at /, /^npm (notice|warn)/, /^\s*$/, /^warning:/i];
+const NOISE = [/^[ \t]*at /, /^npm (notice|warn)/, /^[ \t]*$/, /^warning:/i];
 
 export default {
   name: "generic",
@@ -28,7 +28,7 @@ export default {
     for (const h of hits.slice(0, 8)) {
       if (seen.has(h.text)) continue;
       seen.add(h.text);
-      const loc = h.text.match(/^([^\s:]+):(\d+)(?::(\d+))?:\s*(.*)$/);
+      const loc = h.text.match(/^([^\s:]+):(\d+)(?::(\d+))?:[ \t]*(.*)$/);
       failures.push(loc
         ? { file: loc[1], line: +loc[2], col: loc[3] ? +loc[3] : undefined, title: "", message: loc[4] }
         : { title: "", message: h.text });

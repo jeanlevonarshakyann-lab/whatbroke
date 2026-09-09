@@ -13,19 +13,19 @@
 //
 // Everything worth showing is in there; the trick is that `error: |-` is a YAML
 // block scalar, so its content is the following lines indented one level deeper.
-const NOT_OK_RE = /^(\s*)not ok\s+\d+\s+-\s+(.+?)\s*$/;
-const SUBTEST_RE = /^(\s*)# Subtest:\s/;
-const FAILURE_TYPE_RE = /^\s*failureType:\s*'(.+?)'\s*$/;
-const LOCATION_RE = /^\s*location:\s*'(.+?):(\d+):(\d+)'\s*$/;
-const NAME_RE = /^\s*name:\s*'(.+?)'\s*$/;
-const ERROR_RE = /^(\s*)error:\s*\|-?\s*$/;
-const ERROR_INLINE_RE = /^\s*error:\s*'?(.+?)'?\s*$/;
-const KEY_RE = /^\s*[a-zA-Z_]+:\s/;
+const NOT_OK_RE = /^([ \t]*)not ok[ \t]+\d+[ \t]+-[ \t]+(.+?)[ \t]*$/;
+const SUBTEST_RE = /^([ \t]*)# Subtest:\s/;
+const FAILURE_TYPE_RE = /^[ \t]*failureType:[ \t]*'(.+?)'[ \t]*$/;
+const LOCATION_RE = /^[ \t]*location:[ \t]*'(.+?):(\d+):(\d+)'[ \t]*$/;
+const NAME_RE = /^[ \t]*name:[ \t]*'(.+?)'[ \t]*$/;
+const ERROR_RE = /^([ \t]*)error:[ \t]*\|-?[ \t]*$/;
+const ERROR_INLINE_RE = /^[ \t]*error:[ \t]*'?(.+?)'?[ \t]*$/;
+const KEY_RE = /^[ \t]*[a-zA-Z_]+:\s/;
 const MAX_MESSAGE_LINES = 4;
 
 export default {
   name: "node --test",
-  detect: (s) => /^#\s+fail\s+\d+\s*$/m.test(s) && /^\s*not ok\s+\d+\s+-\s+/m.test(s),
+  detect: (s) => /^#[ \t]+fail[ \t]+\d+[ \t]*$/m.test(s) && /^[ \t]*not ok[ \t]+\d+[ \t]+-[ \t]+/m.test(s),
 
   extract(s) {
     const lines = s.split("\n");
@@ -43,7 +43,7 @@ export default {
       let file, line, col, errName = "", failureType;
       const msg = [];
       for (let j = i + 1; j < lines.length && !NOT_OK_RE.test(lines[j]); j++) {
-        if (/^\s*\.\.\.\s*$/.test(lines[j])) break;
+        if (/^[ \t]*\.\.\.[ \t]*$/.test(lines[j])) break;
         const type = lines[j].match(FAILURE_TYPE_RE);
         if (type) { failureType = type[1]; continue; }
         const loc = lines[j].match(LOCATION_RE);
@@ -86,7 +86,7 @@ export default {
     if (!failures.length) return null;
 
     const count = (k) => {
-      const m = s.match(new RegExp(String.raw`^#\s+${k}\s+(\d+)\s*$`, "m"));
+      const m = s.match(new RegExp(String.raw`^#[ \t]+${k}[ \t]+(\d+)[ \t]*$`, "m"));
       return m ? +m[1] : null;
     };
     const [failed, passed] = [count("fail"), count("pass")];

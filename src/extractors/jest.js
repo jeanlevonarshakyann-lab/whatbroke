@@ -1,13 +1,13 @@
 // With multiple jest projects the display name comes first: "FAIL jsdom src/a.js".
 // Take the last token, which is always the path.
-const FILE_RE = /^\s*(?:FAIL|PASS)\s+(?:\S+\s+)*?(\S+)\s*$/;
+const FILE_RE = /^[ \t]*(?:FAIL|PASS)[ \t]+(?:\S+[ \t]+)*?(\S+)[ \t]*$/;
 // jest uses the same bullet for config complaints as for failed tests
-const TEST_RE = /^\s*●\s+(?!Console|Validation Warning|Deprecation Warning|Invalid testPattern)(.+?)\s*$/;
-const AT_RE = /^\s+at .*?\(?([^\s()]+):(\d+):(\d+)\)?\s*$/;
+const TEST_RE = /^[ \t]*●[ \t]+(?!Console|Validation Warning|Deprecation Warning|Invalid testPattern)(.+?)[ \t]*$/;
+const AT_RE = /^[ \t]+at .*?\(?([^\s()]+):(\d+):(\d+)\)?[ \t]*$/;
 
 export default {
   name: "jest",
-  detect: (s) => /^Tests:\s+\d/m.test(s) || (/^\s*●\s+/m.test(s) && /^\s*FAIL\s+/m.test(s)),
+  detect: (s) => /^Tests:[ \t]+\d/m.test(s) || (/^[ \t]*●[ \t]+/m.test(s) && /^[ \t]*FAIL[ \t]+/m.test(s)),
 
   extract(s) {
     const lines = s.split("\n");
@@ -32,11 +32,11 @@ export default {
       for (const l of body) {
         const t = l.trim();
         if (!t) continue;
-        if (/^\d+\s*\|/.test(t) || /^>\s*\d+\s*\|/.test(t) || /^\|/.test(t) || /^\^+$/.test(t)) continue;
+        if (/^\d+[ \t]*\|/.test(t) || /^>[ \t]*\d+[ \t]*\|/.test(t) || /^\|/.test(t) || /^\^+$/.test(t)) continue;
         if (/^at /.test(t)) continue;
         // snapshot diffs open with a pair of count headers - "- Snapshot  - 3" and
         // "+ Received  + 3". Keeping those spends the budget before the actual diff.
-        if (/^[-+]\s*(Snapshot|Received)\s+[-+]\s*\d+\s*$/.test(t)) continue;
+        if (/^[-+][ \t]*(Snapshot|Received)[ \t]+[-+][ \t]*\d+[ \t]*$/.test(t)) continue;
         if (/^@@ [-+\d, ]+ @@$/.test(t)) continue;                   // diff hunk header
         // "Snapshot name: `<the test name> 1`" restates the title we already print
         if (/^Snapshot name:/.test(t)) continue;
@@ -59,7 +59,7 @@ export default {
       i = j - 1;
     }
 
-    const sm = s.match(/^Tests:\s+(.+?)\s*$/m);
+    const sm = s.match(/^Tests:[ \t]+(.+?)[ \t]*$/m);
     if (!failures.length) return null;
     return { tool: "jest", summary: sm?.[1], failures };
   },

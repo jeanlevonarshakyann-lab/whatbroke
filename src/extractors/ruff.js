@@ -1,10 +1,10 @@
 // ruff emits rustc-style diagnostics: a header line, then " --> file:line:col".
-const HEAD_RE = /^([A-Z]+\d+)(?:\s+\[[*x]\])?\s+(.+)$/;
-const ARROW_RE = /^\s*-->\s+(.+?):(\d+):(\d+)\s*$/;
+const HEAD_RE = /^([A-Z]+\d+)(?:[ \t]+\[[*x]\])?[ \t]+(.+)$/;
+const ARROW_RE = /^[ \t]*-->[ \t]+(.+?):(\d+):(\d+)[ \t]*$/;
 
 export default {
   name: "ruff",
-  detect: (s) => /^Found \d+ errors?\.?$/m.test(s) && /^\s*-->\s/m.test(s),
+  detect: (s) => /^Found \d+ errors?\.?$/m.test(s) && /^[ \t]*-->\s/m.test(s),
 
   extract(s) {
     const lines = s.split("\n");
@@ -16,7 +16,7 @@ export default {
       if (!a) continue;                       // a header with no location isn't a diagnostic
       let fix = "";
       for (let j = i + 2; j < lines.length && !HEAD_RE.test(lines[j]); j++) {
-        const f = lines[j].match(/^\s*help:\s*(.+)$/);
+        const f = lines[j].match(/^[ \t]*help:[ \t]*(.+)$/);
         if (f) { fix = f[1]; break; }
       }
       failures.push({

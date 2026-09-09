@@ -1,8 +1,8 @@
-const PROB_RE = /^\s+(\d+):(\d+)\s+(error|warning)\s+(.+?)\s{2,}([\w@/-]+)\s*$/;
+const PROB_RE = /^[ \t]+(\d+):(\d+)[ \t]+(error|warning)[ \t]+(.+?)\s{2,}([\w@/-]+)[ \t]*$/;
 
 export default {
   name: "eslint",
-  detect: (s) => /^\s*[✖x]\s+\d+ problems? \(/m.test(s) || PROB_RE.test(s),
+  detect: (s) => /^[ \t]*[✖x][ \t]+\d+ problems? \(/m.test(s) || PROB_RE.test(s),
 
   extract(s) {
     const lines = s.split("\n");
@@ -20,7 +20,7 @@ export default {
     }
 
     let summary;
-    const m = s.match(/^\s*[✖x]\s+(\d+ problems? \(.+?\))\s*$/m);
+    const m = s.match(/^[ \t]*[✖x][ \t]+(\d+ problems? \(.+?\))[ \t]*$/m);
     if (m) summary = m[1];
     if (!failures.length) return null;
     if (warnings) summary = `${summary ?? `${failures.length} errors`} — ${warnings} warning${warnings > 1 ? "s" : ""} hidden`;
