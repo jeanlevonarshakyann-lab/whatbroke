@@ -31,7 +31,10 @@ failures unless they are actionable diagnostics.
 
 ## Safety and quality
 
-- Run `npm test` before submitting changes.
+- Run `npm test` before submitting changes. `test/guarantees.js` runs first and pins the
+  two promises everything else is subordinate to: the exit code is the command's own,
+  and a command that failed is never presented as anything else. If a change makes those
+  fail, the change is wrong, not the test.
 - Keep source reads confined to the working directory.
 - Never add network calls or runtime dependencies for a parser.
 - Add malformed-input coverage when a parser has ambiguous or multiline syntax.
