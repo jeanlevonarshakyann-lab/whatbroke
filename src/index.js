@@ -22,6 +22,7 @@ import npm from "./extractors/npm.js";
 import generic from "./extractors/generic.js";
 import { stripAnsi, stripCiPrefix } from "./util.js";
 import { clusterFailures } from "./cluster.js";
+import { wrapperCandidates } from "./normalize.js";
 
 // order matters: most specific first, generic last
 export const EXTRACTORS = [pytest, nodetest, bun, deno, jest, vitest, unittest, traceback, eslint, ruff, mypy, clang, rspec, jvm, dotnettest, dotnet, phpunit, cargo, gotest, node, tsc, npm, generic];
@@ -60,21 +61,84 @@ function otherTools(s, winner, mine) {
   return others;
 }
 
+/** The extractor loop: first parser that claims the text AND finds something owns it. */
+function parse(s) {
+  for (const ex of EXTRACTORS) {
+    let r = null;
+    try { if (ex.detect(s)) r = ex.extract(s); } catch { r = null; }
+    if (r?.failures?.length) return { extractor: ex, result: r };
+  }
+  return null;
+}
+
+// A parse only counts if a real parser produced it. The generic fallback scores nothing
+// on purpose: "some lines that look like errors" must never outrank a parser reading its
+// own tool, however many lines it managed to scrape.
+const real = (hit) => !!hit && hit.extractor.name !== "generic" && hit.result.failures.length > 0;
+
+/** Is the stripped parse better than the one we already have?
+ *
+ *  Not "more failures" - a prefix left in place makes parsers match fragments, and a
+ *  corrupted parse frequently reports MORE failures than the clean one, not fewer.
+ *
+ *  A shape is hand-written and proven against the whole corpus, so a shape that covers
+ *  four lines in five is a wrapper and its parse wins outright. A literal prefix is
+ *  discovered automatically and is just as often data - mypy prints the same source
+ *  directory at the head of every line - so it has to show a STRUCTURAL improvement:
+ *  either nothing parsed before, or a different tool owns the log once it is gone.
+ *  A strip that leaves the same tool reporting the same failures changed nothing except
+ *  the paths inside them, which is data being mangled rather than a wrapper removed. */
+function better(candidate, cand, current) {
+  if (!real(cand)) return false;
+  if (candidate.kind === "shape") return true;
+  if (!real(current)) return true;
+  return cand.result.tool !== current.result.tool;
+}
+
+const MAX_WRAPPER_LAYERS = 3;   // CI stamps a monorepo runner that stamps a container
+
+/** Peel wrapper prefixes for as long as peeling demonstrably improves the parse. */
+function unwrap(s) {
+  let text = s;
+  let hit = parse(text);
+  const wrappers = [];
+  // At most one literal strip. Once a wrapper is off, the tool's OWN uniform prefix is
+  // the next thing a literal search finds - Maven leads every line with `[INFO] ` - and
+  // taking that too swaps a correct parse for a different, worse one. Genuine stacking
+  // is already handled: a shared prefix spanning two wrappers is found in a single pass.
+  let literalsTaken = 0;
+  for (let layer = 0; layer < MAX_WRAPPER_LAYERS; layer++) {
+    let found = null;
+    for (const c of wrapperCandidates(text)) {
+      if (c.kind === "literal" && literalsTaken) continue;
+      const candidate = parse(c.text);
+      if (better(c, candidate, hit)) { found = { ...c, hit: candidate }; break; }
+    }
+    if (!found) break;
+    if (found.kind === "literal") literalsTaken++;
+    text = found.text;
+    hit = found.hit;
+    wrappers.push(found.wrapper);
+  }
+  return { text, hit, wrappers };
+}
+
 export function analyse(raw, { cluster = true } = {}) {
   // Windows tools, and logs pasted out of Windows CI, arrive with CRLF. Every
   // parser anchors on $, so a stray \r makes all of them silently match nothing.
-  const s = stripCiPrefix(stripAnsi(raw).replace(/\r\n?/g, "\n"));
-  for (const ex of EXTRACTORS) {
-    if (!ex.detect(s)) continue;
-    const r = ex.extract(s);
-    if (r?.failures?.length) {
-      // dedupe first: it collapses the SAME diagnostic printed twice, so cluster
-      // sizes end up counting real distinct sites rather than print repetitions.
-      const failures = dedupeFailures(r.failures);
-      const clusters = cluster ? clusterFailures(failures, r.tool) : null;
-      const others = otherTools(s, ex, failures);
-      return { ...r, failures, clusters, ...(others.length ? { others } : {}) };
-    }
-  }
-  return null;
+  const base = stripCiPrefix(stripAnsi(raw).replace(/\r\n?/g, "\n"));
+  const { text: s, hit, wrappers } = unwrap(base);
+  if (!hit) return null;
+  const r = hit.result;
+  // dedupe first: it collapses the SAME diagnostic printed twice, so cluster
+  // sizes end up counting real distinct sites rather than print repetitions.
+  const failures = dedupeFailures(r.failures);
+  const clusters = cluster ? clusterFailures(failures, r.tool) : null;
+  const others = otherTools(s, hit.extractor, failures);
+  return {
+    ...r, failures, clusters,
+    ...(others.length ? { others } : {}),
+    // Which package or build step the output came from is worth keeping, not discarding.
+    ...(wrappers.length ? { wrappers } : {}),
+  };
 }

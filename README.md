@@ -330,6 +330,28 @@ Nothing about tracking can change the outcome of a run. If the cache cannot be r
 written, whatbroke says nothing about history and prints the same diagnosis it always
 would.
 
+## When something else is printing your log
+
+Turborepo puts `api:test: ` in front of every line. Docker BuildKit puts `#12 1.234 `.
+pnpm names the package and script, kubectl names the pod. Every parser here anchors on
+the start of a line, so before whatbroke understood these, a wrapped pytest run produced
+*nothing* — not a worse answer, no answer at all.
+
+whatbroke finds the prefix and removes it, then says which one it removed, because
+knowing the failure came from `api:test:` is worth keeping.
+
+Nothing is stripped on a hunch. A candidate prefix is removed only if removing it makes
+a real parser find something it could not find before — so npm's `npm error ` and mypy's
+repeated source directory, which look exactly like wrappers, are left alone. The
+invariant is not "strip prefixes", it is "never come out worse than going in", and it is
+tested by wrapping every captured fixture in every runner's prefix and requiring the same
+tool and the same failures out the other side.
+
+One known limit: a tool that redraws a progress line with a bare carriage return packs
+many logical lines into one physical line. A runner stamps that blob once, so after the
+carriage returns are normalised most of the interior lines carry no prefix and the
+uniformity check correctly declines to act.
+
 ## When the log is too big
 
 `--max-bytes` caps how much output is kept (10 MB by default). The cap is spent from
