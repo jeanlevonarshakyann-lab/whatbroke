@@ -8,7 +8,14 @@ const TALLY_RE = /^could not compile|^aborting due to|^test failed, to rerun/;
 
 export default {
   name: "cargo",
-  detect: (s) => /^error(\[E\d+\])?: /m.test(s) || /^test result: /m.test(s) || PANIC_RE.test(s),
+  // A bare "error: ..." line is not enough: bun test writes exactly that. Require
+  // something only rustc/cargo emits - an E-code, its "-->" location line, a test
+  // result tally, or a rust panic.
+  detect: (s) =>
+    /^error\[E\d+\]: /m.test(s) ||
+    (/^error: /m.test(s) && /^\s*-->\s+\S+:\d+:\d+\s*$/m.test(s)) ||
+    /^test result: /m.test(s) ||
+    PANIC_RE.test(s),
 
   extract(s) {
     const lines = s.split("\n");

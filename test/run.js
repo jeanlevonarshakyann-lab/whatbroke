@@ -833,6 +833,31 @@ try {
   pass++;
 } catch (e) { console.log(`  FAIL multi-tool log\n       ${e.message}`); fail++; }
 
+// When two parsers both claim a fixture, only their order in the list decides the
+// answer - which is how bun test came back as cargo errors. Pin the known cases so
+// a new parser cannot quietly introduce another.
+try {
+  const { EXTRACTORS } = await import("../src/index.js");
+  const { stripAnsi, stripCiPrefix } = await import("../src/util.js");
+  const KNOWN = {
+    // unittest reports its failures AS Python tracebacks, so both match by design
+    // and the more specific one is listed first
+    "py_unittest.txt": ["unittest", "python"],
+  };
+  const found = {};
+  for (const file of readdirSync(join(here, "fixtures"))) {
+    const s = stripCiPrefix(stripAnsi(fx(file)).replace(/\r\n?/g, "\n"));
+    const claimers = EXTRACTORS
+      .filter((e) => e.name !== "generic" && e.detect(s) && e.extract(s)?.failures?.length)
+      .map((e) => e.name);
+    if (claimers.length > 1) found[file] = claimers;
+  }
+  assert.deepEqual(found, KNOWN,
+    `parsers competing for a fixture changed: ${JSON.stringify(found)}`);
+  console.log("  ok   only one fixture is decided by parser order, and it is expected");
+  pass++;
+} catch (e) { console.log(`  FAIL parser overlap\n       ${e.message}`); fail++; }
+
 // CRLF input must parse identically to LF - Windows, and logs pasted from Windows CI
 try {
   for (const name of ["pytest_fail.txt", "gotest_fail.txt", "cargobuild_fail.txt", "node_stack.txt"]) {
