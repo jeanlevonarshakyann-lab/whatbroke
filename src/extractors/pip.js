@@ -11,6 +11,9 @@ const IGNORED = /^ERROR: Ignored the following/;
 // "(from versions: 1.3.0, 1.4.1, … 300 more)" is the whole index, not the diagnosis.
 const VERSION_LIST = /[^\S\n]*\(from versions:[^)]*\)/;
 
+// A build runner reporting that a step exited non-zero, rather than any tool's finding.
+const RUNNER_MECHANISM = /failed to solve:|did not complete successfully/;
+
 const OUTPUT_START = /^[^\S\n]*╰─>[^\S\n]*\[\d+ lines of output\]/;
 const OUTPUT_END = /^[^\S\n]*\[end of output\]/;
 
@@ -118,7 +121,14 @@ export default {
       if (conflict) { push({ subject: conflict[1], title: "conflicting dependencies", message: l.slice("ERROR: ".length) }); continue; }
 
       const other = l.match(/^ERROR: (.+)$/);
-      if (other) push({ title: "error", label: "error", message: other[1].replace(VERSION_LIST, "") });
+      // The catch-all is the weakest rule here, and in a container it reaches a line
+      // that is not pip's at all: Docker ends a failed build with `ERROR: failed to
+      // build: failed to solve: process ... did not complete successfully`. That is the
+      // runner saying the step exited non-zero, which is the mechanism and never the
+      // diagnosis - and pip installs inside a Dockerfile are not a rare arrangement.
+      if (other && !RUNNER_MECHANISM.test(other[1])) {
+        push({ title: "error", label: "error", message: other[1].replace(VERSION_LIST, "") });
+      }
     }
 
     if (!failures.length) return null;

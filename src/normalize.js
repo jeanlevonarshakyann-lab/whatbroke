@@ -93,7 +93,9 @@ const BUILDKIT_ELAPSED = /^\d+\.\d+[^\S\n]/;
 
 /** The failing step's output, lifted out of the frame Docker wraps it in. */
 function buildkitBlock(text) {
-  if (!/^ERROR: failed to solve:/m.test(text)) return null;
+  // Docker words this differently depending on version and driver - `failed to solve`
+  // alone, or `failed to build: failed to solve`. Anchor on the part that does not move.
+  if (!/^ERROR: (?:[\w .]+: )?failed to solve:/m.test(text)) return null;
   const lines = text.split("\n");
   for (let i = 0; i < lines.length; i++) {
     if (!BUILDKIT_RULE.test(lines[i]) || !BUILDKIT_STEP.test(lines[i + 1] ?? "")) continue;

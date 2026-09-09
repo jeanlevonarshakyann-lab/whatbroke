@@ -2,6 +2,14 @@
 
 ## Unreleased
 
+- Fixed: the Docker BuildKit handling did not work on real Docker output. Docker writes
+  `ERROR: failed to build: failed to solve:`, not `ERROR: failed to solve:`, so the
+  failure block was never found; and a real build log carries image-pull progress, so
+  the step prefix covers far less of it than a synthetic sample suggests.
+- Fixed: pip's catch-all claimed Docker's own `ERROR: failed to build: …` line as a pip
+  failure, so every failing build with a `pip install` step reported one that never
+  happened.
+
 - A failing `docker build` reported `ERROR: failed to solve: …`, which names the
   mechanism and not the cause. The step's own output is now read instead, either from
   BuildKit's `#8 0.234 ` stamps or from the failure block Docker quotes above that line.
