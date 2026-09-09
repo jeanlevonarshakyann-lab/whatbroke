@@ -2,6 +2,15 @@
 
 ## Unreleased
 
+- Fixed: a plain `cargo run` panic produced no diagnosis at all — the most common Rust
+  failure there is. The panic pattern is matched line by line and so carries no `m`
+  flag, which meant using it for detection only ever tested the first line of the log.
+- Fixed: a cargo build-script failure reported "failed to run custom build command",
+  the mechanism, while the panic naming the file and line sat indented underneath it.
+- Fixed: a dependency that cannot be resolved never reaches the compiler, so there is no
+  error code or location for detection to key on, and cargo did not recognise its own
+  output.
+
 - Fixed: tsc dropped every error that has no `file(line,col)` prefix, so a broken
   tsconfig reporting three errors came back with two and said nothing about the third.
 - Fixed: a jest suite that throws before any test runs made the headline read

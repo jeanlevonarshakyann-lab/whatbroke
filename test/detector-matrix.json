@@ -12,6 +12,52 @@
       "generic": 1
     }
   },
+  "cargo_buildscript_fail.txt": {
+    "winner": "cargo",
+    "parser": "cargo",
+    "failures": 1,
+    "claimants": [
+      "cargo",
+      "generic"
+    ],
+    "shadow": {
+      "generic": 1
+    }
+  },
+  "cargo_manifest_fail.txt": {
+    "winner": "cargo",
+    "parser": "cargo",
+    "failures": 1,
+    "claimants": [
+      "cargo",
+      "generic"
+    ],
+    "shadow": {
+      "generic": 1
+    }
+  },
+  "cargo_panic_fail.txt": {
+    "winner": "cargo test",
+    "parser": "cargo",
+    "failures": 1,
+    "claimants": [
+      "cargo",
+      "generic"
+    ],
+    "shadow": {}
+  },
+  "cargo_resolve_fail.txt": {
+    "winner": "cargo",
+    "parser": "cargo",
+    "failures": 1,
+    "claimants": [
+      "cargo",
+      "generic"
+    ],
+    "shadow": {
+      "generic": 1
+    }
+  },
   "cargobuild_fail.txt": {
     "winner": "cargo",
     "parser": "cargo",

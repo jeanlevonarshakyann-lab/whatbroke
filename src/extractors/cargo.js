@@ -1,7 +1,19 @@
 const ERR_RE = /^error(?:\[(E\d+)\])?: (.+)$/;
 const ARROW_RE = /^[^\S\n]*-->[^\S\n]+(.+?):(\d+):(\d+)[^\S\n]*$/;
 const DIFF_CONTEXT_RE = /^[^\S\n]*\d+[^\S\n]+\d+[^\S\n]*\|/;
-const PANIC_RE = /^thread '(.+?)'(?: \(\d+\))? panicked at (.+?):(\d+):(\d+):$/;
+// cargo indents a build script's captured stderr under "--- stderr", so the panic that
+// actually failed the build arrives two spaces in and the anchored pattern missed it.
+const PANIC_RE = /^[^\S\n]*thread '(.+?)'(?: \(\d+\))? panicked at (.+?):(\d+):(\d+):$/;
+// PANIC_RE is matched line by line, so it carries no `m` flag - which meant using it in
+// detect only ever tested the FIRST line of the log. A panic anywhere else went unseen,
+// and detection survived on the other alternatives beside it.
+const PANIC_ANYWHERE = new RegExp(PANIC_RE.source, "m");
+// cargo reports a build-script failure as "failed to run custom build command", which
+// is the mechanism; the panic underneath it is the cause, and it is not a test failure.
+const BUILD_SCRIPT = /^error: failed to run custom build command/m;
+// A dependency that cannot be resolved never reaches the compiler, so there is no
+// E-code and no --> line for detection to key on.
+const RESOLVE_RE = /^error: (no matching package named|failed to select a version|failed to parse manifest|could not find `[^`]+` in registry)/m;
 const STDLIB = /\/rustlib\/|\/\.cargo\/registry\//;
 // "could not compile ... due to N previous errors" is a tally, not a distinct error
 const TALLY_RE = /^could not compile|^aborting due to|^test failed, to rerun/;
@@ -17,7 +29,8 @@ export default {
     /^error\[E\d+\]: /m.test(s) ||
     (/^error: /m.test(s) && /^[^\S\n]*-->[^\S\n]+\S+:\d+:\d+[^\S\n]*$/m.test(s)) ||
     /^test result: /m.test(s) ||
-    PANIC_RE.test(s),
+    RESOLVE_RE.test(s) ||
+    PANIC_ANYWHERE.test(s),
 
   extract(s) {
     const lines = s.split("\n");
@@ -41,7 +54,9 @@ export default {
       }
       failures.push({
         file: pm[2], line: +pm[3], col: +pm[4],
-        title: pm[1], subject: pm[1], category: "test", severity: "error", message: msg.join("\n"),
+        title: pm[1], subject: pm[1],
+        category: BUILD_SCRIPT.test(s) ? "build" : "test",
+        severity: "error", message: msg.join("\n"),
       });
     }
     if (failures.length) {
@@ -53,6 +68,8 @@ export default {
         .map((p) => p.trim())
         .filter((p) => p && !/^0 /.test(p) && !/^finished in/.test(p))
         .join("; ");
+      // A panic inside a build script is not a test result, however alike they look.
+      if (BUILD_SCRIPT.test(s)) return { tool: "cargo", summary: "build script failed", failures };
       return { tool: "cargo test", summary: summary || undefined, failures };
     }
 

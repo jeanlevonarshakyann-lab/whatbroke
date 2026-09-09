@@ -1,0 +1,10 @@
+   Compiling m2 v0.1.0 (/home/dev/m2)
+error: failed to run custom build command for `m2 v0.1.0 (/home/dev/m2)`
+
+Caused by:
+  process didn't exit successfully: `/home/dev/m2/target/debug/build/m2-8da23440217b9228/build-script-build` (exit status: 101)
+  --- stderr
+
+  thread 'main' (10152452) panicked at build.rs:1:13:
+  build script exploded
+  note: run with `RUST_BACKTRACE=1` environment variable to display a backtrace
