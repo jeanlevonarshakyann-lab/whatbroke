@@ -169,7 +169,7 @@ them.
 | **jest** | test name, `file:line`, the matcher, expected vs received |
 | **vitest** | same, with the real source line — not vitest's truncated `…` version |
 | **eslint** | errors only; warnings counted and set aside |
-| **go test** | test name, `file:line`, the message; panics resolved past the runtime frames |
+| **go test** | test name, `file:line`, the message; panics resolved past the runtime frames, and `-race` reports at the racing line |
 | **go build** | compile errors with source context |
 | **cargo test** | test name, `file:line`, the assertion and its left/right values |
 | **cargo build** | error code and the inline annotation — not the 25 lines of trait impls |

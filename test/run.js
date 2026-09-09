@@ -473,6 +473,23 @@ const CASES = [
       // the frames are inside the assert library, not the user's code
       assert.ok(!/jsr\.io/.test(f.message));
     } },
+  { file: "gorace_fail.txt", tool: "go test", n: 3, check: (r) => {
+      // real `go test -race`. The detector names the exact line of the racing
+      // access - the bug - while the assertion below it only reports a wrong total.
+      // Before, the race report was dropped and the output pointed at line 17,
+      // the symptom, instead of line 13, the cause.
+      assert.equal(r.summary, "1 test failed, 2 data races");
+      const races = r.failures.filter((f) => f.title === "DATA RACE");
+      assert.equal(races.length, 2);
+      assert.equal(races[0].line, 13, "the racing access, not the assertion");
+      assert.match(races[0].file, /race_test\.go$/);
+      // go writes "Read at" but "Previous write at" - both operations must be named
+      assert.match(races[0].message, /Read by goroutine \d+/);
+      assert.match(races[0].message, /Previous write by goroutine \d+/i);
+      // the ordinary assertion failure is still reported, and still called a test
+      const test = r.failures.find((f) => f.title === "TestRace");
+      assert.ok(test && test.line === 17, "the assertion failure is still there");
+    } },
 ];
 
 let pass = 0, fail = 0;

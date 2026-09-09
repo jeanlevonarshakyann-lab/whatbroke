@@ -26,6 +26,27 @@ export default {
       return { tool: "go build", summary: `${n} compile error${n > 1 ? "s" : ""}`, failures };
     }
 
+    // --- data races ---
+    // The detector names the exact line where the racing access happened, which is
+    // the bug. The test assertion that follows only reports a wrong total, so
+    // without this the output points at the symptom and drops the cause.
+    for (let i = 0; i < lines.length; i++) {
+      if (!/^WARNING: DATA RACE\s*$/.test(lines[i])) continue;
+      let file, line;
+      const what = [];
+      for (let j = i + 1; j < lines.length && !/^={10,}$/.test(lines[j]); j++) {
+        const op = lines[j].match(/^((?:Previous )?(?:read|write)) at 0x[0-9a-f]+ by (goroutine \d+|main goroutine)/i);
+        if (op) { what.push(`${op[1]} by ${op[2]}`); continue; }
+        const at = lines[j].match(/^\s+(\S+):(\d+) \+0x[0-9a-f]+\s*$/);
+        if (at && !file && !STDLIB.test(at[1])) { file = at[1]; line = +at[2]; }
+      }
+      if (!what.length) continue;
+      failures.push({
+        file, line, title: "DATA RACE",
+        message: what.slice(0, 2).join(", ") + " - the same memory, without synchronisation",
+      });
+    }
+
     // --- test failures ---
     for (let i = 0; i < lines.length; i++) {
       const m = lines[i].match(FAIL_RE);
@@ -52,8 +73,12 @@ export default {
 
     // count what we actually report: a parent of subtests prints its own
     // "--- FAIL" line but carries no failure of its own
-    const n = failures.length;
-    const summary = n ? `${n} test${n > 1 ? "s" : ""} failed` : undefined;
+    const races = failures.filter((f) => f.title === "DATA RACE").length;
+    const tests = failures.length - races;
+    const bits = [];
+    if (tests) bits.push(`${tests} test${tests > 1 ? "s" : ""} failed`);
+    if (races) bits.push(`${races} data race${races > 1 ? "s" : ""}`);
+    const summary = bits.length ? bits.join(", ") : undefined;
     if (!failures.length) return null;
     return { tool: "go test", summary, failures };
   },

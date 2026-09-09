@@ -1,0 +1,58 @@
+==================
+WARNING: DATA RACE
+Read at 0x00c000114178 by goroutine 8:
+  racer.TestRace.func1()
+      /home/dev/goracer/race_test.go:13 +0x68
+
+Previous write at 0x00c000114178 by goroutine 9:
+  racer.TestRace.func1()
+      /home/dev/goracer/race_test.go:13 +0x78
+
+Goroutine 8 (running) created at:
+  racer.TestRace()
+      /home/dev/goracer/race_test.go:13 +0x70
+  testing.tRunner()
+      /opt/homebrew/Cellar/go/1.27.1/libexec/src/testing/testing.go:2193 +0x164
+  testing.(*T).Run.gowrap1()
+      /opt/homebrew/Cellar/go/1.27.1/libexec/src/testing/testing.go:2258 +0x34
+
+Goroutine 9 (running) created at:
+  racer.TestRace()
+      /home/dev/goracer/race_test.go:13 +0x70
+  testing.tRunner()
+      /opt/homebrew/Cellar/go/1.27.1/libexec/src/testing/testing.go:2193 +0x164
+  testing.(*T).Run.gowrap1()
+      /opt/homebrew/Cellar/go/1.27.1/libexec/src/testing/testing.go:2258 +0x34
+==================
+==================
+WARNING: DATA RACE
+Write at 0x00c000114178 by goroutine 19:
+  racer.TestRace.func1()
+      /home/dev/goracer/race_test.go:13 +0x78
+
+Previous write at 0x00c000114178 by goroutine 15:
+  racer.TestRace.func1()
+      /home/dev/goracer/race_test.go:13 +0x78
+
+Goroutine 19 (running) created at:
+  racer.TestRace()
+      /home/dev/goracer/race_test.go:13 +0x70
+  testing.tRunner()
+      /opt/homebrew/Cellar/go/1.27.1/libexec/src/testing/testing.go:2193 +0x164
+  testing.(*T).Run.gowrap1()
+      /opt/homebrew/Cellar/go/1.27.1/libexec/src/testing/testing.go:2258 +0x34
+
+Goroutine 15 (running) created at:
+  racer.TestRace()
+      /home/dev/goracer/race_test.go:13 +0x70
+  testing.tRunner()
+      /opt/homebrew/Cellar/go/1.27.1/libexec/src/testing/testing.go:2193 +0x164
+  testing.(*T).Run.gowrap1()
+      /opt/homebrew/Cellar/go/1.27.1/libexec/src/testing/testing.go:2258 +0x34
+==================
+--- FAIL: TestRace (0.00s)
+    race_test.go:17: counter = 28, want 50
+    testing.go:1865: race detected during execution of test
+FAIL
+FAIL	racer	0.466s
+FAIL
