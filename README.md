@@ -68,6 +68,7 @@ When wrapping a command, its exit code is passed straight through, so `whatbroke
 can be left in a Makefile or a CI step. Piped input does not carry the upstream
 command's exit status: whatbroke exits `0` after processing it, which does not mean
 the upstream command succeeded. Wrap the command when you need its exit status.
+An optional `-` supports explicit piped input (`cmd | whatbroke -`).
 
 Unknown options and invalid option values exit `2` without starting the command.
 Options belong before the command; its own arguments are passed through unchanged.
@@ -80,7 +81,8 @@ If nothing was captured, it says so. Unrecognized piped text is also shown, with
 the upstream status labelled unknown. In GitHub Actions, failed commands get an
 error annotation and a summary; unrecognized pipes get a notice rather than an
 assumed command failure. Captured output remains subject to `--max-bytes` and is
-labelled incomplete when truncated.
+labelled incomplete when truncated. GitHub fallback annotations show a preview
+capped at 3,500 encoded bytes; job summaries and JSON retain the captured output.
 
 Use `whatbroke --help` for all options. `--json` suppresses the wrapped command's
 output so stdout remains valid JSON, and emits a versioned envelope with

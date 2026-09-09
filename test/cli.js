@@ -34,6 +34,19 @@ export async function runCliTests(cli = fileURLToPath(new URL("../bin/whatbroke.
     }
   });
 
+  await check("explicit stdin marker preserves terminal and JSON pipe behavior", () => {
+    for (const args of [["-"], ["-q", "-"], ["-", "-q"]]) {
+      const r = run(args, raw);
+      assert.equal(r.status, 0);
+      assert.ok(r.stdout.includes(raw));
+    }
+    const r = run(["--json", "-"], raw);
+    assert.equal(r.status, 0);
+    const result = JSON.parse(r.stdout);
+    assert.equal(result.inputMode, "pipe");
+    assert.equal(result.fallback.rawOutput, raw);
+  });
+
   await check("wrapped unknown failures report status without duplicating streamed output", () => {
     for (const flags of [[], ["-q"]]) {
       const r = run([...flags, ...command(raw, 7)]);
@@ -137,7 +150,7 @@ export async function runCliTests(cli = fileURLToPath(new URL("../bin/whatbroke.
 
   await check("unknown and malformed options are rejected before launching commands", () => {
     const invalid = [
-      ["--quuet"], ["-z"], ["-qz"], ["-"], ["--quiet=true"], ["--json=false"],
+      ["--quuet"], ["-z"], ["-qz"], ["--quiet=true"], ["--json=false"],
       ["--help", "--quuet"], ["--version", "--format=invalid"],
       ["--format=invalid", "--format=json"],
       ["--format="], ["--format", "--json"],
@@ -204,6 +217,23 @@ export async function runCliTests(cli = fileURLToPath(new URL("../bin/whatbroke.
       const markdown = readFileSync(summary, "utf8");
       assert.ok(markdown.includes("````\n" + text + "\n````"));
       assert.match(markdown, /exit status is unknown/);
+    } finally { rmSync(dir, { recursive: true, force: true }); }
+  });
+
+  await check("GitHub raw previews stay bounded while summaries retain full output", () => {
+    const dir = mkdtempSync(join(tmpdir(), "whatbroke-cli-preview-"));
+    try {
+      for (const [index, text] of ["x".repeat(500000), "%\r\n😀".repeat(100000)].entries()) {
+        const summary = join(dir, `${index}.md`);
+        const r = run(["--github-actions"], text, { GITHUB_STEP_SUMMARY: summary });
+        assert.equal(r.status, 0);
+        const preview = r.stdout.split("\n").find(l => l.startsWith("::notice title=whatbroke captured output::"));
+        assert.ok(preview);
+        assert.ok(Buffer.byteLength(preview + "\n") <= 3500);
+        assert.match(preview, /preview truncated/);
+        assert.ok(!preview.includes("\uFFFD"));
+        assert.ok(readFileSync(summary, "utf8").includes(text));
+      }
     } finally { rmSync(dir, { recursive: true, force: true }); }
   });
 

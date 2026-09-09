@@ -13,7 +13,7 @@ const HELP = `whatbroke — you ran a command, it printed 400 lines. these are t
 
   whatbroke <command...>     run it, then distil the failure
   whatbroke -q <command...>  hide the command's own output; show only the distillation
-  <command> |& whatbroke     distil output piped in
+  <command> |& whatbroke     distil output piped in (optional trailing -)
 
   -q, --quiet   suppress the wrapped command's output
   -a, --all     don't cap the number of failures shown
@@ -38,6 +38,7 @@ let parseError;
 while (argv.length && /^-/.test(argv[0])) {
   const a = argv.shift();
   if (a === "--") break;
+  if (a === "-") continue; // Preserve the conventional explicit stdin marker.
   if (a === "--max-bytes" || a.startsWith("--max-bytes=")) {
     const value = a === "--max-bytes" ? argv.shift() : a.slice("--max-bytes=".length);
     maxBytes = Number(value);
@@ -182,6 +183,23 @@ function writeGithubSummary(result, truncated) {
 
 const truncationNotice = "output capture limit reached; captured output is incomplete (increase --max-bytes)";
 
+// Bound the encoded preview too: newlines/percent signs expand during escaping,
+// and Unicode characters can occupy several bytes. Never split an escape or code point.
+function capturedOutputAnnotation(raw) {
+  const prefix = "::notice title=whatbroke captured output::";
+  const suffix = " [preview truncated; use --json for full captured output]";
+  const budget = 3500 - Buffer.byteLength(prefix + suffix + "\n");
+  let preview = "", bytes = 0;
+  for (const char of raw) {
+    const escaped = escapeData(char);
+    const size = Buffer.byteLength(escaped);
+    if (bytes + size > budget) return prefix + preview + suffix + "\n";
+    preview += escaped;
+    bytes += size;
+  }
+  return prefix + preview + "\n";
+}
+
 function writeFallback(fallback, truncated, executionError) {
   const piped = inputMode === "pipe";
   const explanation = executionError ?? "whatbroke could not identify a diagnostic.";
@@ -192,7 +210,7 @@ function writeFallback(fallback, truncated, executionError) {
     process.stdout.write(`::${level} title=whatbroke::${escapeData(fallback.message + "\n" + explanation)}\n`);
     if (raw && (piped || quiet)) {
       // Escaped annotation data keeps raw workflow-command syntax inert.
-      process.stdout.write(`::notice title=whatbroke captured output::${escapeData(raw)}\n`);
+      process.stdout.write(capturedOutputAnnotation(raw));
     } else if (!raw) {
       process.stdout.write("::notice title=whatbroke::No output was captured.\n");
     }
