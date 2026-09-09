@@ -43,20 +43,45 @@ function dedupeFailures(failures) {
 /** A CI log often holds a lint run, a typecheck and a test run one after another.
  *  Only one extractor can own the output, so name the others rather than dropping
  *  their failures without a word. */
-function otherTools(s, winner, mine) {
+/** A CI job usually runs a linter, then a typechecker, then the tests, and pastes all
+ *  of it into one log. Only one extractor can own that output, but the failures the
+ *  others found are just as real - and until now they were extracted, counted, and
+ *  thrown away, so reading them meant going back to the raw log.
+ *
+ *  `failures` still means "what the winning tool reported", unchanged, so nothing that
+ *  reads it sees a different shape. Everything else arrives here, attributed. */
+function otherTools(s, winner, mine, cluster) {
   const at = (f) => `${f.file ?? ""}:${f.line ?? ""}`;
+  const exact = (f) => JSON.stringify([f.file ?? null, f.line ?? null, f.col ?? null, f.title ?? "", f.message ?? ""]);
   const seen = new Set(mine.map(at));
+  const claimed = new Set();
   const others = [];
   for (const ex of EXTRACTORS) {
     if (ex === winner || ex.name === "generic") continue;
-    if (!ex.detect(s)) continue;
-    const r = ex.extract(s);
+    let r = null;
+    try { if (ex.detect(s)) r = ex.extract(s); } catch { r = null; }
     if (!r?.failures?.length) continue;
     // Some tools report the same failure a second way - unittest prints its
     // failures AS Python tracebacks. If every location is one the winner already
     // covers, this is the same output read twice, not another tool that failed.
-    const fresh = r.failures.filter((f) => !seen.has(at(f)));
-    if (fresh.length) others.push({ tool: r.tool, count: fresh.length });
+    const fresh = dedupeFailures(r.failures
+      .filter((f) => !seen.has(at(f)))
+      .filter((f) => !claimed.has(exact(f))));
+    if (!fresh.length) continue;
+    // Between two OTHER tools the location alone is too blunt: eslint and tsc can flag
+    // the same line for entirely different reasons, and dropping one of those loses a
+    // real diagnosis. Only an identical diagnostic is a repeat. The winner keeps the
+    // looser location test above, which is what stops unittest's failures arriving a
+    // second time as Python tracebacks.
+    for (const f of fresh) claimed.add(exact(f));
+    others.push({
+      tool: r.tool,
+      count: fresh.length,
+      summary: r.summary,
+      // Grouping is per tool: a signature only means something within one vocabulary.
+      clusters: cluster ? clusterFailures(fresh, r.tool) : null,
+      failures: fresh,
+    });
   }
   return others;
 }
@@ -134,7 +159,7 @@ export function analyse(raw, { cluster = true } = {}) {
   // sizes end up counting real distinct sites rather than print repetitions.
   const failures = dedupeFailures(r.failures);
   const clusters = cluster ? clusterFailures(failures, r.tool) : null;
-  const others = otherTools(s, hit.extractor, failures);
+  const others = otherTools(s, hit.extractor, failures, cluster);
   return {
     ...r, failures, clusters,
     ...(others.length ? { others } : {}),

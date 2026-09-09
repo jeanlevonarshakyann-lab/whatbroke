@@ -63,7 +63,7 @@ const windowedCol = (col, start) =>
 
 const SITES_SHOWN = 3;   // how many extra sites to name before "+ N more"
 
-export function render(result, { max = 5, cwd = true, source = true, cluster = true, since = null } = {}) {
+export function render(result, { max = 5, cwd = true, source = true, cluster = true, since = null, secondary = false } = {}) {
   const out = [];
   const fails = result.failures;
   let lastSnip = null;   // don't reprint the same source region twice in a row
@@ -76,7 +76,10 @@ export function render(result, { max = 5, cwd = true, source = true, cluster = t
     : fails.map((_, i) => ({ size: 1, members: [i], exemplar: i, reported: false }));
   const reported = units.filter((u) => u.reported);
 
-  if (result.summary) {
+  if (secondary) {
+    const what = result.summary || `${fails.length} failure${fails.length > 1 ? "s" : ""}`;
+    out.push(`  ${C.dim}—${C.reset} ${C.bold}${result.tool}${C.reset} ${C.dim}${what}${C.reset}`);
+  } else if (result.summary) {
     out.push(`  ${C.red}${C.bold}✗${C.reset} ${C.bold}${result.summary}${C.reset}`);
   } else if (fails.length) {
     const n = fails.length;
@@ -104,7 +107,7 @@ export function render(result, { max = 5, cwd = true, source = true, cluster = t
   }
   if (result.others?.length) {
     const named = result.others.map((o) => `${o.tool} (${o.count})`).join(", ");
-    out.push(`    ${C.yellow}this log also contains failures from ${named}${C.reset}`);
+    out.push(`    ${C.yellow}this log also contains failures from ${named}, shown below${C.reset}`);
   }
   out.push("");
 
@@ -206,6 +209,18 @@ export function render(result, { max = 5, cwd = true, source = true, cluster = t
       }
     }
     out.push("");
+  }
+
+  // A log holding a lint run, a typecheck and a test run holds three sets of failures.
+  // The winner gets the room; the others get a section each rather than a count.
+  const OTHER_MAX = 3;
+  for (const other of secondary ? [] : (result.others ?? [])) {
+    if (!other.failures?.length) continue;
+    out.push("");
+    out.push(render(
+      { tool: other.tool, summary: other.summary, failures: other.failures, clusters: other.clusters },
+      { max: max === Infinity ? Infinity : OTHER_MAX, cwd, source, cluster, secondary: true },
+    ));
   }
 
   if (units.length > max) {

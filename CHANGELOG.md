@@ -2,6 +2,12 @@
 
 ## Unreleased
 
+- A log holding more than one tool's output now yields every tool's failures, not just
+  the winner's. They were already being extracted and then discarded: an eslint-plus-jest
+  log reported 2 failures out of 92 and a line saying the other 90 existed. `failures`
+  still means what the winning tool reported; the rest arrive under `others`, grouped by
+  their own tool and annotated individually in `--format github`.
+
 - Fixed: a log relayed through a line-prefixing runner — Turborepo, Docker BuildKit,
   pnpm, kubectl — produced no diagnosis at all, because every parser anchors on the start
   of a line. Uniform prefixes are now detected and removed, and reported on the result.
