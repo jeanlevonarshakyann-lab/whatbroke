@@ -1,0 +1,17 @@
+PHPUnit 10.5.64 by Sebastian Bergmann and contributors.
+
+Runtime:       PHP 8.5.10
+
+E                                                                   1 / 1 (100%)
+
+Time: 00:00, Memory: 25.00 MB
+
+There was 1 error:
+
+1) ErrTest::testBoom
+Error: Call to a member function method() on null
+
+/home/dev/app/tests/ErrTest.php:4
+
+ERRORS!
+Tests: 1, Assertions: 0, Errors: 1.

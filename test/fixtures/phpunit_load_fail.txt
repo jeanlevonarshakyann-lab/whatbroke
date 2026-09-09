@@ -1,0 +1,17 @@
+
+
+An error occurred inside PHPUnit.
+
+Message:  test file blew up at load
+Location: /home/dev/app/tests/CrashTest.php:2
+
+#0 phar:///home/dev/app/pu.phar/phpunit/Runner/TestSuiteLoader.php(98): require_once()
+#1 phar:///home/dev/app/pu.phar/phpunit/Runner/TestSuiteLoader.php(47): PHPUnit\Runner\TestSuiteLoader->loadSuiteClassFile('/private/tmp/cl...')
+#2 phar:///home/dev/app/pu.phar/phpunit/Framework/TestSuite.php(199): PHPUnit\Runner\TestSuiteLoader->load('/private/tmp/cl...')
+#3 phar:///home/dev/app/pu.phar/phpunit/Framework/TestSuite.php(213): PHPUnit\Framework\TestSuite->addTestFile('/private/tmp/cl...')
+#4 phar:///home/dev/app/pu.phar/phpunit/TextUI/Configuration/TestSuiteBuilder.php(85): PHPUnit\Framework\TestSuite->addTestFiles(Array)
+#5 phar:///home/dev/app/pu.phar/phpunit/TextUI/Configuration/TestSuiteBuilder.php(55): PHPUnit\TextUI\Configuration\TestSuiteBuilder->testSuiteFromPath('/private/tmp/cl...', Array)
+#6 phar:///home/dev/app/pu.phar/phpunit/TextUI/Application.php(255): PHPUnit\TextUI\Configuration\TestSuiteBuilder->build(Object(PHPUnit\TextUI\Configuration\Configuration))
+#7 phar:///home/dev/app/pu.phar/phpunit/TextUI/Application.php(104): PHPUnit\TextUI\Application->buildTestSuite(Object(PHPUnit\TextUI\Configuration\Configuration))
+#8 /home/dev/app/pu.phar(3044): PHPUnit\TextUI\Application->run(Array)
+#9 {main}

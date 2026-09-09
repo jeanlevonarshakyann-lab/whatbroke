@@ -713,6 +713,19 @@
     ],
     "shadow": {}
   },
+  "phpunit_error_fail.txt": {
+    "winner": "phpunit",
+    "parser": "phpunit",
+    "failures": 1,
+    "claimants": [
+      "jest",
+      "phpunit",
+      "generic"
+    ],
+    "shadow": {
+      "generic": 3
+    }
+  },
   "phpunit_fail.txt": {
     "winner": "phpunit",
     "parser": "phpunit",
@@ -725,6 +738,16 @@
     "shadow": {
       "generic": 1
     }
+  },
+  "phpunit_load_fail.txt": {
+    "winner": "phpunit",
+    "parser": "phpunit",
+    "failures": 1,
+    "claimants": [
+      "phpunit",
+      "generic"
+    ],
+    "shadow": {}
   },
   "pip_badreq_fail.txt": {
     "winner": "pip",
@@ -840,6 +863,18 @@
     ],
     "shadow": {
       "generic": 2
+    }
+  },
+  "rspec_load_fail.txt": {
+    "winner": "rspec",
+    "parser": "rspec",
+    "failures": 1,
+    "claimants": [
+      "rspec",
+      "generic"
+    ],
+    "shadow": {
+      "generic": 1
     }
   },
   "rspec_profile_fail.txt": {

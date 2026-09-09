@@ -10,6 +10,31 @@ const fx = (n) => readFileSync(join(here, "fixtures", n), "utf8");
 const cli = join(here, "..", "bin", "whatbroke.js");
 
 const CASES = [
+  { file: "rspec_load_fail.txt", tool: "rspec", n: 1, check: (r) => {
+      // A spec file that raises while loading never becomes a numbered example, so it
+      // is reported as prose above the tally instead.
+      assert.equal(r.failures[0].file, "./spec/crash_spec.rb");
+      assert.equal(r.failures[0].line, 1);
+      assert.match(r.failures[0].message, /spec file blew up at load/);
+      // and "0 examples, 0 failures" alone reads like success
+      assert.match(r.summary, /1 error occurred outside of examples/);
+    } },
+  { file: "phpunit_error_fail.txt", tool: "phpunit", n: 1, check: (r) => {
+      // PHPUnit heads an escaped exception "There was 1 error", not "1 failure", and
+      // reading only the failure wording meant this fell through to the guess.
+      assert.equal(r.summary, "1 error");
+      assert.equal(r.failures[0].title, "ErrTest::testBoom");
+      assert.equal(r.failures[0].line, 4);
+      assert.match(r.failures[0].message, /Call to a member function method\(\) on null/);
+      assert.doesNotMatch(r.failures[0].message, /ERRORS!/, "the banner is not part of the message");
+    } },
+  { file: "phpunit_load_fail.txt", tool: "phpunit", n: 1, check: (r) => {
+      assert.equal(r.summary, "error inside PHPUnit");
+      assert.match(r.failures[0].file, /CrashTest\.php$/);
+      assert.equal(r.failures[0].line, 2);
+      assert.match(r.failures[0].message, /test file blew up at load/);
+      assert.doesNotMatch(JSON.stringify(r.failures), /phar:\/\//, "PHPUnit's own frames are not the cause");
+    } },
   { file: "vitest_suite_fail.txt", tool: "vitest", n: 1, check: (r) => {
       // A suite that throws before declaring a test cannot be named after one, so vitest
       // lists it under "Failed Suites" with the file in brackets rather than a test name
