@@ -64,7 +64,25 @@ whatbroke --no-source npm test # show failures without reading source files
 whatbroke --max-bytes 2000000 npm test # bound captured logs for large CI jobs
 ```
 
-Exit code is passed straight through, so `whatbroke` is safe to leave in a Makefile or a CI step.
+When wrapping a command, its exit code is passed straight through, so `whatbroke`
+can be left in a Makefile or a CI step. Piped input does not carry the upstream
+command's exit status: whatbroke exits `0` after processing it, which does not mean
+the upstream command succeeded. Wrap the command when you need its exit status.
+An optional `-` supports explicit piped input (`cmd | whatbroke -`).
+
+Unknown options and invalid option values exit `2` without starting the command.
+Options belong before the command; its own arguments are passed through unchanged.
+Use `--` to explicitly end whatbroke's options. `--max-bytes` takes a decimal
+integer of at least 1024.
+
+If a failed command produces no recognized diagnostic, whatbroke reports its exit
+code and shows captured output (or points to output already streamed above).
+If nothing was captured, it says so. Unrecognized piped text is also shown, with
+the upstream status labelled unknown. In GitHub Actions, failed commands get an
+error annotation and a summary; unrecognized pipes get a notice rather than an
+assumed command failure. Captured output remains subject to `--max-bytes` and is
+labelled incomplete when truncated. GitHub fallback annotations show a preview
+capped at 3,500 encoded bytes; job summaries and JSON retain the captured output.
 
 Use `whatbroke --help` for all options. `--json` suppresses the wrapped command's
 output so stdout remains valid JSON, and emits a versioned envelope with
@@ -126,6 +144,9 @@ The JSON envelope is versioned and has this shape:
   "summary": "1 failed, 2 passed",
   "guessed": false,
   "exitCode": 1,
+  "inputMode": "command",
+  "commandExitCode": 1,
+  "fallback": null,
   "truncated": false,
   "error": null,
   "failures": [
@@ -143,6 +164,22 @@ The JSON envelope is versioned and has this shape:
 `tool`, `summary`, `col`, and `error` may be `null` or omitted when the input
 does not provide them. Consumers should use `version` to handle future schema
 changes. Spawn failures set `error` and use exit code `127`.
+
+The following fields are additive to version 1; existing fields retain their meaning:
+
+- `inputMode` is `"command"` or `"pipe"`.
+- `commandExitCode` is the wrapped command's shell-compatible exit code, or `null`
+  for piped input and commands that could not be started. The existing `exitCode`
+  remains whatbroke's process exit code, including `0` for processed pipes and
+  `127` for spawn failures.
+- `fallback` is `null` for recognized diagnostics, successful commands, and empty
+  pipes. Otherwise it contains `reason` (`"unrecognized-output"`, `"no-output"`,
+  or `"spawn-error"`), a human-readable `message`, and `rawOutput` containing the
+  captured text. `rawOutput` can be empty. Check the top-level `truncated` field
+  before treating captured text as complete; spawn error details remain in `error`.
+
+An empty `failures` array means no diagnostics were extracted. It does not establish
+command success: check `commandExitCode`, and treat `null` as unknown.
 
 Repositories can use the bundled composite action:
 
