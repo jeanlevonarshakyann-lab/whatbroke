@@ -177,7 +177,13 @@ function better(candidate, cand, current) {
   if (candidate.kind === "region") return !real(current);
   if (candidate.kind === "shape") return true;
   if (!real(current)) return true;
-  return cand.result.tool !== current.result.tool;
+  if (cand.result.tool !== current.result.tool) return true;
+  // Same tool, but more of the log readable once the prefix is gone. A parser can match
+  // through a wrapper and swallow it: tsc reads `api:test: tsconfig.json(1,34): error`
+  // as a file literally named "api:test: tsconfig.json", and misses the line that has
+  // no location at all. mypy's repeated source directory, by contrast, leaves the count
+  // exactly where it was - which is what says it was data rather than a wrapper.
+  return cand.result.failures.length > current.result.failures.length;
 }
 
 const MAX_WRAPPER_LAYERS = 3;   // CI stamps a monorepo runner that stamps a container

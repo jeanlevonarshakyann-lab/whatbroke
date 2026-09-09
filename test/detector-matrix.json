@@ -176,6 +176,19 @@
     ],
     "shadow": {}
   },
+  "eslint_config_fail.txt": {
+    "winner": "eslint",
+    "parser": "eslint",
+    "failures": 1,
+    "claimants": [
+      "eslint",
+      "node",
+      "generic"
+    ],
+    "shadow": {
+      "node": 1
+    }
+  },
   "eslint_fail.txt": {
     "winner": "eslint",
     "parser": "eslint",
@@ -378,6 +391,20 @@
     ],
     "shadow": {
       "generic": 2
+    }
+  },
+  "jest_suite_fail.txt": {
+    "winner": "jest",
+    "parser": "jest",
+    "failures": 1,
+    "claimants": [
+      "jest",
+      "go",
+      "node",
+      "generic"
+    ],
+    "shadow": {
+      "generic": 1
     }
   },
   "jq_fail.txt": {
@@ -646,6 +673,18 @@
       "generic": 5
     }
   },
+  "pytest_collect_fail.txt": {
+    "winner": "pytest",
+    "parser": "pytest",
+    "failures": 1,
+    "claimants": [
+      "pytest",
+      "generic"
+    ],
+    "shadow": {
+      "generic": 3
+    }
+  },
   "pytest_fail.txt": {
     "winner": "pytest",
     "parser": "pytest",
@@ -701,6 +740,18 @@
       "generic"
     ],
     "shadow": {}
+  },
+  "tsc_config_fail.txt": {
+    "winner": "tsc",
+    "parser": "tsc",
+    "failures": 3,
+    "claimants": [
+      "tsc",
+      "generic"
+    ],
+    "shadow": {
+      "generic": 1
+    }
   },
   "tsc_plain.txt": {
     "winner": "tsc",

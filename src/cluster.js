@@ -20,6 +20,20 @@ const SRC_EXT = "js|jsx|mjs|cjs|ts|tsx|py|pyi|rs|go|java|kt|kts|rb|php|c|cc|cpp|
 /** Reduce a message to its shape, keeping the parts that identify WHICH bug it is.
  *  Rule order is load-bearing; each step assumes the previous ones have run. */
 export function skeleton(text) {
+  // Quoting nests: tsc writes `'["**/*"]'`, and one pass unwraps the outer layer while
+  // leaving the inner one to be recognised on the next. A fingerprint has to be a
+  // canonical form or two spellings of the same message never meet, so reduce to a
+  // fixed point. Bounded, because a fingerprint is not a place to loop indefinitely.
+  let out = reduce(text);
+  for (let pass = 0; pass < 2; pass++) {
+    const next = reduce(out);
+    if (next === out) break;
+    out = next;
+  }
+  return out;
+}
+
+function reduce(text) {
   let s = String(text ?? "").slice(0, 1000);
   s = s.replace(/\s+/g, " ").trim();
 

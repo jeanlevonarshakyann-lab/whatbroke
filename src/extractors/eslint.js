@@ -1,12 +1,31 @@
 const PROB_RE = /^[^\S\n]+(\d+):(\d+)[^\S\n]+(error|warning)[^\S\n]+(.+?)\s{2,}([\w@/-]+)[^\S\n]*$/;
 
+// eslint reports a broken config by crashing, so the log is a Node stack pointing into
+// eslint's own internals - and the node parser then reports node_modules/eslint/lib/... ,
+// which is true and useless. The line that matters is the one under the banner.
+const CONFIG_BANNER = /^Oops! Something went wrong!/m;
+const CONFIG_ERROR = /^([A-Z]\w*Error): (.+)$/;
+
 export default {
   name: "eslint",
   category: "lint",
   commands: ["eslint"],
-  detect: (s) => /^[^\S\n]*[✖x][^\S\n]+\d+ problems? \(/m.test(s) || PROB_RE.test(s),
+  detect: (s) => /^[^\S\n]*[✖x][^\S\n]+\d+ problems? \(/m.test(s) || PROB_RE.test(s) ||
+    (CONFIG_BANNER.test(s) && /^ESLint: /m.test(s)),
 
   extract(s) {
+    if (CONFIG_BANNER.test(s)) {
+      const lines = s.split("\n");
+      const at = lines.findIndex((l) => CONFIG_ERROR.test(l));
+      if (at >= 0) {
+        const m = lines[at].match(CONFIG_ERROR);
+        return {
+          tool: "eslint",
+          summary: "configuration error",
+          failures: [{ title: m[1], code: m[1], severity: "error", message: m[2] }],
+        };
+      }
+    }
     const lines = s.split("\n");
     const failures = [];
     let file = null, warnings = 0;

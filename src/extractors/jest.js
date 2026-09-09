@@ -61,7 +61,12 @@ export default {
       i = j - 1;
     }
 
-    const sm = s.match(/^Tests:[^\S\n]+(.+?)[^\S\n]*$/m);
+    // When a suite throws before any test runs, jest's tally reads "Tests: 0 total" -
+    // and a headline of "0 total" over a real failure reads as though nothing happened.
+    // The suite tally is the one that says what went wrong in that case.
+    const tests = s.match(/^Tests:[^\S\n]+(.+?)[^\S\n]*$/m);
+    const suites = s.match(/^Test Suites:[^\S\n]+(.+?)[^\S\n]*$/m);
+    const sm = /^0 total$/.test(tests?.[1] ?? "") && suites ? [null, `${suites[1]} (no tests ran)`] : tests;
     if (!failures.length) return null;
     return { tool: "jest", summary: sm?.[1], failures };
   },
