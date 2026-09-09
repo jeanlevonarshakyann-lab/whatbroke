@@ -99,6 +99,13 @@ export function contentScore(sig) {
   return new Set(words).size;
 }
 
+/** A cause's identity ACROSS runs.
+ *
+ *  Deliberately not a cluster's own `id`: an unreported cluster mixes its member
+ *  index into that id, so the same lone failure is named differently the moment
+ *  another failure appears before it. The content key is what identifies the bug. */
+export const causeId = (failure, tool) => fingerprint(keyOf(failure, titlePolicy(tool)));
+
 export function fingerprint(key) {
   let h = 0x811c9dc5;
   for (let i = 0; i < key.length; i++) { h ^= key.charCodeAt(i); h = Math.imul(h, 0x01000193); }

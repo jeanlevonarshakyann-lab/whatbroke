@@ -2,6 +2,12 @@
 
 ## Unreleased
 
+- Added `--since-last`: marks the causes that were not present the last time the same
+  command ran. Compares only within one command, tool and directory; withholds the
+  "no longer reported" count when the run was truncated or never started, and does not
+  record such a run at all. State lives in the OS cache directory, never the project,
+  and a cache that cannot be read or written never changes a run's outcome.
+
 - Fixed: explicit stdin marker `-` remains supported; GitHub fallback annotations use a bounded preview while job summaries retain captured output.
 
 - Fixed: unrecognized piped output is preserved, and failed commands without parsed diagnostics report their exit status and available raw context in terminal, JSON, and GitHub Actions modes.

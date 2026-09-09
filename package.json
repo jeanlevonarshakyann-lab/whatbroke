@@ -16,7 +16,7 @@
     "LICENSE"
   ],
   "scripts": {
-    "test": "node test/run.js && node test/source-safety.js",
+    "test": "node test/run.js && node test/source-safety.js && node test/history.js",
     "prepublishOnly": "npm test"
   },
   "keywords": [
