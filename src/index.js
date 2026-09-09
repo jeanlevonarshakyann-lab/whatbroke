@@ -18,15 +18,16 @@ import dotnettest from "./extractors/dotnettest.js";
 import phpunit from "./extractors/phpunit.js";
 import gotest from "./extractors/gotest.js";
 import cargo from "./extractors/cargo.js";
+import { esbuild, vite } from "./extractors/bundler.js";
 import npm from "./extractors/npm.js";
 import pip from "./extractors/pip.js";
 import generic from "./extractors/generic.js";
-import { stripAnsi, stripCiPrefix } from "./util.js";
+import { stripAnsi, stripCiPrefix, isNoise } from "./util.js";
 import { clusterFailures } from "./cluster.js";
 import { wrapperCandidates } from "./normalize.js";
 
 // order matters: most specific first, generic last
-export const EXTRACTORS = [pytest, nodetest, bun, deno, jest, vitest, unittest, traceback, eslint, ruff, mypy, clang, rspec, jvm, dotnettest, dotnet, phpunit, cargo, gotest, node, tsc, npm, pip, generic];
+export const EXTRACTORS = [pytest, nodetest, bun, deno, jest, vitest, unittest, traceback, eslint, ruff, mypy, clang, rspec, jvm, dotnettest, dotnet, phpunit, cargo, gotest, esbuild, vite, node, tsc, npm, pip, generic];
 
 function dedupeFailures(failures) {
   const seen = new Set();
@@ -67,7 +68,12 @@ function otherTools(s, winner, mine, cluster) {
     // covers, this is the same output read twice, not another tool that failed.
     const fresh = dedupeFailures(r.failures
       .filter((f) => !seen.has(at(f)))
-      .filter((f) => !claimed.has(exact(f))));
+      .filter((f) => !claimed.has(exact(f)))
+      // A tool's CLI wrapper reports that the tool exited non-zero, and that stack sits
+      // entirely in node internals. It is the same failure a second time, told worse.
+      // The winner's own failures are never filtered this way - if node internals are
+      // all a log has, that is still the answer.
+      .filter((f) => !isNoise(f.file)));
     if (!fresh.length) continue;
     // Between two OTHER tools the location alone is too blunt: eslint and tsc can flag
     // the same line for entirely different reasons, and dropping one of those loses a
