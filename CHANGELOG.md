@@ -6,8 +6,12 @@
   the working directory — or a symlinked parent — could make whatbroke read and print
   a file from anywhere on disk. Both sides are now canonicalised, which also fixes a
   working directory reached through a link rejecting its own files.
-- Source reads are now bounded before allocation: size is read from the descriptor,
-  files over 2 MiB are skipped and lines are clamped at 512 characters.
+- Source reads are now bounded before allocation: size is read from the descriptor
+  and files over 2 MiB are skipped.
+- Long source lines are narrowed for display only, by a window that follows the
+  reported column, so the caret marks the offending code instead of sitting thousands
+  of spaces past it. Staleness is still compared against the whole line: clipping
+  first would report an edit past the cut as no edit at all.
 - Only regular files are read, opened non-blocking, so a directory, device or FIFO
   named in a log can no longer stall the run.
 

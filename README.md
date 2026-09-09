@@ -268,7 +268,9 @@ somewhere else — or a symlinked parent directory — is refused rather than fo
 working directory that is itself reached through a link still reads its own files.
 
 Reads are bounded before anything is allocated: the size is taken from the open
-descriptor, files over 2 MiB are skipped, and lines are clamped at 512 characters. Only
+descriptor and files over 2 MiB are skipped. Lines are read whole and narrowed only for
+display — a 200-character window that slides to wherever the reported column is, so the
+caret stays beside the code it marks instead of a screen of spaces away from it. Only
 regular files are read, and they are opened non-blocking, so a directory, socket, device
 or FIFO named in a log cannot stall the run. Any of these refusals drops the snippet and
 keeps the diagnostic — you still get the error, just no source under it.

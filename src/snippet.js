@@ -5,8 +5,6 @@ import { resolve, sep } from "node:path";
 // inside one explains nothing. Checked with fstat before a byte is allocated, so an
 // enormous file costs a stat rather than its own size in memory.
 const MAX_FILE_BYTES = 2 * 1024 * 1024;
-// A bundle is one line megabytes wide. Keep enough of it to read, drop the rest.
-const MAX_LINE_CHARS = 512;
 
 /** Output can come from anywhere - a pasted log, a CI artifact, another machine.
  *  Only ever read source from inside the directory we were run in, so crafted
@@ -63,8 +61,10 @@ function readLines(file) {
   if (cache.has(file)) return cache.get(file);
   const path = safePath(file);
   const text = path === null ? null : readBounded(path);
-  const lines = text === null ? null : text.split("\n").map((l) =>
-    l.length > MAX_LINE_CHARS ? l.slice(0, MAX_LINE_CHARS) + "…" : l);
+  // Lines are returned whole. The file cap already bounds them, and clipping here
+  // would corrupt the staleness check: comparing a 512-character prefix reports an
+  // edit past that point as no edit at all. Narrowing for display is render's job.
+  const lines = text === null ? null : text.split("\n");
   cache.set(file, lines);
   return lines;
 }

@@ -43,8 +43,8 @@ function project() {
 }
 
 /** No captured statement, so nothing stands between the log and the file. */
-const log = (file, line = 1) =>
-  `\n${file}\n  ${line}:7   error    Something is wrong  no-undef\n\n✖ 1 problem (1 error, 0 warnings)\n`;
+const log = (file, line = 1, col = 7) =>
+  `\n${file}\n  ${line}:${col}   error    Something is wrong  no-undef\n\n✖ 1 problem (1 error, 0 warnings)\n`;
 
 /** A pytest block, which DOES quote the line the tool saw — for the stale cases. */
 const pytestLog = (file, line, stmt) => `
@@ -200,6 +200,43 @@ test("--no-source reads no source file at all", () => {
 test("--no-source survives a path that would be refused anyway", () => {
   const r = run(project(), log("../nothing-here.js"), ["--no-source"]);
   assert.equal(r.status, 0);
+});
+
+// ------------------------------------------------------- long-line rendering
+
+// The window is a DISPLAY device. Clipping the line before comparison instead would
+// answer "did this file change?" from a prefix, and an edit past the cut would read
+// as no edit at all — the tool asserting code is current when it is not.
+test("an edit past the display window is still detected as a change", () => {
+  const dir = project();
+  const shared = "a = " + "x".repeat(508);          // 512 identical characters
+  writeFileSync(join(dir, "shop.py"), `${shared}CHANGED_ON_DISK\n`);
+  const r = run(dir, pytestLog("shop.py", 1, `${shared}ORIGINAL_WHEN_RUN`));
+  assert.match(r.stdout, /has changed since this ran/, "compared a prefix, not the line");
+  assert.doesNotMatch(r.stdout, /CHANGED_ON_DISK/, "changed source must not be shown as current");
+});
+
+test("an unchanged long line is not reported as changed", () => {
+  const dir = project();
+  const line = "a = " + "x".repeat(2000);
+  writeFileSync(join(dir, "shop.py"), `${line}\n`);
+  const r = run(dir, pytestLog("shop.py", 1, line));
+  assert.doesNotMatch(r.stdout, /has changed since this ran/, "width alone is not a change");
+});
+
+test("a caret deep in a long line stays beside the code it marks", () => {
+  const dir = project();
+  const line = "const a=1;" + "y".repeat(100000) + "; badExpr(oops)";
+  writeFileSync(join(dir, "bundle.js"), `${line}\n`);
+  const r = run(dir, log("bundle.js", 1, line.indexOf("badExpr") + 1));
+  const lines = r.stdout.split("\n");
+  const caret = lines.findIndex((l) => /^\s+│\s+\^/.test(l));
+  assert.ok(caret > 0, "no caret was rendered");
+  assert.ok(lines[caret].length < 400, `the caret line is ${lines[caret].length} characters wide`);
+  // The window has to bring the reported column with it, not just cut the line short.
+  const src = lines[caret - 1];
+  assert.match(src, /badExpr\(oops\)/, "the offending expression must be inside the window");
+  assert.equal(src[lines[caret].indexOf("^")], "b", "the caret does not point at badExpr");
 });
 
 // ------------------------------------------------------------ stale detection
