@@ -798,6 +798,26 @@ try {
   pass++;
 } catch (e) { console.log(`  FAIL CI log prefix\n       ${e.message}`); fail++; }
 
+// a CI log runs lint, then typecheck, then tests - only one extractor can own the
+// output, and the rest of the failures must not vanish without a word
+try {
+  const combined = ["> lint", fx("eslint_bulk_fail.txt"), "", "> typecheck",
+    fx("tsc_chain_fail.txt"), "", "> test", fx("vitest_cluster_fail.txt")].join("\n");
+  const r = analyse(combined);
+  assert.ok(r, "a multi-tool log must still parse");
+  assert.ok(r.others?.length, "the other tools' failures must be named, not dropped");
+  const named = Object.fromEntries(r.others.map((o) => [o.tool, o.count]));
+  assert.equal(named.eslint, 90, `eslint's 90 errors must be accounted for: ${JSON.stringify(named)}`);
+  assert.equal(named.tsc, 5);
+
+  // but a tool that reports the same failure a second way is not another tool:
+  // unittest prints its failures AS Python tracebacks
+  const single = analyse(fx("py_unittest.txt"));
+  assert.ok(!single.others, `unittest should not report python as a separate tool: ${JSON.stringify(single.others)}`);
+  console.log("  ok   other tools in the same log are named, overlapping ones are not");
+  pass++;
+} catch (e) { console.log(`  FAIL multi-tool log\n       ${e.message}`); fail++; }
+
 // CRLF input must parse identically to LF - Windows, and logs pasted from Windows CI
 try {
   for (const name of ["pytest_fail.txt", "gotest_fail.txt", "cargobuild_fail.txt", "node_stack.txt"]) {

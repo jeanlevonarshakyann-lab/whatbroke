@@ -129,6 +129,7 @@ function report(raw, code, truncated = false, executionError = null) {
       summary: r?.summary ?? null,
       guessed: r?.guessed ?? false,
       clusters: r?.clusters ?? null,
+      others: r?.others ?? null,
       exitCode: code,
       truncated,
       error: executionError,

@@ -62,6 +62,10 @@ export function render(result, { max = 5, cwd = true, source = true, cluster = t
     out.push(`    ${C.yellow}${reported.length} likely cause${reported.length > 1 ? "s" : ""}, ` +
              `${sites} site${sites > 1 ? "s" : ""}${others ? ` (+${others} other${others > 1 ? "s" : ""})` : ""}${C.reset}`);
   }
+  if (result.others?.length) {
+    const named = result.others.map((o) => `${o.tool} (${o.count})`).join(", ");
+    out.push(`    ${C.yellow}this log also contains failures from ${named}${C.reset}`);
+  }
   out.push("");
 
   for (const unit of units.slice(0, max)) {

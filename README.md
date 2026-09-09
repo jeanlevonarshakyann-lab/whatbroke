@@ -186,6 +186,15 @@ them.
 
 Unrecognised output is never silently swallowed — you get a labelled guess, or the raw text back.
 
+A CI job usually runs a linter, then a typechecker, then the tests, and pastes all of
+it into one log. Only one parser can own that output — but the others' failures are
+counted and named rather than dropped:
+
+```
+  ✗ 191 failed | 293 passed (484)
+    this log also contains failures from eslint (90), tsc (5)
+```
+
 CI stamps every line — GitHub Actions prefixes an ISO timestamp, and `gh run view --log`
 puts the job and step in front of that. Every parser here anchors on the start of a line,
 so a stamped log would match nothing at all. whatbroke strips a uniform prefix before
