@@ -428,6 +428,42 @@
       "generic": 1
     }
   },
+  "pip_badreq_fail.txt": {
+    "winner": "pip",
+    "parser": "pip",
+    "failures": 1,
+    "claimants": [
+      "pip",
+      "generic"
+    ],
+    "shadow": {
+      "generic": 1
+    }
+  },
+  "pip_build_fail.txt": {
+    "winner": "pip",
+    "parser": "pip",
+    "failures": 1,
+    "claimants": [
+      "pip",
+      "generic"
+    ],
+    "shadow": {
+      "generic": 1
+    }
+  },
+  "pip_resolve_fail.txt": {
+    "winner": "pip",
+    "parser": "pip",
+    "failures": 1,
+    "claimants": [
+      "pip",
+      "generic"
+    ],
+    "shadow": {
+      "generic": 4
+    }
+  },
   "py_traceback.txt": {
     "winner": "python",
     "parser": "python",

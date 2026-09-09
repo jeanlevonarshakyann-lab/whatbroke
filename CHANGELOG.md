@@ -2,6 +2,12 @@
 
 ## Unreleased
 
+- Added a pip parser. A failing build printed 42 lines and the best guess available was
+  `error: subprocess-exited-with-error`; it now reports the exception the build backend
+  actually raised. A resolution failure that pip states twice, pads with two `Ignored the
+  following` lines and the entire package index, becomes one failure with the requirement
+  named. A malformed requirements file reports its own file and line.
+
 - Parsers declare their own `category` and the commands that imply them, and failures
   carry that category. Everything a parser needs to say about itself now lives in its
   own file.
