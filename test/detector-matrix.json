@@ -108,7 +108,7 @@
   "docker_buildkit_pytest_fail.txt": {
     "winner": "pytest",
     "parser": "generic",
-    "failures": 3,
+    "failures": 2,
     "claimants": [
       "generic"
     ],

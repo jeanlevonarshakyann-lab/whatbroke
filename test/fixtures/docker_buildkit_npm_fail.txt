@@ -1,23 +1,81 @@
-#8 [4/4] RUN npm test
-#8 0.237 npm error Missing script: "nonexistent-script"
-#8 0.374 npm error
-#8 0.511 npm error To see a list of scripts, run:
-#8 0.648 npm error   npm run
-#8 0.785 npm error A complete log of this run can be found in: /home/dev/.npm/_logs/2026-09-09T00_01_49_689Z-debug-0.log
-#8 ERROR: process "/bin/sh -c npm test" did not complete successfully: exit code: 1
+#0 building with "desktop-linux" instance using docker driver
+
+#1 [internal] load build definition from Dockerfile
+#1 transferring dockerfile: 121B done
+#1 DONE 0.0s
+
+#2 [internal] load metadata for docker.io/library/node:22-alpine
+#2 DONE 2.7s
+
+#3 [internal] load .dockerignore
+#3 transferring context: 2B done
+#3 DONE 0.0s
+
+#4 [internal] load build context
+#4 transferring context: 112B done
+#4 DONE 0.0s
+
+#5 [1/4] FROM docker.io/library/node:22-alpine@sha256:c610fcdfb1d5b4740dd70c284ed3cb16bb857e0f7166196e36a5501df7a3aa32
+#5 resolve docker.io/library/node:22-alpine@sha256:c610fcdfb1d5b4740dd70c284ed3cb16bb857e0f7166196e36a5501df7a3aa32 done
+#5 sha256:5e275a5205a078c58e96d07db2891244cea6f217eb335edba0807ddf3661b59e 0B / 446B 0.2s
+#5 sha256:b05773cc67e1fae38d08591539fcbce6de089281d25fb69a383adc38773c3b6c 0B / 52.67MB 0.2s
+#5 sha256:2b8c8ae4a685bc76bf1ef092a36b1864b9faa9530a8b5e4af7d45d57ad3eda75 0B / 1.26MB 0.2s
+#5 sha256:5de55e5ef9c033997441461efe7ba23a986db059c0bb78b38f84ee0d72b99167 0B / 4.18MB 0.2s
+#5 sha256:5e275a5205a078c58e96d07db2891244cea6f217eb335edba0807ddf3661b59e 446B / 446B 0.3s done
+#5 sha256:2b8c8ae4a685bc76bf1ef092a36b1864b9faa9530a8b5e4af7d45d57ad3eda75 1.26MB / 1.26MB 0.6s done
+#5 sha256:b05773cc67e1fae38d08591539fcbce6de089281d25fb69a383adc38773c3b6c 3.15MB / 52.67MB 0.9s
+#5 sha256:b05773cc67e1fae38d08591539fcbce6de089281d25fb69a383adc38773c3b6c 9.44MB / 52.67MB 1.2s
+#5 sha256:b05773cc67e1fae38d08591539fcbce6de089281d25fb69a383adc38773c3b6c 12.58MB / 52.67MB 1.4s
+#5 sha256:b05773cc67e1fae38d08591539fcbce6de089281d25fb69a383adc38773c3b6c 16.78MB / 52.67MB 1.5s
+#5 sha256:5de55e5ef9c033997441461efe7ba23a986db059c0bb78b38f84ee0d72b99167 1.05MB / 4.18MB 1.4s
+#5 sha256:b05773cc67e1fae38d08591539fcbce6de089281d25fb69a383adc38773c3b6c 20.97MB / 52.67MB 1.7s
+#5 sha256:b05773cc67e1fae38d08591539fcbce6de089281d25fb69a383adc38773c3b6c 24.12MB / 52.67MB 1.8s
+#5 sha256:5de55e5ef9c033997441461efe7ba23a986db059c0bb78b38f84ee0d72b99167 2.10MB / 4.18MB 1.7s
+#5 sha256:b05773cc67e1fae38d08591539fcbce6de089281d25fb69a383adc38773c3b6c 27.26MB / 52.67MB 2.0s
+#5 sha256:5de55e5ef9c033997441461efe7ba23a986db059c0bb78b38f84ee0d72b99167 3.15MB / 4.18MB 1.8s
+#5 sha256:5de55e5ef9c033997441461efe7ba23a986db059c0bb78b38f84ee0d72b99167 4.18MB / 4.18MB 2.0s done
+#5 extracting sha256:5de55e5ef9c033997441461efe7ba23a986db059c0bb78b38f84ee0d72b99167 0.1s done
+#5 sha256:b05773cc67e1fae38d08591539fcbce6de089281d25fb69a383adc38773c3b6c 36.70MB / 52.67MB 2.3s
+#5 sha256:b05773cc67e1fae38d08591539fcbce6de089281d25fb69a383adc38773c3b6c 41.94MB / 52.67MB 2.4s
+#5 sha256:b05773cc67e1fae38d08591539fcbce6de089281d25fb69a383adc38773c3b6c 48.23MB / 52.67MB 2.6s
+#5 sha256:b05773cc67e1fae38d08591539fcbce6de089281d25fb69a383adc38773c3b6c 52.67MB / 52.67MB 2.7s
+#5 sha256:b05773cc67e1fae38d08591539fcbce6de089281d25fb69a383adc38773c3b6c 52.67MB / 52.67MB 2.8s done
+#5 extracting sha256:b05773cc67e1fae38d08591539fcbce6de089281d25fb69a383adc38773c3b6c
+#5 extracting sha256:b05773cc67e1fae38d08591539fcbce6de089281d25fb69a383adc38773c3b6c 0.5s done
+#5 DONE 3.3s
+
+#5 [1/4] FROM docker.io/library/node:22-alpine@sha256:c610fcdfb1d5b4740dd70c284ed3cb16bb857e0f7166196e36a5501df7a3aa32
+#5 extracting sha256:2b8c8ae4a685bc76bf1ef092a36b1864b9faa9530a8b5e4af7d45d57ad3eda75 0.0s done
+#5 extracting sha256:5e275a5205a078c58e96d07db2891244cea6f217eb335edba0807ddf3661b59e done
+#5 DONE 3.3s
+
+#6 [2/4] WORKDIR /app
+#6 DONE 0.5s
+
+#7 [3/4] COPY package.json .
+#7 DONE 0.0s
+
+#8 [4/4] RUN npm run nonexistent-script
+#8 0.251 npm error Missing script: "nonexistent-script"
+#8 0.251 npm error
+#8 0.251 npm error To see a list of scripts, run:
+#8 0.251 npm error   npm run
+#8 0.252 npm error A complete log of this run can be found in: /root/.npm/_logs/2026-09-09T13_42_21_846Z-debug-0.log
+#8 ERROR: process "/bin/sh -c npm run nonexistent-script" did not complete successfully: exit code: 1
 ------
- > [4/4] RUN npm test:
-0.237 npm error Missing script: "nonexistent-script"
-0.374 npm error
-0.511 npm error To see a list of scripts, run:
-0.648 npm error   npm run
-0.785 npm error A complete log of this run can be found in: /home/dev/.npm/_logs/2026-09-09T00_01_49_689Z-debug-0.log
+ > [4/4] RUN npm run nonexistent-script:
+0.251 npm error Missing script: "nonexistent-script"
+0.251 npm error
+0.251 npm error To see a list of scripts, run:
+0.251 npm error   npm run
+0.252 npm error A complete log of this run can be found in: /root/.npm/_logs/2026-09-09T13_42_21_846Z-debug-0.log
 ------
-Dockerfile:8
+Dockerfile:4
 --------------------
-   6 |     COPY . .
-   7 |     
-   8 | >>> RUN npm test
-   9 |     
+   2 |     WORKDIR /app
+   3 |     COPY package.json .
+   4 | >>> RUN npm run nonexistent-script
+   5 |     
 --------------------
-ERROR: failed to solve: process "/bin/sh -c npm test" did not complete successfully: exit code: 1
+ERROR: failed to build: failed to solve: process "/bin/sh -c npm run nonexistent-script" did not complete successfully: exit code: 1
+

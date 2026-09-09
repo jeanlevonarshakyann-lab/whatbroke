@@ -10,12 +10,9 @@ const fx = (n) => readFileSync(join(here, "fixtures", n), "utf8");
 const cli = join(here, "..", "bin", "whatbroke.js");
 
 const CASES = [
-  // PROVENANCE, because it is not the usual rule: the step output inside these is the
-  // real npm and pytest captures already in this corpus, but the BuildKit frame around
-  // it is assembled from Docker's documented shape rather than captured from a running
-  // daemon. They are here because a failing `docker build` otherwise reports only
-  // "ERROR: failed to solve", which names the mechanism and not the cause. Replace them
-  // with a real `docker build` capture when one is available.
+  // Captured from real `docker build` runs on Docker 29.6.2 (BuildKit), one failing an
+  // npm script and one failing pytest. A failing build otherwise reports only
+  // "ERROR: failed to build: failed to solve", which names the mechanism, not the cause.
   { file: "docker_buildkit_npm_fail.txt", tool: "npm", n: 1, check: (r) => {
       assert.match(r.failures[0].message, /Missing script: "nonexistent-script"/);
       assert.doesNotMatch(JSON.stringify(r), /failed to solve/, "the mechanism is not the cause");
@@ -24,13 +21,16 @@ const CASES = [
       // the log to strip and the failure block has to be lifted out by its own markers.
       assert.deepEqual(r.wrappers, ["docker buildkit"]);
     } },
-  { file: "docker_buildkit_pytest_fail.txt", tool: "pytest", n: 3, check: (r) => {
+  { file: "docker_buildkit_pytest_fail.txt", tool: "pytest", n: 2, check: (r) => {
       assert.equal(r.failures[0].file, "test_shop.py");
-      assert.equal(r.failures[0].line, 4);
-      assert.doesNotMatch(JSON.stringify(r), /failed to solve/);
-      // pytest's output fills most of the log, so the step prefix clears the gate and
-      // the whole thing is read after stripping it.
+      assert.equal(r.failures[0].line, 5);
+      assert.match(r.failures[1].message, /KeyError: 'exp'/);
+      assert.doesNotMatch(JSON.stringify(r), /failed to solve/, "the mechanism is not the cause");
+      // pytest's output fills enough of the log that the step prefix clears the gate,
+      // so the whole thing is read after stripping it.
       assert.deepEqual(r.wrappers, ["docker"]);
+      // the pip install step above it succeeded; nothing there is a failure
+      assert.equal(r.others, undefined, "the pip install step is not a second tool's failure");
     } },
   // Captured with GNU make 3.81 driving Apple clang. make itself needs no parser: the
   // compiler underneath already has one, and `make: *** [bad.o] Error 1` restates the

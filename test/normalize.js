@@ -84,7 +84,7 @@ test("a container's frame is peeled even inside another runner's prefix", () => 
   for (const [runner, fn] of Object.entries(WRAPPERS)) {
     const r = analyse(wrap(raw, fn));
     assert.equal(r?.tool, "pytest", `${runner} around buildkit`);
-    assert.equal(r.failures.length, 3);
+    assert.equal(r.failures.length, analyse(raw).failures.length, `${runner}: lost failures`);
     assert.ok(r.wrappers.length >= 2, `${runner}: both layers should be named, got ${JSON.stringify(r.wrappers)}`);
   }
 });
