@@ -16,6 +16,7 @@ const HELP = `whatbroke — you ran a command, it printed 400 lines. these are t
   -q, --quiet   suppress the wrapped command's output
   -a, --all     don't cap the number of failures shown
       --no-source  don't read source files for context
+      --no-cluster don't group failures that share a likely cause
       --max-bytes N  cap captured command output (default: 10485760)
   -j, --json    machine-readable output (same as --format json)
   -g, --github-actions  clickable GitHub Actions annotations (same as --format github)
@@ -80,6 +81,7 @@ setColor(color);
 const json = format === "json";
 const githubActions = format === "github";
 const noSource = has("--no-source");
+const noCluster = has("--no-cluster");
 // JSON stdout must remain valid even when the wrapped command writes to stdout.
 const quiet = has("-q", "--quiet") || json;
 const opts = { max: has("-a", "--all") ? Infinity : 5 };
@@ -118,7 +120,7 @@ function writeGithubSummary(result, truncated) {
 }
 
 function report(raw, code, truncated = false, executionError = null) {
-  const r = analyse(raw);
+  const r = analyse(raw, { cluster: !noCluster });
   if (json) {
     // Keep the machine-readable envelope stable even when no parser matches.
     const payload = {
@@ -126,6 +128,8 @@ function report(raw, code, truncated = false, executionError = null) {
       tool: r?.tool ?? null,
       summary: r?.summary ?? null,
       guessed: r?.guessed ?? false,
+      clusters: r?.clusters ?? null,
+      others: r?.others ?? null,
       exitCode: code,
       truncated,
       error: executionError,
@@ -137,7 +141,7 @@ function report(raw, code, truncated = false, executionError = null) {
     if (r.summary) process.stdout.write(`::notice title=whatbroke::${r.summary}\n`);
     writeGithubSummary(r, truncated);
   } else if (r) {
-    process.stdout.write("\n" + render(r, { ...opts, source: !noSource }));
+    process.stdout.write("\n" + render(r, { ...opts, source: !noSource, cluster: !noCluster }));
     if (truncated) {
       const warning = "  ! output capture limit reached; increase --max-bytes for complete diagnostics";
       process.stdout.write(`\n${process.stdout.isTTY ? `\x1b[33m${warning}\x1b[0m` : warning}\n`);

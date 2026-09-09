@@ -1,0 +1,36 @@
+
+Randomized with seed 16516
+.............................F..............................
+
+Failures:
+
+  1) TTY::Color::Mode detecting mode cannot find from term, tput 
+     Failure/Error: expect(mode.mode).to eq(8)
+
+       expected: 8
+            got: 16
+
+       (compared using ==)
+     # ./spec/unit/mode_spec.rb:16:in `block (2 levels) in <top (required)>'
+
+Top 2 slowest examples (0.00578 seconds, 45.8% of total time):
+  TTY::Color::Mode detecting mode cannot find from term, tput 
+    0.00347 seconds ./spec/unit/mode_spec.rb:10
+  TTY::Color::Support#support? fails to find out color support
+    0.00231 seconds ./spec/unit/support_spec.rb:16
+
+Top 2 slowest example groups:
+  TTY::Color::Support#support?
+    0.00029 seconds average (0.0055 seconds / 19 examples) ./spec/unit/support_spec.rb:3
+  TTY::Color::Mode detecting mode
+    0.00016 seconds average (0.00542 seconds / 33 examples) ./spec/unit/mode_spec.rb:3
+
+Finished in 0.01264 seconds (files took 0.04188 seconds to load)
+60 examples, 1 failure
+
+Failed examples:
+
+rspec ./spec/unit/mode_spec.rb:10 # TTY::Color::Mode detecting mode cannot find from term, tput 
+
+Randomized with seed 16516
+

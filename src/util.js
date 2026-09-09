@@ -21,3 +21,24 @@ export function relPath(p) {
 export const tidy = (lines) =>
   lines.map((l) => l.replace(/\s+$/, ""))
        .filter((l, i, a) => !(l === "" && a[i - 1] === ""));
+
+// CI viewers stamp every line: GitHub Actions writes an ISO timestamp, and
+// `gh run view --log` puts tab-separated job and step names in front of it.
+// Every parser here anchors on ^, so an unstripped prefix makes all of them
+// match nothing and the whole log comes back silent.
+const CI_PREFIX = /^(?:[^\t\n]*\t){0,3}\d{4}-\d{2}-\d{2}T\d{2}:\d{2}:\d{2}(?:\.\d+)?Z\s/;
+
+/** Strip a uniform CI line prefix, but only when nearly every line carries one -
+ *  a log that merely mentions a timestamp must not be mangled. */
+export function stripCiPrefix(text) {
+  const lines = text.split("\n");
+  let seen = 0, stamped = 0;
+  for (const l of lines) {
+    if (!l.trim()) continue;
+    seen++;
+    if (CI_PREFIX.test(l)) stamped++;
+    if (seen > 200) break;
+  }
+  if (seen < 3 || stamped / seen < 0.8) return text;
+  return lines.map((l) => l.replace(CI_PREFIX, "")).join("\n");
+}

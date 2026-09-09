@@ -17,7 +17,9 @@ export default {
       let line;
       for (let j = i + 1; j < lines.length &&
         !/^\s+\d+\)\s+/.test(lines[j]) &&
-        !/^Finished in /.test(lines[j]); j++) {
+        !/^Finished in /.test(lines[j]) &&
+        !/^Top \d+ slowest/.test(lines[j]) &&
+        !/^Failed examples:/.test(lines[j]); j++) {
         const location = lines[j].match(LOCATION_RE);
         if (location) { file = location[1]; line = +location[2]; }
         if (lines[j].trim() && !/^\s+# /.test(lines[j])) message.push(lines[j].trim());
@@ -28,12 +30,12 @@ export default {
       });
     }
     if (!failures.length) return null;
-    const summaryMatch = s.match(/(\d+) examples?, (\d+) failures?/);
+    // rspec writes "1 failure" and "2 failures"; rebuilding the sentence from the
+    // numbers lost that and always said "failures"
+    const summaryMatch = s.match(/\d+ examples?, \d+ failures?(?:, \d+ pending)?/);
     return {
       tool: "rspec",
-      summary: summaryMatch
-        ? `${summaryMatch[1]} examples, ${summaryMatch[2]} failures`
-        : `${failures.length} failures`,
+      summary: summaryMatch ? summaryMatch[0] : `${failures.length} failures`,
       failures,
     };
   },

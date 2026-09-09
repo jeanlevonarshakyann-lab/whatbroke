@@ -10,6 +10,15 @@ const fx = (n) => readFileSync(join(here, "fixtures", n), "utf8");
 const cli = join(here, "..", "bin", "whatbroke.js");
 
 const CASES = [
+  { file: "nodetest_nested_fail.txt", tool: "node --test", n: 3, check: (r) => {
+      assert.equal(r.summary, "3 failed, 1 passed");
+      assert.deepEqual(r.failures.map((f) => f.title), ["addition", "multiplication", "subtraction"]);
+      assert.deepEqual(r.failures.map((f) => f.line), [5, 6, 8]);
+      assert.ok(r.failures.every((f) => f.file.endsWith("/test/nested.test.cjs")));
+      assert.match(r.failures[0].message, /2 !== 3/);
+      assert.match(r.failures[1].message, /4 !== 5/);
+      assert.match(r.failures[2].message, /6 !== 7/);
+    } },
   { file: "pytest_fail.txt", tool: "pytest", n: 3, check: (r) => {
       assert.match(r.summary, /3 failed, 2 passed/);
       const f = r.failures[0];
@@ -219,6 +228,277 @@ const CASES = [
       assert.ok(!r.failures.some((f) => /FAILURES!|Assertions:/.test(f.message)),
         "the run summary must not be absorbed into the last failure");
     } },
+  { file: "gotest_cluster_fail.txt", tool: "go test", n: 7, check: (r) => {
+      // real `go test` run of spf13/cobra after renaming one error string.
+      // Three tests share one assertion shape; the rest fail differently.
+      const reported = r.clusters.filter((c) => c.reported);
+      assert.equal(reported.length, 1, "the shared cause should be one cluster");
+      assert.equal(reported[0].size, 3);
+      assert.match(reported[0].signature, /Expected: <str>, got: <str>/);
+      assert.ok(reported[0].members.every((i) => /args_test\.go$/.test(r.failures[i].file)),
+        "all three sites are in args_test.go");
+      // and the four unrelated failures must NOT have been swept in
+      assert.equal(r.clusters.filter((c) => !c.reported).length, 4);
+    } },
+  { file: "vitest_cluster_fail.txt", tool: "vitest", n: 3, check: (r) => {
+      // real vitest run of pillarjs/path-to-regexp after making a trailing-delimiter
+      // group mandatory. vitest labels its diff "- Expected:" / "+ Received:" WITH a
+      // colon; those headers must never survive as message content, because without
+      // their values they promise a diff and show none.
+      assert.equal(r.summary, "191 failed | 293 passed (484)");
+      for (const f of r.failures) {
+        assert.ok(!/^[-+]\s*(Expected|Received):?\s*$/m.test(f.message ?? ""),
+          `a bare diff header leaked into a message: ${JSON.stringify(f.message)}`);
+      }
+      assert.match(r.failures[0].message, /expected false to deeply equal/);
+      assert.equal(r.failures[0].file, "src/index.spec.ts");
+    } },
+  { file: "cargotest_snapshot_fail.txt", tool: "cargo test", n: 3, check: (r) => {
+      // real `cargo test` run of clap-rs/clap after renaming the "Usage:" prefix.
+      // snapbox prints a diff whose CONTEXT lines carry both line numbers and a bar;
+      // those are the parts that matched, and keeping them filled the four-line
+      // message budget before reaching the -/+ lines that say what changed.
+      assert.equal(r.summary, "824 passed; 88 failed");
+      for (const f of r.failures) {
+        assert.ok(!/^\s*\d+\s+\d+\s*\|/m.test(f.message ?? ""),
+          `a diff context line survived: ${JSON.stringify(f.message)}`);
+      }
+      assert.match(r.failures[0].message, /- Usage:/, "the removed line must be shown");
+      assert.match(r.failures[0].message, /\+ Syntax:/, "the added line must be shown");
+      assert.match(r.failures[0].file, /conflicts\.rs$|app_settings\.rs$|subcommands\.rs$/);
+    } },
+  { file: "maven_test_fail.txt", tool: "maven", n: 1, check: (r) => {
+      // real `mvn test` on stleary/JSON-java after changing one exception message.
+      // Surefire test failures used to fall through to a counter - "Tests run: 164,
+      // Failures: 1" - which names no test, no line and no assertion.
+      assert.equal(r.summary, "Tests run: 792, Failures: 1, Errors: 0, Skipped: 6",
+        "the run total, not the first per-class line");
+      const f = r.failures[0];
+      assert.equal(f.title, "JSONObjectTest.jsonObjectNonAndWrongValues");
+      assert.equal(f.file, "JSONObjectTest.java");
+      assert.equal(f.line, 1055);
+      assert.match(f.message, /expected:<.*not found.*> but was:<.*is absent.*>/);
+      assert.ok(!/Tests run:/.test(f.message), "the counter is a summary, not a failure message");
+    } },
+  { file: "dotnettest_fail.txt", tool: "dotnet test", n: 3, check: (r) => {
+      // real `dotnet test` (Microsoft.Testing.Platform + xUnit) on khellang/Scrutor
+      // after changing one default lifetime. This output used to fall through to the
+      // generic guess: one "error", no test name, no file, no line.
+      assert.equal(r.summary, "3 failed, 77 passed (80)");
+      const f = r.failures[0];
+      assert.equal(f.title, "ScanningTests.AutoRegisterAsMatchingInterface");
+      assert.match(f.file, /ScanningTests\.cs$/);
+      assert.equal(f.line, 395);
+      assert.match(f.message, /Assert\.All\(\) Failure/);
+      // the runner prints each message twice, plainly and re-indented under "from"
+      assert.equal((f.message.match(/Assert\.All\(\) Failure/g) || []).length, 1,
+        "the repeated copy of the message must not be collected");
+      // and the location must come from the user's frame, not the reflection runner
+      assert.ok(r.failures.every((g) => !/System\.Reflection/.test(g.file ?? "")));
+      assert.equal(r.failures[2].line, 152);
+    } },
+  { file: "jest_snapshot_fail.txt", tool: "jest", n: 1, check: (r) => {
+      // real jest run of testing-library/jest-dom after inverting one matcher.
+      assert.equal(r.summary, "94 failed, 538 passed, 632 total");
+      const f = r.failures[0];
+      // "FAIL jsdom src/a.js" - with multiple jest projects the display name comes
+      // first, and taking the first token made every file the project name
+      assert.equal(f.file, "src/__tests__/to-contain-html.js");
+      assert.equal(f.line, 104);
+      // jest uses the same bullet for config complaints as for failed tests
+      assert.ok(!/Validation Warning|watchPlugins/.test(f.title + f.message),
+        "a config warning must not be reported as a failed test");
+      // a snapshot diff opens with count headers and a hunk header, and restates
+      // the test name; none of those are the diff
+      assert.ok(!/^[-+]\s*(Snapshot|Received)\s+[-+]\s*\d+$/m.test(f.message), "count header kept");
+      assert.ok(!/^@@ /m.test(f.message), "hunk header kept");
+      assert.ok(!/^Snapshot name:/m.test(f.message), "the title was restated in the message");
+      assert.match(f.message, /toContainHTML/);
+
+      // The file usually comes from the stack frame; the "FAIL <project> <path>"
+      // header is the fallback when there is no frame. Strip the frames from this
+      // same real output to exercise it - otherwise the fallback is never tested,
+      // and with several jest projects it yielded the project name as the filename.
+      const frameless = fx("jest_snapshot_fail.txt").split("\n").filter((l) => !/^\s+at /.test(l)).join("\n");
+      const g = analyse(frameless).failures[0];
+      assert.equal(g.file, "src/__tests__/to-contain-html.js",
+        "with no stack frame the FAIL header must yield the path, not the project name");
+    } },
+  { file: "nodetest_fail.txt", tool: "node --test", n: 2, check: (r) => {
+      // real `node --test` (TAP) run of sindresorhus/p-queue with the default
+      // concurrency changed. This output was not supported at all - it fell through
+      // to the generic guess and printed "error: |-", a YAML block marker.
+      assert.equal(r.summary, "11 failed, 195 passed");
+      const f = r.failures[0];
+      assert.equal(f.title, "isRateLimited property");
+      assert.match(f.file, /advanced\.ts$/);
+      // `error: |-` is a YAML block scalar; its content is the deeper-indented lines
+      assert.match(f.message, /^AssertionError: Expected values to be strictly equal:/);
+      assert.match(f.message, /false !== true/);
+      assert.ok(!/\|-|duration_ms|failureType|code:/.test(f.message),
+        "YAML plumbing must not survive into the message");
+      assert.equal(r.failures[1].title, "rate-limit events fire only once per transition");
+    } },
+  { file: "gradle_script_fail.txt", tool: "gradle", n: 1, check: (r) => {
+      // real `gradle test` on stleary/JSON-java under Gradle 9, which removed the
+      // sourceCompatibility property. The build script fails to evaluate - a very
+      // common failure - and whatbroke printed NOTHING at all: jvm.js detected the
+      // output but extracted no failure, and the generic fallback does not match
+      // "FAILURE:" (no word boundary after FAIL) or "with an exception." (no colon).
+      const f = r.failures[0];
+      assert.equal(f.title, "build script");
+      assert.match(f.file, /build\.gradle$/);
+      assert.equal(f.line, 55);
+      assert.match(f.message, /A problem occurred evaluating root project/);
+      // the "> " detail line carries the actual cause and must not be dropped
+      assert.match(f.message, /Could not set unknown property 'sourceCompatibility'/);
+      assert.ok(!/^>/m.test(f.message), "gradle's leading > is punctuation, not content");
+    } },
+  { file: "tsc_chain_fail.txt", tool: "tsc", n: 5, check: (r) => {
+      // real tsc run of pillarjs/path-to-regexp after changing one type alias.
+      // tsc explains an assignability failure as an indented chain, and the LAST
+      // line is the actual reason. Only the head line was kept, which is the least
+      // specific thing tsc said.
+      assert.equal(r.summary, "5 errors in 2 files");
+      const f = r.failures[0];
+      assert.equal(f.title, "TS2322");
+      assert.equal(f.line, 333);
+      assert.match(f.message, /not assignable to type 'false \| Encode \| undefined'/);
+      assert.match(f.message, /Type 'string' is not assignable to type 'number'\./,
+        "the deepest line is the root cause and must survive");
+      // the chain must not swallow the next error's head line
+      assert.ok(!/error TS/.test(f.message), "a following diagnostic leaked into the chain");
+      assert.equal(r.failures[1].line, 1237);
+    } },
+  { file: "eslint_bulk_fail.txt", tool: "eslint", n: 90, check: (r) => {
+      // real eslint run over axios/lib. This is the case clustering exists for:
+      // one rule broken in many places is one thing to fix, not twenty-two.
+      assert.match(r.summary, /117 problems \(90 errors, 27 warnings\)/);
+      const reported = r.clusters.filter((c) => c.reported);
+      assert.ok(reported.length >= 3, `expected several causes, got ${reported.length}`);
+      assert.ok(reported[0].size >= 20, `largest cause should be large, got ${reported[0].size}`);
+      // warnings are counted and set aside, so failures are errors only
+      assert.equal(r.failures.length, 90);
+    } },
+  { file: "mypy_notes_fail.txt", tool: "mypy", n: 41, check: (r) => {
+      // real mypy run over psf/requests. mypy attaches its explanation as separate
+      // "note:" lines at the SAME file and line - for a call-overload failure those
+      // notes carry the valid signatures, which is the entire answer. They were
+      // dropped, leaving "no overload variant matches" and nothing to act on.
+      assert.equal(r.summary, "41 errors in 10 files");
+      const overload = r.failures.find((f) => /No overload variant/.test(f.message));
+      assert.ok(overload, "the overload error should be present");
+      assert.match(overload.message, /Possible overload variants:/,
+        "the note explaining the error must be attached to it");
+      assert.match(overload.message, /def iter_content/);
+      // notes are an explanation, not extra errors
+      assert.equal(r.failures.length, 41, "notes must not inflate the failure count");
+      assert.equal(r.failures.filter((f) => /^Possible overload/.test(f.message)).length, 0,
+        "a note must never become a failure of its own");
+    } },
+  { file: "clang_bulk_fail.txt", tool: "clang", n: 14, check: (r) => {
+      // real clang run over DaveGamble/cJSON after dropping an argument at every
+      // call site of one function. One signature, fourteen callers - the clearest
+      // case in the suite of many failures being a single thing to fix.
+      const reported = r.clusters.filter((c) => c.reported);
+      assert.equal(reported.length, 1, "fourteen callers of one function is one cause");
+      assert.equal(reported[0].size, 14);
+      assert.match(r.failures[0].message, /too few arguments to function call/);
+      // clang's note points at the declaration, a DIFFERENT line, so unlike mypy's
+      // same-location notes it is a separate remark and must not become a failure
+      assert.equal(r.failures.length, 14, "notes must not be counted as errors");
+      assert.ok(!r.failures.some((f) => /declared here/.test(f.message)));
+    } },
+  { file: "clippy_fail.txt", tool: "cargo", n: 15, check: (r) => {
+      // real `cargo clippy -- -D warnings` on clap-rs/clap, the way CI runs it.
+      // clippy diagnostics carry no E-code, so every one of them was untitled. The
+      // lint name is the handle you actually want - it is what you search for and
+      // what goes in an #[allow(...)].
+      assert.equal(r.failures.filter((f) => !f.title).length, 0, "every clippy error must name its lint");
+      const lints = new Set(r.failures.map((f) => f.title));
+      assert.ok(lints.has("clippy::needless_return"), [...lints].join(","));
+      assert.ok(lints.has("clippy::ptr_arg"));
+      // the "-D clippy::name" note appears once per lint, so repeats would come out
+      // untitled; the doc-link fragment appears on every diagnostic
+      assert.equal(r.failures.filter((f) => f.title === "clippy::needless_return").length, 6);
+      // one lint in several places is one thing to fix
+      const reported = r.clusters.filter((c) => c.reported);
+      assert.ok(reported.length >= 3, `expected a cause per lint, got ${reported.length}`);
+    } },
+  { file: "rspec_profile_fail.txt", tool: "rspec", n: 1, check: (r) => {
+      // real rspec run of piotrmurach/tty-color with the default colour mode changed.
+      // Two bugs this caught: the summary was rebuilt from the numbers and so always
+      // said "failures", where rspec itself writes "1 failure"; and rspec prints its
+      // profiling block between the failures and "Finished in", so "Top 2 slowest
+      // examples" was absorbed into the last failure's message.
+      assert.equal(r.summary, "60 examples, 1 failure");
+      const f = r.failures[0];
+      assert.equal(f.file, "./spec/unit/mode_spec.rb");
+      assert.equal(f.line, 16);
+      assert.match(f.message, /expected: 8/);
+      assert.match(f.message, /got: 16/);
+      assert.ok(!/slowest|seconds average/.test(f.message),
+        "profiling output must not land inside a failure");
+    } },
+  { file: "npm_fail.txt", tool: "npm", n: 1, check: (r) => {
+      // real `npm run nonexistent-script`. Modern npm prefixes every line with
+      // "npm error", which does not start with the word "error", so the generic
+      // fallback never matched and a mistyped script name produced no output at all.
+      const f = r.failures[0];
+      assert.match(f.message, /Missing script: "nonexistent-script"/);
+      // everything npm says after naming the problem is chatter
+      assert.ok(!/complete log of this run|To see a list of scripts/.test(f.message),
+        "npm's trailing advice is not the failure");
+      assert.ok(!/^npm error/m.test(f.message), "the npm prefix is plumbing, not content");
+    } },
+  { file: "bun_fail.txt", tool: "bun test", n: 2, check: (r) => {
+      // real `bun test` run of pillarjs/path-to-regexp. bun writes "error:" at the
+      // start of a line, which is exactly what the cargo parser looks for, so bun
+      // output was claimed by cargo and came back as two locationless errors.
+      assert.equal(r.summary, "192 fail, 191 pass");
+      const f = r.failures[0];
+      assert.match(f.file, /index\.spec\.ts$/);
+      assert.equal(f.line, 274);
+      assert.match(f.title, /^path-to-regexp > /);
+      assert.ok(!/\[[\d.]+ms\]/.test(f.title), "the timing is not part of the test name");
+      assert.match(f.message, /expect\(received\)\.toEqual\(expected\)/);
+      // bun echoes the source and a caret, and labels its diff with tallies
+      assert.ok(!/^\s*\d+\s*\|/m.test(f.message), "echoed source is not the message");
+      assert.ok(!/^[-+]\s*(Expected|Received)\s+[-+]\s*\d+$/m.test(f.message), "diff tallies kept");
+    } },
+  { file: "deno_fail.txt", tool: "deno test", n: 2, check: (r) => {
+      // real `deno test` run. Unsupported before: it fell through to the generic
+      // guess, which reported three "errors" - two real failures plus deno's own
+      // "error: Test failed" tally, which is a verdict, not a failure.
+      assert.equal(r.summary, "2 failed, 1 passed");
+      const f = r.failures[0];
+      assert.equal(f.title, "invoice total");
+      assert.equal(f.file, "./math_test.ts");
+      assert.equal(f.line, 4);
+      assert.match(f.message, /AssertionError: Values are not equal/);
+      assert.match(f.message, /1049/);
+      assert.ok(!r.failures.some((g) => /Test failed/.test(g.message)),
+        "deno's final verdict is not a failure of its own");
+      // the frames are inside the assert library, not the user's code
+      assert.ok(!/jsr\.io/.test(f.message));
+    } },
+  { file: "gorace_fail.txt", tool: "go test", n: 3, check: (r) => {
+      // real `go test -race`. The detector names the exact line of the racing
+      // access - the bug - while the assertion below it only reports a wrong total.
+      // Before, the race report was dropped and the output pointed at line 17,
+      // the symptom, instead of line 13, the cause.
+      assert.equal(r.summary, "1 test failed, 2 data races");
+      const races = r.failures.filter((f) => f.title === "DATA RACE");
+      assert.equal(races.length, 2);
+      assert.equal(races[0].line, 13, "the racing access, not the assertion");
+      assert.match(races[0].file, /race_test\.go$/);
+      // go writes "Read at" but "Previous write at" - both operations must be named
+      assert.match(races[0].message, /Read by goroutine \d+/);
+      assert.match(races[0].message, /Previous write by goroutine \d+/i);
+      // the ordinary assertion failure is still reported, and still called a test
+      const test = r.failures.find((f) => f.title === "TestRace");
+      assert.ok(test && test.line === 17, "the assertion failure is still there");
+    } },
 ];
 
 let pass = 0, fail = 0;
@@ -323,6 +603,419 @@ try {
   console.log("  ok   overlong boilerplate lines are clipped");
   pass++;
 } catch (e) { console.log(`  FAIL long line clipping\n       ${e.message}`); fail++; }
+
+// ---------------------------------------------------------------- clustering
+
+// skeleton() is pinned exactly: these are the rules, and they must not drift.
+try {
+  const { skeleton } = await import("../src/cluster.js");
+  const table = [
+    [`assert 'Error: Missing argument' in "Usage:\ncli"`, "assert <str> in <str>"],
+    ["KeyError: 'exp'", "KeyError: exp"],
+    ["Cannot read properties of null (reading 'id')", "Cannot read properties of null (reading id)"],
+    ["<click.testing.CliRunner object at 0x10c3f4d90>", "<click.testing.CliRunner object at <addr>>"],
+    ["assert 1049 == 1050", "assert <num> == <num>"],
+    ["expected `String`, found integer", "expected String, found integer"],
+    ["test_shop.py:4: AssertionError", "<path>:<num>: AssertionError"],
+    ["cart.total is not a function", "cart.total is not a function"],
+    [`Argument 1 to "total" has incompatible type "str"`, "Argument <num> to total has incompatible type str"],
+    ["doesn't exist on type 'User'", "doesn't exist on type User"],
+    ["assert total([1000, 49], 0.5) == 1050", "assert total([<num>*], <num>) == <num>"],
+    ["error[E0308] TS2551 i64 utf8", "error[E0308] TS2551 i64 utf8"],
+  ];
+  for (const [input, want] of table) {
+    assert.equal(skeleton(input), want, `skeleton(${JSON.stringify(input)})`);
+  }
+  console.log(`  ok   skeleton normalises ${table.length} known shapes exactly`);
+  pass++;
+} catch (e) { console.log(`  FAIL skeleton table\n       ${e.message}`); fail++; }
+
+// Every rule gets a pair: one that MUST join (fails if the rule is deleted) and one
+// that MUST split (fails if the rule is widened). Pinned from both sides.
+try {
+  const { skeleton } = await import("../src/cluster.js");
+  const same = (a, b) => skeleton(a) === skeleton(b);
+  const join = [
+    ["numbers", "assert cart.total() == 1050", "assert cart.total() == 1051"],
+    ["quoted data", `assert 'Error: A' in out`, `assert 'Error: B B' in out`],
+    ["quote style", `KeyError: 'exp'`, `KeyError: "exp"`],
+    ["paths", "at tests/a/b.py line 1", "at src/c/d.py line 99"],
+    ["addresses", "<X object at 0x1a2b>", "<X object at 0xffee>"],
+    ["numeric runs", "call([1, 2, 3])", "call([7, 8, 9])"],
+    // "/route.json" hits the extension rule and "/foo/bar" the separator rule; if the
+    // extension rule leaves the leading slash behind they never cluster together
+    ["path shape is consistent across sub-rules", "equal { path: '/route.json' }", "equal { path: '/foo/bar' }"],
+  ];
+  const split = [
+    ["diagnostic codes survive <num>", "TS2551 not assignable", "TS2339 not assignable"],
+    ["quoted identifiers kept", "KeyError: 'exp'", "KeyError: 'sub'"],
+    ["type names kept", `type 'string' bad`, `type 'Buffer' bad`],
+    ["attribute access is not a path", "cart.total is not a function", "user.save is not a function"],
+    ["hex needs a digit", "defaced the value", "deadbee the value"],
+    ["brackets in messages kept", "expected list[int]", "expected list[str]"],
+    ["apostrophe lookbehind", "doesn't exist on type 'User'", "doesn't exist on type 'Post'"],
+  ];
+  for (const [why, a, b] of join) assert.ok(same(a, b), `must JOIN (${why}): ${skeleton(a)} vs ${skeleton(b)}`);
+  for (const [why, a, b] of split) assert.ok(!same(a, b), `must SPLIT (${why}): both ${skeleton(a)}`);
+  console.log(`  ok   ${join.length} must-join and ${split.length} must-split rules hold`);
+  pass++;
+} catch (e) { console.log(`  FAIL join/split pairs\n       ${e.message}`); fail++; }
+
+// Clusters must partition the failures: nothing lost, nothing double counted.
+try {
+  let checked = 0;
+  for (const file of readdirSync(join(here, "fixtures"))) {
+    const r = analyse(fx(file));
+    if (!r) continue;
+    checked++;
+    const members = r.clusters.flatMap((c) => c.members).sort((a, b) => a - b);
+    assert.deepEqual(members, [...r.failures.keys()], `${file}: not a partition`);
+    for (const c of r.clusters) {
+      assert.equal(c.size, c.members.length, `${file}: size disagrees with members`);
+      assert.ok(c.members.includes(c.exemplar), `${file}: exemplar outside its cluster`);
+    }
+    assert.equal(r.clusters.reduce((n, c) => n + c.size, 0), r.failures.length, `${file}: sizes do not sum`);
+  }
+  console.log(`  ok   clusters partition every failure across ${checked} fixtures`);
+  pass++;
+} catch (e) { console.log(`  FAIL cluster partition\n       ${e.message}`); fail++; }
+
+// A normalisation rule that eats its own output looks fine until it silently
+// changes results. Idempotence catches that class outright.
+try {
+  const { skeleton } = await import("../src/cluster.js");
+  let n = 0;
+  for (const file of readdirSync(join(here, "fixtures"))) {
+    const r = analyse(fx(file));
+    if (!r) continue;
+    for (const f of r.failures) {
+      for (const t of [f.message, f.stmt, f.title]) {
+        const once = skeleton(t);
+        assert.equal(skeleton(once), once, `${file}: skeleton not idempotent on ${JSON.stringify(String(t).slice(0, 60))}`);
+        n++;
+      }
+    }
+  }
+  console.log(`  ok   skeleton is idempotent over ${n} real strings`);
+  pass++;
+} catch (e) { console.log(`  FAIL skeleton idempotence\n       ${e.message}`); fail++; }
+
+// Clustering must not change what anyone already sees. Any fixture that legitimately
+// grows a cluster belongs in this list, with a reason - so a merge can never appear
+// silently in someone's terminal.
+try {
+  const { render, setColor } = await import("../src/render.js");
+  setColor(false);
+  // Fixtures that legitimately group. Anything not listed here must render
+  // byte-identically with clustering on, so a merge can never appear silently.
+  const EXPECTED_TO_CLUSTER = [
+    "gotest_cluster_fail.txt",   // three tests share one assertion shape
+    "eslint_bulk_fail.txt",      // one rule broken in twenty-two places
+    "mypy_notes_fail.txt",       // several type errors repeat across modules
+    "clang_bulk_fail.txt",       // one signature change, fourteen call sites
+    "clippy_fail.txt",           // one lint in several places is one fix
+  ];
+  let checked = 0;
+  for (const file of readdirSync(join(here, "fixtures"))) {
+    const raw = fx(file);
+    const on = analyse(raw), off = analyse(raw, { cluster: false });
+    if (!on) continue;
+    checked++;
+    const differs = render(on, {}) !== render(off, { cluster: false });
+    if (EXPECTED_TO_CLUSTER.includes(file)) assert.ok(differs, `${file}: expected to cluster but did not`);
+    else assert.ok(!differs, `${file}: clustering changed existing output`);
+  }
+  console.log(`  ok   clustering changes ${EXPECTED_TO_CLUSTER.length} of ${checked} fixture renders, the ${EXPECTED_TO_CLUSTER.length === 1 ? "one" : "ones"} expected to`);
+  pass++;
+} catch (e) { console.log(`  FAIL byte identity\n       ${e.message}`); fail++; }
+
+// A new extractor must not silently inherit a title policy. Adding one forces a choice.
+try {
+  const { TOOL_TITLE_SETS } = await import("../src/cluster.js");
+  const { TITLE_IS_CODE, TITLE_IS_SITE, TITLE_IS_CONST } = TOOL_TITLE_SETS;
+  const tools = new Set();
+  for (const file of readdirSync(join(here, "fixtures"))) {
+    const r = analyse(fx(file));
+    if (r) tools.add(r.tool);
+  }
+  for (const t of tools) {
+    const hits = [TITLE_IS_CODE, TITLE_IS_SITE, TITLE_IS_CONST].filter((s) => s.has(t)).length;
+    assert.equal(hits, 1, `tool ${JSON.stringify(t)} is in ${hits} title sets, must be exactly 1`);
+  }
+  console.log(`  ok   all ${tools.size} tools declare a title policy exactly once`);
+  pass++;
+} catch (e) { console.log(`  FAIL title policy coverage\n       ${e.message}`); fail++; }
+
+// The guards against over-merging, which is the fatal direction.
+try {
+  const { clusterFailures, MIN_CLUSTER } = await import("../src/cluster.js");
+  // 40 numeric assertions from 40 unrelated bugs must never become "1 likely cause"
+  const bare = Array.from({ length: 40 }, (_, i) => ({ title: `t${i}`, message: `assert ${i} == ${i + 1}` }));
+  assert.ok(clusterFailures(bare, "pytest").every((c) => !c.reported),
+    "a bare numeric assertion carries no information and must not be a reported cause");
+
+  // three failures that really do share a cause
+  const real = Array.from({ length: 3 }, (_, i) => ({ title: `t${i}`, file: `a${i}.py`, line: i + 1, message: "KeyError: 'exp'" }));
+  const got = clusterFailures(real, "pytest").filter((c) => c.reported);
+  assert.equal(got.length, 1, "three matching failures should be one reported cause");
+  assert.equal(got[0].size, 3);
+
+  // two is coincidence, not a cause
+  assert.equal(MIN_CLUSTER, 3);
+  assert.ok(clusterFailures(real.slice(0, 2), "pytest").every((c) => !c.reported), "two must not be reported");
+  console.log("  ok   the information gate and minimum size both refuse weak merges");
+  pass++;
+} catch (e) { console.log(`  FAIL merge guards\n       ${e.message}`); fail++; }
+
+// Captured Node assertions have a verbose matcher header, but still carry no
+// shared cause when all that remains underneath it is a numeric comparison.
+try {
+  const { render } = await import("../src/render.js");
+  const { clusterFailures } = await import("../src/cluster.js");
+  const r = analyse(fx("nodetest_nested_fail.txt"));
+  assert.ok(r.clusters.every((c) => !c.reported), "matcher boilerplate must not justify grouping");
+  const out = render(r, { source: false, max: Infinity });
+  assert.doesNotMatch(out, /likely cause/);
+  for (const comparison of ["2 !== 3", "4 !== 5", "6 !== 7"]) assert.ok(out.includes(comparison));
+  // A shared expression is still useful evidence; this must not disable all
+  // assertion clustering merely because the framework supplies a header.
+  const withExpression = r.failures.map((f) => ({ ...f, stmt: "assert.equal(cart.total(), expected)" }));
+  assert.equal(clusterFailures(withExpression, r.tool).filter((c) => c.reported).length, 1);
+  console.log("  ok   Node assertion boilerplate cannot merge unrelated numeric failures");
+  pass++;
+} catch (e) { console.log(`  FAIL Node assertion grouping\n       ${e.message}`); fail++; }
+
+// A truncated log can contain only the parent failure. Keep that diagnosis, and
+// ensure failures in a previous, unrelated suite do not cause it to be dropped.
+try {
+  const raw = fx("nodetest_nested_fail.txt");
+  const parent = raw.slice(raw.indexOf("\nnot ok 1 - arithmetic") + 1);
+  for (const input of [parent, "# Subtest: arithmetic\n" + parent,
+    fx("nodetest_fail.txt") + "\n# Subtest: arithmetic\n" + parent]) {
+    const r = analyse(input);
+    const kept = r.failures.filter((f) => f.title === "arithmetic");
+    assert.equal(kept.length, 1, "a parent without captured children must remain visible");
+    assert.equal(kept[0].message, "2 subtests failed");
+  }
+  // The same captured log must produce one annotation per actual failing test.
+  const github = spawnSync(process.execPath, [cli, "--format", "github"], {
+    input: raw, encoding: "utf8", env: { ...process.env, GITHUB_STEP_SUMMARY: "" },
+  });
+  assert.equal(github.status, 0);
+  assert.equal((github.stdout.match(/^::error /gm) ?? []).length, 3);
+  assert.doesNotMatch(github.stdout, /title=(arithmetic|first operations)/);
+  const json = spawnSync(process.execPath, [cli, "--json"], { input: raw, encoding: "utf8" });
+  assert.equal(json.status, 0);
+  assert.equal(JSON.parse(json.stdout).failures.length, 3);
+  console.log("  ok   Node parent summaries are removed only when child failures are captured");
+  pass++;
+} catch (e) { console.log(`  FAIL Node parent summaries\n       ${e.message}`); fail++; }
+
+// Rendering a real cluster: header, one exemplar, distinct sites only.
+try {
+  const { render, setColor } = await import("../src/render.js");
+  const { clusterFailures } = await import("../src/cluster.js");
+  setColor(false);
+  const failures = [
+    { title: "test_a", file: "t/one.py", line: 10, message: "KeyError: 'exp'" },
+    { title: "test_b", file: "t/two.py", line: 20, message: "KeyError: 'exp'" },
+    { title: "test_c", file: "t/two.py", line: 20, message: "KeyError: 'exp'" },
+    { title: "test_d", file: "t/three.py", line: 30, message: "KeyError: 'exp'" },
+  ];
+  const out = render({ tool: "pytest", failures, clusters: clusterFailures(failures, "pytest") }, { source: false });
+  assert.match(out, /1 likely cause, 4 sites/, "header must state the cause count");
+  assert.equal((out.match(/KeyError/g) || []).length, 1, "the exemplar message prints once, not once per member");
+  assert.match(out, /also t\/two\.py:20, t\/three\.py:30/, "sibling sites are named");
+  assert.equal((out.match(/t\/two\.py:20/g) || []).length, 1, "a repeated location is named once, not per member");
+  console.log("  ok   a cluster renders one exemplar and its distinct sites");
+  pass++;
+} catch (e) { console.log(`  FAIL cluster rendering\n       ${e.message}`); fail++; }
+
+// Hostile input must still yield a valid partition, not merely avoid throwing.
+try {
+  const hostile = ["", "\0\0", "[31m", "!!!".repeat(1000), "a".repeat(50000),
+    "assert 'unterminated in x", "{}", "::::", "\n\n\n", "error: " + "x".repeat(5000)];
+  for (const h of hostile) {
+    const r = analyse(h);
+    if (!r) continue;
+    const members = r.clusters.flatMap((c) => c.members).sort((a, b) => a - b);
+    assert.deepEqual(members, [...r.failures.keys()], `hostile input broke the partition: ${JSON.stringify(h.slice(0, 20))}`);
+  }
+  console.log("  ok   hostile input still produces a valid partition");
+  pass++;
+} catch (e) { console.log(`  FAIL hostile partition\n       ${e.message}`); fail++; }
+
+// --no-cluster must mean no clustering everywhere, not "clustered but hidden".
+try {
+  const off = spawnSync(process.execPath, [cli, "--format", "json", "--no-cluster", "--", process.execPath, "-e", "null.x"], { encoding: "utf8" });
+  assert.equal(JSON.parse(off.stdout).clusters, null, "--no-cluster must null the clusters field in JSON too");
+  const on = spawnSync(process.execPath, [cli, "--format", "json", "--", process.execPath, "-e", "null.x"], { encoding: "utf8" });
+  assert.ok(Array.isArray(JSON.parse(on.stdout).clusters), "clustering is on by default");
+  console.log("  ok   --no-cluster disables clustering in every format");
+  pass++;
+} catch (e) { console.log(`  FAIL --no-cluster flag\n       ${e.message}`); fail++; }
+
+// no rendered line may run away, however long the paths in a cluster's site list
+try {
+  const { render, setColor } = await import("../src/render.js");
+  setColor(false);
+  const long = (n) => `packages/some-workspace/src/adapters/very/deep/module-${n}.js`;
+  const failures = Array.from({ length: 12 }, (_, i) => ({
+    file: long(i), line: 100 + i, title: "eqeqeq", message: "Expected '===' and instead saw '=='",
+  }));
+  const { clusterFailures } = await import("../src/cluster.js");
+  const out = render({ tool: "eslint", failures, clusters: clusterFailures(failures, "eslint") }, { source: false });
+  const longest = Math.max(...out.split("\n").map((l) => l.length));
+  assert.ok(longest <= 240, `a site list ran to ${longest} characters`);
+  assert.match(out, /more places/, "the sites that did not fit are counted");
+  console.log("  ok   a cluster's site list stays within a line");
+  pass++;
+} catch (e) { console.log(`  FAIL site list width\n       ${e.message}`); fail++; }
+
+// a CI log stamps every line, and every parser anchors on ^
+try {
+  const { stripCiPrefix } = await import("../src/util.js");
+  const raw = fx("pytest_fail.txt");
+  const lines = raw.split("\n");
+  const plain = analyse(raw);
+
+  // GitHub Actions raw log: an ISO timestamp on every line
+  const stamped = lines.map((l) => `2026-09-09T04:47:46.0890607Z ${l}`).join("\n");
+  const a = analyse(stamped);
+  assert.ok(a, "a timestamped CI log must still parse");
+  assert.equal(a.failures.length, plain.failures.length);
+  assert.deepEqual(a.failures.map((f) => f.line), plain.failures.map((f) => f.line));
+
+  // `gh run view --log`: tab-separated job and step names before the timestamp
+  const withJob = lines.map((l) => `test (ubuntu-latest, 22)\tRun pytest\t2026-09-09T04:47:46.089Z ${l}`).join("\n");
+  assert.equal(analyse(withJob)?.failures.length, plain.failures.length,
+    "job and step columns must be stripped along with the timestamp");
+
+  // but a log that merely MENTIONS a timestamp must be left exactly alone
+  const occasional = lines.map((l, i) => (i % 9 === 0 ? `2026-09-09T04:47:46.000Z ${l}` : l)).join("\n");
+  assert.equal(stripCiPrefix(occasional), occasional, "a partial match must not be stripped");
+  assert.equal(stripCiPrefix(raw), raw, "output with no prefix must be untouched");
+  console.log("  ok   CI-stamped logs parse, and unstamped logs are untouched");
+  pass++;
+} catch (e) { console.log(`  FAIL CI log prefix\n       ${e.message}`); fail++; }
+
+// a CI log runs lint, then typecheck, then tests - only one extractor can own the
+// output, and the rest of the failures must not vanish without a word
+try {
+  const combined = ["> lint", fx("eslint_bulk_fail.txt"), "", "> typecheck",
+    fx("tsc_chain_fail.txt"), "", "> test", fx("vitest_cluster_fail.txt")].join("\n");
+  const r = analyse(combined);
+  assert.ok(r, "a multi-tool log must still parse");
+  assert.ok(r.others?.length, "the other tools' failures must be named, not dropped");
+  const named = Object.fromEntries(r.others.map((o) => [o.tool, o.count]));
+  assert.equal(named.eslint, 90, `eslint's 90 errors must be accounted for: ${JSON.stringify(named)}`);
+  assert.equal(named.tsc, 5);
+
+  // but a tool that reports the same failure a second way is not another tool:
+  // unittest prints its failures AS Python tracebacks
+  const single = analyse(fx("py_unittest.txt"));
+  assert.ok(!single.others, `unittest should not report python as a separate tool: ${JSON.stringify(single.others)}`);
+  console.log("  ok   other tools in the same log are named, overlapping ones are not");
+  pass++;
+} catch (e) { console.log(`  FAIL multi-tool log\n       ${e.message}`); fail++; }
+
+// When two parsers both claim a fixture, only their order in the list decides the
+// answer - which is how bun test came back as cargo errors. Pin the known cases so
+// a new parser cannot quietly introduce another.
+try {
+  const { EXTRACTORS } = await import("../src/index.js");
+  const { stripAnsi, stripCiPrefix } = await import("../src/util.js");
+  const KNOWN = {
+    // unittest reports its failures AS Python tracebacks, so both match by design
+    // and the more specific one is listed first
+    "py_unittest.txt": ["unittest", "python"],
+  };
+  const found = {};
+  for (const file of readdirSync(join(here, "fixtures"))) {
+    const s = stripCiPrefix(stripAnsi(fx(file)).replace(/\r\n?/g, "\n"));
+    const claimers = EXTRACTORS
+      .filter((e) => e.name !== "generic" && e.detect(s) && e.extract(s)?.failures?.length)
+      .map((e) => e.name);
+    if (claimers.length > 1) found[file] = claimers;
+  }
+  assert.deepEqual(found, KNOWN,
+    `parsers competing for a fixture changed: ${JSON.stringify(found)}`);
+  console.log("  ok   only one fixture is decided by parser order, and it is expected");
+  pass++;
+} catch (e) { console.log(`  FAIL parser overlap\n       ${e.message}`); fail++; }
+
+// on Windows these tools emit backslash separators; parsing must not depend on /
+try {
+  const cases = {
+    "tsc_chain_fail.txt": (t) => t.replace(/src\//g, "src\\"),
+    "eslint_bulk_fail.txt": (t) => t.replace(/lib\//g, "lib\\").replace(/adapters\//g, "adapters\\"),
+    "dotnet_fail.txt": (t) => t.replace(/\//g, "\\"),
+  };
+  for (const [file, toWindows] of Object.entries(cases)) {
+    const unix = analyse(fx(file));
+    const win = analyse(toWindows(fx(file)));
+    assert.ok(win, `${file}: windows paths stopped it parsing`);
+    assert.equal(win.tool, unix.tool, `${file}: windows paths changed the tool`);
+    assert.equal(win.failures.length, unix.failures.length, `${file}: windows paths changed the count`);
+    assert.deepEqual(win.failures.map((f) => f.line), unix.failures.map((f) => f.line));
+    assert.match(win.failures[0].file, /\\/, `${file}: the backslash path should be preserved`);
+  }
+  console.log("  ok   windows backslash paths parse the same as posix ones");
+  pass++;
+} catch (e) { console.log(`  FAIL windows paths\n       ${e.message}`); fail++; }
+
+// CI kills a hanging suite, a byte cap trips, a pipe is closed - logs arrive cut
+// off mid-block, and that must never throw or corrupt the partition
+try {
+  const { render, setColor } = await import("../src/render.js");
+  setColor(false);
+  let checked = 0;
+  for (const file of readdirSync(join(here, "fixtures"))) {
+    const raw = fx(file);
+    const lines = raw.split("\n");
+    for (const frac of [0.1, 0.25, 0.5, 0.75, 0.9]) {
+      const cut = lines.slice(0, Math.max(1, Math.floor(lines.length * frac))).join("\n");
+      checked++;
+      const r = analyse(cut);
+      if (!r) continue;
+      render(r, {});
+      const members = r.clusters.flatMap((c) => c.members).sort((a, b) => a - b);
+      assert.deepEqual(members, [...r.failures.keys()], `${file} cut at ${frac} broke the partition`);
+    }
+    // and cut mid-line, the way a byte cap does
+    analyse(raw.slice(0, Math.floor(raw.length * 0.6)));
+  }
+  console.log(`  ok   ${checked} truncated logs parse without throwing or losing a failure`);
+  pass++;
+} catch (e) { console.log(`  FAIL truncated input\n       ${e.message}`); fail++; }
+
+// whatbroke wraps any command, not only test runners. A shell script that fails
+// prints the classic unix shape, and none of it was recognised.
+try {
+  const shouldMatch = [
+    "curl: (7) Failed to connect to 127.0.0.1 port 9 after 0 ms: Could not connect to server",
+    "cp: cannot stat 'x': No such file or directory",
+    "ssh: connect to host example.com port 22: Connection refused",
+    "bash: line 5: deploy: command not found",
+  ];
+  const shouldNot = [
+    "Deploying to staging...",
+    "note: this is fine",
+    "info: everything is working",
+    "warning: deprecated flag",
+  ];
+  for (const l of shouldMatch) {
+    const r = analyse(`Starting\n${l}\n`);
+    assert.ok(r?.failures.length, `should have recognised: ${l}`);
+    assert.match(r.failures[0].message, /Failed|cannot|refused|not found/i);
+  }
+  for (const l of shouldNot) {
+    // a bare "prog: message" must not be treated as a failure just for having a colon
+    assert.ok(!analyse(`Starting\n${l}\n`), `should have ignored: ${l}`);
+  }
+  console.log("  ok   plain unix errors are recognised, ordinary log lines are not");
+  pass++;
+} catch (e) { console.log(`  FAIL unix error shape\n       ${e.message}`); fail++; }
 
 // CRLF input must parse identically to LF - Windows, and logs pasted from Windows CI
 try {

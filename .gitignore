@@ -10,3 +10,5 @@ demo/__pycache__/
 .tmp-test-*/
 .launch/
 .tmp-ctx-*/
+.tmp-dbg-*/
+OVERNIGHT.md

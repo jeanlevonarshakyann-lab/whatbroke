@@ -1,0 +1,75 @@
+⎯⎯⎯⎯⎯⎯ Failed Tests 191 ⎯⎯⎯⎯⎯⎯
+
+ FAIL  src/index.spec.ts > path-to-regexp > match '/' with undefined > should match '/'
+AssertionError: expected false to deeply equal { path: '/', params: {} }
+
+[32m- Expected:[39m 
+{
+  "params": {},
+  "path": "/",
+}
+
+[31m+ Received:[39m 
+false
+
+ ❯ src/index.spec.ts:274:27
+    272|       it.each(tests)("should match $input", ({ input, expected }) => {
+    273|         const fn = match(path, options);
+    274|         expect(fn(input)).toEqual(expected);
+       |                           ^
+    275|       });
+    276|     },
+
+⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯[2/192]⎯
+
+ FAIL  src/index.spec.ts > path-to-regexp > match '/test' with undefined > should match '/test'
+ FAIL  src/index.spec.ts > path-to-regexp > match '/test' with { sensitive: true } > should match '/test'
+ FAIL  src/index.spec.ts > path-to-regexp > match '/test' with { end: false } > should match '/test'
+ FAIL  src/index.spec.ts > path-to-regexp > match '/test' with { end: false } > should match '/test////'
+ FAIL  src/index.spec.ts > path-to-regexp > match '/test' with { end: false } > should match '/test/route'
+AssertionError: expected false to deeply equal { path: '/test', params: {} }
+
+[32m- Expected:[39m 
+{
+  "params": {},
+  "path": "/test",
+}
+
+[31m+ Received:[39m 
+false
+
+ ❯ src/index.spec.ts:274:27
+    272|       it.each(tests)("should match $input", ({ input, expected }) => {
+    273|         const fn = match(path, options);
+    274|         expect(fn(input)).toEqual(expected);
+       |                           ^
+    275|       });
+    276|     },
+
+⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯[3/192]⎯
+
+ FAIL  src/index.spec.ts > path-to-regexp > match '/test/' with undefined > should match '/test/'
+ FAIL  src/index.spec.ts > path-to-regexp > match '/test/' with { end: false } > should match '/test/'
+AssertionError: expected false to deeply equal { path: '/test/', params: {} }
+
+[32m- Expected:[39m 
+{
+  "params": {},
+  "path": "/test/",
+}
+
+[31m+ Received:[39m 
+false
+
+ ❯ src/index.spec.ts:274:27
+    272|       it.each(tests)("should match $input", ({ input, expected }) => {
+    273|         const fn = match(path, options);
+    274|         expect(fn(input)).toEqual(expected);
+       |                           ^
+    275|       });
+    276|     },
+
+⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯[4/192]⎯
+
+ Test Files  2 failed | 1 passed (3)
+      Tests  191 failed | 293 passed (484)

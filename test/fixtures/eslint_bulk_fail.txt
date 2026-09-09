@@ -1,0 +1,175 @@
+
+lib/adapters/adapters.js
+   31:14  error    'e' is defined but never used                                                no-unused-vars
+   32:7   warning  Unused eslint-disable directive (no problems were reported from 'no-empty')
+  102:9   error    's' is never reassigned. Use 'const' instead                                 prefer-const
+
+lib/adapters/fetch.js
+   58:12  error  'error' is defined but never used                              no-unused-vars
+   66:12  error  'e' is defined but never used                                  no-unused-vars
+  133:24  error  Expected '!==' and instead saw '!='                            eqeqeq
+  154:17  error  'method' is never reassigned. Use 'const' instead              prefer-const
+  170:14  error  Expected '===' and instead saw '=='                            eqeqeq
+  202:19  error  Expected '===' and instead saw '=='                            eqeqeq
+  208:7   error  'method' is never reassigned. Use 'const' instead              prefer-const
+  210:7   error  'signal' is never reassigned. Use 'const' instead              prefer-const
+  211:7   error  'cancelToken' is never reassigned. Use 'const' instead         prefer-const
+  212:7   error  'timeout' is never reassigned. Use 'const' instead             prefer-const
+  213:7   error  'onDownloadProgress' is never reassigned. Use 'const' instead  prefer-const
+  214:7   error  'onUploadProgress' is never reassigned. Use 'const' instead    prefer-const
+  216:7   error  'headers' is never reassigned. Use 'const' instead             prefer-const
+  218:7   error  'fetchOptions' is never reassigned. Use 'const' instead        prefer-const
+  219:7   error  'maxContentLength' is never reassigned. Use 'const' instead    prefer-const
+  220:7   error  'maxBodyLength' is never reassigned. Use 'const' instead       prefer-const
+  221:7   error  'maxRedirects' is never reassigned. Use 'const' instead        prefer-const
+  228:9   error  '_fetch' is never reassigned. Use 'const' instead              prefer-const
+  232:9   error  'composedSignal' is never reassigned. Use 'const' instead      prefer-const
+  358:32  error  Expected '===' and instead saw '=='                            eqeqeq
+  365:15  error  '_request' is never reassigned. Use 'const' instead            prefer-const
+  440:22  error  Expected '===' and instead saw '=='                            eqeqeq
+  498:28  error  Expected '!==' and instead saw '!='                            eqeqeq
+  559:11  error  'responseData' is never reassigned. Use 'const' instead        prefer-const
+  569:26  error  Expected '!==' and instead saw '!='                            eqeqeq
+  672:7   error  'env' is never reassigned. Use 'const' instead                 prefer-const
+  676:7   error  'len' is never reassigned. Use 'const' instead                 prefer-const
+
+lib/adapters/http.js
+   114:42  error  Expected '!==' and instead saw '!='                eqeqeq
+   126:89  error  Expected '!==' and instead saw '!='                eqeqeq
+   187:12  error  'error' is defined but never used                  no-unused-vars
+   242:12  error  'e' is defined but never used                      no-unused-vars
+   578:11  error  'family' is never reassigned. Use 'const' instead  prefer-const
+   596:11  error  'req' is never reassigned. Use 'const' instead     prefer-const
+   601:16  error  'err' is defined but never used                    no-unused-vars
+   639:18  error  'err' is defined but never used                    no-unused-vars
+   831:20  error  'e' is defined but never used                      no-unused-vars
+   981:32  error  Expected '!==' and instead saw '!='                eqeqeq
+  1031:25  error  Expected '===' and instead saw '=='                eqeqeq
+  1076:24  error  'e' is defined but never used                      no-unused-vars
+  1082:32  error  Expected '!==' and instead saw '!='                eqeqeq
+
+lib/adapters/xhr.js
+   20:11  error    'requestData' is never reassigned. Use 'const' instead                         prefer-const
+   22:13  error    'responseType' is never reassigned. Use 'const' instead                        prefer-const
+   22:27  error    'onUploadProgress' is never reassigned. Use 'const' instead                    prefer-const
+   22:45  error    'onDownloadProgress' is never reassigned. Use 'const' instead                  prefer-const
+  241:9   warning  Unused eslint-disable directive (no problems were reported from 'func-names')
+
+lib/cancel/CancelToken.js
+  26:5  warning  Unused eslint-disable directive (no problems were reported from 'func-names')
+  38:5  warning  Unused eslint-disable directive (no problems were reported from 'func-names')
+  41:7  warning  Unused eslint-disable directive (no problems were reported from 'func-names')
+
+lib/cancel/CanceledError.js
+  16:19  error  Expected '===' and instead saw '=='  eqeqeq
+
+lib/core/Axios.js
+   74:18  error  'e' is defined but never used                              no-unused-vars
+  112:26  error  Expected '!==' and instead saw '!='                        eqeqeq
+  155:9   error  'contextHeaders' is never reassigned. Use 'const' instead  prefer-const
+
+lib/core/AxiosError.js
+   78:12  error  'err' is defined but never used      no-unused-vars
+   88:16  error  'err' is defined but never used      no-unused-vars
+  125:22  error  Expected '!==' and instead saw '!='  eqeqeq
+  125:51  error  Expected '===' and instead saw '=='  eqeqeq
+
+lib/core/AxiosHeaders.js
+   14:32  error  Expected '===' and instead saw '=='                eqeqeq
+  233:11  error  'obj' is never reassigned. Use 'const' instead     prefer-const
+  253:14  error  Expected '!==' and instead saw '!='                eqeqeq
+  383:13  error  Expected '!==' and instead saw '!='                eqeqeq
+  403:49  error  Expected '===' and instead saw '=='                eqeqeq
+  463:7   error  'mapped' is never reassigned. Use 'const' instead  prefer-const
+
+lib/core/InterceptorManager.js
+  76:23  error  Expected '===' and instead saw '=='  eqeqeq
+
+lib/core/buildFullPath.js
+  70:7  error  'isRelativeUrl' is never reassigned. Use 'const' instead  prefer-const
+
+lib/core/mergeConfig.js
+   29:3  warning  Unused eslint-disable directive (no problems were reported from 'no-param-reassign')
+   67:3  warning  Unused eslint-disable directive (no problems were reported from 'consistent-return')
+   74:3  warning  Unused eslint-disable directive (no problems were reported from 'consistent-return')
+  109:3  warning  Unused eslint-disable directive (no problems were reported from 'consistent-return')
+
+lib/defaults/index.js
+  12:32  error  Expected '!==' and instead saw '!='  eqeqeq
+
+lib/helpers/Http2Sessions.js
+   28:11  error  'len' is never reassigned. Use 'const' instead      prefer-const
+   59:11  error  'entries' is never reassigned. Use 'const' instead  prefer-const
+   60:9   error  'len' is never reassigned. Use 'const' instead      prefer-const
+   82:24  error  Expected '!==' and instead saw '!='                 eqeqeq
+  111:9   error  'entry' is never reassigned. Use 'const' instead    prefer-const
+
+lib/helpers/cookies.js
+  45:22  error  'e' is defined but never used  no-unused-vars
+
+lib/helpers/deprecatedMethod.js
+  28:12  error  'e' is defined but never used  no-unused-vars
+
+lib/helpers/null.js
+  1:1  warning  Unused eslint-disable directive (no problems were reported from 'strict')
+
+lib/helpers/progressEventReducer.js
+  15:38  error  Expected '!==' and instead saw '!='  eqeqeq
+  29:31  error  Expected '!==' and instead saw '!='  eqeqeq
+  38:34  error  Expected '!==' and instead saw '!='  eqeqeq
+
+lib/helpers/resolveConfig.js
+  93:48  error  Expected '===' and instead saw '=='  eqeqeq
+
+lib/helpers/sanitizeHeaderValue.js
+  33:1  warning  Unused eslint-disable directive (no problems were reported from 'no-control-regex')
+  35:1  warning  Unused eslint-disable directive (no problems were reported from 'no-control-regex')
+
+lib/helpers/shouldBypassProxy.js
+  363:14  error  '_err' is defined but never used                      no-unused-vars
+  443:12  error  '_err' is defined but never used                      no-unused-vars
+  483:21  error  'entryPort' is never reassigned. Use 'const' instead  prefer-const
+
+lib/helpers/throttle.js
+  9:7  error  'threshold' is never reassigned. Use 'const' instead  prefer-const
+
+lib/helpers/toFormData.js
+   49:7   warning  Unused eslint-disable directive (no problems were reported from 'no-param-reassign')
+   99:3   warning  Unused eslint-disable directive (no problems were reported from 'no-param-reassign')
+  108:3   warning  Unused eslint-disable directive (no problems were reported from 'no-use-before-define')
+  204:9   warning  Unused eslint-disable directive (no problems were reported from 'no-param-reassign')
+  206:9   warning  Unused eslint-disable directive (no problems were reported from 'no-param-reassign')
+  212:9   warning  Unused eslint-disable directive (no problems were reported from 'no-param-reassign')
+  218:15  warning  Unused eslint-disable directive (no problems were reported from 'no-nested-ternary')
+
+lib/helpers/trackStream.js
+   2:7   error  'len' is never reassigned. Use 'const' instead          prefer-const
+  50:7   error  '_onFinish' is never reassigned. Use 'const' instead    prefer-const
+  69:15  error  'len' is never reassigned. Use 'const' instead          prefer-const
+  71:17  error  'loadedBytes' is never reassigned. Use 'const' instead  prefer-const
+
+lib/helpers/validator.js
+   8:1  warning  Unused eslint-disable directive (no problems were reported from 'func-names')
+  39:3  warning  Unused eslint-disable directive (no problems were reported from 'func-names')
+  50:7  warning  Unused eslint-disable directive (no problems were reported from 'no-console')
+  65:5  warning  Unused eslint-disable directive (no problems were reported from 'no-console')
+
+lib/platform/common/utils.js
+  38:5  warning  Unused eslint-disable directive (no problems were reported from 'no-undef')
+
+lib/utils.js
+    87:14  error    Expected '!==' and instead saw '!='                                            eqeqeq
+   119:7   error    Expected '!==' and instead saw '!='                                            eqeqeq
+   133:13  error    Expected '===' and instead saw '=='                                            eqeqeq
+   148:18  error    Expected '!==' and instead saw '!='                                            eqeqeq
+   339:12  error    'e' is defined but never used                                                  no-unused-vars
+   726:3   warning  Unused eslint-disable directive (no problems were reported from 'no-eq-null')
+   791:1   warning  Unused eslint-disable directive (no problems were reported from 'func-names')
+   793:3   warning  Unused eslint-disable directive (no problems were reported from 'func-names')
+   929:16  error    Expected '!==' and instead saw '!='                                            eqeqeq
+  1070:37  error    Expected '!==' and instead saw '!='                                            eqeqeq
+  1084:9   error    Expected '!==' and instead saw '!='                                            eqeqeq
+
+✖ 117 problems (90 errors, 27 warnings)
+  22 errors and 27 warnings potentially fixable with the `--fix` option.
+

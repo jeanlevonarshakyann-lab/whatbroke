@@ -162,28 +162,91 @@ them.
 | **pytest** | test name, `file:line`, the assertion, the `E` explanation |
 | **unittest** | same, with the deepest *your-code* frame — not the harness |
 | **Python tracebacks** | the frame in your code, not the 9 in site-packages |
+| **deno test** | test name and `file:line` from the header, without the assert-library frames |
+| **bun test** | test name, `file:line`, the matcher — not bun's echoed source |
+| **node --test** | test name, `file:line`, and the assertion out of TAP's YAML block |
 | **Node stack traces** | the error, the caret, your frames; `node:internal` hidden |
 | **jest** | test name, `file:line`, the matcher, expected vs received |
 | **vitest** | same, with the real source line — not vitest's truncated `…` version |
 | **eslint** | errors only; warnings counted and set aside |
-| **go test** | test name, `file:line`, the message; panics resolved past the runtime frames |
+| **go test** | test name, `file:line`, the message; panics resolved past the runtime frames, and `-race` reports at the racing line |
 | **go build** | compile errors with source context |
 | **cargo test** | test name, `file:line`, the assertion and its left/right values |
 | **cargo build** | error code and the inline annotation — not the 25 lines of trait impls |
+| **cargo clippy** | the lint name as the title, so you know what to fix or allow |
 | **ruff** | rule code, `file:line`, the message and ruff's own fix hint |
 | **mypy** | error code, `file:line`, the type-checking message; notes and warnings set aside |
 | **GCC/Clang** | compiler errors with `file:line:column`; warnings and notes set aside |
 | **RSpec** | example name, failure message, and `spec/file:line` location |
-| **Maven/Gradle** | JVM compiler errors with `file:line:column` locations |
+| **Maven/Gradle** | JVM compiler errors, Surefire test failures, and build scripts that fail to evaluate |
 | **.NET** | compiler error codes with `file:line:column`; warnings set aside |
+| **dotnet test** | test name, `file:line`, the assertion; reflection frames dropped |
 | **PHPUnit** | test name, assertion message, and `file:line` location |
-| **tsc** | errors grouped by file with source context |
-| *anything else* | best-effort: lines that look like errors, marked as a guess |
+| **tsc** | errors grouped by file, with the assignability chain down to the real reason |
+| **npm** | its own failures — a missing script, a bad engine — without the trailing advice |
+| *anything else* | best-effort: lines that look like errors, including plain unix ones like `curl: (7) Failed to connect`, marked as a guess |
 
 Unrecognised output is never silently swallowed — you get a labelled guess, or the raw text back.
 
+A CI job usually runs a linter, then a typechecker, then the tests, and pastes all of
+it into one log. Only one parser can own that output — but the others' failures are
+counted and named rather than dropped:
+
+```
+  ✗ 191 failed | 293 passed (484)
+    this log also contains failures from eslint (90), tsc (5)
+```
+
+CI stamps every line — GitHub Actions prefixes an ISO timestamp, and `gh run view --log`
+puts the job and step in front of that. Every parser here anchors on the start of a line,
+so a stamped log would match nothing at all. whatbroke strips a uniform prefix before
+parsing, and only when nearly every line carries one, so a log that merely mentions a
+timestamp is left exactly as it is. Paste a CI log straight in.
+
 Repeated identical diagnostics are shown once. Distinct tests or diagnostics
 that happen to share a file and line are preserved.
+
+## One bug, or eighty?
+
+Change one string in a library and eighty tests fail. They are one bug. Every tool
+in this space will show you the first five and let you work out the rest.
+
+whatbroke groups failures that share a likely cause and leads with the count:
+
+```
+  ✗ 85 failed, 1973 passed, 25 skipped in 3.58s
+    2 likely causes, 14 sites (+15 others)
+
+  tests/test_basic.py:642  test_choice_argument_none  (+9 more sites)
+    assert "Error: Missing argument" in "...Failure: Missing argument"
+      also tests/test_options.py:1951
+```
+
+**Over-splitting is cheap; over-merging is fatal.** Split one cause in two and you
+read an extra block. Merge two causes into one and you fix the exemplar, rerun, and
+watch the rest still fail — after which the "likely cause" line is worth nothing
+anywhere. So the grouping refuses whenever it is unsure, and it is designed to be
+able to say nothing at all.
+
+It is deterministic — an exact fingerprint, no similarity score, no model. A fuzzy
+threshold would let the same suite report a different number of causes run to run,
+and "these share this signature" is something you can check by eye in a way that
+"these scored 0.72" is not.
+
+What keeps it honest:
+
+- Quoted text that is short and has no spaces is a **name** and is kept, so
+  `KeyError: 'exp'` never merges with `KeyError: 'sub'`. Longer quoted text is data
+  and is abstracted away.
+- A path must prove itself with separators or a known extension, so `cart.total` is
+  never mistaken for a filename.
+- A signature carrying fewer than two real words is refused outright — forty
+  unrelated `assert 1 == 2` failures do not become "one likely cause".
+- Three sites minimum. Two failures sharing a shape is usually coincidence.
+
+Nothing is hidden: `failures` is unchanged in `--json` and every annotation is still
+emitted in `--format github`. Grouping only decides which failures the terminal
+spends its five slots on. `--no-cluster` turns it off everywhere.
 
 Source context is read from the file on disk. If the file has changed since the command
 ran — you edited it, or you piped in saved output — whatbroke says so and shows the line

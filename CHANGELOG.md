@@ -1,5 +1,18 @@
 # Changelog
 
+## Unreleased
+
+- Fixed: Node assertion boilerplate could group unrelated numeric failures as one likely cause.
+- Fixed: nested Node test suites emitted duplicate parent failures alongside their failing tests.
+- Group failures that share a likely cause, and lead with the number of causes
+  rather than the number of failures. Deterministic fingerprinting, no model.
+- Report `clusters` in `--json` as a partition of `failures`, which is unchanged.
+- Added `--no-cluster`.
+- Fixed: pytest `-q` totals were missed, so a run reporting "85 failed" was
+  summarised as a count of parsed blocks.
+- Fixed: a single very long boilerplate line (pytest listing every fixture) was
+  printed in full.
+
 ## 0.2.0
 
 - Added stable `--json` output with exit-code preservation.

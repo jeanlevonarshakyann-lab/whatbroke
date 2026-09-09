@@ -1,0 +1,431 @@
+--- FAIL: TestNoArgs_WithArgs (0.00s)
+    args_test.go:62: Expected: "unknown command \"one\" for \"c\"", got: "unrecognised command \"one\" for \"c\""
+--- FAIL: TestNoArgs_WithValid_WithArgs (0.00s)
+    args_test.go:62: Expected: "unknown command \"one\" for \"c\"", got: "unrecognised command \"one\" for \"c\""
+--- FAIL: TestNoArgs_WithValid_WithInvalidArgs (0.00s)
+    args_test.go:62: Expected: "unknown command \"a\" for \"c\"", got: "unrecognised command \"a\" for \"c\""
+--- FAIL: TestRootTakesNoArgs (0.00s)
+    args_test.go:434: expected "unknown command \"illegal\" for \"root\"", got "unrecognised command \"illegal\" for \"root\""
+--- FAIL: TestChildTakesNoArgs (0.00s)
+    args_test.go:462: expected "unknown command \"illegal\" for \"root child\"", got "unrecognised command \"illegal\" for \"root child\""
+--- FAIL: TestRootExecuteUnknownCommand (0.00s)
+    command_test.go:155: Expected:
+         "Error: unknown command \"unknown\" for \"root\"\nRun 'root --help' for usage.\n"
+        Got:
+         "Error: unrecognised command \"unknown\" for \"root\"\nRun 'root --help' for usage.\n"
+--- FAIL: TestSuggestions (0.00s)
+    command_test.go:1472: Unexpected response.
+        Expected:
+         "Error: unknown command \"time\" for \"root\"\nRun 'root --help' for usage.\n"
+        Got:
+         "Error: unrecognised command \"time\" for \"root\"\nRun 'root --help' for usage.\n"
+    command_test.go:1472: Unexpected response.
+        Expected:
+         "Error: unknown command \"time\" for \"root\"\n\nDid you mean this?\n\ttimes\n\nRun 'root --help' for usage.\n"
+        Got:
+         "Error: unrecognised command \"time\" for \"root\"\n\nDid you mean this?\n\ttimes\n\nRun 'root --help' for usage.\n"
+    command_test.go:1472: Unexpected response.
+        Expected:
+         "Error: unknown command \"tiems\" for \"root\"\nRun 'root --help' for usage.\n"
+        Got:
+         "Error: unrecognised command \"tiems\" for \"root\"\nRun 'root --help' for usage.\n"
+    command_test.go:1472: Unexpected response.
+        Expected:
+         "Error: unknown command \"tiems\" for \"root\"\n\nDid you mean this?\n\ttimes\n\nRun 'root --help' for usage.\n"
+        Got:
+         "Error: unrecognised command \"tiems\" for \"root\"\n\nDid you mean this?\n\ttimes\n\nRun 'root --help' for usage.\n"
+    command_test.go:1472: Unexpected response.
+        Expected:
+         "Error: unknown command \"timeS\" for \"root\"\nRun 'root --help' for usage.\n"
+        Got:
+         "Error: unrecognised command \"timeS\" for \"root\"\nRun 'root --help' for usage.\n"
+    command_test.go:1472: Unexpected response.
+        Expected:
+         "Error: unknown command \"timeS\" for \"root\"\n\nDid you mean this?\n\ttimes\n\nRun 'root --help' for usage.\n"
+        Got:
+         "Error: unrecognised command \"timeS\" for \"root\"\n\nDid you mean this?\n\ttimes\n\nRun 'root --help' for usage.\n"
+    command_test.go:1472: Unexpected response.
+        Expected:
+         "Error: unknown command \"rimes\" for \"root\"\nRun 'root --help' for usage.\n"
+        Got:
+         "Error: unrecognised command \"rimes\" for \"root\"\nRun 'root --help' for usage.\n"
+    command_test.go:1472: Unexpected response.
+        Expected:
+         "Error: unknown command \"rimes\" for \"root\"\n\nDid you mean this?\n\ttimes\n\nRun 'root --help' for usage.\n"
+        Got:
+         "Error: unrecognised command \"rimes\" for \"root\"\n\nDid you mean this?\n\ttimes\n\nRun 'root --help' for usage.\n"
+    command_test.go:1472: Unexpected response.
+        Expected:
+         "Error: unknown command \"timely\" for \"root\"\nRun 'root --help' for usage.\n"
+        Got:
+         "Error: unrecognised command \"timely\" for \"root\"\nRun 'root --help' for usage.\n"
+    command_test.go:1472: Unexpected response.
+        Expected:
+         "Error: unknown command \"timely\" for \"root\"\n\nDid you mean this?\n\ttimes\n\nRun 'root --help' for usage.\n"
+        Got:
+         "Error: unrecognised command \"timely\" for \"root\"\n\nDid you mean this?\n\ttimes\n\nRun 'root --help' for usage.\n"
+    command_test.go:1472: Unexpected response.
+        Expected:
+         "Error: unknown command \"ri\" for \"root\"\nRun 'root --help' for usage.\n"
+        Got:
+         "Error: unrecognised command \"ri\" for \"root\"\nRun 'root --help' for usage.\n"
+    command_test.go:1472: Unexpected response.
+        Expected:
+         "Error: unknown command \"ri\" for \"root\"\nRun 'root --help' for usage.\n"
+        Got:
+         "Error: unrecognised command \"ri\" for \"root\"\nRun 'root --help' for usage.\n"
+    command_test.go:1472: Unexpected response.
+        Expected:
+         "Error: unknown command \"foo\" for \"root\"\nRun 'root --help' for usage.\n"
+        Got:
+         "Error: unrecognised command \"foo\" for \"root\"\nRun 'root --help' for usage.\n"
+    command_test.go:1472: Unexpected response.
+        Expected:
+         "Error: unknown command \"foo\" for \"root\"\nRun 'root --help' for usage.\n"
+        Got:
+         "Error: unrecognised command \"foo\" for \"root\"\nRun 'root --help' for usage.\n"
+    command_test.go:1472: Unexpected response.
+        Expected:
+         "Error: unknown command \"tims\" for \"root\"\nRun 'root --help' for usage.\n"
+        Got:
+         "Error: unrecognised command \"tims\" for \"root\"\nRun 'root --help' for usage.\n"
+    command_test.go:1472: Unexpected response.
+        Expected:
+         "Error: unknown command \"tims\" for \"root\"\n\nDid you mean this?\n\ttimes\n\nRun 'root --help' for usage.\n"
+        Got:
+         "Error: unrecognised command \"tims\" for \"root\"\n\nDid you mean this?\n\ttimes\n\nRun 'root --help' for usage.\n"
+    command_test.go:1472: Unexpected response.
+        Expected:
+         "Error: unknown command \"ti\" for \"root\"\nRun 'root --help' for usage.\n"
+        Got:
+         "Error: unrecognised command \"ti\" for \"root\"\nRun 'root --help' for usage.\n"
+    command_test.go:1472: Unexpected response.
+        Expected:
+         "Error: unknown command \"ti\" for \"root\"\n\nDid you mean this?\n\ttimes\n\nRun 'root --help' for usage.\n"
+        Got:
+         "Error: unrecognised command \"ti\" for \"root\"\n\nDid you mean this?\n\ttimes\n\nRun 'root --help' for usage.\n"
+    command_test.go:1472: Unexpected response.
+        Expected:
+         "Error: unknown command \"t\" for \"root\"\nRun 'root --help' for usage.\n"
+        Got:
+         "Error: unrecognised command \"t\" for \"root\"\nRun 'root --help' for usage.\n"
+    command_test.go:1472: Unexpected response.
+        Expected:
+         "Error: unknown command \"t\" for \"root\"\n\nDid you mean this?\n\ttimes\n\nRun 'root --help' for usage.\n"
+        Got:
+         "Error: unrecognised command \"t\" for \"root\"\n\nDid you mean this?\n\ttimes\n\nRun 'root --help' for usage.\n"
+    command_test.go:1472: Unexpected response.
+        Expected:
+         "Error: unknown command \"timezone\" for \"root\"\nRun 'root --help' for usage.\n"
+        Got:
+         "Error: unrecognised command \"timezone\" for \"root\"\nRun 'root --help' for usage.\n"
+    command_test.go:1472: Unexpected response.
+        Expected:
+         "Error: unknown command \"timezone\" for \"root\"\nRun 'root --help' for usage.\n"
+        Got:
+         "Error: unrecognised command \"timezone\" for \"root\"\nRun 'root --help' for usage.\n"
+    command_test.go:1472: Unexpected response.
+        Expected:
+         "Error: unknown command \"counts\" for \"root\"\nRun 'root --help' for usage.\n"
+        Got:
+         "Error: unrecognised command \"counts\" for \"root\"\nRun 'root --help' for usage.\n"
+    command_test.go:1472: Unexpected response.
+        Expected:
+         "Error: unknown command \"counts\" for \"root\"\n\nDid you mean this?\n\ttimes\n\nRun 'root --help' for usage.\n"
+        Got:
+         "Error: unrecognised command \"counts\" for \"root\"\n\nDid you mean this?\n\ttimes\n\nRun 'root --help' for usage.\n"
+[Debug] [Error] Error while parsing flags from args [--localroot value]: unknown flag: --localroot
+Error: if any flags in the group [a b c] are set they must all be set; missing [b c]
+Usage:
+  testcmd [flags]
+  testcmd [command]
+
+Available Commands:
+  completion  Generate the autocompletion script for the specified shell
+  help        Help about any command
+  subcmd      
+
+Flags:
+      --a string   
+      --b string   
+      --c string   
+      --d string   
+      --e string   
+      --f string   
+      --g string   
+  -h, --help       help for testcmd
+
+Use "testcmd [command] --help" for more information about a command.
+
+Error: at least one of the flags in the group [a b] is required
+Usage:
+  testcmd [flags]
+  testcmd [command]
+
+Available Commands:
+  completion  Generate the autocompletion script for the specified shell
+  help        Help about any command
+  subcmd      
+
+Flags:
+      --a string   
+      --b string   
+      --c string   
+      --d string   
+      --e string   
+      --f string   
+      --g string   
+  -h, --help       help for testcmd
+
+Use "testcmd [command] --help" for more information about a command.
+
+Error: if any flags in the group [a b c] are set none of the others can be; [a b] were all set
+Usage:
+  testcmd [flags]
+  testcmd [command]
+
+Available Commands:
+  completion  Generate the autocompletion script for the specified shell
+  help        Help about any command
+  subcmd      
+
+Flags:
+      --a string   
+      --b string   
+      --c string   
+      --d string   
+      --e string   
+      --f string   
+      --g string   
+  -h, --help       help for testcmd
+
+Use "testcmd [command] --help" for more information about a command.
+
+Error: if any flags in the group [a b c] are set they must all be set; missing [a b]
+Usage:
+  testcmd [flags]
+  testcmd [command]
+
+Available Commands:
+  completion  Generate the autocompletion script for the specified shell
+  help        Help about any command
+  subcmd      
+
+Flags:
+      --a string   
+      --b string   
+      --c string   
+      --d string   
+      --e string   
+      --f string   
+      --g string   
+  -h, --help       help for testcmd
+
+Use "testcmd [command] --help" for more information about a command.
+
+Error: at least one of the flags in the group [a b] is required
+Usage:
+  testcmd [flags]
+  testcmd [command]
+
+Available Commands:
+  completion  Generate the autocompletion script for the specified shell
+  help        Help about any command
+  subcmd      
+
+Flags:
+      --a string   
+      --b string   
+      --c string   
+      --d string   
+      --e string   
+      --f string   
+      --g string   
+  -h, --help       help for testcmd
+
+Use "testcmd [command] --help" for more information about a command.
+
+Error: if any flags in the group [a b c] are set none of the others can be; [a c] were all set
+Usage:
+  testcmd [flags]
+  testcmd [command]
+
+Available Commands:
+  completion  Generate the autocompletion script for the specified shell
+  help        Help about any command
+  subcmd      
+
+Flags:
+      --a string   
+      --b string   
+      --c string   
+      --d string   
+      --e string   
+      --f string   
+      --g string   
+  -h, --help       help for testcmd
+
+Use "testcmd [command] --help" for more information about a command.
+
+Error: if any flags in the group [a b] are set they must all be set; missing [b]
+Usage:
+  testcmd [flags]
+  testcmd [command]
+
+Available Commands:
+  completion  Generate the autocompletion script for the specified shell
+  help        Help about any command
+  subcmd      
+
+Flags:
+      --a string   
+      --b string   
+      --c string   
+      --d string   
+      --e string   
+      --f string   
+      --g string   
+  -h, --help       help for testcmd
+
+Use "testcmd [command] --help" for more information about a command.
+
+Error: at least one of the flags in the group [a b] is required
+Usage:
+  testcmd [flags]
+  testcmd [command]
+
+Available Commands:
+  completion  Generate the autocompletion script for the specified shell
+  help        Help about any command
+  subcmd      
+
+Flags:
+      --a string   
+      --b string   
+      --c string   
+      --d string   
+      --e string   
+      --f string   
+      --g string   
+  -h, --help       help for testcmd
+
+Use "testcmd [command] --help" for more information about a command.
+
+Error: if any flags in the group [a b] are set none of the others can be; [a b] were all set
+Usage:
+  testcmd [flags]
+  testcmd [command]
+
+Available Commands:
+  completion  Generate the autocompletion script for the specified shell
+  help        Help about any command
+  subcmd      
+
+Flags:
+      --a string   
+      --b string   
+      --c string   
+      --d string   
+      --e string   
+      --f string   
+      --g string   
+  -h, --help       help for testcmd
+
+Use "testcmd [command] --help" for more information about a command.
+
+Error: if any flags in the group [a e] are set they must all be set; missing [e]
+Usage:
+  testcmd [flags]
+  testcmd [command]
+
+Available Commands:
+  completion  Generate the autocompletion script for the specified shell
+  help        Help about any command
+  subcmd      
+
+Flags:
+      --a string   
+      --b string   
+      --c string   
+      --d string   
+      --e string   
+      --f string   
+      --g string   
+  -h, --help       help for testcmd
+
+Use "testcmd [command] --help" for more information about a command.
+
+Error: at least one of the flags in the group [a b] is required
+Usage:
+  testcmd [flags]
+  testcmd [command]
+
+Available Commands:
+  completion  Generate the autocompletion script for the specified shell
+  help        Help about any command
+  subcmd      
+
+Flags:
+      --a string   
+      --b string   
+      --c string   
+      --d string   
+      --e string   
+      --f string   
+      --g string   
+  -h, --help       help for testcmd
+
+Use "testcmd [command] --help" for more information about a command.
+
+Error: if any flags in the group [f g] are set none of the others can be; [f g] were all set
+Usage:
+  testcmd [flags]
+  testcmd [command]
+
+Available Commands:
+  completion  Generate the autocompletion script for the specified shell
+  help        Help about any command
+  subcmd      
+
+Flags:
+      --a string   
+      --b string   
+      --c string   
+      --d string   
+      --e string   
+      --f string   
+      --g string   
+  -h, --help       help for testcmd
+
+Use "testcmd [command] --help" for more information about a command.
+
+Error: at least one of the flags in the group [e subonly] is required
+Usage:
+  testcmd subcmd [flags]
+
+Flags:
+  -h, --help             help for subcmd
+      --subonly string
+
+Global Flags:
+      --e string   
+      --f string   
+      --g string
+
+Error: if any flags in the group [e subonly] are set none of the others can be; [e subonly] were all set
+Usage:
+  testcmd subcmd [flags]
+
+Flags:
+  -h, --help             help for subcmd
+      --subonly string
+
+Global Flags:
+      --e string   
+      --f string   
+      --g string
+
+FAIL
+FAIL	github.com/spf13/cobra	1.207s
+ok  	github.com/spf13/cobra/doc	0.423s
+FAIL

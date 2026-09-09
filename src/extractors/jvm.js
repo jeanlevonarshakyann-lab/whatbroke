@@ -1,3 +1,4 @@
+const SUREFIRE_RE = /^\[ERROR\]\s{2,}([A-Z]\w*)\.(\w+):(\d+)\s+(.+)$/;
 const MAVEN_RE = /^\[ERROR\]\s+(.+?):\[(\d+),(\d+)\]\s+(.+)$/;
 const GRADLE_RE = /^(?:e: )?(.+?):(\d+):(\d+):\s+(.+)$/;
 const JAVA_RE = /^(.+?\.java):(\d+):\s+(?:error|warning):\s+(.+)$/;
@@ -34,12 +35,46 @@ export default {
       failures.push({ ...match, title: "compile error" });
     }
     if (!failures.length) {
-      const testFailure = s.match(/^\[ERROR\]\s+Tests run:.*?(?:Failures|Errors):\s*(\d+)/m);
-      if (testFailure) failures.push({ title: "test failure", message: testFailure[0].replace(/^\[ERROR\]\s+/, "") });
+      // Surefire lists each failed test once, compactly:
+      //   [ERROR]   ClassTest.methodName:1055 expected:<...> but was:<...>
+      // That single line carries the test, its line, and the assertion. Reporting
+      // only "Tests run: 164, Failures: 1" back is a counter, not a diagnosis.
+      for (const l of s.split("\n")) {
+        const m = l.trim().match(SUREFIRE_RE);
+        if (!m) continue;
+        failures.push({
+          file: `${m[1]}.java`, line: +m[3],
+          title: `${m[1]}.${m[2]}`,
+          message: m[4].trim(),
+        });
+      }
+      // A build script that fails to evaluate - wrong Gradle version, bad plugin -
+      // names its file, its line, and the cause under "* What went wrong:". Without
+      // this the whole run produced no output at all.
+      if (!failures.length) {
+        const where = s.match(/^(?:Build file|Script|Settings file)\s+'(.+?)'\s+line:\s*(\d+)/m);
+        const wrong = s.match(/^\* What went wrong:\s*\n([\s\S]*?)(?=\n\* |\n\s*BUILD FAILED|(?![\s\S]))/m);
+        if (wrong) {
+          const detail = wrong[1].split("\n").map((l) => l.trim())
+            .filter(Boolean).map((l) => l.replace(/^>\s*/, "")).slice(0, 3);
+          failures.push({
+            file: where?.[1], line: where ? +where[2] : undefined,
+            title: "build script", message: detail.join("\n"),
+          });
+        }
+      }
+      if (!failures.length) {
+        const testFailure = s.match(/^\[ERROR\]\s+Tests run:.*?(?:Failures|Errors):\s*(\d+)/m);
+        if (testFailure) failures.push({ title: "test failure", message: testFailure[0].replace(/^\[ERROR\]\s+/, "") });
+      }
     }
     if (!failures.length) return null;
     const isGradle = /^> Task .+ FAILED$/m.test(s) || /^FAILURE: Build failed/m.test(s);
-    const summary = isGradle ? "build failed" : "build failed";
+    // Surefire prints a "Tests run:" line per class and one for the whole run.
+    // The last one is the run total; the first is whichever class failed first.
+    const totals = [...s.matchAll(/^\[ERROR\]\s+Tests run:\s*(.+?)(?:,\s*Time elapsed.*)?$/gm)].at(-1);
+    const isTestRun = failures.some((f) => f.title?.includes(".") && /\.java$/.test(f.file ?? ""));
+    const summary = totals && isTestRun ? `Tests run: ${totals[1]}` : "build failed";
     return { tool: isGradle ? "gradle" : "maven", summary, failures };
   },
 };

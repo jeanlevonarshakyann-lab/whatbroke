@@ -1,0 +1,43 @@
+(fail) path-to-regexp > pathToRegexp errors > should contain the error line [3.10ms]
+269 |   describe.each(MATCH_TESTS)(
+270 |     "match $path with $options",
+271 |     ({ path, options, tests }) => {
+272 |       it.each(tests)("should match $input", ({ input, expected }) => {
+273 |         const fn = match(path, options);
+274 |         expect(fn(input)).toEqual(expected);
+                                ^
+error: expect(received).toEqual(expected)
+
+- {
+-   "params": {},
+-   "path": "/",
+- }
++ false
+
+- Expected  - 4
++ Received  + 1
+
+      at <anonymous> (/home/dev/path-to-regexp/src/index.spec.ts:274:27)
+(fail) path-to-regexp > match / with $options > should match / [3.49ms]
+269 |   describe.each(MATCH_TESTS)(
+270 |     "match $path with $options",
+271 |     ({ path, options, tests }) => {
+272 |       it.each(tests)("should match $input", ({ input, expected }) => {
+273 |         const fn = match(path, options);
+274 |         expect(fn(input)).toEqual(expected);
+                                ^
+error: expect(received).toEqual(expected)
+
+- {
+-   "params": {},
+-   "path": "/test",
+- }
++ false
+
+- Expected  - 4
++ Received  + 1
+
+      at <anonymous> (/home/dev/path-to-regexp/src/index.spec.ts:274:27)
+ 191 pass
+ 192 fail
+Ran 383 tests across 1 file. [145.00ms]
