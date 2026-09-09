@@ -2,6 +2,16 @@
 
 ## Unreleased
 
+- Fixed: a `go run` panic produced no diagnosis at all. Its output has no test tally and
+  no `--- FAIL` line, so nothing in the detector fired.
+- Fixed: a Node syntax error reported a location inside `node:internal/modules/…` rather
+  than the file with the syntax error. When every stack frame is the runtime's own, the
+  header above the caret is where the real location is.
+- Fixed: when even that header is a runtime file, no location is reported at all —
+  pointing at `node:internal/modules/esm/resolve` reads as though the bug were in node.
+- Fixed: ESM reports paths as `file://` URLs, so source context could never be read for
+  a module and the location was printed as a URL.
+
 - Fixed: a plain `cargo run` panic produced no diagnosis at all — the most common Rust
   failure there is. The panic pattern is matched line by line and so carries no `m`
   flag, which meant using it for detection only ever tested the first line of the log.

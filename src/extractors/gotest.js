@@ -1,4 +1,5 @@
 const FAIL_RE = /^[^\S\n]*--- (FAIL|SKIP): (\S+)/;
+const PANIC_RE = /^panic: (.+?)(?:[^\S\n]\[recovered.*\])?$/m;
 const LOC_RE = /^[^\S\n]+([\w./-]+\.go):(\d+):[^\S\n]*(.*)$/;
 const BUILD_RE = /^(?:\.\/)?([\w./-]+\.go):(\d+):(\d+): (.+)$/;
 const BUILD_ANY = /^(?:\.\/)?[\w./-]+\.go:\d+:\d+: /m;   // same, but scans a whole blob
@@ -10,7 +11,11 @@ export default {
   category: "compile",
   commands: ["go"],
   detect: (s) =>
-    /^[^\S\n]*--- FAIL: /m.test(s) || /^(ok|FAIL|---)[^\S\n]+\S+\s/m.test(s) || BUILD_ANY.test(s),
+    /^[^\S\n]*--- FAIL: /m.test(s) || /^(ok|FAIL|---)[^\S\n]+\S+\s/m.test(s) || BUILD_ANY.test(s) ||
+    // A binary that panics outside a test run has none of the above: no test tally, no
+    // --- FAIL line, nothing but the panic and its goroutine dump. `go run` produces
+    // exactly that, and it is the commonest way a Go program fails.
+    (PANIC_RE.test(s) && /^goroutine \d+ \[/m.test(s)),
 
   extract(s) {
     const lines = s.split("\n");
@@ -71,6 +76,24 @@ export default {
       }
       if (!msg.length && !file) continue;
       failures.push({ file, line, title: name, subject: name, category: "test", severity: "error", message: msg.join("\n") });
+    }
+
+    // A panic with no test around it: the goroutine dump carries the location, and the
+    // first frame that is not the runtime is the one in your code.
+    if (!failures.length) {
+      for (let i = 0; i < lines.length; i++) {
+        const pm = lines[i].match(/^panic: (.+?)(?:[^\S\n]\[recovered.*\])?$/);
+        if (!pm) continue;
+        let file, line;
+        for (let k = i + 1; k < lines.length; k++) {
+          const fm = lines[k].match(/^\t(.+?):(\d+)(?:[^\S\n]|$)/);
+          if (fm && !STDLIB.test(fm[1])) { file = fm[1]; line = +fm[2]; break; }
+        }
+        failures.push({ file, line, title: "panic", label: "panic", category: "runtime",
+          severity: "error", message: pm[1] });
+        break;
+      }
+      if (failures.length) return { tool: "go", summary: "panic", failures };
     }
 
     // count what we actually report: a parent of subtests prints its own
