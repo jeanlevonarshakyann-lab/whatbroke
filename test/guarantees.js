@@ -51,7 +51,11 @@ test("the exit code is the command's own, in every output mode", () => {
 });
 
 test("a signal becomes the shell's code for that signal", () => {
-  for (const [signal, want] of [["SIGKILL", 137], ["SIGTERM", 143]]) {
+  // Windows has no POSIX signals: a killed process reports 1, not 128 + signal number.
+  // The guarantee is that whatbroke passes on whatever the platform gives it, not that
+  // it invents a Unix convention where none exists.
+  const windows = process.platform === "win32";
+  for (const [signal, want] of [["SIGKILL", windows ? 1 : 137], ["SIGTERM", windows ? 1 : 143]]) {
     for (const mode of MODES) {
       const r = run([...mode, "node", "-e", `process.kill(process.pid, "${signal}")`]);
       assert.equal(r.status, want, `${signal} under ${JSON.stringify(mode)}`);
