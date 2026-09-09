@@ -54,6 +54,9 @@ export const esbuild = {
 // Vite (and rollup/rolldown under it) leads with a bracketed code and draws the
 // location in a box:   ╭─[ src/clean.js:1:22 ]
 const VITE_DIAG = /^\[([A-Z][A-Z0-9_]+)\][ \t]*(.*)$/;
+// `[INFO]`, `[WARN]`, `[DEBUG]` are what every other tool in the log is printing, and
+// they match a rollup code exactly. Build logs are full of them.
+const LOG_LEVEL = /^(?:INFO|WARN|WARNING|DEBUG|TRACE|NOTICE|ERROR|FATAL|LOG)$/;
 const VITE_LOC = /^[ \t]*╭─+\[[ \t]*(\S.*?):(\d+):(\d+)[ \t]*\]/;
 const VITE_SRC = /^[ \t]*\d+[ \t]*│[ \t]?(.*)$/;
 
@@ -68,9 +71,12 @@ export const vite = {
   extract(s) {
     const lines = s.split("\n");
     const failures = [];
-    for (let i = 0; i < lines.length; i++) {
+    // Only the lines after vite says it failed are diagnostics. Everything above is the
+    // build's own chatter, and some of it is bracketed exactly like a rollup code.
+    const start = lines.findIndex((l) => /^error during build:/.test(l) || /^Build failed with \d+ error/.test(l));
+    for (let i = start < 0 ? 0 : start; i < lines.length; i++) {
       const d = lines[i].match(VITE_DIAG);
-      if (!d) continue;
+      if (!d || LOG_LEVEL.test(d[1])) continue;
       let file, line, col, stmt;
       for (let j = i + 1; j < lines.length && j <= i + 3; j++) {
         const loc = lines[j].match(VITE_LOC);
