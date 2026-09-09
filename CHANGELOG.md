@@ -2,6 +2,16 @@
 
 ## Unreleased
 
+- Fixed: PHPUnit heads an escaped exception "There was 1 error", not "1 failure", and
+  only the failure wording was read — so an uncaught exception in a test, at least as
+  common as a failed assertion, fell through to the guess as three errors for one
+  failure. Its tally also reported only failures, saying "0 failures" over a run that
+  errored.
+- Fixed: a PHPUnit test file that throws while loading produced no diagnosis at all.
+- Fixed: an RSpec file that raises while loading is reported as prose above the tally
+  rather than as a numbered example, and was not read. Its tally begins "0 examples,
+  0 failures", which alone reads like success.
+
 - Fixed: a vitest suite that throws before declaring a test is listed under "Failed
   Suites" with the file in brackets rather than a test name after a chevron, and only
   the chevron form was read — so a file that will not even import fell through to the
