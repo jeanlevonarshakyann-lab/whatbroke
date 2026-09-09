@@ -293,6 +293,43 @@ Source context is read from the file on disk. If the file has changed since the 
 ran — you edited it, or you piped in saved output — whatbroke says so and shows the line
 the tool itself reported, rather than confidently pointing a caret at the wrong code.
 
+## What changed since last time
+
+`--since-last` marks the causes that were not there the last time you ran the same
+command, so a wall of red you have already read does not look the same as a wall that
+just grew.
+
+```console
+$ whatbroke --since-last pytest
+
+  ✗ 3 failed, 2 passed in 0.01s
+    1 new since your last run
+    1 from that run is no longer reported
+
+  test_shop.py:7  test_expired_token  new
+    KeyError: 'aud'
+```
+
+A cause is identified by the same fingerprint the grouping uses, so it survives moving
+to another file, another line, or another position in the output — and two different
+bugs never collapse into one.
+
+Runs only ever compare against runs of **the same command, for the same tool, in the
+same directory**. `pytest tests/unit` and `pytest tests/api` do not cover the same
+code, so a cause missing from one is not a cause that got fixed; they keep separate
+histories and never meet.
+
+The two claims are not equally cheap. "New" is a statement about what is present, and
+it is safe. "No longer reported" is a statement about *absence*, and absence is only
+evidence when the run actually got far enough to speak — so it is withheld whenever the
+capture was truncated or the command never started. For the same reason a run like that
+is never recorded: storing its short list would make the next run announce everything it
+lost as newly appeared.
+
+Nothing about tracking can change the outcome of a run. If the cache cannot be read or
+written, whatbroke says nothing about history and prints the same diagnosis it always
+would.
+
 ## Safety
 
 whatbroke reads source context from disk to show you the lines around a failure.
@@ -320,9 +357,12 @@ Anyone with that access could simply put the content in a real file instead.
 It runs your command without a shell (`spawn`, not `sh -c`), so nothing in a filename
 or argument is expanded. It has zero dependencies and makes no network calls.
 
-It writes to disk in exactly one case: when `GITHUB_STEP_SUMMARY` is set — which
-GitHub Actions sets for you — `--format github` appends a run summary to that file.
-Nowhere else, and never outside CI unless you set that variable yourself.
+It writes to disk in exactly two cases, both of which you have to ask for. When
+`GITHUB_STEP_SUMMARY` is set — which GitHub Actions sets for you — `--format github`
+appends a run summary to that file. And `--since-last` records a list of fingerprints
+under your OS cache directory (`WHATBROKE_CACHE_DIR` overrides it). Never inside your
+project, never anywhere else, and never at all unless you pass the flag or set the
+variable.
 
 ## Why it isn't an LLM
 

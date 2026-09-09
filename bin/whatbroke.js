@@ -4,6 +4,8 @@ import { appendFileSync } from "node:fs";
 import { createRequire } from "node:module";
 import { constants as osConstants } from "node:os";
 import { analyse } from "../src/index.js";
+import { causeId } from "../src/cluster.js";
+import { runIdentity, loadRun, saveRun, compare } from "../src/history.js";
 import { render, setColor } from "../src/render.js";
 import { normTitle } from "../src/cluster.js";
 const { version } = createRequire(import.meta.url)("../package.json");
@@ -19,6 +21,7 @@ const HELP = `whatbroke — you ran a command, it printed 400 lines. these are t
   -a, --all     don't cap the number of failures shown
       --no-source  don't read source files for context
       --no-cluster don't group failures that share a likely cause
+      --since-last mark causes that are new since the last tracked run
       --max-bytes N  cap captured command output (default: 10485760)
   -j, --json    machine-readable output (same as --format json)
   -g, --github-actions  clickable GitHub Actions annotations (same as --format github)
@@ -30,7 +33,7 @@ const HELP = `whatbroke — you ran a command, it printed 400 lines. these are t
 const flags = new Set();
 const allowedFlags = new Set([
   "-q", "--quiet", "-a", "--all", "-j", "--json", "-g", "--github-actions",
-  "-v", "--version", "-h", "--help", "--no-source", "--no-cluster",
+  "-v", "--version", "-h", "--help", "--no-source", "--no-cluster", "--since-last",
 ]);
 let format;
 let maxBytes = 10 * 1024 * 1024;
@@ -83,6 +86,7 @@ const json = format === "json";
 const githubActions = format === "github";
 const noSource = has("--no-source");
 const noCluster = has("--no-cluster");
+const sinceLast = has("--since-last");
 // JSON stdout must remain valid even when the wrapped command writes to stdout.
 const quiet = has("-q", "--quiet") || json;
 const opts = { max: has("-a", "--all") ? Infinity : 5 };
@@ -235,6 +239,26 @@ function writeFallback(fallback, truncated, executionError) {
   }
 }
 
+/** Compare this run's causes with the last recorded one, then record this one.
+ *
+ *  Only a run that finished and parsed is recorded. A truncated capture or a command
+ *  that never started holds an incomplete list of causes, and storing it would make
+ *  the NEXT run announce everything it lost as newly appeared. */
+function track(r, truncated, executionError) {
+  if (!r) return { compared: false, reason: "nothing-parsed", fresh: [], gone: null };
+  const ids = [...new Set((r.clusters ?? r.failures.map((_, i) => ({ exemplar: i })))
+    .map((u) => causeId(r.failures[u.exemplar], r.tool)))];
+  const identity = runIdentity({ cwd: process.cwd(), tool: r.tool, argv });
+  const trustworthy = !truncated && !executionError;
+  const result = compare(loadRun(identity), ids, { truncated, trustworthy });
+  if (trustworthy) {
+    result.recorded = saveRun(identity, { ranAt: new Date().toISOString(), tool: r.tool, causes: ids });
+  } else {
+    result.recorded = false;
+  }
+  return result;
+}
+
 let reported = false;
 function report(raw, code, truncated = false, executionError = null) {
   // Spawn errors are followed by a close event. Emit exactly one result while
@@ -242,6 +266,7 @@ function report(raw, code, truncated = false, executionError = null) {
   if (reported) return;
   reported = true;
   const r = analyse(raw, { cluster: !noCluster });
+  const since = sinceLast ? track(r, truncated, executionError) : null;
   const fallback = !r && (code !== 0 || (inputMode === "pipe" && raw.length > 0)) ? {
     reason: executionError ? "spawn-error" : raw.length ? "unrecognized-output" : "no-output",
     message: executionError ? `Command could not be started (exit code ${code}).`
@@ -264,6 +289,7 @@ function report(raw, code, truncated = false, executionError = null) {
       fallback,
       truncated,
       error: executionError,
+      since,
       failures: r?.failures ?? [],
     };
     process.stdout.write(JSON.stringify(payload, null, 2) + "\n");
@@ -273,12 +299,13 @@ function report(raw, code, truncated = false, executionError = null) {
     const causes = (r.clusters ?? []).filter((c) => c.reported);
     const sites = causes.reduce((n, c) => n + c.size, 0);
     const lead = [r.summary, causes.length &&
-      `${causes.length} likely cause${causes.length > 1 ? "s" : ""}, ${sites} site${sites > 1 ? "s" : ""}`]
+      `${causes.length} likely cause${causes.length > 1 ? "s" : ""}, ${sites} site${sites > 1 ? "s" : ""}`,
+      since?.compared && `${since.fresh.length} new since the last tracked run`]
       .filter(Boolean).join(" \u2014 ");
     if (lead) process.stdout.write(`::notice title=whatbroke::${escapeData(lead)}\n`);
     writeGithubSummary(r, truncated);
   } else if (r) {
-    process.stdout.write("\n" + render(r, { ...opts, source: !noSource, cluster: !noCluster }));
+    process.stdout.write("\n" + render(r, { ...opts, source: !noSource, cluster: !noCluster, since }));
     if (truncated) {
       const warning = "  ! output capture limit reached; increase --max-bytes for complete diagnostics";
       process.stdout.write(`\n${process.stdout.isTTY ? `\x1b[33m${warning}\x1b[0m` : warning}\n`);

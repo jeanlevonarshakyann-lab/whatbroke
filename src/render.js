@@ -1,6 +1,6 @@
 import { relPath } from "./util.js";
 import { snippet, contextFor } from "./snippet.js";
-import { normTitle } from "./cluster.js";
+import { normTitle, causeId } from "./cluster.js";
 
 // A failure message line longer than this is padding - pytest lists every
 // available fixture, rustc lists every trait impl. Keep the head, drop the rest.
@@ -63,7 +63,7 @@ const windowedCol = (col, start) =>
 
 const SITES_SHOWN = 3;   // how many extra sites to name before "+ N more"
 
-export function render(result, { max = 5, cwd = true, source = true, cluster = true } = {}) {
+export function render(result, { max = 5, cwd = true, source = true, cluster = true, since = null } = {}) {
   const out = [];
   const fails = result.failures;
   let lastSnip = null;   // don't reprint the same source region twice in a row
@@ -89,6 +89,19 @@ export function render(result, { max = 5, cwd = true, source = true, cluster = t
     out.push(`    ${C.yellow}${reported.length} likely cause${reported.length > 1 ? "s" : ""}, ` +
              `${sites} site${sites > 1 ? "s" : ""}${others ? ` (+${others} other${others > 1 ? "s" : ""})` : ""}${C.reset}`);
   }
+  if (since?.compared) {
+    const n = since.fresh.length;
+    // "nothing new" is worth a line of its own: the same wall of red as yesterday,
+    // with nothing added, is a different situation from a wall that just grew.
+    out.push(n
+      ? `    ${C.yellow}${n} new since your last run${C.reset}`
+      : `    ${C.dim}nothing new since your last run${C.reset}`);
+    if (since.gone > 0) {
+      out.push(`    ${C.dim}${since.gone} from that run ${since.gone > 1 ? "are" : "is"} no longer reported${C.reset}`);
+    }
+  } else if (since && !since.compared && since.reason === "no-previous-run") {
+    out.push(`    ${C.dim}first tracked run — nothing to compare against yet${C.reset}`);
+  }
   if (result.others?.length) {
     const named = result.others.map((o) => `${o.tool} (${o.count})`).join(", ");
     out.push(`    ${C.yellow}this log also contains failures from ${named}${C.reset}`);
@@ -110,7 +123,9 @@ export function render(result, { max = 5, cwd = true, source = true, cluster = t
     const more = unit.reported
       ? `  ${C.yellow}${family ? `(${unit.size} cases)` : `(+${kin.length} more site${kin.length > 1 ? "s" : ""})`}${C.reset}`
       : "";
-    if (loc || title) out.push(`  ${loc}${title}${more}`);
+    const isNew = since?.compared && since.fresh.includes(causeId(f, result.tool))
+      ? `  ${C.bold}${C.yellow}new${C.reset}` : "";
+    if (loc || title) out.push(`  ${loc}${title}${more}${isNew}`);
 
     for (const m of String(f.message ?? "").split("\n")) {
       if (!m.trim()) continue;
