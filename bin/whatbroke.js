@@ -28,56 +28,54 @@ const HELP = `whatbroke — you ran a command, it printed 400 lines. these are t
 `;
 
 const flags = new Set();
+const allowedFlags = new Set([
+  "-q", "--quiet", "-a", "--all", "-j", "--json", "-g", "--github-actions",
+  "-v", "--version", "-h", "--help", "--no-source", "--no-cluster",
+]);
 let format;
 let maxBytes = 10 * 1024 * 1024;
 let parseError;
 while (argv.length && /^-/.test(argv[0])) {
   const a = argv.shift();
   if (a === "--") break;
-  if (a === "--max-bytes") {
-    const value = argv.shift();
+  if (a === "--max-bytes" || a.startsWith("--max-bytes=")) {
+    const value = a === "--max-bytes" ? argv.shift() : a.slice("--max-bytes=".length);
     maxBytes = Number(value);
-    if (!Number.isSafeInteger(maxBytes) || maxBytes < 1024) {
+    if (!/^\d+$/.test(value ?? "") || !Number.isSafeInteger(maxBytes) || maxBytes < 1024) {
       parseError = "--max-bytes must be an integer of at least 1024";
       break;
     }
     continue;
   }
-  if (a.startsWith("--max-bytes=")) {
-    maxBytes = Number(a.slice("--max-bytes=".length));
-    if (!Number.isSafeInteger(maxBytes) || maxBytes < 1024) {
-      parseError = "--max-bytes must be an integer of at least 1024";
-      break;
-    }
-    continue;
-  }
-  if (a === "--format") {
-    format = argv.shift();
+  if (a === "--format" || a.startsWith("--format=")) {
+    format = a === "--format" ? argv.shift() : a.slice("--format=".length);
     if (!format || format.startsWith("-")) {
       parseError = "--format requires terminal, json, or github";
       break;
     }
+    if (!["terminal", "json", "github"].includes(format)) {
+      parseError = `unknown format "${format}" (expected terminal, json, or github)`;
+      break;
+    }
     continue;
   }
-  if (a.startsWith("--format=")) {
-    format = a.slice("--format=".length);
-    continue;
+  const expanded = a.startsWith("--") || a === "-" ? [a] : a.slice(1).split("").map((c) => "-" + c);
+  for (const f of expanded) {
+    if (!allowedFlags.has(f)) { parseError = `unknown option "${f}"`; break; }
+    flags.add(f);
   }
-  for (const f of a.startsWith("--") ? [a] : a.slice(1).split("").map((c) => "-" + c)) flags.add(f);
+  if (parseError) break;
 }
 const has = (...names) => names.some((n) => flags.has(n));
-if (has("-h", "--help")) { process.stdout.write(HELP); process.exit(0); }
-if (has("-v", "--version")) { process.stdout.write(`${version}\n`); process.exit(0); }
 if (parseError) {
   process.stderr.write(`whatbroke: ${parseError}\n`);
   process.exit(2);
 }
 format ??= has("-j", "--json") ? "json" : has("-g", "--github-actions") ? "github" : "terminal";
-if (!["terminal", "json", "github"].includes(format)) {
-  process.stderr.write(`whatbroke: unknown format "${format}" (expected terminal, json, or github)\n`);
-  process.exit(2);
-}
+if (has("-h", "--help")) { process.stdout.write(HELP); process.exit(0); }
+if (has("-v", "--version")) { process.stdout.write(`${version}\n`); process.exit(0); }
 
+const inputMode = argv.length ? "command" : "pipe";
 const color = !process.env.NO_COLOR && process.stdout.isTTY;
 setColor(color);
 const json = format === "json";
@@ -113,6 +111,13 @@ function annotation(f) {
 // causes exactly like the terminal does. Annotations stay one per failure - each is a
 // marker on a line in the diff view, and dropping one hides a line - so nothing here
 // removes information, it only decides what sits above the fold.
+function appendGithubSummary(text) {
+  const target = process.env.GITHUB_STEP_SUMMARY;
+  if (!target) return;
+  try { appendFileSync(target, text); }
+  catch (error) { process.stderr.write(`whatbroke: could not write GitHub summary: ${error.message}\n`); }
+}
+
 function writeGithubSummary(result, truncated) {
   const target = process.env.GITHUB_STEP_SUMMARY;
   if (!target || !result) return;
@@ -172,11 +177,60 @@ function writeGithubSummary(result, truncated) {
   }
 
   if (truncated) lines.push("", "> Output capture limit reached. Increase `--max-bytes` for complete diagnostics.");
-  appendFileSync(target, `${lines.join("\n")}\n`);
+  appendGithubSummary(`${lines.join("\n")}\n`);
 }
 
+const truncationNotice = "output capture limit reached; captured output is incomplete (increase --max-bytes)";
+
+function writeFallback(fallback, truncated, executionError) {
+  const piped = inputMode === "pipe";
+  const explanation = executionError ?? "whatbroke could not identify a diagnostic.";
+  const raw = fallback.rawOutput;
+  if (githubActions) {
+    // Unknown upstream status is a notice, not an invented failed command.
+    const level = piped ? "notice" : "error";
+    process.stdout.write(`::${level} title=whatbroke::${escapeData(fallback.message + "\n" + explanation)}\n`);
+    if (raw && (piped || quiet)) {
+      // Escaped annotation data keeps raw workflow-command syntax inert.
+      process.stdout.write(`::notice title=whatbroke captured output::${escapeData(raw)}\n`);
+    } else if (!raw) {
+      process.stdout.write("::notice title=whatbroke::No output was captured.\n");
+    }
+    if (truncated) process.stdout.write(`::warning title=whatbroke::${truncationNotice}\n`);
+
+    const context = executionError ?? (raw || "No output was captured.");
+    // A log may itself contain fenced Markdown. Use a longer fence so its text
+    // stays inside the code block in the job summary.
+    let fenceLength = 3;
+    for (const match of context.matchAll(/`+/g)) fenceLength = Math.max(fenceLength, match[0].length + 1);
+    const fence = "`".repeat(fenceLength);
+    appendGithubSummary(["## whatbroke", "", fallback.message, "",
+      executionError ? "Launch error:" : "Captured output:", "", fence, context, fence, "",
+      ...(truncated ? [`> ${truncationNotice}`, ""] : []),
+    ].join("\n"));
+  } else {
+    process.stdout.write(`\n${fallback.message}\n${explanation}\n`);
+    if (!raw) process.stdout.write("No output was captured.\n");
+    else if (piped || quiet) process.stdout.write(`\nCaptured output:\n${raw}${raw.endsWith("\n") ? "" : "\n"}`);
+    else process.stdout.write("Raw command output was streamed above.\n");
+    if (truncated) process.stdout.write(`\nwhatbroke: ${truncationNotice}\n`);
+  }
+}
+
+let reported = false;
 function report(raw, code, truncated = false, executionError = null) {
+  // Spawn errors are followed by a close event. Emit exactly one result while
+  // allowing stdout to drain instead of cutting off a large JSON/raw fallback.
+  if (reported) return;
+  reported = true;
   const r = analyse(raw, { cluster: !noCluster });
+  const fallback = !r && (code !== 0 || (inputMode === "pipe" && raw.length > 0)) ? {
+    reason: executionError ? "spawn-error" : raw.length ? "unrecognized-output" : "no-output",
+    message: executionError ? `Command could not be started (exit code ${code}).`
+      : inputMode === "pipe" ? "Unrecognized input. Upstream command exit status is unknown."
+      : `Command failed with exit code ${code}.`,
+    rawOutput: raw,
+  } : null;
   if (json) {
     // Keep the machine-readable envelope stable even when no parser matches.
     const payload = {
@@ -187,6 +241,9 @@ function report(raw, code, truncated = false, executionError = null) {
       clusters: r?.clusters ?? null,
       others: r?.others ?? null,
       exitCode: code,
+      inputMode,
+      commandExitCode: inputMode === "command" && !executionError ? code : null,
+      fallback,
       truncated,
       error: executionError,
       failures: r?.failures ?? [],
@@ -208,13 +265,8 @@ function report(raw, code, truncated = false, executionError = null) {
       const warning = "  ! output capture limit reached; increase --max-bytes for complete diagnostics";
       process.stdout.write(`\n${process.stdout.isTTY ? `\x1b[33m${warning}\x1b[0m` : warning}\n`);
     }
-  } else if (quiet) {
-    process.stdout.write(raw);
-    if (truncated) {
-      process.stdout.write("\nwhatbroke: output capture limit reached; increase --max-bytes for complete diagnostics\n");
-    }
-  }
-  process.exit(code);
+  } else if (fallback) writeFallback(fallback, truncated, executionError);
+  process.exitCode = code;
 }
 
 if (argv.length === 0) {
@@ -266,7 +318,7 @@ if (argv.length === 0) {
     report("", 127, false, e.message);
   });
   child.on("close", (code, signal) => {
-    if (code === 0 && !json) process.exit(0);
+    if (code === 0 && !json) { process.exitCode = 0; return; }
     const signalCode = signal ? 128 + (osConstants.signals?.[signal] ?? 1) : null;
     report(buf, code ?? signalCode ?? 1, truncated);
   });

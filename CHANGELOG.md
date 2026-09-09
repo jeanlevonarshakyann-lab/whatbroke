@@ -2,6 +2,9 @@
 
 ## Unreleased
 
+- Fixed: unrecognized piped output is preserved, and failed commands without parsed diagnostics report their exit status and available raw context in terminal, JSON, and GitHub Actions modes.
+- Added version-1 JSON fields `inputMode`, `commandExitCode`, and `fallback` to distinguish unknown upstream status from success and expose unrecognized captured output.
+- Fixed: invalid CLI options and values exit `2` before the command starts; large fallback output drains completely, and GitHub summary-write errors no longer replace the command's exit code.
 - Fixed: standalone javac diagnostics route to the JVM parser, and Gradle compiler warnings are excluded from failures.
 - Fixed: .NET diagnostics no longer require a restore banner; mypy detection preserves `.py` and `.pyi` diagnostics with optional columns and no summary.
 - Fixed: `--no-source` retains statements captured in the log without reading source files.

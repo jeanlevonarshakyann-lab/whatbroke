@@ -1408,6 +1408,10 @@ try {
   pass++;
 } catch (e) { console.log(`  FAIL version flag\n       ${e.message}`); fail++; }
 
+const cliResults = await (await import("./cli.js")).runCliTests();
+pass += cliResults.pass;
+fail += cliResults.fail;
+
 // every fixture must be covered
 const files = readdirSync(join(here, "fixtures"));
 const uncovered = files.filter((f) => !CASES.some((c) => c.file === f));
