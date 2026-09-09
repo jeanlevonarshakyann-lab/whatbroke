@@ -442,6 +442,21 @@ const CASES = [
         "npm's trailing advice is not the failure");
       assert.ok(!/^npm error/m.test(f.message), "the npm prefix is plumbing, not content");
     } },
+  { file: "bun_fail.txt", tool: "bun test", n: 2, check: (r) => {
+      // real `bun test` run of pillarjs/path-to-regexp. bun writes "error:" at the
+      // start of a line, which is exactly what the cargo parser looks for, so bun
+      // output was claimed by cargo and came back as two locationless errors.
+      assert.equal(r.summary, "192 fail, 191 pass");
+      const f = r.failures[0];
+      assert.match(f.file, /index\.spec\.ts$/);
+      assert.equal(f.line, 274);
+      assert.match(f.title, /^path-to-regexp > /);
+      assert.ok(!/\[[\d.]+ms\]/.test(f.title), "the timing is not part of the test name");
+      assert.match(f.message, /expect\(received\)\.toEqual\(expected\)/);
+      // bun echoes the source and a caret, and labels its diff with tallies
+      assert.ok(!/^\s*\d+\s*\|/m.test(f.message), "echoed source is not the message");
+      assert.ok(!/^[-+]\s*(Expected|Received)\s+[-+]\s*\d+$/m.test(f.message), "diff tallies kept");
+    } },
 ];
 
 let pass = 0, fail = 0;

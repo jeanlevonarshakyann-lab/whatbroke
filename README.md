@@ -162,6 +162,7 @@ them.
 | **pytest** | test name, `file:line`, the assertion, the `E` explanation |
 | **unittest** | same, with the deepest *your-code* frame — not the harness |
 | **Python tracebacks** | the frame in your code, not the 9 in site-packages |
+| **bun test** | test name, `file:line`, the matcher — not bun's echoed source |
 | **node --test** | test name, `file:line`, and the assertion out of TAP's YAML block |
 | **Node stack traces** | the error, the caret, your frames; `node:internal` hidden |
 | **jest** | test name, `file:line`, the matcher, expected vs received |
