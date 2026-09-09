@@ -2,6 +2,13 @@
 
 ## Unreleased
 
+- Fixed: ruff reported nothing at all for a file it could not parse. A syntax error is
+  reported without a rule code, and requiring one meant a run saying "Found 1 error."
+  came back with none — the ordinary case of running ruff over a file with a typo.
+- Fixed: ruff's summary said "1 errors".
+- Fixed: mypy reported a problem with its own invocation, such as an unreadable file, as
+  an unparsed guess.
+
 - Fixed: a `go run` panic produced no diagnosis at all. Its output has no test tally and
   no `--- FAIL` line, so nothing in the detector fired.
 - Fixed: a Node syntax error reported a location inside `node:internal/modules/…` rather

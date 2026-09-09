@@ -10,6 +10,20 @@ const fx = (n) => readFileSync(join(here, "fixtures", n), "utf8");
 const cli = join(here, "..", "bin", "whatbroke.js");
 
 const CASES = [
+  { file: "ruff_syntax_fail.txt", tool: "ruff", n: 1, check: (r) => {
+      // A file ruff cannot parse is reported without a rule code, so requiring one
+      // meant a run saying "Found 1 error." came back with none - the ordinary case of
+      // running ruff over a file with a typo in it.
+      assert.equal(r.failures[0].code, "invalid-syntax");
+      assert.equal(r.failures[0].file, "syn.py");
+      assert.equal(r.failures[0].line, 1);
+      assert.equal(r.summary, "1 error", "one error is not 1 errors");
+    } },
+  { file: "mypy_missing_fail.txt", tool: "mypy", n: 1, check: (r) => {
+      // mypy reports a problem with its own invocation with no file:line at all.
+      assert.match(r.failures[0].message, /Cannot read file 'nofile\.py'/);
+      assert.equal(r.failures[0].file, undefined);
+    } },
   // A program that crashes outside a test run. Both languages report it the same way -
   // a message, then a stack that is mostly the runtime's own machinery.
   { file: "gopanic_fail.txt", tool: "go", n: 1, check: (r) => {
