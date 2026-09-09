@@ -103,12 +103,15 @@ const escapeAnnotation = (value) => escapeData(value)
   .replace(/:/g, "%3A")
   .replace(/,/g, "%2C");
 
-function annotation(f) {
+function annotation(f, tool) {
   const params = [];
   if (f.file) params.push(`file=${escapeAnnotation(f.file)}`);
   if (f.line) params.push(`line=${f.line}`);
   if (f.col) params.push(`col=${f.col}`);
-  if (f.title) params.push(`title=${escapeAnnotation(f.title)}`);
+  // Name the producing tool when it is not the one that owns the log, so a reader can
+  // tell an eslint marker from a jest one at a glance.
+  const label = [tool, f.title].filter(Boolean).join(" ");
+  if (label) params.push(`title=${escapeAnnotation(label)}`);
   const message = escapeData(f.message ?? f.stmt ?? "Command failed");
   return `::error${params.length ? ` ${params.join(",")}` : ""}::${message}`;
 }
@@ -178,6 +181,17 @@ function writeGithubSummary(result, truncated) {
       `${fails[i].file ? ` ${code(at(fails[i]))}` : ""}: ${head(fails[i])}`);
     // A long ungrouped tail buries the causes above it. Fold it, never drop it: the
     // summary stays a complete account of everything that failed.
+    if (body.length > 10) lines.push(`<details><summary>${body.length} more</summary>`, "", ...body, "", "</details>", "");
+    else lines.push(...body, "");
+  }
+
+  // A second tool's failures are not a footnote. Give each one its own section rather
+  // than a count the reader has to go back to the raw log to act on.
+  for (const other of result.others ?? []) {
+    if (!other.failures?.length) continue;
+    lines.push(`### ${markdown(other.tool)} — ${plural(other.failures.length, "failure")}`, "");
+    const body = other.failures.map((f) => `- **${markdown(f.title || "failure")}**` +
+      `${f.file ? ` ${code(at(f))}` : ""}: ${head(f)}`);
     if (body.length > 10) lines.push(`<details><summary>${body.length} more</summary>`, "", ...body, "", "</details>", "");
     else lines.push(...body, "");
   }
@@ -295,7 +309,12 @@ function report(raw, code, truncated = false, executionError = null) {
     };
     process.stdout.write(JSON.stringify(payload, null, 2) + "\n");
   } else if (githubActions && r) {
+    // Every failure in the log gets a marker, including the ones a second tool found.
+    // A lint error on line 12 is no less real for arriving in the same log as the tests.
     for (const f of r.failures) process.stdout.write(`${annotation(f)}\n`);
+    for (const other of r.others ?? []) {
+      for (const f of other.failures ?? []) process.stdout.write(`${annotation(f, other.tool)}\n`);
+    }
     // the notice is the line shown at the top of the run - it says causes, not just count
     const causes = (r.clusters ?? []).filter((c) => c.reported);
     const sites = causes.reduce((n, c) => n + c.size, 0);

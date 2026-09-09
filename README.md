@@ -228,13 +228,31 @@ them.
 Unrecognised output is never silently swallowed — you get a labelled guess, or the raw text back.
 
 A CI job usually runs a linter, then a typechecker, then the tests, and pastes all of
-it into one log. Only one parser can own that output — but the others' failures are
-counted and named rather than dropped:
+it into one log. Only one parser can own that output, but every tool's failures are
+extracted and shown, each under the tool that found it:
 
 ```
-  ✗ 191 failed | 293 passed (484)
-    this log also contains failures from eslint (90), tsc (5)
+  ✗ 2 failed | 12 passed (14)
+    this log also contains failures from eslint (90), tsc (5), shown below
+
+  shop.test.js:3  invoice total
+    AssertionError: expected 1049 to be 1050
+
+  — eslint 90 problems (90 errors, 0 warnings)
+    5 likely causes, 52 sites
+
+  lib/adapters/fetch.js:133  eqeqeq  (22 cases)
+    Expected '!==' and instead saw '!='
 ```
+
+Each tool's failures are grouped using its own vocabulary, and in `--format github`
+every one of them gets an annotation, with the tool named when it is not the one that
+owns the log. In `--json`, `failures` still means what the winning tool reported —
+unchanged — and the rest arrive under `others`.
+
+The same diagnosis is never reported twice: unittest prints its failures *as* Python
+tracebacks, and that is one failure read two ways, not two failures. Two different tools
+flagging the same line for different reasons are both kept, because they are.
 
 CI stamps every line — GitHub Actions prefixes an ISO timestamp, and `gh run view --log`
 puts the job and step in front of that. Every parser here anchors on the start of a line,
