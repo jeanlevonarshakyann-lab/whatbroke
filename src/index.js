@@ -162,6 +162,7 @@ function parse(s, command) {
 // on purpose: "some lines that look like errors" must never outrank a parser reading its
 // own tool, however many lines it managed to scrape.
 const real = (hit) => !!hit && hit.extractor.name !== "generic" && hit.result.failures.length > 0;
+const anything = (hit) => !!hit && hit.result.failures.length > 0;
 
 /** Is the stripped parse better than the one we already have?
  *
@@ -176,11 +177,20 @@ const real = (hit) => !!hit && hit.extractor.name !== "generic" && hit.result.fa
  *  A strip that leaves the same tool reporting the same failures changed nothing except
  *  the paths inside them, which is data being mangled rather than a wrapper removed. */
 function better(candidate, cand, current) {
+  if (!anything(cand)) return false;
+  // A vetted shape is its own evidence: hand-written, and proven against the whole
+  // corpus to match nothing that is not a wrapper. It wins outright when it lets a real
+  // parser read the log, and it is still worth taking when neither reading is real - a
+  // guess made on prefixed text is strictly worse than the same guess made on clean
+  // text, and the prefix otherwise sits inside the message where it defeats the
+  // fallback's own de-duplication.
+  if (candidate.kind === "shape") return real(cand) || !real(current);
+  // Everything below is an automatically discovered candidate, held to a higher bar
+  // because it is as likely to be data as a wrapper.
   if (!real(cand)) return false;
   // A region candidate keeps only part of the log, so it must never displace a reading
   // of the whole. It is for the case where the whole says nothing worth having.
   if (candidate.kind === "region") return !real(current);
-  if (candidate.kind === "shape") return true;
   if (!real(current)) return true;
   if (cand.result.tool !== current.result.tool) return true;
   // Same tool, but more of the log readable once the prefix is gone. A parser can match

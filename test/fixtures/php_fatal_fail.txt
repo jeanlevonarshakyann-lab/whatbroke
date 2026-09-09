@@ -1,0 +1,14 @@
+PHP Warning:  Undefined variable $undefined in /home/dev/app/bad.php on line 2
+
+Warning: Undefined variable $undefined in /home/dev/app/bad.php on line 2
+PHP Fatal error:  Uncaught Error: Call to a member function method() on null in /home/dev/app/bad.php:2
+Stack trace:
+#0 /home/dev/app/bad.php(3): f()
+#1 {main}
+  thrown in /home/dev/app/bad.php on line 2
+
+Fatal error: Uncaught Error: Call to a member function method() on null in /home/dev/app/bad.php:2
+Stack trace:
+#0 /home/dev/app/bad.php(3): f()
+#1 {main}
+  thrown in /home/dev/app/bad.php on line 2

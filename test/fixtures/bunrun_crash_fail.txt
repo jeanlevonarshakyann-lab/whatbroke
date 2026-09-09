@@ -1,0 +1,7 @@
+1 | function boom(): never { throw new Error("bun runtime crash"); }
+                                       ^
+error: bun runtime crash
+      at boom (/home/dev/app/crash.ts:1:36)
+      at /home/dev/app/crash.ts:2:1
+
+Bun v1.3.14 (macOS arm64)

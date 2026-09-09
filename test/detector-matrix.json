@@ -9,8 +9,18 @@
       "generic"
     ],
     "shadow": {
-      "generic": 1
+      "generic": 2
     }
+  },
+  "bunrun_crash_fail.txt": {
+    "winner": "output",
+    "parser": "generic",
+    "failures": 1,
+    "claimants": [
+      "node",
+      "generic"
+    ],
+    "shadow": {}
   },
   "cargo_buildscript_fail.txt": {
     "winner": "cargo",
@@ -104,7 +114,7 @@
       "generic"
     ],
     "shadow": {
-      "generic": 5
+      "generic": 12
     }
   },
   "clang_fail.txt": {
@@ -128,7 +138,7 @@
       "generic"
     ],
     "shadow": {
-      "generic": 4
+      "generic": 8
     }
   },
   "deno_fail.txt": {
@@ -141,8 +151,18 @@
       "generic"
     ],
     "shadow": {
-      "generic": 3
+      "generic": 4
     }
+  },
+  "denorun_crash_fail.txt": {
+    "winner": "output",
+    "parser": "generic",
+    "failures": 1,
+    "claimants": [
+      "node",
+      "generic"
+    ],
+    "shadow": {}
   },
   "docker_buildkit_npm_fail.txt": {
     "winner": "npm",
@@ -181,7 +201,7 @@
       "generic"
     ],
     "shadow": {
-      "generic": 1
+      "generic": 8
     }
   },
   "esbuild_resolve_fail.txt": {
@@ -324,7 +344,7 @@
       "generic"
     ],
     "shadow": {
-      "generic": 2
+      "generic": 3
     }
   },
   "gosub_fail.txt": {
@@ -336,7 +356,7 @@
       "generic"
     ],
     "shadow": {
-      "generic": 2
+      "generic": 3
     }
   },
   "gotest_cluster_fail.txt": {
@@ -348,7 +368,7 @@
       "generic"
     ],
     "shadow": {
-      "generic": 8
+      "generic": 6
     }
   },
   "gotest_fail.txt": {
@@ -372,7 +392,7 @@
       "generic"
     ],
     "shadow": {
-      "generic": 3
+      "generic": 5
     }
   },
   "gradle_java_fail.txt": {
@@ -384,7 +404,7 @@
       "generic"
     ],
     "shadow": {
-      "generic": 3
+      "generic": 5
     }
   },
   "gradle_script_fail.txt": {
@@ -408,7 +428,7 @@
       "generic"
     ],
     "shadow": {
-      "generic": 4
+      "generic": 5
     }
   },
   "javac_fail.txt": {
@@ -579,7 +599,7 @@
       "generic"
     ],
     "shadow": {
-      "generic": 8
+      "generic": 12
     }
   },
   "node_eval.txt": {
@@ -638,7 +658,7 @@
       "generic"
     ],
     "shadow": {
-      "generic": 1
+      "generic": 2
     }
   },
   "nodetest_nested_fail.txt": {
@@ -650,7 +670,7 @@
       "generic"
     ],
     "shadow": {
-      "generic": 2
+      "generic": 5
     }
   },
   "npm_fail.txt": {
@@ -664,6 +684,15 @@
     "shadow": {}
   },
   "openssl_fail.txt": {
+    "winner": "output",
+    "parser": "generic",
+    "failures": 1,
+    "claimants": [
+      "generic"
+    ],
+    "shadow": {}
+  },
+  "php_fatal_fail.txt": {
     "winner": "output",
     "parser": "generic",
     "failures": 1,
@@ -706,7 +735,7 @@
       "generic"
     ],
     "shadow": {
-      "generic": 1
+      "generic": 2
     }
   },
   "pip_resolve_fail.txt": {
@@ -813,6 +842,15 @@
       "generic": 1
     }
   },
+  "ruby_error_fail.txt": {
+    "winner": "output",
+    "parser": "generic",
+    "failures": 1,
+    "claimants": [
+      "generic"
+    ],
+    "shadow": {}
+  },
   "ruff_fail.txt": {
     "winner": "ruff",
     "parser": "ruff",
@@ -900,7 +938,7 @@
       "generic"
     ],
     "shadow": {
-      "generic": 8
+      "generic": 7
     }
   },
   "vitest_fail.txt": {

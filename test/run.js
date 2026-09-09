@@ -10,6 +10,33 @@ const fx = (n) => readFileSync(join(here, "fixtures", n), "utf8");
 const cli = join(here, "..", "bin", "whatbroke.js");
 
 const CASES = [
+  // Four runtimes crashing outside any test. None has a parser and none needs one -
+  // they are here to hold the fallback to a standard, because a message with no
+  // location is half an answer and the location is right there in the log.
+  { file: "bunrun_crash_fail.txt", tool: "output", n: 1, check: (r) => {
+      assert.equal(r.failures[0].file, "/home/dev/app/crash.ts");
+      assert.equal(r.failures[0].line, 1);
+      assert.match(r.failures[0].message, /bun runtime crash/);
+    } },
+  { file: "denorun_crash_fail.txt", tool: "output", n: 1, check: (r) => {
+      // deno prints the source line and a caret between the message and the frames.
+      assert.equal(r.failures[0].file, "/home/dev/app/dcrash.ts");
+      assert.equal(r.failures[0].line, 1);
+    } },
+  { file: "php_fatal_fail.txt", tool: "output", n: 1, check: (r) => {
+      // PHP writes the fatal twice, to the error log and to stdout, differing by a
+      // "PHP " prefix and a space. Counting both says the run failed twice as badly.
+      assert.equal(r.failures[0].file, "/home/dev/app/bad.php");
+      assert.equal(r.failures[0].line, 2);
+      assert.match(r.failures[0].message, /Call to a member function method\(\) on null/);
+    } },
+  { file: "ruby_error_fail.txt", tool: "output", n: 1, check: (r) => {
+      // Ruby names the method between the location and the message, so there is no
+      // space after the line number and nothing recognised it at all.
+      assert.equal(r.failures[0].file, "bad.rb");
+      assert.equal(r.failures[0].line, 2);
+      assert.match(r.failures[0].message, /undefined method .no_such_method./);
+    } },
   { file: "ruff_syntax_fail.txt", tool: "ruff", n: 1, check: (r) => {
       // A file ruff cannot parse is reported without a rule code, so requiring one
       // meant a run saying "Found 1 error." came back with none - the ordinary case of
