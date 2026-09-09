@@ -894,6 +894,31 @@ try {
   pass++;
 } catch (e) { console.log(`  FAIL windows paths\n       ${e.message}`); fail++; }
 
+// CI kills a hanging suite, a byte cap trips, a pipe is closed - logs arrive cut
+// off mid-block, and that must never throw or corrupt the partition
+try {
+  const { render, setColor } = await import("../src/render.js");
+  setColor(false);
+  let checked = 0;
+  for (const file of readdirSync(join(here, "fixtures"))) {
+    const raw = fx(file);
+    const lines = raw.split("\n");
+    for (const frac of [0.1, 0.25, 0.5, 0.75, 0.9]) {
+      const cut = lines.slice(0, Math.max(1, Math.floor(lines.length * frac))).join("\n");
+      checked++;
+      const r = analyse(cut);
+      if (!r) continue;
+      render(r, {});
+      const members = r.clusters.flatMap((c) => c.members).sort((a, b) => a - b);
+      assert.deepEqual(members, [...r.failures.keys()], `${file} cut at ${frac} broke the partition`);
+    }
+    // and cut mid-line, the way a byte cap does
+    analyse(raw.slice(0, Math.floor(raw.length * 0.6)));
+  }
+  console.log(`  ok   ${checked} truncated logs parse without throwing or losing a failure`);
+  pass++;
+} catch (e) { console.log(`  FAIL truncated input\n       ${e.message}`); fail++; }
+
 // CRLF input must parse identically to LF - Windows, and logs pasted from Windows CI
 try {
   for (const name of ["pytest_fail.txt", "gotest_fail.txt", "cargobuild_fail.txt", "node_stack.txt"]) {
