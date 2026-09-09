@@ -10,6 +10,23 @@ const fx = (n) => readFileSync(join(here, "fixtures", n), "utf8");
 const cli = join(here, "..", "bin", "whatbroke.js");
 
 const CASES = [
+  { file: "vitest_suite_fail.txt", tool: "vitest", n: 1, check: (r) => {
+      // A suite that throws before declaring a test cannot be named after one, so vitest
+      // lists it under "Failed Suites" with the file in brackets rather than a test name
+      // after a chevron - and only the chevron form was being read.
+      assert.equal(r.failures[0].file, "t/crash.test.js");
+      assert.equal(r.failures[0].line, 1);
+      assert.match(r.failures[0].message, /vitest suite failed to collect/);
+      // "Tests: no tests" over a real failure reads as though nothing was wrong
+      assert.match(r.summary, /1 failed \(1\) \(no tests ran\)/);
+    } },
+  { file: "nodetest_crash_fail.txt", tool: "node --test", n: 1, check: (r) => {
+      // TAP faithfully reports error: 'test failed', which says nothing. What happened
+      // was printed above as TAP comments, and that is the only place it appears.
+      assert.match(r.failures[0].message, /node:test suite crashed at import/);
+      assert.doesNotMatch(r.failures[0].message, /^test failed$/);
+      assert.equal(r.failures[0].file, "/home/dev/app/nt_crash.test.js");
+    } },
   // Four runtimes crashing outside any test. None has a parser and none needs one -
   // they are here to hold the fallback to a standard, because a message with no
   // location is half an answer and the location is right there in the log.

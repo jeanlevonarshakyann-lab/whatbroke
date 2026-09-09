@@ -1,0 +1,22 @@
+
+ RUN  v5.0.0 /home/dev/app
+
+ ❯ t/crash.test.js (0 test)
+
+⎯⎯⎯⎯⎯⎯ Failed Suites 1 ⎯⎯⎯⎯⎯⎯⎯
+
+ FAIL  t/crash.test.js [ t/crash.test.js ]
+Error: vitest suite failed to collect
+ ❯ t/crash.test.js:1:7
+      1| throw new Error("vitest suite failed to collect");
+       |       ^
+      2|
+
+⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯[1/1]⎯
+
+
+ Test Files  1 failed (1)
+      Tests  no tests
+   Start at  09:37:25
+   Duration  76ms (worker 96%, environment 4%)
+

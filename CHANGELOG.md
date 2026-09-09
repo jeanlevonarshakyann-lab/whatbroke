@@ -2,6 +2,13 @@
 
 ## Unreleased
 
+- Fixed: a vitest suite that throws before declaring a test is listed under "Failed
+  Suites" with the file in brackets rather than a test name after a chevron, and only
+  the chevron form was read — so a file that will not even import fell through to the
+  guess. Its headline also read "no tests", which over a real failure looks like success.
+- Fixed: `node --test` reported `test failed` for a suite that crashed on import, which
+  is what TAP says and says nothing. The real error is printed above as TAP comments.
+
 - A crash outside a test run now reports where it happened. bun, deno, PHP and Ruby all
   print a message and then say where, on the next line or inside the message, and only
   the message was being read. A Ruby crash produced no diagnosis at all, because Ruby

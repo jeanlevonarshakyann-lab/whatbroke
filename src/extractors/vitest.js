@@ -1,4 +1,9 @@
 const FAIL_RE = /^[^\S\n]*FAIL[^\S\n]+(.+?)[^\S\n]+>[^\S\n]+(.+?)[^\S\n]*$/;
+// A suite that throws before any test is declared cannot be named after a test, so
+// vitest lists it under "Failed Suites" with the file in brackets instead of a test
+// name after a chevron. Reading only the chevron form meant a file that will not even
+// import - one of the commonest ways a suite fails - fell through to the guess.
+const SUITE_RE = /^[^\S\n]*FAIL[^\S\n]+(.+?)[^\S\n]+\[[^\S\n]*(.+?)[^\S\n]*\][^\S\n]*$/;
 const LOC_RE = /^[^\S\n]*[❯>][^\S\n]+(.+?):(\d+):(\d+)[^\S\n]*$/;
 const SEP_RE = /^[⎯─-╿\s]*(?:\[\d+\/\d+\])?[⎯─-╿\s]*$/;
 
@@ -6,16 +11,19 @@ export default {
   name: "vitest",
   category: "test",
   commands: ["vitest"],
-  detect: (s) => /^[^\S\n]*RUN[^\S\n]+v\d/m.test(s) || /Failed Tests \d+/.test(s) || FAIL_RE.test(s),
+  detect: (s) => /^[^\S\n]*RUN[^\S\n]+v\d/m.test(s) || /Failed (?:Tests|Suites) \d+/.test(s) ||
+    FAIL_RE.test(s) || SUITE_RE.test(s),
 
   extract(s) {
     const lines = s.split("\n");
     const failures = [];
 
     for (let i = 0; i < lines.length; i++) {
-      const m = lines[i].match(FAIL_RE);
+      const suite = lines[i].match(SUITE_RE);
+      const m = lines[i].match(FAIL_RE) ?? suite;
       if (!m) continue;
-      const [, file, title] = m;
+      // In the suite form both captures are the file; the failure is the file itself.
+      const [, file, title] = suite ? [null, suite[1], suite[1]] : m;
 
       let message = "", loc = null;
       const diff = [];
@@ -39,12 +47,19 @@ export default {
       });
     }
 
+    // "Tests  no tests" is what vitest prints when a suite never got far enough to
+    // declare one, and a headline of "no tests" over a real failure reads as though
+    // nothing was wrong. The file tally is the one that says what happened.
     let summary;
     for (const l of lines) {
       const m = l.match(/^[^\S\n]*Tests[^\S\n]+(.+?)[^\S\n]*$/);
       if (m) { summary = m[1]; break; }
+      const files = l.match(/^[^\S\n]*Test Files[^\S\n]+(.+?)[^\S\n]*$/);
+      if (files) summary ??= `${files[1]} (no tests ran)`;
     }
     if (!failures.length) return null;
+    const files = s.match(/^[^\S\n]*Test Files[^\S\n]+(.+?)[^\S\n]*$/m);
+    if (/^no tests$/.test(summary ?? "") && files) summary = `${files[1]} (no tests ran)`;
     return { tool: "vitest", summary, failures };
   },
 };
