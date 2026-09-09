@@ -118,7 +118,7 @@ function writeGithubSummary(result, truncated) {
   if (!target || !result) return;
   const markdown = (value) => String(value)
     .replace(/\\/g, "\\\\")
-    .replace(/([`*_{}\[\]()#+\-.!|>])/g, "\\$1")
+    .replace(/([`*_{}\[\]()#+\-.!|<>])/g, "\\$1")
     .replace(/\r?\n/g, " ");
   // A code span needs no escaping and must not receive any. It must also not contain
   // a backtick, or the span closes early and the rest of the path becomes markup.
@@ -146,10 +146,16 @@ function writeGithubSummary(result, truncated) {
     const f = fails[u.exemplar];
     // one parametrized family reads as "N cases", not "N sites" - as in the terminal
     const family = u.members.every((i) => normTitle(fails[i].title) === normTitle(f.title));
-    lines.push(`### ${n + 1}. ${markdown(family ? normTitle(f.title) : f.title) || "failure"}`, "");
+    lines.push(`### ${n + 1}. ${markdown((family ? normTitle(f.title) : f.title) || "failure")}`, "");
     lines.push(`${code(at(f))} — ${head(f)}`, "");
+    // Parametrized cases share a source line, so the member count and the number of
+    // distinct places differ. Label the disclosure with what is actually inside it -
+    // "6 sites" above a list of three is the tool contradicting its own evidence.
     const sites = [...new Set(u.members.map((i) => at(fails[i])))];
-    lines.push(`<details><summary>${plural(u.size, family ? "case" : "site")}</summary>`, "");
+    const label = sites.length === u.size
+      ? plural(u.size, family ? "case" : "site")
+      : `${plural(u.size, "case")} at ${plural(sites.length, "site")}`;
+    lines.push(`<details><summary>${label}</summary>`, "");
     for (const s of sites) lines.push(`- ${code(s)}`);
     lines.push("", "</details>", "");
   });

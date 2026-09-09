@@ -1190,6 +1190,34 @@ try {
   pass++;
 } catch (e) { console.log(`  FAIL GitHub clustered summary\n       ${e.message}`); fail++; }
 
+// A disclosure that says "6 sites" over a list of three is the tool contradicting its
+// own evidence, which is the one thing clustering must never do. Members and distinct
+// places diverge whenever parametrized cases share a source line.
+try {
+  const { mkdtempSync, readFileSync, rmSync } = await import("node:fs");
+  const { tmpdir } = await import("node:os");
+  const { join } = await import("node:path");
+  const dir = mkdtempSync(join(tmpdir(), "whatbroke-labels-"));
+  let checked = 0;
+  for (const name of readdirSync(join(here, "fixtures"))) {
+    const summary = join(dir, `${name}.md`);
+    spawnSync(process.execPath, [cli, "--format", "github"], {
+      input: fx(name), encoding: "utf8", env: { ...process.env, GITHUB_STEP_SUMMARY: summary },
+    });
+    const md = readFileSync(summary, "utf8");
+    for (const [, label, body] of md.matchAll(/<details><summary>(.*?)<\/summary>\n(.*?)<\/details>/gs)) {
+      const listed = body.split("\n").filter((l) => l.startsWith("- ")).length;
+      const claimed = Number((label.match(/\d+/g) ?? []).at(-1));
+      assert.equal(claimed, listed, `"${label}" in ${name} sits above ${listed} entries`);
+      checked++;
+    }
+  }
+  assert.ok(checked > 5, "the corpus must actually produce disclosures for this to test anything");
+  rmSync(dir, { recursive: true, force: true });
+  console.log(`  ok   every GitHub summary disclosure counts what it lists (${checked} checked)`);
+  pass++;
+} catch (e) { console.log(`  FAIL GitHub summary disclosure counts\n       ${e.message}`); fail++; }
+
 // A workflow command unescapes only %25/%0D/%0A in a message body, so escaping a
 // colon there leaves "KeyError%3A 'exp'" on screen. Property values still need it.
 try {
