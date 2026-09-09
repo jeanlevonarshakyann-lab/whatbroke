@@ -12,6 +12,10 @@
   rather than the number of failures. Deterministic fingerprinting, no model.
 - Report `clusters` in `--json` as a partition of `failures`, which is unchanged.
 - Added `--no-cluster`.
+- The GitHub job summary and the run's notice line now lead with likely causes
+  instead of listing every failure flat. Annotations are unchanged: one per failure.
+- Fixed: annotation messages escaped `:` as `%3A`, which the runner does not decode
+  in a message body, so `KeyError: 'exp'` displayed as `KeyError%3A 'exp'`.
 - Fixed: pytest `-q` totals were missed, so a run reporting "85 failed" was
   summarised as a count of parsed blocks.
 - Fixed: a single very long boilerplate line (pytest listing every fixture) was
