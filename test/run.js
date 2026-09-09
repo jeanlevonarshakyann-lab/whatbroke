@@ -457,6 +457,22 @@ const CASES = [
       assert.ok(!/^\s*\d+\s*\|/m.test(f.message), "echoed source is not the message");
       assert.ok(!/^[-+]\s*(Expected|Received)\s+[-+]\s*\d+$/m.test(f.message), "diff tallies kept");
     } },
+  { file: "deno_fail.txt", tool: "deno test", n: 2, check: (r) => {
+      // real `deno test` run. Unsupported before: it fell through to the generic
+      // guess, which reported three "errors" - two real failures plus deno's own
+      // "error: Test failed" tally, which is a verdict, not a failure.
+      assert.equal(r.summary, "2 failed, 1 passed");
+      const f = r.failures[0];
+      assert.equal(f.title, "invoice total");
+      assert.equal(f.file, "./math_test.ts");
+      assert.equal(f.line, 4);
+      assert.match(f.message, /AssertionError: Values are not equal/);
+      assert.match(f.message, /1049/);
+      assert.ok(!r.failures.some((g) => /Test failed/.test(g.message)),
+        "deno's final verdict is not a failure of its own");
+      // the frames are inside the assert library, not the user's code
+      assert.ok(!/jsr\.io/.test(f.message));
+    } },
 ];
 
 let pass = 0, fail = 0;
