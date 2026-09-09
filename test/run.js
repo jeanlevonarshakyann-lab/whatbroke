@@ -936,6 +936,34 @@ try {
   pass++;
 } catch (e) { console.log(`  FAIL truncated input\n       ${e.message}`); fail++; }
 
+// whatbroke wraps any command, not only test runners. A shell script that fails
+// prints the classic unix shape, and none of it was recognised.
+try {
+  const shouldMatch = [
+    "curl: (7) Failed to connect to 127.0.0.1 port 9 after 0 ms: Could not connect to server",
+    "cp: cannot stat 'x': No such file or directory",
+    "ssh: connect to host example.com port 22: Connection refused",
+    "bash: line 5: deploy: command not found",
+  ];
+  const shouldNot = [
+    "Deploying to staging...",
+    "note: this is fine",
+    "info: everything is working",
+    "warning: deprecated flag",
+  ];
+  for (const l of shouldMatch) {
+    const r = analyse(`Starting\n${l}\n`);
+    assert.ok(r?.failures.length, `should have recognised: ${l}`);
+    assert.match(r.failures[0].message, /Failed|cannot|refused|not found/i);
+  }
+  for (const l of shouldNot) {
+    // a bare "prog: message" must not be treated as a failure just for having a colon
+    assert.ok(!analyse(`Starting\n${l}\n`), `should have ignored: ${l}`);
+  }
+  console.log("  ok   plain unix errors are recognised, ordinary log lines are not");
+  pass++;
+} catch (e) { console.log(`  FAIL unix error shape\n       ${e.message}`); fail++; }
+
 // CRLF input must parse identically to LF - Windows, and logs pasted from Windows CI
 try {
   for (const name of ["pytest_fail.txt", "gotest_fail.txt", "cargobuild_fail.txt", "node_stack.txt"]) {
