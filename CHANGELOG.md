@@ -2,6 +2,13 @@
 
 ## Unreleased
 
+- Added CMake and kubectl parsers. A CMake configure failure — a missing source, a parse
+  error in the script — produced no diagnosis at all; nor did `kubectl get` against an
+  unreachable cluster, which prints five identical klog lines and then the sentence a
+  person actually wants.
+- ninja deliberately gets no parser: what fails under it is a compiler, which already has
+  one, and ninja's own `FAILED: [code=1]` line restates the failure without adding to it.
+
 - Added a Playwright parser. A run with two failures came back as three, two of which
   were the paths of artifact files to go and open, and the second real failure was
   missing entirely.

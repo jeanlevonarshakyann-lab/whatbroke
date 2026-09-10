@@ -10,6 +10,41 @@ const fx = (n) => readFileSync(join(here, "fixtures", n), "utf8");
 const cli = join(here, "..", "bin", "whatbroke.js");
 
 const CASES = [
+  // Captured with CMake 4.4 and ninja 1.13. ninja gets no parser on purpose: what fails
+  // under it is a compiler, which already has one, and its own "FAILED: [code=1]" line
+  // restates the failure without adding to it - exactly as make's does.
+  { file: "cmake_configure_fail.txt", tool: "cmake", n: 2, check: (r) => {
+      assert.equal(r.failures[0].file, "CMakeLists.txt");
+      assert.equal(r.failures[0].line, 3);
+      assert.equal(r.failures[0].code, "add_executable", "the command that raised it is the closest thing to a code");
+      assert.match(r.failures[0].message, /Cannot find source file/);
+      assert.match(r.failures[0].message, /missing_source\.c/);
+    } },
+  { file: "cmake_syntax_fail.txt", tool: "cmake", n: 1, check: (r) => {
+      // A parse error in the script names no command at all.
+      assert.equal(r.failures[0].line, 2);
+      assert.equal(r.failures[0].code, undefined);
+      assert.match(r.failures[0].message, /Parse error\.\s+Function missing ending/);
+    } },
+  { file: "ninja_compile_fail.txt", tool: "clang", n: 2, check: (r) => {
+      assert.match(r.failures[0].file, /main\.c$/);
+      assert.doesNotMatch(JSON.stringify(r.failures), /FAILED: \[code=1\]|ninja: Entering/,
+        "ninja's own lines restate the failure without adding to it");
+    } },
+  // Captured with kubectl 1.37 against no cluster.
+  { file: "kubectl_yaml_fail.txt", tool: "kubectl", n: 1, check: (r) => {
+      // The location is inside the message, which is the only place it appears.
+      assert.equal(r.failures[0].file, "bad.yaml");
+      assert.equal(r.failures[0].line, 9);
+    } },
+  { file: "kubectl_noserver_fail.txt", tool: "kubectl", n: 1, check: (r) => {
+      // Five identical klog lines from inside client-go, then the sentence a person
+      // wants. Reading it naively gives five failures; reading nothing gives none.
+      assert.match(r.failures[0].message, /The connection to the server localhost:8080 was refused/);
+      assert.doesNotMatch(JSON.stringify(r.failures), /memcache\.go|Couldn't get current server/);
+      assert.doesNotMatch(r.failures[0].message, /did you specify the right host/,
+        "how to fix it is not what went wrong");
+    } },
   // Captured with @playwright/test. Playwright heads a failure with the location of the
   // TEST and then gives the location of the THROW further down, and closes each block
   // with a path to an artifact to go and read.

@@ -141,6 +141,26 @@
       "generic": 8
     }
   },
+  "cmake_configure_fail.txt": {
+    "winner": "cmake",
+    "parser": "cmake",
+    "failures": 2,
+    "claimants": [
+      "cmake",
+      "generic"
+    ],
+    "shadow": {}
+  },
+  "cmake_syntax_fail.txt": {
+    "winner": "cmake",
+    "parser": "cmake",
+    "failures": 1,
+    "claimants": [
+      "cmake",
+      "generic"
+    ],
+    "shadow": {}
+  },
   "deno_fail.txt": {
     "winner": "deno test",
     "parser": "deno test",
@@ -526,6 +546,28 @@
     ],
     "shadow": {}
   },
+  "kubectl_noserver_fail.txt": {
+    "winner": "kubectl",
+    "parser": "kubectl",
+    "failures": 1,
+    "claimants": [
+      "kubectl",
+      "generic"
+    ],
+    "shadow": {}
+  },
+  "kubectl_yaml_fail.txt": {
+    "winner": "kubectl",
+    "parser": "kubectl",
+    "failures": 1,
+    "claimants": [
+      "kubectl",
+      "generic"
+    ],
+    "shadow": {
+      "generic": 1
+    }
+  },
   "make_compile_fail.txt": {
     "winner": "clang",
     "parser": "clang",
@@ -642,6 +684,18 @@
     ],
     "shadow": {
       "generic": 12
+    }
+  },
+  "ninja_compile_fail.txt": {
+    "winner": "clang",
+    "parser": "clang",
+    "failures": 2,
+    "claimants": [
+      "clang",
+      "generic"
+    ],
+    "shadow": {
+      "generic": 4
     }
   },
   "node_eval.txt": {

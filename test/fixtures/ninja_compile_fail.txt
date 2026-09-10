@@ -1,0 +1,13 @@
+ninja: Entering directory `build'
+[1/2] Building C object CMakeFiles/demo.dir/main.c.o
+FAILED: [code=1] CMakeFiles/demo.dir/main.c.o 
+/usr/bin/cc   -arch arm64 -MD -MT CMakeFiles/demo.dir/main.c.o -MF CMakeFiles/demo.dir/main.c.o.d -o CMakeFiles/demo.dir/main.c.o -c /home/dev/app/main.c
+/home/dev/app/main.c:2:22: error: incompatible pointer to integer conversion initializing 'int' with an expression of type 'char[11]' [-Wint-conversion]
+    2 | int main(void) { int x = "not an int"; return 0 }
+      |                      ^   ~~~~~~~~~~~~
+/home/dev/app/main.c:2:48: error: expected ';' after return statement
+    2 | int main(void) { int x = "not an int"; return 0 }
+      |                                                ^
+      |                                                ;
+2 errors generated.
+ninja: build stopped: subcommand failed.
