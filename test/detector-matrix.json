@@ -1033,6 +1033,18 @@
       "generic": 1
     }
   },
+  "make_parallel_shredded_fail.txt": {
+    "winner": "clang",
+    "parser": "clang",
+    "failures": 1,
+    "claimants": [
+      "clang",
+      "generic"
+    ],
+    "shadow": {
+      "generic": 4
+    }
+  },
   "make_separator_fail.txt": {
     "winner": "make",
     "parser": "make",

@@ -242,7 +242,7 @@ them.
 | **CMake** | the script line and the command that raised it — `add_executable`, `find_package` |
 | **ninja** | no parser of its own: what fails under it is a compiler, which already has one |
 | **kubectl** | the sentence a person wants, not five identical klog lines from inside client-go |
-| **GCC/Clang** | compiler errors with `file:line:column`, or `file:line` where gcc printed no column — read only for C-family sources there, since without the column that shape is also javac's and mypy's; driver errors that never got as far as a file; warnings and notes set aside |
+| **GCC/Clang** | compiler errors with `file:line:column`, or `file:line` where gcc printed no column — read only for C-family sources there, since without the column that shape is also javac's and mypy's; driver errors that never got as far as a file; warnings and notes set aside. clang counts its own errors, and when the log has been damaged — `make -j` interleaving two compilers mid-line — the headline says how many were read of how many it reported, rather than confidently reporting the smaller number |
 | **Swift** | the diagnostic and the `[#group]` tag as its code — not the annotation swiftc draws underneath, which repeats the message word for word |
 | **ShellCheck** | the `SCxxxx` code, the source line, and the column the carets are drawn under — from the block format it prints by default as well as `-f gcc`. A run that fails on nothing worse than style still says so, because shellcheck exits non-zero on those too |
 | **yamllint** | the rule, matched as the last parenthesised word so a message like `line too long (106 > 80 characters)` keeps its own brackets. Warnings are set aside: yamllint exits zero on a run that found only those |
