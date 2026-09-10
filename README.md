@@ -210,6 +210,7 @@ them.
 | **Node stack traces** | the error, the caret, your frames; `node:internal` hidden |
 | **Playwright** | the test name, the line that actually threw, and the offending expression — not the paths to its artifact files |
 | **jest** | test name, `file:line`, the matcher, expected vs received |
+| **mocha** | suite and test name, the assertion, and the frame in your test — not the ten `node:internal` ones under it; a timeout reports no location rather than a line inside node's timers |
 | **vitest** | same, with the real source line — not vitest's truncated `…` version |
 | **eslint** | errors only; warnings counted and set aside |
 | **go test** | test name, `file:line`, the message; panics resolved past the runtime frames, and `-race` reports at the racing line |

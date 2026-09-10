@@ -1,0 +1,34 @@
+
+
+  invoice
+    1) totals an invoice
+    2) finds an expiry claim
+    ✔ passes
+
+
+  1 passing (3ms)
+  2 failing
+
+  1) invoice
+       totals an invoice:
+
+      AssertionError [ERR_ASSERTION]: Expected values to be strictly equal:
+
+1049 !== 1050
+
+      + expected - actual
+
+      -1049
+      +1050
+      
+      at Context.<anonymous> (test/sum.test.js:6:12)
+      at process.processImmediate (node:internal/timers:484:21)
+
+  2) invoice
+       finds an expiry claim:
+     AssertionError [ERR_ASSERTION]: token should carry exp
+      at Context.<anonymous> (test/sum.test.js:10:12)
+      at process.processImmediate (node:internal/timers:484:21)
+
+
+

@@ -4,6 +4,17 @@
 
 ## 0.4.0 — 2026-09-10
 
+- Reads mocha. A failing `mocha` run produced no diagnosis at all: not a worse answer,
+  nothing. It numbers its failures under a tally and splits each over two lines, the
+  suite on the numbered line and the test indented under it - a shape rspec and
+  Playwright share, so the tally is what identifies the tool. Assertion failures, hook
+  failures, timeouts and a file that will not load are all read; a timeout reports no
+  location rather than a frame inside node's own timers.
+- A discovered line prefix no longer swallows the log's own indentation when that
+  indentation sits in the middle of it. A log that is mostly stack frames shares the
+  frames' indentation and what follows, so the prefix came out as `api:test:     at `
+  and stripping it took the frames apart.
+
 - A prefix with no vetted shape — `kubectl logs -f` naming the pod, `docker compose`
   naming the service — is now recovered on a log of any length. The length floor that
   guarded prefix inference cost ten fixtures their parser under one of those, and the
