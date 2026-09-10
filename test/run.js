@@ -1235,6 +1235,30 @@ try {
   pass++;
 } catch (e) { console.log(`  FAIL near-failure duplicate line\n       ${e.message}`); fail++; }
 
+// a message that says one thing many times
+try {
+  const { collapseRepeats } = await import("../src/util.js");
+  // A Go test with twenty-four subtests fails twenty-four times with the same assertion,
+  // and the parser gathers all of them: 503 characters saying "Unexpected response."
+  const r = analyse(fx("gotest_cluster_fail.txt"));
+  const long = r.failures.find((f) => /Unexpected response/.test(f.message ?? ""));
+  assert.ok(long, "the repeated assertion should still be reported");
+  assert.equal(long.message, "Unexpected response. (x24)");
+  assert.ok(long.message.length < 40, `still ${long.message.length} chars`);
+
+  // Only consecutive runs, and only from three - saying something twice is usually the
+  // tool making a point, and annotating it would be noisier than the repeat.
+  assert.equal(collapseRepeats("a\nb\nb\nb\nc"), "a\nb (x3)\nc");
+  assert.equal(collapseRepeats("a\nb\nb\nc"), "a\nb\nb\nc", "a run of two is left alone");
+  assert.equal(collapseRepeats("e: 1\ng: 2\ne: 3\ng: 4"), "e: 1\ng: 2\ne: 3\ng: 4",
+    "an alternating diagnostic keeps its shape");
+  assert.equal(collapseRepeats("\n\n\n\n"), "\n\n\n\n", "blank lines are not a repeat worth counting");
+  assert.equal(collapseRepeats("one line"), "one line");
+  assert.equal(collapseRepeats(undefined), undefined);
+  console.log("  ok   a message that repeats itself is collapsed with a count");
+  pass++;
+} catch (e) { console.log(`  FAIL repeated message collapse\n       ${e.message}`); fail++; }
+
 // pytest -q prints its summary with no === decoration; it must still be found
 try {
   const q = [
