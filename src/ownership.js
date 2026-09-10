@@ -43,8 +43,18 @@ export function addSourceRanges(text, result) {
   const cleaned = lines.map(clean);
   const numbers = cleaned.map((line) => new Set(line.match(/\d+/g) ?? []));
   const used = new Set();
+  const known = new Map();
   const failures = result.failures.map((failure) => {
     if (failure[SOURCE_RANGE]) return failure;
+    // Repeated diagnostics are collapsed immediately after parsing. Locate identical
+    // copies once rather than rescanning a large log for every repetition (a repeated
+    // 90-error eslint block otherwise made this quadratic on Node 18).
+    const identity = JSON.stringify([
+      failure.file ?? null, failure.line ?? null, failure.col ?? null,
+      failure.title ?? "", failure.code ?? null, failure.subject ?? null,
+      failure.label ?? null, failure.message ?? "", failure.stmt ?? null,
+    ]);
+    if (known.has(identity)) return withSourceRange(failure, known.get(identity));
     const prepared = {
       messageLines: String(failure.message ?? "").split("\n").map(clean).filter((s) => s.length >= 4),
       stmt: clean(failure.stmt),
@@ -55,7 +65,11 @@ export function addSourceRanges(text, result) {
       line.includes(String(failure.file)) && (!failure.line || numbers[index].has(String(failure.line))) ? [index] : []) : [];
     const scored = cleaned.map((line, index) => ({ index, score: scoreLine(line, numbers[index], failure, prepared) }))
       .filter((entry) => entry.score > 0);
-    if (!scored.length) return withSourceRange(failure, { start: 0, end: lines.length });
+    if (!scored.length) {
+      const range = { start: 0, end: lines.length };
+      known.set(identity, range);
+      return withSourceRange(failure, range);
+    }
 
     // Identical assertion text is common across tool runs. Prefer the occurrence close
     // to this failure's own file/line instead of assigning both parsers to whichever
@@ -72,7 +86,9 @@ export function addSourceRanges(text, result) {
     const start = anchor;
     const end = anchor + 1;
     for (let i = start; i < end; i++) used.add(i);
-    return withSourceRange(failure, { start, end });
+    const range = { start, end };
+    known.set(identity, range);
+    return withSourceRange(failure, range);
   });
   return { ...result, failures };
 }
