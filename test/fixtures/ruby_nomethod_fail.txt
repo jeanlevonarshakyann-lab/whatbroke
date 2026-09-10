@@ -1,0 +1,2 @@
+nm.rb:1:in `<main>': undefined method `upcase' for nil:NilClass (NoMethodError)
+Did you mean?  case

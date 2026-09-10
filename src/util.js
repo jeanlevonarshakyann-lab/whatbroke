@@ -6,6 +6,9 @@ const NOISE = [
   /^node:/, /node:internal/, /[/\\]node_modules[/\\]/, /[/\\]site-packages[/\\]/,
   /[/\\]lib[/\\]python3\.\d+[/\\]/, /<frozen [a-z_.]+>/,
   /\.pnpm[/\\]/,
+  // Ruby's stdlib and installed gems. A failing `require` is raised inside rubygems, so
+  // without these the location reported for a missing gem was kernel_require.rb.
+  /[/\\]gems[/\\]/, /[/\\]rubygems[/\\]/, /Ruby\.framework[/\\]/, /[/\\]lib[/\\]ruby[/\\]/,
   // node's own eval/REPL machinery — the [eval]:N frame is real, its wrapper is not
   /^\[eval\]-wrapper/, /^evalmachine/, /^\[stdin\]-wrapper/,
 ];

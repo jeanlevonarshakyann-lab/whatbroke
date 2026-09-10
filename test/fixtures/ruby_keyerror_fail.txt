@@ -1,0 +1,5 @@
+deep.rb:3:in `fetch': key not found: :price (KeyError)
+	from deep.rb:3:in `block in total'
+	from deep.rb:3:in `map'
+	from deep.rb:3:in `total'
+	from deep.rb:6:in `<main>'

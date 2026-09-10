@@ -1,0 +1,1 @@
+syn.rb:3: syntax error, unexpected end
