@@ -122,7 +122,7 @@ test("JSON always says what the command did, parsed or not", () => {
 // a real failure, and each read as though nothing had happened. Four parsers, one
 // mistake, found one at a time - so it is worth asserting once, over everything.
 const SAYS_SOMETHING_BROKE =
-  /\b(fail\w*|error\w*|problem\w*|broke\w*|crash\w*|panic\w*|conflict\w*|rejected|unable|cannot|could not|did not|not found|no matching|missing|invalid|unresolved|abort\w*)\b/i;
+  /\b(fail\w*|error\w*|problem\w*|broke\w*|crash\w*|panic\w*|conflict\w*|rejected|refused|denied|unreachable|timed out|timeout|exceeded|unable|cannot|could not|did not|not found|no such|no matching|missing|invalid|unresolved|abort\w*)\b/i;
 
 /** Does this headline admit that something went wrong? */
 function misleading(summary) {
@@ -156,7 +156,10 @@ test("the headline guard catches the wordings it was written for", () => {
   }
   for (const now of ["1 failed, 1 total (no tests ran)", "1 failed (1) (no tests ran)",
     "0 examples, 0 failures, 1 error occurred outside of examples", "1 error",
-    "build failed", "panic", "3 errors in 1 file", "2 conflicted files"]) {
+    "build failed", "panic", "3 errors in 1 file", "2 conflicted files",
+    // A headline can be a whole sentence, and the word that carries it is not always
+    // "error" - kubectl says a connection was refused and never uses the word.
+    "The connection to the server localhost:8080 was refused"]) {
     assert.ok(!misleading(now), `${JSON.stringify(now)} should pass`);
   }
 });
