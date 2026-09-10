@@ -4,6 +4,10 @@
 
 ## 0.4.0 — 2026-09-10
 
+- Reads Biome and oxlint, the two linters most likely to be in a new JS project. Biome
+  heads each finding with the rule path and follows it with advice and a fix diff, which
+  are not the diagnosis; oxlint puts the whole finding on one line with its `help:`
+  suggestion appended to the message.
 - Reads less and babel. Both produced no diagnosis at all. lessc puts the class, the
   message and the location on a single line with the position as prose at the end; babel
   embeds the file in the middle of its message and follows the code frame with twenty

@@ -1,0 +1,1 @@
+lintme.js:1:5: error eslint(no-unused-vars): Variable 'unused' is declared but never used. Unused variables should start with a '_'. help: Consider removing this declaration.

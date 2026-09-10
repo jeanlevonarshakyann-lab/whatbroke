@@ -227,6 +227,8 @@ them.
 | **sass** | the message from the head of its box and the location from the foot — reading only the first line found the problem and never where it was |
 | **webpack** | the module, the line and the explanation — not the forty lines of resolver diary that follow it |
 | **prettier** | which files failed the format check, so a job that exits non-zero on formatting says which ones |
+| **Biome** | the rule path as the code, `file:line:col`, and what is wrong — not the `i` advice lines or the fix diff under them |
+| **oxlint** | the rule name as the code and the finding without the `help:` suggestion appended to it |
 | **stylelint** | the rule name as the code, `file:line:col`, and the problem — warnings counted and set aside, like eslint |
 | **markdownlint** | the rule code, `file:line:col`, and what the rule wanted — `[Expected: 1; Actual: 2]` is the whole answer for a spacing rule |
 | **ruff** | rule code, `file:line`, the message and ruff's own fix hint |

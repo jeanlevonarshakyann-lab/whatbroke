@@ -52,6 +52,16 @@
     ],
     "shadow": {}
   },
+  "biome_fail.txt": {
+    "winner": "biome",
+    "parser": "biome",
+    "failures": 1,
+    "claimants": [
+      "biome",
+      "generic"
+    ],
+    "shadow": {}
+  },
   "bun_fail.txt": {
     "winner": "bun test",
     "parser": "bun test",
@@ -1040,6 +1050,18 @@
       "generic"
     ],
     "shadow": {}
+  },
+  "oxlint_fail.txt": {
+    "winner": "oxlint",
+    "parser": "oxlint",
+    "failures": 1,
+    "claimants": [
+      "oxlint",
+      "generic"
+    ],
+    "shadow": {
+      "generic": 1
+    }
   },
   "perl_die_fail.txt": {
     "winner": "perl",
