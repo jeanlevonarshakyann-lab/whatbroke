@@ -1123,6 +1123,41 @@ try {
   fail++;
 }
 
+// The renderer is exercised above with hand-built failure objects, which is why a parser
+// that put the wrong SHAPE in a field went unnoticed: nothing rendered what a parser
+// actually produced. This renders every fixture the way the CLI does and looks for the
+// marks of a value that was interpolated without being formatted.
+try {
+  const { render, setColor } = await import("../src/render.js");
+  setColor(false);
+  const LEAKED = [
+    [/\[object [A-Z]\w+\]/, "an object was interpolated into text"],
+    [/\bundefined\b/, "an undefined value reached the output"],
+    [/\bNaN\b/, "a number that is not one reached the output"],
+    [/:null\b|\bnull:/, "a null stood in for a location"],
+  ];
+  const leaks = [];
+  for (const name of readdirSync(join(here, "fixtures"))) {
+    let r, out;
+    try { r = analyse(fx(name)); } catch { continue; }
+    if (!r) continue;
+    try { out = render(r, {}); } catch (e) { leaks.push(`${name}: render threw - ${e.message}`); continue; }
+    for (const [re, why] of LEAKED) {
+      const hit = out.match(re);
+      // A fixture can legitimately contain these words - a stack trace says "undefined
+      // method", a test asserts NaN. Only a line the renderer built counts, so the line
+      // has to be absent from the log itself.
+      if (hit && !fx(name).includes(hit[0])) leaks.push(`${name} (${r.tool}): ${why} - ${JSON.stringify(hit[0])}`);
+    }
+  }
+  assert.deepEqual(leaks, [], "the rendered output carried an unformatted value");
+  console.log("  ok   every fixture renders without leaking a raw value");
+  pass++;
+} catch (e) {
+  console.log(`  FAIL every fixture renders without leaking a raw value\n       ${e.message}`);
+  fail++;
+}
+
 // crafted output must not be able to make us read files outside the working dir
 try {
   const { render, setColor } = await import("../src/render.js");
