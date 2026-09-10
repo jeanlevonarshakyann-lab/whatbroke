@@ -11,6 +11,9 @@ const PANIC_ANYWHERE = new RegExp(PANIC_RE.source, "m");
 // cargo reports a build-script failure as "failed to run custom build command", which
 // is the mechanism; the panic underneath it is the cause, and it is not a test failure.
 const BUILD_SCRIPT = /^error: failed to run custom build command/m;
+// What says a panic came out of a test run rather than out of the program itself: the
+// tally cargo prints at the end, or the per-test stdout block it prints above one.
+const RAN_TESTS = /^test result:|^----[^\S\n]+\S.*[^\S\n]+stdout[^\S\n]+----|^running \d+ tests?\b/m;
 // A dependency that cannot be resolved never reaches the compiler, so there is no
 // E-code and no --> line for detection to key on.
 // Cargo's own toplevel complaints - the ones that name no source file because none is
@@ -59,7 +62,7 @@ export default {
       failures.push({
         file: pm[2], line: +pm[3], col: +pm[4],
         title: pm[1], subject: pm[1],
-        category: BUILD_SCRIPT.test(s) ? "build" : "test",
+        category: BUILD_SCRIPT.test(s) ? "build" : (RAN_TESTS.test(s) ? "test" : "runtime"),
         severity: "error", message: msg.join("\n"),
       });
     }
@@ -72,8 +75,12 @@ export default {
         .map((p) => p.trim())
         .filter((p) => p && !/^0 /.test(p) && !/^finished in/.test(p))
         .join("; ");
-      // A panic inside a build script is not a test result, however alike they look.
+      // A panic inside a build script is not a test result, however alike they look -
+      // and neither is a panic from `cargo run`. A program that panicked on its own says
+      // only "thread 'main' panicked at ...", with no tally and no test named above it,
+      // and reporting that as a test failure names a command nobody ran.
       if (BUILD_SCRIPT.test(s)) return { tool: "cargo", summary: "build script failed", failures };
+      if (!RAN_TESTS.test(s)) return { tool: "cargo", summary: "panicked", failures };
       return { tool: "cargo test", summary: summary || undefined, failures };
     }
 
