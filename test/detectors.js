@@ -128,14 +128,41 @@ test("the winner is never the generic fallback for a fixture a real parser can r
 //
 // Adding parser #24 should mean editing one file. Everything a parser needs to declare
 // about itself now lives with it: what kind of tool it is, and which commands imply it.
-const CATEGORIES = new Set(["test", "lint", "typecheck", "compile", "build", "runtime", "package", "vcs", "unknown"]);
+const CATEGORIES = new Set(["test", "lint", "typecheck", "compile", "build", "runtime", "package", "vcs", "deploy", "unknown"]);
 
 test("every parser declares what kind of tool it is", () => {
   for (const ex of EXTRACTORS) {
     assert.ok(CATEGORIES.has(ex.category), `${ex.name}: category ${JSON.stringify(ex.category)} is not one of the known kinds`);
+    // "unknown" means the tool was not recognised, which is only ever true of the
+    // fallback. kubectl sat here for a while - a known tool filed under not knowing.
+    if (ex.category === "unknown") {
+      assert.equal(ex.name, "generic", `${ex.name} is a known tool; "unknown" is the fallback's category`);
+    }
     assert.ok(Array.isArray(ex.commands), `${ex.name}: no commands declared`);
     if (ex.name !== "generic") assert.ok(ex.commands.length > 0, `${ex.name}: declares no command that implies it`);
   }
+});
+
+// The README's table is the tool's public claim about what it reads. It went stale
+// silently: six parsers were added over one stretch of work and none of them appeared in
+// it, so the published page under-sold the tool and, worse, could just as easily have
+// over-sold it. A parser is listed under its own name or under one of the commands that
+// implies it - the table says "GCC/Clang" and "javac / Maven / Gradle" where the parsers
+// are called clang and jvm, which is right for a reader and wrong for a substring match.
+test("every parser appears in the README's table", () => {
+  const readme = readFileSync(join(fixtures, "..", "..", "README.md"), "utf8").toLowerCase();
+  const rows = readme.split("\n").filter((l) => l.startsWith("| **"));
+  assert.ok(rows.length > 30, `only ${rows.length} rows found; has the table moved?`);
+  const table = rows.join("\n");
+  const undocumented = [];
+  for (const ex of EXTRACTORS) {
+    if (ex.name === "generic") continue;   // the table's last row, worded as a catch-all
+    const names = [ex.name, ...(ex.commands ?? [])].map((n) => n.toLowerCase());
+    if (!names.some((n) => table.includes(`**${n}`) || table.includes(`${n}**`) || table.includes(`/ ${n} `) || table.includes(`${n} /`))) {
+      undocumented.push(ex.name);
+    }
+  }
+  assert.deepEqual(undocumented, [], "a parser reads a tool the README does not mention");
 });
 
 test("every failure carries a category", () => {

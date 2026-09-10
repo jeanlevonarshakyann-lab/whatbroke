@@ -27,7 +27,7 @@ const clean = (t) => t.replace(ADVICE_RE, "").trim();
 
 export default {
   name: "kubectl",
-  category: "unknown",
+  category: "deploy",
   commands: ["kubectl", "oc", "helm"],
 
   detect: (s) =>

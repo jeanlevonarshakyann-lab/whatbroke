@@ -25,9 +25,15 @@ export default {
     // holding more than one tool, an "Error:" line belonging to somebody else - Go
     // printing an expected error string in a test - reached down the log and adopted
     // another tool's frames.
+    // Nor can a diagnostic own a stack that another diagnostic stands in front of. A
+    // Python traceback ending "KeyError: 'taxrate'" is read as a Node error - the shape
+    // is identical - and with a deno failure pasted under it, deno's own message sat
+    // between the two and the frame beneath that was exactly FRAME_GAP away.
+    const OTHER_DIAGNOSTIC = /^(?:error|Error|warning):[^\S\n]/;
     const FRAME_GAP = 3;
     const frames = [];
     for (let i = errIdx + 1; i < lines.length; i++) {
+      if (OTHER_DIAGNOSTIC.test(lines[i])) break;
       const m = lines[i].match(/^[^\S\n]+at (?:(.+?) \()?(.+?):(\d+):(\d+)\)?$/);
       if (!m) { if (frames.length || i - errIdx > FRAME_GAP) break; else continue; }
       frames.push({ fn: m[1] ?? "<anonymous>", file: unfile(m[2]), line: +m[3], col: +m[4] });

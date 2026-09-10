@@ -202,7 +202,10 @@ them.
 | **unittest** | same, with the deepest *your-code* frame — not the harness |
 | **Python tracebacks** | the frame in your code, not the 9 in site-packages |
 | **deno test** | test name and `file:line` from the header, without the assert-library frames |
+| **deno run** | the exception class, `file:line:col` and your frames — the message without `error:` and without the `file://` scheme |
+| **deno check** | the `TS` code, the explanation and the location — not the `error: Type checking failed.` tally underneath them |
 | **bun test** | test name, `file:line`, the matcher — not bun's echoed source |
+| **bun** | a runtime crash read as bun's rather than node's, keyed on the version bun stamps at the foot of one |
 | **node --test** | test name, `file:line`, and the assertion out of TAP's YAML block |
 | **Node stack traces** | the error, the caret, your frames; `node:internal` hidden |
 | **Playwright** | the test name, the line that actually threw, and the offending expression — not the paths to its artifact files |
@@ -211,6 +214,7 @@ them.
 | **eslint** | errors only; warnings counted and set aside |
 | **go test** | test name, `file:line`, the message; panics resolved past the runtime frames, and `-race` reports at the racing line |
 | **go build** | compile errors with source context |
+| **go vet** | the location, which sits inside the message when vet reports a package that will not compile |
 | **cargo test** | test name, `file:line`, the assertion and its left/right values |
 | **cargo build** | error code and the inline annotation — not the 25 lines of trait impls |
 | **cargo clippy** | the lint name as the title, so you know what to fix or allow |
@@ -222,12 +226,16 @@ them.
 | **ninja** | no parser of its own: what fails under it is a compiler, which already has one |
 | **kubectl** | the sentence a person wants, not five identical klog lines from inside client-go |
 | **GCC/Clang** | compiler errors with `file:line:column`; driver errors that never got as far as a file; warnings and notes set aside |
+| **Swift** | the diagnostic and the `[#group]` tag as its code — not the annotation swiftc draws underneath, which repeats the message word for word |
 | **make** | no parser of its own — the compiler underneath already has one, and `make: *** [target] Error 1` restates the failure without adding to it |
 | **RSpec** | example name, failure message, and `spec/file:line` location |
+| **Ruby** | the exception class, the line that raised, and the unwind — for a missing gem, the line that asked for it rather than `kernel_require.rb` |
+| **Perl** | the location, which Perl writes as prose at the end of the message; `near "= ;"` kept, the `@INC` list dropped, warnings told apart from a fatal die by what they say |
 | **javac / Maven / Gradle** | JVM compiler errors with warnings excluded, Surefire test failures, and build scripts that fail to evaluate |
 | **.NET** | compiler error codes with `file:line:column`; warnings set aside |
 | **dotnet test** | test name, `file:line`, the assertion; reflection frames dropped |
 | **PHPUnit** | test name, assertion message, and `file:line` location |
+| **PHP** | the exception class and the stack; PHP writes every diagnostic twice, and you get it once |
 | **esbuild** | the diagnostic and its source line — not the CLI wrapper's `Command failed:` stack |
 | **vite / rollup** | the rollup error code, `file:line:col` and the offending line |
 | **tsc** | errors grouped by file, with the assignability chain down to the real reason |
