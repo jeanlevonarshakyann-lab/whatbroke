@@ -129,6 +129,32 @@ test("a log with one tool in it never pays for source ownership", () => {
   // Eagerly locating 90 failures in 60k lines is seconds of work. The bound is loose
   // enough to survive a slow CI runner and tight enough that doing it would fail.
   assert.ok(took < 2000, `${took}ms - source ranges look like they are being computed eagerly`);
+});
+
+// The same again with more than one tool in the log. Ownership is only consulted when
+// two parsers describe the same TEXT, and that is a string comparison - so a mixed log
+// whose tools disagree about everything should not locate anything either.
+test("a mixed log only pays for ownership where two parsers agree", () => {
+  const noise = Array(60000).fill("  vite:build transforming src/components/Widget.tsx +2ms").join("\n");
+  const log = `${noise}\n${fx("eslint_bulk_fail.txt")}\n${fx("tsc_plain.txt")}\n${fx("jest_fail.txt")}`;
+
+  // Measured against the SAME noise carrying one tool, so the bound is a ratio rather
+  // than a wall-clock number and does not go flaky on a slower runner. Locating ranges
+  // for a log this size is several times the cost of parsing it: on this machine the
+  // mixed log ran 310ms with the cheap check first and 1090ms with it second, against
+  // roughly 300ms for the single-tool baseline.
+  const alone = `${noise}\n${fx("eslint_bulk_fail.txt")}`;
+  const time = (t) => { const at = Date.now(); analyse(t); return Math.max(Date.now() - at, 1); };
+  const baseline = time(alone);
+  const started = Date.now();
+  const r = analyse(log);
+  const took = Date.now() - started;
+
+  // jest owns it - which parser wins is not the point here, that three are present is
+  assert.equal(r.others.length, 2, "three tools are in this log");
+  assert.equal(r.failures.length + r.others.reduce((n, o) => n + o.failures.length, 0), 95);
+  assert.ok(took < baseline * 2,
+    `${took}ms against a ${baseline}ms single-tool baseline - a mixed log is locating ranges it never compares`);
 
   // and asking for one still answers, with the same range it always gave
   const range = sourceRange(r.failures[0]);
