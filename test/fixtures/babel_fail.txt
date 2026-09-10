@@ -1,0 +1,21 @@
+SyntaxError: /home/dev/app/bad.jsx: Unexpected token (1:10)
+
+> 1 | const x = ;
+    |           ^
+  2 |
+    at constructor (file:///home/dev/app/node_modules/@babel/parser/lib/index.js:325:19)
+    at Parser.raise (file:///home/dev/app/node_modules/@babel/parser/lib/index.js:6387:19)
+    at Parser.unexpected (file:///home/dev/app/node_modules/@babel/parser/lib/index.js:6407:16)
+    at Parser.parseExprAtom (file:///home/dev/app/node_modules/@babel/parser/lib/index.js:8158:22)
+    at Parser.parseExprSubscripts (file:///home/dev/app/node_modules/@babel/parser/lib/index.js:7808:23)
+    at Parser.parseUpdate (file:///home/dev/app/node_modules/@babel/parser/lib/index.js:7793:21)
+    at Parser.parseMaybeUnary (file:///home/dev/app/node_modules/@babel/parser/lib/index.js:7773:23)
+    at Parser.parseMaybeUnaryOrPrivate (file:///home/dev/app/node_modules/@babel/parser/lib/index.js:7645:61)
+    at Parser.parseExprOps (file:///home/dev/app/node_modules/@babel/parser/lib/index.js:7649:23)
+    at Parser.parseMaybeConditional (file:///home/dev/app/node_modules/@babel/parser/lib/index.js:7627:23) {
+  code: 'BABEL_PARSE_ERROR',
+  reasonCode: 'UnexpectedToken',
+  loc: Position { line: 1, column: 10, index: 10 },
+  pos: 10,
+  syntaxPlugin: undefined
+}

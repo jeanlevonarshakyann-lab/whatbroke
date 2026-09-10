@@ -1,0 +1,4 @@
+[31mNameError: variable @undefined-var is undefined[39m[31m in [39m/home/dev/app/bad.less[90m on line 1, column 13:[39m
+1 .a { color: [7m[31m[1m@[22mundefined-var; }[39m[27m
+[90m2 [39m[0m[0m
+
