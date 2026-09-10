@@ -8,6 +8,7 @@ import deno from "./extractors/deno.js";
 import tsc from "./extractors/tsc.js";
 import jest from "./extractors/jest.js";
 import mocha from "./extractors/mocha.js";
+import ava from "./extractors/ava.js";
 import playwright from "./extractors/playwright.js";
 import vitest from "./extractors/vitest.js";
 import eslint from "./extractors/eslint.js";
@@ -41,7 +42,7 @@ import { stripRedrawnCiPrefix, wrapperCandidates } from "./normalize.js";
 import { addSourceRanges, preserveSourceRange, rangesOverlap, setParser } from "./ownership.js";
 
 // order matters: most specific first, generic last
-export const EXTRACTORS = [pytest, nodetest, bun, bunRuntime, deno, denoRuntime, playwright, jest, mocha, vitest, unittest, traceback, eslint, ruff, pyright, mypy, cmake, terraform, swift, clang, ruby, perl, php, rspec, jvm, dotnettest, dotnet, phpunit, cargo, gotest, esbuild, vite, node, tsc, git, kubectl, npm, pnpm, yarn, pip, generic];
+export const EXTRACTORS = [pytest, nodetest, bun, bunRuntime, deno, denoRuntime, playwright, jest, mocha, ava, vitest, unittest, traceback, eslint, ruff, pyright, mypy, cmake, terraform, swift, clang, ruby, perl, php, rspec, jvm, dotnettest, dotnet, phpunit, cargo, gotest, esbuild, vite, node, tsc, git, kubectl, npm, pnpm, yarn, pip, generic];
 
 function dedupeFailures(failures) {
   const seen = new Set();

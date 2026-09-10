@@ -251,6 +251,39 @@ const CASES = [
       assert.match(r.failures[0].message, /^Failed opening required 'nothing-here\.php'$/);
       assert.equal(r.failures[0].code, "Error");
     } },
+  // Captured with ava 6. Like mocha, a failing run produced no diagnosis at all.
+  { file: "ava_fail.txt", tool: "ava", n: 2, check: (r) => {
+      assert.equal(r.summary, "2 tests failed");
+      assert.equal(r.failures[0].subject, "totals an invoice");
+      assert.equal(r.failures[0].line, 3);
+      // a comparison reports the diff, not the test name back at you
+      assert.equal(r.failures[0].message, "- 1049\n+ 1050");
+      // an assertion that is NOT a comparison says so in prose, with the value under it
+      // - and ava puts a blank line between the two
+      assert.equal(r.failures[1].message, "Value is not truthy\nundefined");
+      assert.equal(r.failures[1].line, 4);
+      // the echoed source around the failing line is context, never the diagnosis
+      assert.doesNotMatch(JSON.stringify(r.failures), /reduce\(/);
+    } },
+  { file: "ava_throw_fail.txt", tool: "ava", n: 1, check: (r) => {
+      // a throw is located from its stack; ava's own pointer is not written for one
+      assert.match(r.failures[0].file, /throw\.test\.js$/);
+      assert.equal(r.failures[0].line, 2);
+      assert.equal(r.failures[0].message, "payment gateway unreachable");
+      // the site that failed is the test, so that is the subject - the thrown class
+      // names the failure in the title rather than competing to be its identity
+      assert.equal(r.failures[0].subject, "charges a card");
+      assert.equal(r.failures[0].code, undefined);
+      assert.match(r.failures[0].title, /\(Error\)/);
+      // ava's own lib frames are under every throw and are never the answer
+      assert.doesNotMatch(JSON.stringify(r.failures), /node_modules/);
+    } },
+  { file: "ava_load_fail.txt", tool: "ava", n: 1, check: (r) => {
+      // a file that will not load never reaches the roll-call
+      assert.match(r.failures[0].file, /syn\.test\.js$/);
+      assert.equal(r.failures[0].code, "SyntaxError");
+      assert.equal(r.failures[0].message, "Unexpected end of input");
+    } },
   // Captured with mocha 11. A failing run produced no diagnosis at all before this -
   // not a worse answer, nothing - and mocha is among the most widely used JS runners.
   { file: "mocha_fail.txt", tool: "mocha", n: 2, check: (r) => {

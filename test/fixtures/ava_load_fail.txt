@@ -1,0 +1,9 @@
+
+  Uncaught exception in av/syn.test.js
+
+  SyntaxError: Unexpected end of input
+
+  ✘ av/syn.test.js exited with a non-zero exit code: 1
+  ─
+
+  1 uncaught exception

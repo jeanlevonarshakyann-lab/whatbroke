@@ -1,0 +1,40 @@
+
+  ✘ [fail]: totals an invoice
+  ✘ [fail]: finds an expiry claim
+  ✔ passes
+  ─
+
+  totals an invoice
+
+  av/sum.test.js:3
+
+   2: const total = (items, tax) => items.reduce((a, b) => a + b, 0) + Math.tru…
+   3: test("totals an invoice", (t) => { t.is(total([1000, 49], 0.5), 1050); });
+   4: test("finds an expiry claim", (t) => { const tok = { sub: "u1" }; t.truth…
+
+  Difference (- actual, + expected):
+
+  - 1049
+  + 1050
+
+  › file://av/sum.test.js:3:38
+
+
+
+  finds an expiry claim
+
+  av/sum.test.js:4
+
+   3: test("totals an invoice", (t) => { t.is(total([1000, 49], 0.5), 1050); });
+   4: test("finds an expiry claim", (t) => { const tok = { sub: "u1" }; t.truth…
+   5: test("passes", (t) => { t.is(1, 1); });                                   
+
+  Value is not truthy:
+
+  undefined
+
+  › file://av/sum.test.js:4:69
+
+  ─
+
+  2 tests failed
