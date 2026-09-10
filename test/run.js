@@ -1204,6 +1204,37 @@ try {
   pass++;
 } catch (e) { console.log(`  FAIL adaptive context\n       ${e.message}`); fail++; }
 
+// two failures a line apart, both carrying the source line they are about
+try {
+  const { render, setColor } = await import("../src/render.js");
+  const { resetSnippetCache } = await import("../src/snippet.js");
+  const { mkdtempSync, writeFileSync, rmSync } = await import("node:fs");
+  setColor(false);
+  // inside the working directory: snippet() refuses to read source outside it
+  const dir = mkdtempSync(join(process.cwd(), ".tmp-near-"));
+  const file = join(dir, "near.swift");
+  writeFileSync(file, ['let a = 1', 'let x: Int = "hello"', 'print(a, y)', ''].join("\n"));
+  resetSnippetCache();
+
+  const out = render({ tool: "swift", failures: [
+    { file, line: 2, col: 14, title: "compile error", message: "cannot convert value", stmt: 'let x: Int = "hello"' },
+    { file, line: 3, col: 10, title: "compile error", message: "cannot find 'y' in scope", stmt: "print(a, y)" },
+  ] }, {});
+
+  rmSync(dir, { recursive: true, force: true });
+
+  // The second failure sits inside the region the first one's snippet already covered,
+  // so the renderer shows just its line with a caret. `stmt` is the stand-in for source
+  // that could NOT be shown - printing it as well said the line a third time, unnumbered.
+  // swiftc was the first parser to set a location and a stmt together.
+  const unnumbered = out.split("\n")
+    .filter((l) => /^\s+\u2502 /.test(l))        // a pipe with no line number in front
+    .filter((l) => !/^\s+\u2502 *\^\s*$/.test(l));  // the caret line is one of those, and is fine
+  assert.deepEqual(unnumbered, [], `the statement was printed again with no line number:\n${out}`);
+  console.log("  ok   a failure beside the last one does not print its line twice");
+  pass++;
+} catch (e) { console.log(`  FAIL near-failure duplicate line\n       ${e.message}`); fail++; }
+
 // pytest -q prints its summary with no === decoration; it must still be found
 try {
   const q = [
