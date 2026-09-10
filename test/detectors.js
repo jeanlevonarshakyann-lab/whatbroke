@@ -24,8 +24,17 @@ const snapshotPath = join(here, "detector-matrix.json");
 
 let pass = 0, fail = 0;
 const test = (name, fn) => {
-  try { fn(); console.log(`  ok   ${name}`); pass++; }
-  catch (e) { console.log(`  FAIL ${name}\n       ${e.message}`); fail++; }
+  try {
+    const returned = fn();
+    // This runner is synchronous. An async body returns a promise it would never await,
+    // so every assertion inside becomes an unhandled rejection and the test passes
+    // whatever it finds. One written that way sat green against the exact bug it was
+    // meant to catch, so the shape is refused rather than trusted.
+    if (returned && typeof returned.then === "function") {
+      throw new Error("test body returned a promise; this runner does not await, so nothing in it would be checked");
+    }
+    console.log(`  ok   ${name}`); pass++;
+  } catch (e) { console.log(`  FAIL ${name}\n       ${e.message}`); fail++; }
 };
 
 /** Exactly the text analyse() hands the detectors. Measuring anything else would be
