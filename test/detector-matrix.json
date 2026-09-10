@@ -827,6 +827,19 @@
       "generic": 4
     }
   },
+  "playwright_fail.txt": {
+    "winner": "playwright",
+    "parser": "playwright",
+    "failures": 2,
+    "claimants": [
+      "playwright",
+      "node",
+      "generic"
+    ],
+    "shadow": {
+      "generic": 3
+    }
+  },
   "pnpm_lifecycle_fail.txt": {
     "winner": "pnpm",
     "parser": "pnpm",

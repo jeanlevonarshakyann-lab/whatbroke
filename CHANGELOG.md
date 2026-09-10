@@ -2,6 +2,10 @@
 
 ## Unreleased
 
+- Added a Playwright parser. A run with two failures came back as three, two of which
+  were the paths of artifact files to go and open, and the second real failure was
+  missing entirely.
+
 - Added a pyright parser. Its diagnostics were readable only as a guess, which took the
   column for the start of the message, dropped the indented line that says why, and never
   saw the rule name.
