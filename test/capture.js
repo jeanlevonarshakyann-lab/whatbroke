@@ -217,9 +217,12 @@ test("a buried failure survives the cap, whatever tool wrote it", () => {
 
     let got = null;
     try { got = analyse(text); } catch { got = null; }
-    // The tool must still be the tool. How many of its failures survive is a budget
-    // question; losing the diagnosis entirely, or handing it to the guess, is not.
-    if (got?.tool !== plain.tool) {
+    // Every failure, not just the tool. Losing one to the budget was tolerated while
+    // jest lost one of its two - and what caused that turned out to be a bug rather
+    // than a budget: the scan decoded lines as latin1, so a pattern written with jest's
+    // bullet in it could never match three UTF-8 bytes. With that fixed nothing in the
+    // corpus degrades at all, so the bar is where it should be.
+    if (got?.tool !== plain.tool || got?.failures.length !== plain.failures.length) {
       lost.push(`${name}: ${plain.tool}/${plain.failures.length} -> ${got?.tool ?? "none"}/${got?.failures.length ?? 0}`);
     }
   }

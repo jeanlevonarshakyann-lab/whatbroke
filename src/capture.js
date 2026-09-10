@@ -140,10 +140,17 @@ export function createCapture(maxBytes) {
     // Copy a line before retaining it: a subarray of a large stream chunk would keep
     // the entire parent allocation alive and quietly defeat the memory bound.
     const record = { start, buf: Buffer.from(view) };
-    // Colour codes destroy the word boundaries above: deno writes "\x1b[31merror\x1b[0m:",
-    // where the "m" ending the escape sits against the "e" and \berror never matches.
-    // Only pay for the strip when there is an escape to strip.
-    const raw = view.toString("latin1");
+    // Decoded as UTF-8, not latin1. A bullet is three bytes - jest's "\u25cf" is
+    // e2 97 8f - and latin1 turns those into three separate characters, so a pattern
+    // written with the bullet in it can never match. The alternatives for jest's and
+    // vitest's markers were added in that state and never once fired; what recovered
+    // jest was the "FAIL" on the line above. Decoding correctly costs about a quarter
+    // of the decode, which is not where this loop spends its time.
+    //
+    // Colour codes destroy the word boundaries above too: deno writes
+    // "\x1b[31merror\x1b[0m:", where the "m" ending the escape sits against the "e" and
+    // \berror never matches. Only pay for that strip when there is an escape to strip.
+    const raw = view.toString("utf8");
     const interesting = PROBABLE_DIAGNOSTIC.test(raw.includes("\u001b") ? stripAnsi(raw) : raw);
     if (interesting) {
       saveDiagnostic(record);                 // the diagnostic itself outranks context
