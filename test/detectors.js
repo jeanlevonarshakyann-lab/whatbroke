@@ -149,6 +149,17 @@ test("every parser declares what kind of tool it is", () => {
 // over-sold it. A parser is listed under its own name or under one of the commands that
 // implies it - the table says "GCC/Clang" and "javac / Maven / Gradle" where the parsers
 // are called clang and jvm, which is right for a reader and wrong for a substring match.
+// A parser with no fixture of its own is code nothing runs. Injecting a throw into each
+// of the 40 extract() functions in turn and running the whole suite showed that every one
+// of them is currently caught - which is the strong form of this check, and takes ten
+// minutes. This is the fast proxy: the matrix records the winning PARSER for every
+// fixture, so a parser absent from that column owns nothing.
+test("every parser owns at least one fixture", () => {
+  const owned = new Set(Object.values(snapshot).map((row) => row.parser));
+  const orphans = EXTRACTORS.map((ex) => ex.name).filter((n) => !owned.has(n));
+  assert.deepEqual(orphans, [], "a parser wins no log in the corpus, so nothing exercises it");
+});
+
 test("every parser appears in the README's table", () => {
   const readme = readFileSync(join(fixtures, "..", "..", "README.md"), "utf8").toLowerCase();
   const rows = readme.split("\n").filter((l) => l.startsWith("| **"));
