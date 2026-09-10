@@ -1204,6 +1204,23 @@ const CASES = [
       assert.match(r.failures[1].message, /use of undeclared identifier 'y'/);
       assert.equal(r.tool, "clang", "clang output must not be claimed by the mypy parser");
     } },
+  // Captured with gcc 14 under -fno-show-column, which older gcc did by default. Without
+  // the column, `file:line: error: message` is also javac's shape and mypy's - so the
+  // filename is what has to identify the compiler, and only C-family sources qualify.
+  { file: "gcc_nocolumn_fail.txt", tool: "clang", n: 1, check: (r) => {
+      assert.equal(r.failures[0].file, "inc.c");
+      assert.equal(r.failures[0].line, 1);
+      assert.equal(r.failures[0].col, undefined, "no column was printed; none is invented");
+      assert.match(r.failures[0].message, /nope\.h: No such file or directory/);
+    } },
+  { file: "gcc_nocolumn_multi_fail.txt", tool: "clang", n: 3, check: (r) => {
+      assert.deepEqual(r.failures.map((f) => f.line), [2, 3, 4]);
+      assert.equal(r.failures.every((f) => f.col === undefined), true);
+      assert.equal(r.failures[1].code, "-Wimplicit-function-declaration");
+      // gcc repeats the location as a "note" to say it will not warn again. It is not
+      // a second failure, and it sits on the same line as the first.
+      assert.doesNotMatch(JSON.stringify(r.failures), /reported only once/);
+    } },
   { file: "rspec_fail.txt", tool: "rspec", n: 2, check: (r) => {
       assert.equal(r.summary, "3 examples, 2 failures");
       assert.equal(r.failures[0].title, "shop totals an invoice");

@@ -1,0 +1,14 @@
+multi.c: In function 'main':
+multi.c:2: error: 'undefined_name' undeclared (first use in this function)
+    2 |     int x = undefined_name;
+      |             ^~~~~~~~~~~~~~
+multi.c:2: note: each undeclared identifier is reported only once for each function it appears in
+multi.c:3: error: implicit declaration of function 'undeclared_fn' [-Wimplicit-function-declaration]
+    3 |     undeclared_fn();
+      |     ^~~~~~~~~~~~~
+multi.c:4: error: expected ';' before '}' token
+    4 |     return x
+      |             ^
+      |             ;
+    5 | }
+      | ~            
