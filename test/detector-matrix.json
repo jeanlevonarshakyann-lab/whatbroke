@@ -62,6 +62,28 @@
     ],
     "shadow": {}
   },
+  "black_fail.txt": {
+    "winner": "black",
+    "parser": "black",
+    "failures": 1,
+    "claimants": [
+      "black",
+      "generic"
+    ],
+    "shadow": {}
+  },
+  "black_parse_fail.txt": {
+    "winner": "black",
+    "parser": "black",
+    "failures": 1,
+    "claimants": [
+      "black",
+      "generic"
+    ],
+    "shadow": {
+      "generic": 1
+    }
+  },
   "bun_fail.txt": {
     "winner": "bun test",
     "parser": "bun test",
@@ -439,6 +461,18 @@
       "generic"
     ],
     "shadow": {}
+  },
+  "flake8_fail.txt": {
+    "winner": "flake8",
+    "parser": "flake8",
+    "failures": 8,
+    "claimants": [
+      "flake8",
+      "generic"
+    ],
+    "shadow": {
+      "generic": 8
+    }
   },
   "git_conflict_fail.txt": {
     "winner": "git",
@@ -1308,6 +1342,30 @@
     "shadow": {
       "python": 1,
       "generic": 5
+    }
+  },
+  "pylint_error_fail.txt": {
+    "winner": "pylint",
+    "parser": "pylint",
+    "failures": 1,
+    "claimants": [
+      "pylint",
+      "generic"
+    ],
+    "shadow": {
+      "generic": 4
+    }
+  },
+  "pylint_fail.txt": {
+    "winner": "pylint",
+    "parser": "pylint",
+    "failures": 4,
+    "claimants": [
+      "pylint",
+      "generic"
+    ],
+    "shadow": {
+      "generic": 4
     }
   },
   "pyright_fail.txt": {

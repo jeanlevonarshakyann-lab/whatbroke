@@ -356,6 +356,42 @@ const CASES = [
       // the last [warn] line is prettier's advice, not another file
       assert.doesNotMatch(JSON.stringify(r.failures), /--write/);
     } },
+  // Captured with flake8 7. One finding per line and nothing else.
+  { file: "flake8_fail.txt", tool: "flake8", n: 8, check: (r) => {
+      assert.equal(r.failures[0].file, "lint_me.py");
+      assert.equal(r.failures[0].line, 1);
+      assert.equal(r.failures[0].code, "F401");
+      assert.equal(r.failures[0].message, "'os' imported but unused");
+    } },
+  // Captured with pylint 3. It reports conventions and refactor suggestions alongside
+  // real errors, and only E and F stop a run.
+  { file: "pylint_fail.txt", tool: "pylint", n: 4, check: (r) => {
+      // this run found nothing but conventions and warnings - and still failed, so all
+      // four are reported rather than none
+      assert.equal(r.failures[0].code, "C0114");
+      // the symbolic name is what goes in a disable comment and what the docs are
+      // indexed by, so it leads; the numeric code identifies
+      assert.equal(r.failures[0].title, "missing-module-docstring");
+    } },
+  { file: "pylint_error_fail.txt", tool: "pylint", n: 1, check: (r) => {
+      // a real error alongside a missing docstring buries the error, so the advice
+      // steps aside and is counted
+      assert.equal(r.failures[0].code, "E0602");
+      assert.equal(r.failures[0].title, "undefined-variable");
+      assert.match(r.summary, /3 advisory hidden/);
+    } },
+  // Captured with black 25. It names files and exits non-zero, saying nothing that
+  // admits a failure - which is also why its wording had to join the capture vocabulary.
+  { file: "black_fail.txt", tool: "black", n: 1, check: (r) => {
+      assert.equal(r.failures[0].file, "ugly.py");
+      assert.match(r.summary, /failed the format check/);
+    } },
+  { file: "black_parse_fail.txt", tool: "black", n: 1, check: (r) => {
+      // a file black cannot parse is reported differently, with the reason and where
+      assert.equal(r.failures[0].file, "cantparse.py");
+      assert.equal(r.failures[0].line, 1);
+      assert.match(r.failures[0].message, /^Cannot parse/);
+    } },
   // Captured with Biome 2. It heads each finding with the rule path, says what is wrong
   // on the next line, and then offers advice and a fix diff - neither of which is the
   // diagnosis.
@@ -1875,6 +1911,7 @@ try {
     "mypy_notes_fail.txt",       // several type errors repeat across modules
     "clang_bulk_fail.txt",       // one signature change, fourteen call sites
     "clippy_fail.txt",           // one lint in several places is one fix
+    "flake8_fail.txt",           // the same whitespace rule in three places
     "swiftc_bulk_fail.txt",      // eight assignments of the same wrong type, one cause
   ];
   let checked = 0;

@@ -40,7 +40,14 @@ export default {
       for (let i = errIdx - 1; i >= 0 && i >= errIdx - SOURCE_GAP; i--) {
         if (/^[^\S\n]*\^+[^\S\n]*$/.test(lines[i]) && i >= 1) {
           stmt = lines[i - 1].trim();
-          const h = lines[i - 2]?.match(/^(\S.*?):(\d+)$/);
+          // A path, not a sentence. `^(\S.*?):(\d+)$` accepts anything ending in a
+          // number, and black's "error: cannot format cantparse.py: Cannot parse: 1:7"
+          // ends in one - under a caret and a source line, which is node's exact shape,
+          // so node read that whole sentence as the file its error came from.
+          //
+          // Colons cannot be what rules it out: node writes "file:///abs/syn.mjs:1".
+          // Whitespace can - a path has none, and a sentence has plenty.
+          const h = lines[i - 2]?.match(/^(\S+):(\d+)$/);
           if (h) header = { file: unfile(h[1]), line: +h[2] };
           break;
         }

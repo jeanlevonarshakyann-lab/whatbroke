@@ -4,6 +4,11 @@
 
 ## 0.4.0 — 2026-09-10
 
+- Reads flake8, pylint and black. flake8 and pylint were reaching the guess and black
+  said nothing at all. pylint reports conventions and refactor suggestions alongside real
+  errors, and a missing docstring listed beside an undefined variable buries it - so when
+  a run has errors the advice steps aside and is counted instead. A run that found only
+  conventions still failed, and still reports them.
 - Reads swc. It reports through miette, the Rust diagnostic renderer, and ends with a
   tally that says nothing - which is what was being read, under node's name, losing both
   the message and the location.

@@ -15,6 +15,8 @@ import playwright from "./extractors/playwright.js";
 import vitest from "./extractors/vitest.js";
 import eslint from "./extractors/eslint.js";
 import ruff from "./extractors/ruff.js";
+import flake8 from "./extractors/flake8.js";
+import pylint from "./extractors/pylint.js";
 import markdownlint from "./extractors/markdownlint.js";
 import stylelint from "./extractors/stylelint.js";
 import oxlint from "./extractors/oxlint.js";
@@ -25,6 +27,7 @@ import less from "./extractors/less.js";
 import babel from "./extractors/babel.js";
 import swc from "./extractors/swc.js";
 import prettier from "./extractors/prettier.js";
+import black from "./extractors/black.js";
 import mypy from "./extractors/mypy.js";
 import pyright from "./extractors/pyright.js";
 import clang from "./extractors/clang.js";
@@ -54,7 +57,7 @@ import { stripRedrawnCiPrefix, wrapperCandidates } from "./normalize.js";
 import { addSourceRanges, preserveSourceRange, rangesOverlap, setParser } from "./ownership.js";
 
 // order matters: most specific first, generic last
-export const EXTRACTORS = [pytest, nodetest, bun, bunRuntime, deno, denoRuntime, playwright, jest, mocha, ava, jasmine, tap, vitest, unittest, traceback, eslint, ruff, markdownlint, stylelint, biome, oxlint, prettier, sass, less, webpack, babel, swc, pyright, mypy, cmake, terraform, swift, clang, ruby, perl, php, rspec, jvm, dotnettest, dotnet, phpunit, cargo, gotest, esbuild, vite, node, tsc, git, kubectl, npm, pnpm, yarn, pip, generic];
+export const EXTRACTORS = [pytest, nodetest, bun, bunRuntime, deno, denoRuntime, playwright, jest, mocha, ava, jasmine, tap, vitest, unittest, traceback, eslint, ruff, pylint, flake8, markdownlint, stylelint, biome, oxlint, black, prettier, sass, less, webpack, babel, swc, pyright, mypy, cmake, terraform, swift, clang, ruby, perl, php, rspec, jvm, dotnettest, dotnet, phpunit, cargo, gotest, esbuild, vite, node, tsc, git, kubectl, npm, pnpm, yarn, pip, generic];
 
 function dedupeFailures(failures) {
   const seen = new Set();

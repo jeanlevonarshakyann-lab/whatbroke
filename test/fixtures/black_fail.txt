@@ -1,0 +1,4 @@
+would reformat ugly.py
+
+Oh no! 💥 💔 💥
+1 file would be reformatted.
