@@ -39,7 +39,17 @@ const sample = (text) => text.split("\n").filter((l) => l.trim()).slice(0, SAMPL
  *  several lines because the first one is sometimes a banner that carries no prefix. */
 function literalPrefix(text) {
   const lines = sample(text);
-  if (lines.length < 3) return "";
+  // No floor. Three lines was the guard against cutting arbitrary text off a short log,
+  // where any leading text looks uniform because there is nothing to compare it with -
+  // but `better` in index.js already refuses a discovered strip unless it is a
+  // STRUCTURAL improvement: a real parser reading a log that nothing could read before.
+  // A wrong strip cannot survive that, and the floor was costing the case it was least
+  // affordable in: a one- or two-line failure inside a runner's prefix, which is exactly
+  // the log whose whole diagnosis is that line.
+  //
+  // Measured: 10 of 123 fixtures degraded under a stacked CI stamp plus a monorepo
+  // prefix, 5 at a floor of two, 1 at none. No unwrapped fixture reads differently.
+  if (!lines.length) return "";
   const need = Math.ceil(lines.length * UNIFORM);
   let best = "";
   for (const seed of lines.slice(0, 3)) {
