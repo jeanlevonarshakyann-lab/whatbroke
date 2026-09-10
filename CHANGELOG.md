@@ -2,6 +2,12 @@
 
 ## Unreleased
 
+- Fixed: git reported cargo's "could not compile … due to 3 previous errors" — a tally
+  cargo itself suppresses — as a git failure, and kubectl reported deno's
+  "error: Test failed" as a kubectl one. `error:` and `fatal:` at line start belong to
+  half the tools in existence; ordering protects the winning parser from that, but the
+  mixed-log path asks every parser anyway.
+
 - Added a Terraform parser. Its diagnostics are drawn in a box, and the vertical bar down
   the left is part of the drawing rather than the message — so a validation failure came
   back as the headline alone, with the file, the line and the sentence explaining it all
