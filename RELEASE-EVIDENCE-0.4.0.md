@@ -1,7 +1,7 @@
 # 0.4.0 release evidence
 
-Status: release candidate. Do not publish, tag, create a GitHub release, or update the
-bundled Action pin until every gate below is green.
+Status: release gate passed. Publication still requires npm authentication and registry
+verification; update the bundled Action pin only afterward in its own green PR.
 
 ## Fresh command gate
 
@@ -63,7 +63,8 @@ Result: 22 failing commands across 11 tool families passed, exceeding the 20-com
 - Fuzz: 59,520 parser calls, no crash, stall, or warning promoted to failure.
 - Packed-install smoke test: pass; the offline tarball install and both command shims
   parsed a real captured fixture.
-- CI: pending Linux, macOS, and Windows on Node 18, 20, 22, and 24.
+- CI: pass on Linux, macOS, and Windows with Node 18, 20, 22, and 24 (12 jobs).
 
-The README continues to show the published `0.1.1` Action version and this changelog
-remains Unreleased until the pending CI gate passes.
+The changelog date and README `0.4.0` Action example were finalized only after every
+local and CI gate above passed. The bundled Action itself remains pinned to published
+`0.1.1` until registry verification succeeds.

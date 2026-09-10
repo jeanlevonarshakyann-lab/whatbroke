@@ -2,6 +2,8 @@
 
 ## Unreleased
 
+## 0.4.0 — 2026-09-10
+
 - Mixed-log ownership is now exact across all 13,414 ordered cross-parser fixture
   pairs. Failures carry private source ranges so two parsers cannot report the same raw
   diagnostic region, without changing terminal output or the version-1 JSON schema.

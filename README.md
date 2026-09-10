@@ -187,7 +187,7 @@ Repositories can use the bundled composite action:
 - uses: jeanlevonarshakyann-lab/whatbroke/.github/actions/whatbroke@main
   with:
     command: npm test
-    version: 0.1.1
+    version: 0.4.0
 ```
 
 Pin `version` to a known npm release for reproducible CI. The action preserves
