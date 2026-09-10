@@ -6,6 +6,8 @@
 // believing the "likely cause" line anywhere. This tool never invents anything, and a
 // wrong merge is an invention. Every rule below is tuned toward refusing to group.
 
+import { createHash } from "node:crypto";
+
 export const MIN_CLUSTER = 3;   // two failures sharing a shape is usually coincidence
 
 // Quoted content that is short and has no whitespace is a NAME - unquote and keep it,
@@ -123,6 +125,12 @@ export function contentScore(sig) {
 export const causeId = (failure) => fingerprint(keyOf(failure));
 
 export function fingerprint(key) {
+  return createHash("sha256").update(String(key)).digest("hex").slice(0, 24);
+}
+
+/** The pre-0.4 identity, kept only so one saved --since-last run can migrate without
+ *  declaring every unchanged cause new. New output must never use this 32-bit hash. */
+export function legacyFingerprint(key) {
   let h = 0x811c9dc5;
   for (let i = 0; i < key.length; i++) { h ^= key.charCodeAt(i); h = Math.imul(h, 0x01000193); }
   return (h >>> 0).toString(16).padStart(8, "0");

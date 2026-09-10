@@ -8,8 +8,15 @@ import { join, dirname, resolve } from "node:path";
 import { fileURLToPath } from "node:url";
 import { spawnSync } from "node:child_process";
 import assert from "node:assert/strict";
-import { compare, cacheDir, runIdentity, trackedCauseId } from "../src/history.js";
-import { causeId } from "../src/cluster.js";
+import {
+  compare,
+  cacheDir,
+  runIdentity,
+  legacyRunIdentity,
+  trackedCauseId,
+  legacyTrackedCauseId,
+} from "../src/history.js";
+import { causeId, fingerprint } from "../src/cluster.js";
 import { analyse } from "../src/index.js";
 
 const here = dirname(fileURLToPath(import.meta.url));
@@ -141,7 +148,7 @@ test("no previous run means no comparison, not an empty one", () => {
 });
 
 test("a record from an older identity scheme is ignored, not misread", () => {
-  for (const version of [1, 2]) {
+  for (const version of [1, 2, 3, 4]) {
     const store = cache();
     run(store, fx("pytest_fail.txt"));
     const path = join(store, stored(store)[0]);
@@ -153,7 +160,55 @@ test("a record from an older identity scheme is ignored, not misread", () => {
   }
 });
 
+test("the last 32-bit history record migrates without inventing new causes", () => {
+  const store = cache();
+  const parsed = analyse(fx("pytest_fail.txt"));
+  const identity = legacyRunIdentity({ cwd: process.cwd(), tool: parsed.tool, argv: [] });
+  const causes = parsed.failures.map((failure) => legacyTrackedCauseId(failure, parsed.tool));
+  writeFileSync(join(store, `${identity}.json`), JSON.stringify({
+    version: 4,
+    ranAt: "2026-09-09T00:00:00.000Z",
+    tool: parsed.tool,
+    causes,
+  }));
+
+  const result = JSON.parse(run(store, fx("pytest_fail.txt"), ["--json"]).stdout).since;
+  assert.equal(result.compared, true);
+  assert.equal(result.migrated, true);
+  assert.deepEqual(result.fresh, []);
+  assert.equal(result.gone, null, "legacy collisions make disappearance unsafe to claim");
+  assert.equal(result.goneWithheld, "identity-migration");
+
+  const files = stored(store);
+  assert.equal(files.length, 2, "the migrated run should be saved under its new identity");
+  const currentFile = files.find((file) => /^[0-9a-f]{24}\.json$/.test(file));
+  assert.ok(currentFile, "the new 96-bit run identity was not written");
+  const next = JSON.parse(readFileSync(join(store, currentFile), "utf8"));
+  assert.equal(next.version, 5);
+  assert.ok(next.causes.every((id) => /^[0-9a-f]{24}$/.test(id)));
+
+  const changedStore = cache();
+  writeFileSync(join(changedStore, `${identity}.json`), JSON.stringify({
+    version: 4,
+    ranAt: "2026-09-09T00:00:00.000Z",
+    tool: parsed.tool,
+    causes,
+  }));
+  const changedLog = fx("pytest_fail.txt").replace("KeyError: 'exp'", "KeyError: 'aud'");
+  const changed = JSON.parse(run(changedStore, changedLog, ["--json"]).stdout).since;
+  assert.equal(changed.migrated, true);
+  assert.equal(changed.fresh.length, 1);
+  assert.match(changed.fresh[0], /^[0-9a-f]{24}$/,
+    "migration must expose current IDs so the changed cause can be marked new");
+});
+
 // ------------------------------------------------------------------ identity
+
+test("persistent fingerprints use 96 bits", () => {
+  assert.match(fingerprint("same input, same identity"), /^[0-9a-f]{24}$/);
+  assert.equal(fingerprint("same input, same identity"), fingerprint("same input, same identity"));
+  assert.notEqual(fingerprint("same input, same identity"), fingerprint("different identity"));
+});
 
 test("different commands never compare against each other", () => {
   const a = runIdentity({ cwd: "/p", tool: "pytest", argv: ["pytest", "tests/unit"] });

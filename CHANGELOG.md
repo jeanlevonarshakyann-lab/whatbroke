@@ -2,6 +2,14 @@
 
 ## Unreleased
 
+## 0.4.0 — 2026-09-10
+
+- Large captures now keep bounded windows around probable diagnostics between the head
+  and tail, so a real failure cannot disappear merely because cleanup output followed it.
+- Replaced persistent 32-bit fingerprints with 96-bit SHA-256 prefixes. The last v4
+  `--since-last` record migrates without marking unchanged causes as new; disappearance
+  claims are conservatively withheld during that one transition.
+
 - Added a package-boundary smoke test: CI now builds the npm tarball, installs it into
   a clean temporary project without network access, runs both installed command shims,
   and parses a real captured failure through the installed package.

@@ -4,10 +4,15 @@
 // first N bytes and discarding the rest loses exactly the thing being looked for, and
 // it does so precisely on the large logs that are hardest to read by hand.
 //
-// So the cap is spent from both ends: a slice of the beginning, where the command line
-// and the build banner live, and as much of the end as the rest of the budget allows.
+// So the cap is spent from both ends, with a bounded set of complete lines around
+// probable diagnostics rescued from the middle. The diagnostic copy is only charged
+// against the tail when it is actually used, so ordinary logs retain the old 25/75
+// split while a buried failure can trade some shutdown noise for the lines that matter.
 
 const HEAD_SHARE = 0.25;   // the beginning is worth keeping, but the end is worth more
+const DIAGNOSTIC_SHARE = 0.25;
+const CONTEXT_LINES = 8;
+const PROBABLE_DIAGNOSTIC = /\b(?:errors?|failed|failures?|fatal|exceptions?|panic|traceback|assert(?:ion)?|cannot|could not|segmentation fault)\b|\b(?:TS|CS|MSB|E)\d{3,5}\b/i;
 
 /** Drop a trailing character that the cut left half-written.
  *
@@ -61,22 +66,88 @@ function trimStartToLine(buf) {
 export const elision = (bytes) =>
   `\n~~~ whatbroke: ${bytes} bytes of output elided here (raise --max-bytes to keep them) ~~~\n`;
 
-/** Accumulate at most `maxBytes`, keeping the head and the tail.
+/** Accumulate bounded output, keeping the head, probable diagnostic windows and tail.
  *
  *  Under the cap this is byte-for-byte the input, with no marker and no trimming, so
  *  ordinary runs are completely unaffected. */
 export function createCapture(maxBytes) {
   const headMax = Math.max(1, Math.floor(maxBytes * HEAD_SHARE));
   const tailMax = Math.max(1, maxBytes - headMax);
+  const diagnosticMax = Math.max(1, Math.floor(maxBytes * DIAGNOSTIC_SHARE));
+  const scanLineMax = Math.max(1024, Math.min(64 * 1024, diagnosticMax));
   const head = [];
   let headBytes = 0;
   const tail = [];
   let tailBytes = 0;
-  let dropped = 0;
+  let totalBytes = 0;
+
+  // Diagnostic lines are stored with their absolute offsets. Complete lines make the
+  // final splice safe for both UTF-8 and multiline parsers; offsets let nearby windows
+  // merge without duplicating bytes or pretending two separated regions were adjacent.
+  const diagnostics = [];
+  const diagnosticOffsets = new Set();
+  let diagnosticBytes = 0;
+  let recent = [];
+  let after = 0;
+  let pending = Buffer.alloc(0);
+  let pendingStart = 0;
+  let pendingWasClipped = false;
+
+  const saveDiagnostic = (record) => {
+    if (record.start + record.buf.length <= headMax || diagnosticOffsets.has(record.start)) return;
+    if (record.buf.length > diagnosticMax - diagnosticBytes) return;
+    diagnostics.push(record);
+    diagnosticOffsets.add(record.start);
+    diagnosticBytes += record.buf.length;
+  };
+
+  const considerLine = (view, start) => {
+    // Copy a line before retaining it: a subarray of a large stream chunk would keep
+    // the entire parent allocation alive and quietly defeat the memory bound.
+    const record = { start, buf: Buffer.from(view) };
+    const interesting = PROBABLE_DIAGNOSTIC.test(view.toString("latin1"));
+    if (interesting) {
+      saveDiagnostic(record);                 // the diagnostic itself outranks context
+      for (let i = recent.length - 1; i >= 0; i--) saveDiagnostic(recent[i]);
+      after = CONTEXT_LINES;
+    } else if (after > 0) {
+      saveDiagnostic(record);
+      after--;
+    }
+    recent.push(record);
+    if (recent.length > CONTEXT_LINES) recent.shift();
+  };
+
+  const scanDiagnostics = (buf, start) => {
+    if (!pending.length) pendingStart = start;
+    pending = pending.length ? Buffer.concat([pending, buf]) : buf;
+    let at;
+    while ((at = pending.indexOf(NL)) !== -1) {
+      const length = at + 1;
+      if (!pendingWasClipped) considerLine(pending.subarray(0, length), pendingStart);
+      pending = pending.subarray(length);
+      pendingStart += length;
+      pendingWasClipped = false;
+    }
+    // An unbroken progress bar or minified blob must not become an unbounded scanner
+    // buffer. Such a partial line is not useful context, so retain only enough suffix
+    // to find its eventual newline and resume on the next complete line.
+    if (pending.length > scanLineMax) {
+      const discard = pending.length - scanLineMax;
+      pending = Buffer.from(pending.subarray(discard));
+      pendingStart += discard;
+      pendingWasClipped = true;
+      recent = [];
+      after = 0;
+    }
+  };
 
   return {
     push(chunk) {
       let buf = Buffer.isBuffer(chunk) ? chunk : Buffer.from(String(chunk), "utf8");
+      const start = totalBytes;
+      totalBytes += buf.length;
+      scanDiagnostics(buf, start);
       if (headBytes < headMax) {
         const take = Math.min(headMax - headBytes, buf.length);
         head.push(buf.subarray(0, take));
@@ -94,30 +165,67 @@ export function createCapture(maxBytes) {
         if (first.length <= excess) {
           tail.shift();
           tailBytes -= first.length;
-          dropped += first.length;
         } else {
           tail[0] = first.subarray(excess);
           tailBytes -= excess;
-          dropped += excess;
         }
       }
     },
 
     finish() {
+      if (pending.length && !pendingWasClipped) considerLine(pending, pendingStart);
       const headBuf = Buffer.concat(head);
       const tailBuf = Buffer.concat(tail);
-      if (dropped === 0) {
+      if (totalBytes <= maxBytes) {
         // Everything fit. Hand back exactly what arrived.
         return { text: Buffer.concat([headBuf, tailBuf]).toString("utf8"), truncated: false, elided: 0 };
       }
       const keptHead = trimEndToLine(headBuf);
-      const keptTail = trimStartToLine(tailBuf);
-      // Trimming to line boundaries discards a little more; say so honestly.
-      const total = dropped + (headBuf.length - keptHead.length) + (tailBuf.length - keptTail.length);
+      // Middle diagnostics borrow only the part of the old tail allocation that they
+      // need. Candidates already present in the retained tail cost nothing. Moving the
+      // tail start can expose another saved line, so find the small monotonic fixed point.
+      const ordered = diagnostics.sort((a, b) => a.start - b.start);
+      let middle = ordered.filter((record) =>
+        record.start >= keptHead.length
+        && record.start + record.buf.length <= totalBytes - tailBuf.length);
+      let keptTail = Buffer.alloc(0);
+      let tailStart = totalBytes;
+      for (let pass = 0; pass <= ordered.length; pass++) {
+        const middleBytes = middle.reduce((sum, record) => sum + record.buf.length, 0);
+        const tailBudget = Math.max(1, maxBytes - keptHead.length - middleBytes);
+        const tailOffset = Math.max(0, tailBuf.length - tailBudget);
+        const rawTail = tailBuf.subarray(tailOffset);
+        keptTail = trimStartToLine(rawTail);
+        tailStart = totalBytes - tailBuf.length + tailOffset + (rawTail.length - keptTail.length);
+        const next = ordered.filter((record) =>
+          record.start >= keptHead.length && record.start + record.buf.length <= tailStart);
+        if (next.length === middle.length) break;
+        middle = next;
+      }
+
+      const spans = [];
+      if (keptHead.length) spans.push({ start: 0, buf: keptHead });
+      spans.push(...middle);
+      if (keptTail.length) spans.push({ start: tailStart, buf: keptTail });
+
+      let text = "";
+      let cursor = 0;
+      let kept = 0;
+      for (const span of spans) {
+        if (span.start > cursor) text += elision(span.start - cursor);
+        const overlap = Math.max(0, cursor - span.start);
+        if (overlap < span.buf.length) {
+          const part = span.buf.subarray(overlap);
+          text += part.toString("utf8");
+          kept += part.length;
+          cursor = span.start + span.buf.length;
+        }
+      }
+      if (cursor < totalBytes) text += elision(totalBytes - cursor);
       return {
-        text: keptHead.toString("utf8") + elision(total) + keptTail.toString("utf8"),
+        text,
         truncated: true,
-        elided: total,
+        elided: totalBytes - kept,
       };
     },
   };

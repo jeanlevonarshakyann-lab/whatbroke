@@ -187,7 +187,7 @@ Repositories can use the bundled composite action:
 - uses: jeanlevonarshakyann-lab/whatbroke/.github/actions/whatbroke@main
   with:
     command: npm test
-    version: 0.2.0
+    version: 0.4.0
 ```
 
 Pin `version` to a known npm release for reproducible CI. The action preserves
@@ -410,9 +410,11 @@ histories and never meet.
 
 For mixed logs, the primary tool identifies the run, and comparison includes every
 reported tool's causes. New failures are marked in their own tool's section; identical
-messages from different tools keep separate identities. Older history records that
-only tracked the primary tool are ignored, so the first run after upgrading establishes
-a fresh baseline.
+messages from different tools keep separate identities. The last history format that
+used 32-bit identifiers is compared once during migration, then the completed run is
+saved under the current 96-bit identity. Unchanged causes are not called new; the "no
+longer reported" count is withheld for that transition because a collision in an old
+saved hash cannot be ruled out. Older incompatible records start a fresh baseline.
 
 The two claims are not equally cheap. "New" is a statement about what is present, and
 it is safe. "No longer reported" is a statement about *absence*, and absence is only
@@ -458,10 +460,10 @@ uniformity check correctly declines to act.
 
 ## When the log is too big
 
-`--max-bytes` caps how much output is kept (10 MB by default). The cap is spent from
-both ends: a slice of the beginning, where the command line and build banner live, and
-as much of the end as the rest of the budget allows — because the lines that say *why*
-something failed are almost always the last ones printed.
+`--max-bytes` caps how much output is kept (10 MB by default). The cap keeps a slice of
+the beginning, where the command line and build banner live, bounded windows around
+probable diagnostic lines in the middle, and as much of the end as the remaining budget
+allows. If there are no middle diagnostics, the tail keeps its full share as before.
 
 What is dropped is stated, never silently stitched:
 
