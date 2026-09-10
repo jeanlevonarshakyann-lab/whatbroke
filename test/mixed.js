@@ -441,5 +441,65 @@ test("no pair of logs ever yields more failures than the two apart", () => {
   console.log(`       ${names.length * (names.length - 1)} ordered pairs swept, ${over.length} over-claiming`);
 });
 
+// ------------------------------------------------- two tools writing at once
+
+// The sweep above concatenates: one tool finishes, then the next begins. Real parallel
+// CI does not wait - `cmd1 & cmd2 & wait` writes both into the same pipe, and a
+// multi-line diagnostic comes back shredded, its message separated from its location by
+// somebody else's output.
+//
+// Nothing can be promised about how much of a shredded log is still readable. Two things
+// can: it must not fall over, and it must not say the same thing twice. A parser reading
+// past the end of its own block is how both would break, and it is a real bug shape -
+// deno's test parser does exactly that here, picking up a clang line as its assertion.
+// That produces a wrong message, which is bounded; producing the SAME failure twice
+// would mean the reader cannot trust a count.
+const BLOCK = 4;   // lines one tool gets to write before the other cuts in
+
+test("two tools writing into one pipe never crash it or double a diagnosis", () => {
+  let seed = 20260910;
+  const rnd = () => (seed = (seed * 1103515245 + 12345) & 0x7fffffff) / 0x7fffffff;
+  const weave = (a, b) => {
+    const A = a.split("\n"), B = b.split("\n"), out = [];
+    let i = 0, j = 0;
+    while (i < A.length || j < B.length) {
+      const run = 1 + Math.floor(rnd() * BLOCK);
+      if (j >= B.length || (i < A.length && rnd() < 0.5)) {
+        for (let k = 0; k < run && i < A.length; k++) out.push(A[i++]);
+      } else {
+        for (let k = 0; k < run && j < B.length; k++) out.push(B[j++]);
+      }
+    }
+    return out.join("\n");
+  };
+
+  const names = readdirSync(join(here, "fixtures"));
+  const solo = new Map();
+  for (const n of names) { try { solo.set(n, analyse(fx(n))); } catch { solo.set(n, null); } }
+
+  const threw = [], doubled = [];
+  let pairs = 0;
+  for (let x = 0; x < names.length; x++) {
+    for (let y = x + 1; y < names.length; y++) {
+      if (!solo.get(names[x]) || !solo.get(names[y])) continue;
+      pairs++;
+      let r;
+      try { r = analyse(weave(fx(names[x]), fx(names[y]))); }
+      catch (e) { threw.push(`${names[x]} + ${names[y]}: ${e.message}`); continue; }
+      if (!r) continue;
+      const seen = new Set();
+      for (const f of [...r.failures, ...(r.others ?? []).flatMap((o) => o.failures)]) {
+        const k = JSON.stringify([f.file ?? null, f.line ?? null, f.col ?? null, f.title ?? "", f.message ?? ""]);
+        if (seen.has(k)) { doubled.push(`${names[x]} + ${names[y]} (${r.tool}): ${f.file}:${f.line} ${f.title}`); break; }
+        seen.add(k);
+      }
+    }
+  }
+  assert.ok(pairs > 5000, `only ${pairs} interleavings exercised`);
+  assert.deepEqual(threw.slice(0, 5), [], "a shredded log threw");
+  assert.deepEqual(doubled.slice(0, 5), [], "a shredded log reported one diagnosis twice");
+  console.log(`       ${pairs} interleavings, seed ${20260910}`);
+});
+
 console.log(`\n  ${pass} passed, ${fail} failed`);
 process.exit(fail ? 1 : 0);
