@@ -173,7 +173,11 @@ export function render(result, { max = 5, cwd = true, source = true, cluster = t
         out.push(`      ${num} ${bar} ${txt}`);
         if (s.hit && f.col) out.push(`      ${" ".repeat(w)} ${C.dim}│${C.reset} ${" ".repeat(windowedCol(f.col, start) - 1)}${C.red}^${C.reset}`);
       }
-    } else if (f.stmt && !drifted) {
+    } else if (f.stmt && !drifted && !near) {
+      // `stmt` stands in for source that could not be shown. When the failure sits in
+      // the region the last one already printed, `near` above has just shown that exact
+      // line with a caret under it, and printing stmt as well says it twice - once
+      // numbered and once bare. Two swiftc errors on adjacent lines did this.
       out.push(`      ${C.dim}│${C.reset} ${clip(f.stmt)}`);
     }
 

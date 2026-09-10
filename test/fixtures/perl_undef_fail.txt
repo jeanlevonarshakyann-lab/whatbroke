@@ -1,0 +1,1 @@
+Can't call method "render" on an undefined value at p_undef.pl line 3.

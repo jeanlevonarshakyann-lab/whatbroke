@@ -1,0 +1,3 @@
+Use of uninitialized value $x in concatenation (.) or string at p_warn.pl line 4.
+cannot reach the billing service at p_warn.pl line 7.
+v: 

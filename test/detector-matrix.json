@@ -809,6 +809,56 @@
     ],
     "shadow": {}
   },
+  "perl_die_fail.txt": {
+    "winner": "perl",
+    "parser": "perl",
+    "failures": 1,
+    "claimants": [
+      "perl",
+      "generic"
+    ],
+    "shadow": {}
+  },
+  "perl_inc_fail.txt": {
+    "winner": "perl",
+    "parser": "perl",
+    "failures": 1,
+    "claimants": [
+      "perl",
+      "generic"
+    ],
+    "shadow": {}
+  },
+  "perl_syn_fail.txt": {
+    "winner": "perl",
+    "parser": "perl",
+    "failures": 1,
+    "claimants": [
+      "perl",
+      "generic"
+    ],
+    "shadow": {}
+  },
+  "perl_undef_fail.txt": {
+    "winner": "perl",
+    "parser": "perl",
+    "failures": 1,
+    "claimants": [
+      "perl",
+      "generic"
+    ],
+    "shadow": {}
+  },
+  "perl_warn_fail.txt": {
+    "winner": "perl",
+    "parser": "perl",
+    "failures": 1,
+    "claimants": [
+      "perl",
+      "generic"
+    ],
+    "shadow": {}
+  },
   "php_fatal_fail.txt": {
     "winner": "output",
     "parser": "generic",

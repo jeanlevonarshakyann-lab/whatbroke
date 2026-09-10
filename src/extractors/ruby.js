@@ -53,12 +53,17 @@ export default {
         const hint = lines[i + 1]?.match(SUGGEST_RE);
         if (hint) message += `\nDid you mean? ${hint[1].trim()}`;
 
+        // `trace` is rendered as text, one frame per line, and the first entry is the
+        // one already shown as the failure's own location - the renderer skips it. The
+        // library frames are counted rather than listed: for a missing gem they are the
+        // whole of rubygems and none of them is yours.
+        const shown = mine.slice(0, 4).map((f) => `${f.fn} (${f.file}:${f.line})`);
         failures.push({
           file: at.file, line: at.line,
           title: raise[5], code: raise[5], severity: "error",
           message, stmt: undefined,
-          trace: frames.length ? frames : undefined,
-          hiddenFrames: frames.length - Math.max(frames.filter((f) => !isNoise(f.file)).length, 0),
+          trace: shown.length ? shown : undefined,
+          hiddenFrames: 1 + frames.length - mine.length,
         });
         i += frames.length;
         continue;

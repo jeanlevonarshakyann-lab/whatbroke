@@ -178,6 +178,39 @@ const CASES = [
       assert.equal(r.failures[0].line, 2);
       assert.match(r.failures[0].message, /Call to a member function method\(\) on null/);
     } },
+  // Captured on the system perl, 5.34. Perl puts the location at the end of the message,
+  // in prose, so nothing recognised it and a failing perl script produced no diagnosis.
+  { file: "perl_die_fail.txt", tool: "perl", n: 1, check: (r) => {
+      assert.equal(r.failures[0].file, "p_die.pl");
+      assert.equal(r.failures[0].line, 2);
+      assert.equal(r.failures[0].message, "no price for item");
+      assert.equal(r.summary, undefined, "a summary that repeats the only failure says it twice");
+    } },
+  { file: "perl_syn_fail.txt", tool: "perl", n: 1, check: (r) => {
+      // "near \"= ;\"" is what the parser choked on - the useful half of a syntax error.
+      assert.match(r.failures[0].message, /^syntax error \(near "= ;"\)$/);
+      // "Execution of ... aborted due to compilation errors." restates it and is dropped
+      assert.equal(r.failures.length, 1);
+    } },
+  { file: "perl_inc_fail.txt", tool: "perl", n: 1, check: (r) => {
+      // The module search path is longer than the diagnosis and never varies.
+      assert.doesNotMatch(r.failures[0].message, /@INC contains/);
+      assert.match(r.failures[0].message, /Can't locate NoSuch\/Module\/Xyz\.pm/);
+      assert.match(r.failures[0].message, /you may need to install the NoSuch::Module::Xyz module/);
+      assert.equal(r.failures[0].line, 2, "BEGIN failed--compilation aborted is not a second failure");
+    } },
+  { file: "perl_undef_fail.txt", tool: "perl", n: 1, check: (r) => {
+      assert.match(r.failures[0].message, /^Can't call method "render" on an undefined value$/);
+    } },
+  { file: "perl_warn_fail.txt", tool: "perl", n: 1, check: (r) => {
+      // Perl marks nothing: a warning and a fatal die are written in exactly the same
+      // shape. The only thing separating them is what the message says, so the warning
+      // is matched by phrase - and the die, which is the failure, is what gets reported.
+      assert.equal(r.failures[0].line, 7);
+      assert.equal(r.failures[0].message, "cannot reach the billing service");
+      assert.equal(r.summary, "1 error, 1 warning");
+      assert.doesNotMatch(JSON.stringify(r.failures), /uninitialized/, "a warning was reported as a failure");
+    } },
   // Two real captures of everyday unix failures, both of which produced no diagnosis at
   // all. The guess vocabulary was written around verbs - failed, cannot, refused - and
   // missed the nouns. Both tools name themselves and then say plainly that something
@@ -202,7 +235,10 @@ const CASES = [
       assert.match(r.failures[0].message, /undefined method .no_such_method./);
       assert.equal(r.failures[0].code, "NoMethodError");
       assert.doesNotMatch(r.failures[0].message, /NoMethodError/, "the class was left in the message too");
-      assert.equal(r.failures[0].trace.length, 1);
+      // `trace` is rendered as text, one frame per line. Asserting only its length let a
+      // version through that put objects in it, and every frame printed as
+      // "at [object Object]" - which only running the CLI showed.
+      assert.deepEqual(r.failures[0].trace, ["f (bad.rb:2)", "<main> (bad.rb:4)"]);
     } },
   // Captured on the system ruby, 2.6.10.
   { file: "ruby_keyerror_fail.txt", tool: "ruby", n: 1, check: (r) => {
@@ -210,7 +246,10 @@ const CASES = [
       assert.equal(r.failures[0].line, 3);
       assert.equal(r.failures[0].code, "KeyError");
       assert.equal(r.failures[0].message, "key not found: :price");
-      assert.equal(r.failures[0].trace.length, 4, "the unwind through map and total is the story");
+      assert.deepEqual(r.failures[0].trace, [
+        "fetch (deep.rb:3)", "block in total (deep.rb:3)", "map (deep.rb:3)", "total (deep.rb:3)",
+      ], "the unwind through map and total is the story");
+      assert.ok(r.failures[0].trace.every((t) => typeof t === "string"), "trace must render as text");
     } },
   { file: "ruby_nomethod_fail.txt", tool: "ruby", n: 1, check: (r) => {
       // Ruby offers a correction under a NameError, and it is the answer often enough
@@ -232,6 +271,9 @@ const CASES = [
       assert.equal(r.failures[0].line, 1);
       assert.equal(r.failures[0].code, "LoadError");
       assert.match(r.failures[0].message, /cannot load such file -- definitely_not_a_gem_xyz/);
+      // both rubygems frames are counted, not listed: none of them is yours
+      assert.deepEqual(r.failures[0].trace, ["<main> (ld.rb:1)"]);
+      assert.equal(r.failures[0].hiddenFrames, 2);
     } },
   { file: "ruff_syntax_fail.txt", tool: "ruff", n: 1, check: (r) => {
       // A file ruff cannot parse is reported without a rule code, so requiring one
@@ -1054,6 +1096,68 @@ for (const c of CASES) {
   }
 }
 
+// Every field a parser sets is eventually rendered, and the renderer interpolates
+// `trace` straight into text. A parser that filled it with frame objects instead of
+// strings printed "at [object Object]" for every frame - and passed its own tests,
+// because they asserted the array's LENGTH. Only running the CLI showed it. This sweeps
+// the whole corpus so the next parser cannot repeat it.
+try {
+  const bad = [];
+  for (const name of readdirSync(join(here, "fixtures"))) {
+    let r;
+    try { r = analyse(fx(name)); } catch { continue; }
+    const every = [...(r?.failures ?? []), ...(r?.others ?? []).flatMap((o) => o.failures)];
+    for (const f of every) {
+      if (f.trace === undefined) continue;
+      if (!Array.isArray(f.trace)) { bad.push(`${name} (${r.tool}): trace is ${typeof f.trace}`); continue; }
+      for (const t of f.trace) {
+        if (typeof t !== "string") bad.push(`${name} (${r.tool}): a trace entry is ${typeof t}, renders as "${String(t)}"`);
+      }
+    }
+  }
+  assert.deepEqual(bad, [], "a trace entry would not render as text");
+  console.log("  ok   every trace entry renders as text");
+  pass++;
+} catch (e) {
+  console.log(`  FAIL every trace entry renders as text\n       ${e.message}`);
+  fail++;
+}
+
+// The renderer is exercised above with hand-built failure objects, which is why a parser
+// that put the wrong SHAPE in a field went unnoticed: nothing rendered what a parser
+// actually produced. This renders every fixture the way the CLI does and looks for the
+// marks of a value that was interpolated without being formatted.
+try {
+  const { render, setColor } = await import("../src/render.js");
+  setColor(false);
+  const LEAKED = [
+    [/\[object [A-Z]\w+\]/, "an object was interpolated into text"],
+    [/\bundefined\b/, "an undefined value reached the output"],
+    [/\bNaN\b/, "a number that is not one reached the output"],
+    [/:null\b|\bnull:/, "a null stood in for a location"],
+  ];
+  const leaks = [];
+  for (const name of readdirSync(join(here, "fixtures"))) {
+    let r, out;
+    try { r = analyse(fx(name)); } catch { continue; }
+    if (!r) continue;
+    try { out = render(r, {}); } catch (e) { leaks.push(`${name}: render threw - ${e.message}`); continue; }
+    for (const [re, why] of LEAKED) {
+      const hit = out.match(re);
+      // A fixture can legitimately contain these words - a stack trace says "undefined
+      // method", a test asserts NaN. Only a line the renderer built counts, so the line
+      // has to be absent from the log itself.
+      if (hit && !fx(name).includes(hit[0])) leaks.push(`${name} (${r.tool}): ${why} - ${JSON.stringify(hit[0])}`);
+    }
+  }
+  assert.deepEqual(leaks, [], "the rendered output carried an unformatted value");
+  console.log("  ok   every fixture renders without leaking a raw value");
+  pass++;
+} catch (e) {
+  console.log(`  FAIL every fixture renders without leaking a raw value\n       ${e.message}`);
+  fail++;
+}
+
 // crafted output must not be able to make us read files outside the working dir
 try {
   const { render, setColor } = await import("../src/render.js");
@@ -1099,6 +1203,37 @@ try {
   console.log("  ok   context width adapts and stops at block boundaries");
   pass++;
 } catch (e) { console.log(`  FAIL adaptive context\n       ${e.message}`); fail++; }
+
+// two failures a line apart, both carrying the source line they are about
+try {
+  const { render, setColor } = await import("../src/render.js");
+  const { resetSnippetCache } = await import("../src/snippet.js");
+  const { mkdtempSync, writeFileSync, rmSync } = await import("node:fs");
+  setColor(false);
+  // inside the working directory: snippet() refuses to read source outside it
+  const dir = mkdtempSync(join(process.cwd(), ".tmp-near-"));
+  const file = join(dir, "near.swift");
+  writeFileSync(file, ['let a = 1', 'let x: Int = "hello"', 'print(a, y)', ''].join("\n"));
+  resetSnippetCache();
+
+  const out = render({ tool: "swift", failures: [
+    { file, line: 2, col: 14, title: "compile error", message: "cannot convert value", stmt: 'let x: Int = "hello"' },
+    { file, line: 3, col: 10, title: "compile error", message: "cannot find 'y' in scope", stmt: "print(a, y)" },
+  ] }, {});
+
+  rmSync(dir, { recursive: true, force: true });
+
+  // The second failure sits inside the region the first one's snippet already covered,
+  // so the renderer shows just its line with a caret. `stmt` is the stand-in for source
+  // that could NOT be shown - printing it as well said the line a third time, unnumbered.
+  // swiftc was the first parser to set a location and a stmt together.
+  const unnumbered = out.split("\n")
+    .filter((l) => /^\s+\u2502 /.test(l))        // a pipe with no line number in front
+    .filter((l) => !/^\s+\u2502 *\^\s*$/.test(l));  // the caret line is one of those, and is fine
+  assert.deepEqual(unnumbered, [], `the statement was printed again with no line number:\n${out}`);
+  console.log("  ok   a failure beside the last one does not print its line twice");
+  pass++;
+} catch (e) { console.log(`  FAIL near-failure duplicate line\n       ${e.message}`); fail++; }
 
 // pytest -q prints its summary with no === decoration; it must still be found
 try {
