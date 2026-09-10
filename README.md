@@ -228,12 +228,12 @@ them.
 | **sass** | the message from the head of its box and the location from the foot — reading only the first line found the problem and never where it was |
 | **webpack** | the module, the line and the explanation — not the forty lines of resolver diary that follow it |
 | **prettier** | which files failed the format check, so a job that exits non-zero on formatting says which ones |
-| **Biome** | the rule path as the code, `file:line:col`, and what is wrong — not the `i` advice lines or the fix diff under them |
+| **Biome** | the rule path as the code, `file:line:col`, and what is wrong — not the `i` advice lines or the fix diff under them. `parse` and `format` sections count too: they are where biome puts a file it could not read and a file whose formatting differs, and the latter carries no line at all. Severity comes from the glyph biome draws — `×` for what failed, `!` for what it disliked |
 | **oxlint** | the rule name as the code and the finding without the `help:` suggestion appended to it |
 | **stylelint** | the rule name as the code, `file:line:col`, and the problem — warnings counted and set aside, like eslint |
 | **markdownlint** | the rule code, `file:line:col`, and what the rule wanted — `[Expected: 1; Actual: 2]` is the whole answer for a spacing rule |
 | **flake8** | the check code as the code and `file:line:col` — the code is what goes in a `noqa` comment |
-| **pylint** | the symbolic name as the title and the numeric code beside it; when a run has real errors the convention and refactor advice steps aside and is counted |
+| **pylint** | the symbolic name as the title and the numeric code beside it; when a run has real errors the convention and refactor advice steps aside and is counted. A path may contain a space — the message code after it is what bounds the name |
 | **black** | which files failed the format check, and for one it cannot parse, the reason and the position |
 | **ruff** | rule code, `file:line`, the message and ruff's own fix hint |
 | **pyright** | the rule name as the code, the column, and the indented line that says *why* — not the column pasted into the message |

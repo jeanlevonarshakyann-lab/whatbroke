@@ -1,0 +1,10 @@
+************* Module mod
+my project/mod.py:1:0: C0114: Missing module docstring (missing-module-docstring)
+my project/mod.py:3:0: C0116: Missing function or method docstring (missing-function-docstring)
+my project/mod.py:4:11: E0602: Undefined variable 'undefined_name' (undefined-variable)
+my project/mod.py:3:7: W0613: Unused argument 'a' (unused-argument)
+my project/mod.py:1:0: W0611: Unused import os (unused-import)
+
+-----------------------------------
+Your code has been rated at 0.00/10
+
