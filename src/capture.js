@@ -54,6 +54,11 @@ const PROBABLE_DIAGNOSTIC = new RegExp([
   // black --check says only "would reformat x.py" and exits non-zero. Nothing in that
   // sentence admits a failure, and it is the entire log.
   "\\bwould (?:reformat|be reformatted|fail to reformat)\\b",
+  // make announces its own fatal errors with "***" and ends them "Stop.". Neither
+  // half is failure vocabulary, the makefile is often named `Makefile` with no
+  // extension so the location pattern above does not match it either, and the whole
+  // log is frequently that one line.
+  "^(?:make(?:\\[\\d+\\])?:|[^\\s:]+:\\d+:)[^\\S\\n]+\\*\\*\\*[^\\S\\n]",
   // Go's tally and the bullets test runners draw carry no word at all
   "^\\s*(?:---\\s*FAIL|FAIL\\b|\\u25cf|\\u2717|\\u2716|\\u00d7)",
 ].join("|"), "im");

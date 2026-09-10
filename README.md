@@ -244,7 +244,7 @@ them.
 | **kubectl** | the sentence a person wants, not five identical klog lines from inside client-go |
 | **GCC/Clang** | compiler errors with `file:line:column`; driver errors that never got as far as a file; warnings and notes set aside |
 | **Swift** | the diagnostic and the `[#group]` tag as its code — not the annotation swiftc draws underneath, which repeats the message word for word |
-| **make** | no parser of its own — the compiler underneath already has one, and `make: *** [target] Error 1` restates the failure without adding to it |
+| **make** | make's own failures — a makefile it cannot parse, a target with no rule, a recipe whose command is not installed. Not `make: *** [target] Error 1`: that relays somebody else's exit status, and the compiler underneath already has a parser. make ends a line `Stop.` when it is refusing to continue and `Error N` when it is only passing one on, and that is the line this parser draws |
 | **RSpec** | example name, failure message, and `spec/file:line` location |
 | **Ruby** | the exception class, the line that raised, and the unwind — for a missing gem, the line that asked for it rather than `kernel_require.rb` |
 | **Perl** | the location, which Perl writes as prose at the end of the message; `near "= ;"` kept, the `@INC` list dropped, warnings told apart from a fatal die by what they say |

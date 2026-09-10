@@ -12,7 +12,8 @@
 //
 // ninja deliberately has no parser: what fails under it is a compiler, and that already
 // has one. Its own "FAILED: [code=1] <object>" line restates the failure without adding
-// to it, exactly as make's does.
+// to it, exactly as make's exit line does. make does have a parser, but only for the
+// failures make itself raises - see src/extractors/make.js for where that line is drawn.
 const HEAD_RE = /^CMake (Error|Warning|Deprecation Warning)(?:[^\S\n]+at[^\S\n]+(.+?):(\d+)(?:[^\S\n]+\(([^)]+)\))?)?:[^\S\n]*$/;
 // Everything from here down is the run reporting that it gave up.
 const TAIL_RE = /^(?:--[^\S\n]|CMake Generate step failed|Configuring incomplete)/;
