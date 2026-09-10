@@ -1,0 +1,21 @@
+
+In lib.sh line 2:
+result=`echo hello`
+       ^----------^ SC2006 (style): Use $(...) notation instead of legacy backticks `...`.
+       ^----------^ SC2116 (style): Useless echo? Instead of 'cmd $(echo foo)', just use 'cmd foo'.
+
+Did you mean: 
+result=$(echo hello)
+
+
+In lib.sh line 3:
+echo $result
+     ^-----^ SC2086 (info): Double quote to prevent globbing and word splitting.
+
+Did you mean: 
+echo "$result"
+
+For more information:
+  https://www.shellcheck.net/wiki/SC2086 -- Double quote to prevent globbing ...
+  https://www.shellcheck.net/wiki/SC2006 -- Use $(...) notation instead of le...
+  https://www.shellcheck.net/wiki/SC2116 -- Useless echo? Instead of 'cmd $(e...

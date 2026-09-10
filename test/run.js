@@ -1221,6 +1221,56 @@ const CASES = [
       // a second failure, and it sits on the same line as the first.
       assert.doesNotMatch(JSON.stringify(r.failures), /reported only once/);
     } },
+  // Captured with shellcheck 0.9 and yamllint 1.35 on Debian, each in both the format it
+  // prints by default and its machine-readable one. Neither default format was readable:
+  // the location and the message are on different lines, so no parser claimed either and
+  // both runs came back "could not identify a diagnostic".
+  { file: "shellcheck_fail.txt", tool: "shellcheck", n: 1, check: (r) => {
+      // One error among seven findings. The rest rank below it and are set aside.
+      assert.equal(r.failures[0].code, "SC2045");
+      assert.equal(r.failures[0].file, "deploy.sh");
+      assert.equal(r.failures[0].line, 4);
+      // The carets are drawn under the offending span, so where they start is the column.
+      assert.equal(r.failures[0].col, 10);
+      assert.equal(r.failures[0].stmt, "for f in $(ls *.txt); do");
+      assert.match(r.summary, /6 lower-severity findings hidden/);
+    } },
+  { file: "shellcheck_gcc_fail.txt", tool: "shellcheck", n: 1, check: (r) => {
+      // The same run under -f gcc. It has to reach the same answer, column included -
+      // which is the check that the caret arithmetic above is right and not merely
+      // self-consistent. -f gcc prints no source line, so there is no stmt to quote.
+      assert.equal(r.failures[0].code, "SC2045");
+      assert.equal(r.failures[0].line, 4);
+      assert.equal(r.failures[0].col, 10);
+      assert.equal(r.failures[0].stmt, undefined);
+    } },
+  { file: "shellcheck_style_fail.txt", tool: "shellcheck", n: 3, check: (r) => {
+      // shellcheck exits non-zero on style and info findings too, and a run that fails
+      // on nothing worse is the common case. Saying nothing would be worse than saying
+      // they are only style, so the headline says which kind they were.
+      assert.match(r.summary, /^failed on 3 style\/info findings$/);
+      assert.deepEqual(r.failures.map((f) => f.code), ["SC2006", "SC2116", "SC2086"]);
+      // Two findings at one position are two findings; the code is what separates them.
+      assert.deepEqual(r.failures.slice(0, 2).map((f) => `${f.line}:${f.col}`), ["2:8", "2:8"]);
+      assert.equal(r.failures.every((f) => f.severity === "error"), true,
+        "a failure marked warning is a contradiction: these are why the run exited non-zero");
+      assert.doesNotMatch(JSON.stringify(r.failures), /Did you mean|shellcheck\.net/);
+    } },
+  { file: "yamllint_fail.txt", tool: "yamllint", n: 4, check: (r) => {
+      assert.deepEqual(r.failures.map((f) => f.file),
+        ["app.yml", "app.yml", "app.yml", "broken.yml"], "the block header says which file");
+      // The message carries brackets of its own, so the rule has to be matched as the
+      // last parenthesised word rather than as whatever is inside the final brackets.
+      assert.equal(r.failures[1].code, "line-length");
+      assert.equal(r.failures[1].message, "line too long (106 > 80 characters)");
+      // yamllint exits zero on a run that found only warnings, unlike shellcheck.
+      assert.match(r.summary, /2 warnings hidden/);
+    } },
+  { file: "yamllint_parsable_fail.txt", tool: "yamllint", n: 4, check: (r) => {
+      assert.deepEqual(r.failures.map((f) => f.code),
+        ["key-duplicates", "line-length", "trailing-spaces", "syntax"]);
+      assert.equal(r.failures[1].message, "line too long (106 > 80 characters)");
+    } },
   { file: "rspec_fail.txt", tool: "rspec", n: 2, check: (r) => {
       assert.equal(r.summary, "3 examples, 2 failures");
       assert.equal(r.failures[0].title, "shop totals an invoice");

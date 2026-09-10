@@ -1652,6 +1652,38 @@
       "generic": 1
     }
   },
+  "shellcheck_fail.txt": {
+    "winner": "shellcheck",
+    "parser": "shellcheck",
+    "failures": 1,
+    "claimants": [
+      "shellcheck",
+      "generic"
+    ],
+    "shadow": {}
+  },
+  "shellcheck_gcc_fail.txt": {
+    "winner": "shellcheck",
+    "parser": "shellcheck",
+    "failures": 1,
+    "claimants": [
+      "shellcheck",
+      "generic"
+    ],
+    "shadow": {
+      "generic": 7
+    }
+  },
+  "shellcheck_style_fail.txt": {
+    "winner": "shellcheck",
+    "parser": "shellcheck",
+    "failures": 3,
+    "claimants": [
+      "shellcheck",
+      "generic"
+    ],
+    "shadow": {}
+  },
   "stylelint_fail.txt": {
     "winner": "stylelint",
     "parser": "stylelint",
@@ -1884,6 +1916,30 @@
     ],
     "shadow": {
       "generic": 2
+    }
+  },
+  "yamllint_fail.txt": {
+    "winner": "yamllint",
+    "parser": "yamllint",
+    "failures": 4,
+    "claimants": [
+      "yamllint",
+      "generic"
+    ],
+    "shadow": {
+      "generic": 1
+    }
+  },
+  "yamllint_parsable_fail.txt": {
+    "winner": "yamllint",
+    "parser": "yamllint",
+    "failures": 4,
+    "claimants": [
+      "yamllint",
+      "generic"
+    ],
+    "shadow": {
+      "generic": 6
     }
   },
   "yarn_fail.txt": {

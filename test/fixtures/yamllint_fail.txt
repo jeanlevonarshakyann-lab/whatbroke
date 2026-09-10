@@ -1,0 +1,10 @@
+app.yml
+  1:1       warning  missing document start "---"  (document-start)
+  2:1       error    duplication of key "key" in mapping  (key-duplicates)
+  5:81      error    line too long (106 > 80 characters)  (line-length)
+  6:10      error    trailing spaces  (trailing-spaces)
+
+broken.yml
+  1:1       warning  missing document start "---"  (document-start)
+  2:4       error    syntax error: mapping values are not allowed here (syntax)
+
