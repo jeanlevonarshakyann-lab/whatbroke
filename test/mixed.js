@@ -394,7 +394,7 @@ test("a pair of logs never yields more failures than the two apart", () => {
 // the number may fall, and lowering the ceiling with it is part of the fix. It may not
 // rise. Raising it means a change made whatbroke claim more than it can see, and the
 // right response is to explain the new pairs, not to edit this number.
-const CEILING = 13;
+const CEILING = 3;
 
 test("no more pairs over-claim than the last time this was measured", () => {
   const names = readdirSync(join(here, "fixtures"));

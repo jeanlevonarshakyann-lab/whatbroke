@@ -328,18 +328,19 @@ const CASES = [
   { file: "docker_buildkit_npm_fail.txt", tool: "npm", n: 1, check: (r) => {
       assert.match(r.failures[0].message, /Missing script: "nonexistent-script"/);
       assert.doesNotMatch(JSON.stringify(r), /failed to solve/, "the mechanism is not the cause");
-      // These two take different routes, which is why both are here. npm's failure is
-      // five lines inside a twenty-line frame, so the step prefix covers too little of
-      // the log to strip and the failure block has to be lifted out by its own markers.
-      assert.deepEqual(r.wrappers, ["docker buildkit"]);
+      // npm's failure is five lines inside a twenty-line frame. It used to be lifted
+      // out by its own markers, because the step prefix was only counted on lines
+      // carrying an elapsed column and so covered too little of the log to strip. It
+      // now counts BuildKit's other line forms too and clears the gate. The region
+      // fallback stays for a log the prefix genuinely cannot cover - a build that is
+      // mostly pull progress - and is exercised directly in test/normalize.js.
+      assert.deepEqual(r.wrappers, ["docker"]);
     } },
   { file: "docker_buildkit_pytest_fail.txt", tool: "pytest", n: 2, check: (r) => {
       assert.equal(r.failures[0].file, "test_shop.py");
       assert.equal(r.failures[0].line, 5);
       assert.match(r.failures[1].message, /KeyError: 'exp'/);
       assert.doesNotMatch(JSON.stringify(r), /failed to solve/, "the mechanism is not the cause");
-      // pytest's output fills enough of the log that the step prefix clears the gate,
-      // so the whole thing is read after stripping it.
       assert.deepEqual(r.wrappers, ["docker"]);
       // the pip install step above it succeeded; nothing there is a failure
       assert.equal(r.others, undefined, "the pip install step is not a second tool's failure");
