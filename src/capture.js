@@ -1,3 +1,4 @@
+import { stripAnsi } from "./util.js";
 // Capturing a command's output has one job that matters: whatever else is dropped, the
 // part that says why it failed has to survive. That part is almost always at the END -
 // pytest's summary, cargo's error, jest's failure list, the stack trace. Keeping the
@@ -12,7 +13,41 @@
 const HEAD_SHARE = 0.25;   // the beginning is worth keeping, but the end is worth more
 const DIAGNOSTIC_SHARE = 0.25;
 const CONTEXT_LINES = 8;
-const PROBABLE_DIAGNOSTIC = /\b(?:errors?|failed|failures?|fatal|exceptions?|panic|traceback|assert(?:ion)?|cannot|could not|segmentation fault)\b|\b(?:TS|CS|MSB|E)\d{3,5}\b/i;
+// What to KEEP when the log is too big to keep all of it. The asymmetry matters: too
+// broad costs budget, too narrow loses a failure outright - the opposite of the
+// vocabularies the parsers use to decide ownership, where a false claim is the danger.
+//
+// Burying each captured fixture in three megabytes of build chatter and capping the
+// result lost the diagnosis in 25 of 124. Three causes, all of them narrowness:
+//
+//   - a leading \b cannot match a class name. KeyError, SyntaxError, NoMethodError and
+//     AssertionError all carry "Error" behind a word character, and that is how Ruby,
+//     Node, Perl and every assertion library announce a failure.
+//   - "panic" with a trailing \b does not match Rust's "panicked", and "cannot" does
+//     not match "can't".
+//   - some tools write no failure word at all. Go says "./main.go:9:2: fmt.Printf call
+//     needs 1 arg", jest draws a bullet, and a custom perl die carries only the
+//     author's own words - for those, the shape of a location has to stand in.
+//
+// No alternative starts with \w* or .*: an unanchored pattern finds "Error" inside
+// "KeyError" on its own, and a leading \w* only makes the engine retry at every
+// position. That mattered - it cost three quarters of the scan's throughput.
+const PROBABLE_DIAGNOSTIC = new RegExp([
+  "(?:error|exception)s?\\b",
+  "\\b(?:fail\\w*|fatal|panic\\w*|traceback|abort\\w*|crash\\w*)\\b",
+  "\\b(?:assert\\w*|refused|denied|timed out|not found|no such|unable to)\\b",
+  "\\b(?:cannot|can't|(?:could|did|does|is|was|were)\\s?n[o']?t)\\b",
+  "\\bsegmentation fault\\b",
+  "\\bDATA RACE\\b",
+  "\\bdie[ds]?\\b",
+  // diagnostic codes: TS2322, CS0103, MSB4018, E0277, F401, SC2086
+  "\\b[A-Z]{1,4}\\d{3,5}\\b",
+  // a location is a diagnostic by shape, whatever words follow it
+  "^\\s*\\.?[\\w./\\\\-]+\\.\\w+:\\d+(?::\\d+)?:",
+  "\\bat [\\w./\\\\-]+\\.\\w+ line \\d+",
+  // Go's tally and the bullets test runners draw carry no word at all
+  "^\\s*(?:---\\s*FAIL|FAIL\\b|\\u25cf|\\u2717|\\u2716|\\u00d7)",
+].join("|"), "im");
 
 /** Drop a trailing character that the cut left half-written.
  *
@@ -105,7 +140,11 @@ export function createCapture(maxBytes) {
     // Copy a line before retaining it: a subarray of a large stream chunk would keep
     // the entire parent allocation alive and quietly defeat the memory bound.
     const record = { start, buf: Buffer.from(view) };
-    const interesting = PROBABLE_DIAGNOSTIC.test(view.toString("latin1"));
+    // Colour codes destroy the word boundaries above: deno writes "\x1b[31merror\x1b[0m:",
+    // where the "m" ending the escape sits against the "e" and \berror never matches.
+    // Only pay for the strip when there is an escape to strip.
+    const raw = view.toString("latin1");
+    const interesting = PROBABLE_DIAGNOSTIC.test(raw.includes("\u001b") ? stripAnsi(raw) : raw);
     if (interesting) {
       saveDiagnostic(record);                 // the diagnostic itself outranks context
       for (let i = recent.length - 1; i >= 0; i--) saveDiagnostic(recent[i]);
