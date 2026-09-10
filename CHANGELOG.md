@@ -2,6 +2,11 @@
 
 ## Unreleased
 
+- A parser's headline is now asserted to say that something went wrong, over every
+  fixture. Four parsers had shipped a tally that read like success over a real failure —
+  jest's `0 total`, vitest's `no tests`, rspec's `0 examples, 0 failures`, PHPUnit's
+  `0 failures` on a run that errored — each found and fixed one at a time.
+
 - Fixed: a .NET build with no project file, and one with a package that will not restore,
   both produced no diagnosis at all. MSBuild and NuGet report these with a code but no
   position, and requiring a position meant two of the commonest .NET failures went unread.

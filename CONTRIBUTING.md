@@ -35,6 +35,11 @@ failures unless they are actionable diagnostics.
   two promises everything else is subordinate to: the exit code is the command's own,
   and a command that failed is never presented as anything else. If a change makes those
   fail, the change is wrong, not the test.
+- A parser's `summary` must say that something went wrong. A tool's own tally often does
+  not: jest prints `Tests: 0 total` when a suite throws before declaring one, and rspec
+  prints `0 examples, 0 failures`. Both were real headlines over real failures, and both
+  read as though nothing had happened. `test/guarantees.js` asserts this over every
+  fixture.
 - Keep source reads confined to the working directory.
 - Never add network calls or runtime dependencies for a parser.
 - Add malformed-input coverage when a parser has ambiguous or multiline syntax.
