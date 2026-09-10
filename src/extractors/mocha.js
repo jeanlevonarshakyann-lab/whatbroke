@@ -45,7 +45,19 @@ export default {
     const lines = s.split("\n");
     const failures = [];
 
-    for (let i = 0; i < lines.length; i++) {
+    // mocha's detailed blocks come after its tally, and it says how many there are.
+    // Both bounds matter: "N) name" belongs to rspec, jasmine, PHPUnit and Playwright
+    // too, and jasmine's blocks put "Message:" under the number - a line ending in a
+    // colon, which is exactly what mocha writes a test name as. Reading on past its own
+    // count claimed jasmine's failures as mocha's whenever both were in one log.
+    // No tally, no numbered blocks: mocha only writes them under one. Scanning without
+    // it meant a mocha run that never reached its tally - a file that would not load -
+    // still read whatever numbered blocks another tool had put in the same log.
+    const declared = s.match(FAILING_RE);
+    const limit = declared ? +declared[1] : 0;
+    const from = declared ? lines.findIndex((l) => FAILING_RE.test(l)) : 0;
+
+    for (let i = from + 1; i < lines.length && failures.length < limit; i++) {
       const head = lines[i].match(HEAD_RE);
       if (!head) continue;
       // The list at the top repeats every number without a body. A real block has the

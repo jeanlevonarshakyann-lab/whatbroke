@@ -1,0 +1,24 @@
+Randomized with seed 61756
+Started
+FF
+
+Failures:
+1) invoice finds an expiry claim
+  Message:
+    Expected undefined to be defined.
+  Stack:
+        at <Jasmine>
+        at UserContext.<anonymous> (file:///home/dev/app/jas/sum.spec.js:3:71)
+        at <Jasmine>
+
+2) invoice totals an invoice
+  Message:
+    Expected 1049 to be 1050.
+  Stack:
+        at <Jasmine>
+        at UserContext.<anonymous> (file:///home/dev/app/jas/sum.spec.js:2:54)
+        at <Jasmine>
+
+2 specs, 2 failures
+Finished in 0.003 seconds
+Randomized with seed 61756 (jasmine --random=true --seed=61756)

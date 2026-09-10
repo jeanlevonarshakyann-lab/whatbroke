@@ -4,6 +4,15 @@
 
 ## 0.4.0 — 2026-09-10
 
+- Reads jasmine and markdownlint. Both produced no diagnosis at all. jasmine gathers
+  its failures under a "Failures:" heading with a labelled message and stack; its own
+  frames name no file, so they cannot be mistaken for yours.
+- Numbered failure blocks are now bounded to the section that owns them. "N) name" is
+  written by jasmine, mocha, rspec, PHPUnit and Playwright alike, so a log holding two
+  of them had each parser reading the other's blocks - jasmine's "Message:" line ends in
+  a colon, which is exactly what mocha writes a test name as. jasmine reads between its
+  heading and its tally, mocha reads after its tally and stops at the count it declared,
+  and PHPUnit stops where its run ends.
 - Reads ava. Like mocha, a failing run produced no diagnosis at all. ava lists what
   failed and then details each one under a rule, so the roll-call carries the names and
   the detail blocks carry the locations. A comparison reports its diff, an assertion that

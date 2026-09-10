@@ -619,6 +619,17 @@
       "generic": 5
     }
   },
+  "jasmine_fail.txt": {
+    "winner": "jasmine",
+    "parser": "jasmine",
+    "failures": 2,
+    "claimants": [
+      "jasmine",
+      "node",
+      "generic"
+    ],
+    "shadow": {}
+  },
   "javac_fail.txt": {
     "winner": "jvm",
     "parser": "jvm",
@@ -727,6 +738,16 @@
     "shadow": {
       "generic": 3
     }
+  },
+  "markdownlint_fail.txt": {
+    "winner": "markdownlint",
+    "parser": "markdownlint",
+    "failures": 2,
+    "claimants": [
+      "markdownlint",
+      "generic"
+    ],
+    "shadow": {}
   },
   "maven_dependency_fail.txt": {
     "winner": "maven",
