@@ -216,6 +216,7 @@ them.
 | **mocha** | suite and test name, the assertion, and the frame in your test — not the ten `node:internal` ones under it; a timeout reports no location rather than a line inside node's timers |
 | **vitest** | same, with the real source line — not vitest's truncated `…` version |
 | **eslint** | errors only; warnings counted and set aside |
+| **eslint `-f json`** | the same failures read from eslint's own report — rule, line and column exactly as the table prints them. The report is one line, so it is found wherever it sits in a log, under a package runner's banner included |
 | **go test** | test name, `file:line`, the message; panics resolved past the runtime frames, and `-race` reports at the racing line |
 | **go build** | compile errors with source context |
 | **go vet** | the location, which sits inside the message when vet reports a package that will not compile |

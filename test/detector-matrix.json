@@ -554,6 +554,49 @@
     ],
     "shadow": {}
   },
+  "eslint_json_fail.txt": {
+    "winner": "eslint",
+    "parser": "eslint -f json",
+    "failures": 6,
+    "claimants": [
+      "eslint -f json",
+      "generic"
+    ],
+    "shadow": {}
+  },
+  "eslint_json_parse_fail.txt": {
+    "winner": "eslint",
+    "parser": "eslint -f json",
+    "failures": 1,
+    "claimants": [
+      "eslint -f json",
+      "generic"
+    ],
+    "shadow": {
+      "generic": 1
+    }
+  },
+  "eslint_json_runner_fail.txt": {
+    "winner": "eslint",
+    "parser": "eslint -f json",
+    "failures": 6,
+    "claimants": [
+      "eslint -f json",
+      "generic"
+    ],
+    "shadow": {}
+  },
+  "eslint_text_same_fail.txt": {
+    "winner": "eslint",
+    "parser": "eslint",
+    "failures": 6,
+    "claimants": [
+      "eslint",
+      "stylelint",
+      "generic"
+    ],
+    "shadow": {}
+  },
   "flake8_fail.txt": {
     "winner": "flake8",
     "parser": "flake8",

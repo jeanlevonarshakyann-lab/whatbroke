@@ -84,8 +84,18 @@ function locate(text, all) {
       labels: [failure.code, failure.subject, failure.label, failure.title].map(clean).filter(Boolean),
       frames: (failure.trace ?? []).map((frame) => clean(typeof frame === "string" ? frame : JSON.stringify(frame))),
     };
-    const locationAnchors = failure.file ? cleaned.flatMap((line, index) =>
-      line.includes(String(failure.file)) && (!failure.line || numbers[index].has(String(failure.line))) ? [index] : []) : [];
+    // One pass for both: every line naming this failure's file, and the subset that also
+    // carries its line number. The subset is a strong anchor and adjusts the score; the
+    // whole set is only ever used to break a tie (below).
+    const fileLines = [], locationAnchors = [];
+    if (failure.file) {
+      const file = String(failure.file);
+      cleaned.forEach((line, index) => {
+        if (!line.includes(file)) return;
+        fileLines.push(index);
+        if (!failure.line || numbers[index].has(String(failure.line))) locationAnchors.push(index);
+      });
+    }
     const scored = cleaned.map((line, index) => ({ index, score: scoreLine(line, numbers[index], failure, prepared) }))
       .filter((entry) => entry.score > 0);
     if (!scored.length) {
@@ -103,8 +113,31 @@ function locate(text, all) {
         : Infinity;
       return score + Math.max(0, 32 - distance * 2);
     };
+    // Two lines can match a failure equally well on content, and "whichever came first"
+    // was the tie-break. That is arbitrary, and it was wrong in a way that lost a failure:
+    // eslint's JSON report is one line holding every message in the run, so it ties with
+    // the stylish table's own line for any failure that shares a message - and in a log
+    // holding both, the JSON line came first, the table's failure was assigned to it,
+    // and its range then overlapped the JSON parser's and it was suppressed as a copy.
+    // Stylish puts the filename on its own header line with no line number, so the
+    // anchor above never fires for it. Where the log names the file is still the right
+    // question to ask, and asking it only to break a tie cannot overrule a better match.
+    //
+    // It has to be asked in one direction. A header-grouped table's lines belong to the
+    // header ABOVE them, and fetch.js's twentieth problem sits twenty lines under its
+    // header - further, measured both ways, than a JSON document eight lines above the
+    // header that it has not even reached yet. So distance is to the nearest mention at
+    // or before the line. Where no candidate has one - rustc names the file on the line
+    // AFTER its message - they all tie here and the old order stands.
+    const UNPLACED = Number.MAX_SAFE_INTEGER;
+    const nearFile = (index) => {
+      let best = UNPLACED;
+      for (const line of fileLines) if (line <= index && index - line < best) best = index - line;
+      return best;
+    };
     scored.sort((a, b) => adjusted(b) - adjusted(a) || b.score - a.score ||
-      Number(used.has(a.index)) - Number(used.has(b.index)) || a.index - b.index);
+      Number(used.has(a.index)) - Number(used.has(b.index)) ||
+      nearFile(a.index) - nearFile(b.index) || a.index - b.index);
     const anchor = scored[0].index;
     const start = anchor;
     const end = anchor + 1;

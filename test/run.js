@@ -1445,6 +1445,33 @@ const CASES = [
       // failure-notes rustc ends with are not failures and are not scraped for words.
       assert.doesNotMatch(JSON.stringify(r.failures), /compiler-artifact|"reason"|detailed explanations/);
     } },
+  // `eslint -f json` is what a pipeline uses when something downstream reads the result,
+  // and it produced nothing at all. eslint's json formatter writes the whole document on
+  // one line, which is what makes it findable inside a bigger log - the runner fixture
+  // is a real `bunx eslint` run, banner and all, and that banner alone was enough to
+  // defeat parsing the log as a document.
+  { file: "eslint_json_fail.txt", tool: "eslint", n: 6, check: (r) => {
+      assert.deepEqual(r.failures.map((f) => f.code),
+        ["eqeqeq", "no-undef", "no-undef", "no-unused-vars", "no-unused-vars", "no-undef"]);
+      assert.deepEqual(r.failures.map((f) => [f.line, f.col]),
+        [[2, 7], [2, 15], [2, 27], [3, 5], [1, 19], [1, 31]]);
+      // eslint's own headline, in eslint's own words.
+      assert.equal(r.summary, "6 problems (6 errors, 0 warnings)");
+    } },
+  { file: "eslint_text_same_fail.txt", tool: "eslint", n: 6, check: (r) => {
+      assert.equal(r.summary, "6 problems (6 errors, 0 warnings)");
+    } },
+  { file: "eslint_json_runner_fail.txt", tool: "eslint", n: 6, check: (r) => {
+      // Same six, under three lines of bun's own chatter.
+      assert.equal(r.failures.length, 6);
+      assert.doesNotMatch(JSON.stringify(r.failures), /Resolving dependencies|Saved lockfile/);
+    } },
+  { file: "eslint_json_parse_fail.txt", tool: "eslint", n: 1, check: (r) => {
+      // A file eslint could not parse carries no rule, because no rule ran.
+      assert.equal(r.failures[0].code, undefined);
+      assert.equal(r.failures[0].label, "parse error");
+      assert.match(r.failures[0].message, /Parsing error: Unexpected token/);
+    } },
   { file: "rspec_fail.txt", tool: "rspec", n: 2, check: (r) => {
       assert.equal(r.summary, "3 examples, 2 failures");
       assert.equal(r.failures[0].title, "shop totals an invoice");
@@ -3176,6 +3203,27 @@ try {
   console.log("  ok   --message-format=json says what the text cargo printed says");
   pass++;
 } catch (e) { console.log(`  FAIL cargo json vs text\n       ${e.message}`); fail++; }
+
+// The same eslint run captured both ways. As with cargo, the machine format is only
+// worth reading if it says the same thing as the human one - and here it can be held to
+// the stricter test, because eslint's stylish output is a table of the same fields
+// rather than a drawing. Only the trailing full stop differs: the text formatter strips
+// it, and this does not put it back or take it off to make them match.
+try {
+  const json = analyse(fx("eslint_json_fail.txt"));
+  const text = analyse(fx("eslint_text_same_fail.txt"));
+  const facts = (r) => r.failures.map((f) => [f.file, f.line, f.col, f.code, f.severity]);
+  assert.equal(json.tool, text.tool);
+  assert.equal(json.summary, text.summary);
+  assert.deepEqual(facts(json), facts(text),
+    "the JSON report and the table eslint printed disagree about what failed");
+  for (const [i, f] of json.failures.entries()) {
+    assert.equal(f.message.replace(/\.$/, ""), text.failures[i].message.replace(/\.$/, ""),
+      `failure ${i}: the two formats word it differently`);
+  }
+  console.log("  ok   eslint -f json says what the table eslint printed says");
+  pass++;
+} catch (e) { console.log(`  FAIL eslint json vs table\n       ${e.message}`); fail++; }
 
 const cliResults = await (await import("./cli.js")).runCliTests();
 pass += cliResults.pass;

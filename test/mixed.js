@@ -503,12 +503,21 @@ test("a pair of logs never yields more failures than the two apart", () => {
 // Logs whose owner is not go, but whose content is partly go's own output.
 const GO_UNDER_ANOTHER_OWNER = new Set(["golangci_typecheck_fail.txt"]);
 
-// These two are one `cargo build` captured twice, once as text and once as JSON, and
-// they exist to be compared against each other. Concatenating them is not two runs, it
-// is one run said twice - so the union is not 3 + 3. One of the three deduplicates
-// (rustc draws no carets under that span, so both encodings word it identically) and the
-// other two do not, which is the de-duplication working rather than failing.
-const SAME_RUN_TWO_ENCODINGS = new Set(["cargo_json_fail.txt", "cargo_plain_same_fail.txt"]);
+// Each group is ONE run captured more than once - as text and as JSON - so the fixtures
+// can be compared against each other. Concatenating two from a group is not two runs, it
+// is one run said twice, and the union is not the sum. They are groups rather than one
+// set because two fixtures from DIFFERENT tools' groups are genuinely different runs and
+// must still be held to exact recovery.
+//
+// cargo: one of the three deduplicates (rustc draws no carets under that span, so both
+// encodings word it identically) and the other two do not.
+// eslint: all six deduplicate - checked, the facts from the JSON report and from the
+// table are identical and the joined log holds exactly one copy of them.
+const SAME_RUN_TWO_ENCODINGS = [
+  new Set(["cargo_json_fail.txt", "cargo_plain_same_fail.txt"]),
+  new Set(["eslint_json_fail.txt", "eslint_json_runner_fail.txt", "eslint_text_same_fail.txt"]),
+];
+const sameRun = (a, b) => SAME_RUN_TWO_ENCODINGS.some((group) => group.has(a) && group.has(b));
 
 const identity = (f) => JSON.stringify([
   f.tool ?? null, f.category ?? null, f.file ?? null, f.line ?? null, f.col ?? null,
@@ -545,7 +554,7 @@ test("every ordered pair recovers exactly the failures in its parts", () => {
       // an unprefixed line came from. That is the ambiguity above, not a loss.
       if ((GO_UNDER_ANOTHER_OWNER.has(a) && parserOf(solo.get(b))?.name === "go") ||
           (GO_UNDER_ANOTHER_OWNER.has(b) && parserOf(solo.get(a))?.name === "go")) continue;
-      if (SAME_RUN_TWO_ENCODINGS.has(a) && SAME_RUN_TWO_ENCODINGS.has(b)) continue;
+      if (sameRun(a, b)) continue;
       pairs++;
       const apart = identities([...allFailures(solo.get(a)), ...allFailures(solo.get(b))]);
       let r;
@@ -676,6 +685,26 @@ test("one tool's log twice keeps both runs", () => {
   assert.ok(pairs > 300, `only ${pairs} same-tool pairs exercised`);
   assert.deepEqual(silent.slice(0, 6), [], "a run's failures went missing without a word");
   console.log(`       ${pairs} same-tool ordered pairs`);
+});
+
+// A failure is mapped back to the line it came from by scoring every line on content.
+// eslint's JSON report is ONE line holding every message in its run, so for any table
+// failure that shares a message it ties exactly with the table's own line - 38 and 38 -
+// and the tie went to whichever came first. With the JSON report first, the table's
+// failure was placed on the JSON line, overlapped the JSON parser's own failures there,
+// and was suppressed as a copy of something it was not: a different file, a different
+// run. The table names a file on a header line with no line number, and its lines belong
+// to the header ABOVE them, so the tie now goes to the candidate under that header.
+test("a one-line report does not swallow another run's failure that shares its message", () => {
+  const json = fx("eslint_json_fail.txt"), table = fx("eslint_fail.txt");
+  const apart = allFailures(analyse(json)).length + allFailures(analyse(table)).length;
+  for (const [label, joined] of [["report first", `${json}\n${table}`], ["table first", `${table}\n${json}`]]) {
+    const r = analyse(joined);
+    const got = allFailures(r);
+    assert.equal(got.length, apart, `${label}: ${got.length} failures where the two runs hold ${apart}`);
+    assert.ok(got.some((f) => String(f.file).endsWith("messy.js") && f.line === 1 && f.code === "no-unused-vars"),
+      `${label}: messy.js:1 was taken for a copy of a.js:3 because both say "is assigned a value but never used"`);
+  }
 });
 
 console.log(`\n  ${pass} passed, ${fail} failed`);

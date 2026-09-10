@@ -1,0 +1,1 @@
+[{"filePath":"/home/dev/ej/src/c.js","messages":[{"ruleId":null,"fatal":true,"severity":2,"message":"Parsing error: Unexpected token ;","line":1,"column":11}],"suppressedMessages":[],"errorCount":1,"fatalErrorCount":1,"warningCount":0,"fixableErrorCount":0,"fixableWarningCount":0,"source":"const q = ;\n","usedDeprecatedRules":[]}]
