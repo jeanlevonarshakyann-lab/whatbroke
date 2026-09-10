@@ -2,4 +2,4 @@
   |
 1 | const x = {
   |            ~
-    at file:///private/tmp/claude-501/-Users-jean-levonarshakyan-Documents-claude/6785c633-7fde-4a4d-a2b9-a97bfe2b2de6/scratchpad/swiss/d2.ts:1:12
+    at file:///home/dev/app/d2.ts:1:12
