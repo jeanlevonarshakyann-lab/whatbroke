@@ -235,7 +235,10 @@ const CASES = [
       assert.match(r.failures[0].message, /undefined method .no_such_method./);
       assert.equal(r.failures[0].code, "NoMethodError");
       assert.doesNotMatch(r.failures[0].message, /NoMethodError/, "the class was left in the message too");
-      assert.equal(r.failures[0].trace.length, 1);
+      // `trace` is rendered as text, one frame per line. Asserting only its length let a
+      // version through that put objects in it, and every frame printed as
+      // "at [object Object]" - which only running the CLI showed.
+      assert.deepEqual(r.failures[0].trace, ["f (bad.rb:2)", "<main> (bad.rb:4)"]);
     } },
   // Captured on the system ruby, 2.6.10.
   { file: "ruby_keyerror_fail.txt", tool: "ruby", n: 1, check: (r) => {
@@ -243,7 +246,10 @@ const CASES = [
       assert.equal(r.failures[0].line, 3);
       assert.equal(r.failures[0].code, "KeyError");
       assert.equal(r.failures[0].message, "key not found: :price");
-      assert.equal(r.failures[0].trace.length, 4, "the unwind through map and total is the story");
+      assert.deepEqual(r.failures[0].trace, [
+        "fetch (deep.rb:3)", "block in total (deep.rb:3)", "map (deep.rb:3)", "total (deep.rb:3)",
+      ], "the unwind through map and total is the story");
+      assert.ok(r.failures[0].trace.every((t) => typeof t === "string"), "trace must render as text");
     } },
   { file: "ruby_nomethod_fail.txt", tool: "ruby", n: 1, check: (r) => {
       // Ruby offers a correction under a NameError, and it is the answer often enough
@@ -265,6 +271,9 @@ const CASES = [
       assert.equal(r.failures[0].line, 1);
       assert.equal(r.failures[0].code, "LoadError");
       assert.match(r.failures[0].message, /cannot load such file -- definitely_not_a_gem_xyz/);
+      // both rubygems frames are counted, not listed: none of them is yours
+      assert.deepEqual(r.failures[0].trace, ["<main> (ld.rb:1)"]);
+      assert.equal(r.failures[0].hiddenFrames, 2);
     } },
   { file: "ruff_syntax_fail.txt", tool: "ruff", n: 1, check: (r) => {
       // A file ruff cannot parse is reported without a rule code, so requiring one
@@ -1085,6 +1094,33 @@ for (const c of CASES) {
     console.log(`  FAIL ${c.file}\n       ${e.message}`);
     fail++;
   }
+}
+
+// Every field a parser sets is eventually rendered, and the renderer interpolates
+// `trace` straight into text. A parser that filled it with frame objects instead of
+// strings printed "at [object Object]" for every frame - and passed its own tests,
+// because they asserted the array's LENGTH. Only running the CLI showed it. This sweeps
+// the whole corpus so the next parser cannot repeat it.
+try {
+  const bad = [];
+  for (const name of readdirSync(join(here, "fixtures"))) {
+    let r;
+    try { r = analyse(fx(name)); } catch { continue; }
+    const every = [...(r?.failures ?? []), ...(r?.others ?? []).flatMap((o) => o.failures)];
+    for (const f of every) {
+      if (f.trace === undefined) continue;
+      if (!Array.isArray(f.trace)) { bad.push(`${name} (${r.tool}): trace is ${typeof f.trace}`); continue; }
+      for (const t of f.trace) {
+        if (typeof t !== "string") bad.push(`${name} (${r.tool}): a trace entry is ${typeof t}, renders as "${String(t)}"`);
+      }
+    }
+  }
+  assert.deepEqual(bad, [], "a trace entry would not render as text");
+  console.log("  ok   every trace entry renders as text");
+  pass++;
+} catch (e) {
+  console.log(`  FAIL every trace entry renders as text\n       ${e.message}`);
+  fail++;
 }
 
 // crafted output must not be able to make us read files outside the working dir
