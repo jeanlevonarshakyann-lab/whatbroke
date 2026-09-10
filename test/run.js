@@ -251,6 +251,45 @@ const CASES = [
       assert.match(r.failures[0].message, /^Failed opening required 'nothing-here\.php'$/);
       assert.equal(r.failures[0].code, "Error");
     } },
+  // Captured with dart-sass 1.9x. sass puts its message at the head of a drawn box and
+  // the location at the foot, so reading the first line found the problem and never
+  // where it was.
+  { file: "sass_fail.txt", tool: "sass", n: 1, check: (r) => {
+      assert.equal(r.failures[0].file, "bad.scss");
+      assert.equal(r.failures[0].line, 2);
+      assert.equal(r.failures[0].col, 10);
+      assert.equal(r.failures[0].message, "Undefined variable.");
+      assert.equal(r.failures[0].stmt, "color: $undefined-var;");
+    } },
+  { file: "sass_import_fail.txt", tool: "sass", n: 1, check: (r) => {
+      assert.equal(r.failures[0].line, 1);
+      assert.match(r.failures[0].message, /Can't find stylesheet to import/);
+    } },
+  // Captured with webpack 5. Each error is followed by the resolver's entire search -
+  // forty lines of how webpack looked rather than what went wrong.
+  { file: "webpack_resolve_fail.txt", tool: "webpack", n: 1, check: (r) => {
+      assert.equal(r.failures[0].file, "./wsrc/index.js");
+      assert.equal(r.failures[0].line, 1);
+      assert.match(r.failures[0].message, /^Module not found: Can't resolve '\.\/missing\.js'/);
+      // "Module not found: Error: Can't resolve" says the same thing twice
+      assert.doesNotMatch(r.failures[0].message, /Error:/);
+      // none of the resolver's diary reaches the reader
+      assert.doesNotMatch(JSON.stringify(r.failures), /description file|alias configuration/);
+    } },
+  { file: "webpack_parse_fail.txt", tool: "webpack", n: 1, check: (r) => {
+      assert.match(r.failures[0].message, /^Module parse failed/);
+      assert.equal(r.failures[0].stmt, "const x = ;");
+      // the loader advice is a suggestion, not what happened
+      assert.doesNotMatch(JSON.stringify(r.failures), /appropriate loader|webpack\.js\.org/);
+    } },
+  // Captured with prettier 3. It exits non-zero while naming only files.
+  { file: "prettier_fail.txt", tool: "prettier", n: 1, check: (r) => {
+      assert.equal(r.failures[0].file, "ugly.js");
+      // "needs formatting" reads like nothing went wrong; the guarantees suite says so
+      assert.match(r.summary, /failed the format check/);
+      // the last [warn] line is prettier's advice, not another file
+      assert.doesNotMatch(JSON.stringify(r.failures), /--write/);
+    } },
   // Captured with stylelint 16. It reports like eslint but marks severity with a glyph
   // rather than a word, which is why eslint's own parser never saw it.
   { file: "stylelint_fail.txt", tool: "stylelint", n: 3, check: (r) => {
