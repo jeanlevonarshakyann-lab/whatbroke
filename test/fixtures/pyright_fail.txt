@@ -1,0 +1,7 @@
+/home/dev/app/bad.py
+  /home/dev/app/bad.py:2:12 - error: Type "int" is not assignable to return type "str"
+    "int" is not assignable to "str" (reportReturnType)
+  /home/dev/app/bad.py:5:11 - error: Argument of type "Literal['not a list']" cannot be assigned to parameter "items" of type "list[int]" in function "total"
+    "Literal['not a list']" is not assignable to "list[int]" (reportArgumentType)
+  /home/dev/app/bad.py:6:5 - error: "undefined_name" is not defined (reportUndefinedVariable)
+3 errors, 0 warnings, 0 informations

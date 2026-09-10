@@ -2,6 +2,10 @@
 
 ## Unreleased
 
+- Added a pyright parser. Its diagnostics were readable only as a guess, which took the
+  column for the start of the message, dropped the indented line that says why, and never
+  saw the rule name.
+
 - A parser's headline is now asserted to say that something went wrong, over every
   fixture. Four parsers had shipped a tally that read like success over a real failure —
   jest's `0 total`, vitest's `no tests`, rspec's `0 examples, 0 failures`, PHPUnit's

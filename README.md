@@ -214,6 +214,7 @@ them.
 | **cargo build** | error code and the inline annotation — not the 25 lines of trait impls |
 | **cargo clippy** | the lint name as the title, so you know what to fix or allow |
 | **ruff** | rule code, `file:line`, the message and ruff's own fix hint |
+| **pyright** | the rule name as the code, the column, and the indented line that says *why* — not the column pasted into the message |
 | **mypy** | error code, `file:line`, the type-checking message; notes and warnings set aside |
 | **GCC/Clang** | compiler errors with `file:line:column`; driver errors that never got as far as a file; warnings and notes set aside |
 | **make** | no parser of its own — the compiler underneath already has one, and `make: *** [target] Error 1` restates the failure without adding to it |
