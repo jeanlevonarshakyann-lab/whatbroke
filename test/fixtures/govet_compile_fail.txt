@@ -1,0 +1,3 @@
+# m
+# [m]
+vet: ./main.go:6:17: cannot use 42 (untyped int constant) as string value in variable declaration

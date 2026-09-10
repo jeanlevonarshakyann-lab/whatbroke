@@ -161,22 +161,88 @@ const CASES = [
   // Four runtimes crashing outside any test. None has a parser and none needs one -
   // they are here to hold the fallback to a standard, because a message with no
   // location is half an answer and the location is right there in the log.
-  { file: "bunrun_crash_fail.txt", tool: "output", n: 1, check: (r) => {
+  // Bun stamps its own version at the foot of a crash, which nothing else writes. Before
+  // that was used, the node parser claimed this - the frames are node-shaped enough - and
+  // a `bun` command was reported as having failed under node.
+  { file: "bunrun_crash_fail.txt", tool: "bun", n: 1, check: (r) => {
       assert.equal(r.failures[0].file, "/home/dev/app/crash.ts");
       assert.equal(r.failures[0].line, 1);
+      assert.equal(r.failures[0].col, 36);
       assert.match(r.failures[0].message, /bun runtime crash/);
+      // the echoed source above the error is numbered; the line the failure is on
+      assert.match(r.failures[0].stmt, /^function boom\(\): never/);
+      assert.deepEqual(r.failures[0].trace, [
+        "boom (/home/dev/app/crash.ts:1:36)", "<anonymous> (/home/dev/app/crash.ts:2:1)",
+      ]);
+      // "error:" is a constant bun prints for a class of failure, not a diagnostic code
+      assert.equal(r.failures[0].label, "error");
+      assert.equal(r.failures[0].code, undefined);
+    } },
+  { file: "bun_syntax_fail.txt", tool: "bun", n: 1, check: (r) => {
+      assert.match(r.failures[0].message, /^Expected identifier but found end of file$/);
+      assert.equal(r.failures[0].line, 1);
+      assert.equal(r.failures[0].stmt, "const x = {");
+    } },
+  { file: "bun_import_fail.txt", tool: "bun", n: 1, check: (r) => {
+      // An unresolved import names no line at all - the path is inside the message.
+      assert.equal(r.failures[0].file, undefined);
+      assert.match(r.failures[0].message, /Cannot find module '\.\/nothing-here'/);
     } },
   { file: "denorun_crash_fail.txt", tool: "output", n: 1, check: (r) => {
       // deno prints the source line and a caret between the message and the frames.
       assert.equal(r.failures[0].file, "/home/dev/app/dcrash.ts");
       assert.equal(r.failures[0].line, 1);
     } },
-  { file: "php_fatal_fail.txt", tool: "output", n: 1, check: (r) => {
-      // PHP writes the fatal twice, to the error log and to stdout, differing by a
-      // "PHP " prefix and a space. Counting both says the run failed twice as badly.
+  // PHP writes the fatal twice, to the error log and to stdout, differing by a "PHP "
+  // prefix and a space. Counting both says the run failed twice as badly - the two copies
+  // produce identical failures, so the pipeline's own de-duplication collapses them.
+  { file: "php_fatal_fail.txt", tool: "php", n: 1, check: (r) => {
       assert.equal(r.failures[0].file, "/home/dev/app/bad.php");
       assert.equal(r.failures[0].line, 2);
       assert.match(r.failures[0].message, /Call to a member function method\(\) on null/);
+      // the class is the searchable handle, and it is not left in the message as well
+      assert.equal(r.failures[0].code, "Error");
+      assert.doesNotMatch(r.failures[0].message, /Fatal error|Uncaught/);
+      // "#1 {main}" is the entry point and carries nothing
+      assert.deepEqual(r.failures[0].trace, ["f() (/home/dev/app/bad.php:3)"]);
+      // the warning PHP printed first is context, not the headline - and it arrives
+      // doubled too, so counting lines said two
+      assert.equal(r.summary, "1 error, 1 warning first");
+    } },
+  // Captured on PHP 8.5. A file that will not parse never runs, so there is no exception
+  // and no stack - and the guess found no location at all for it.
+  { file: "php_parse_fail.txt", tool: "php", n: 1, check: (r) => {
+      assert.equal(r.failures[0].line, 2);
+      assert.match(r.failures[0].file, /p2\.php$/);
+      assert.match(r.failures[0].message, /^syntax error, unexpected token "\{"/);
+      assert.equal(r.failures[0].label, "parse error");
+      assert.equal(r.failures[0].code, undefined);
+    } },
+  { file: "php_require_fail.txt", tool: "php", n: 1, check: (r) => {
+      // The include path is longer than the diagnosis and never varies, while the file
+      // it could not find is the answer.
+      assert.doesNotMatch(r.failures[0].message, /include_path/);
+      assert.match(r.failures[0].message, /^Failed opening required 'nothing-here\.php'$/);
+      assert.equal(r.failures[0].code, "Error");
+    } },
+  // Captured with go 1.25. `go vet` prefixes the line when the package will not compile
+  // at all, and that prefix defeated the anchor - so a vet run that hit a type error came
+  // back as a guess with no location, with the file and line sitting in plain sight
+  // inside the message.
+  { file: "govet_compile_fail.txt", tool: "go vet", n: 1, check: (r) => {
+      assert.equal(r.failures[0].file, "main.go");
+      assert.equal(r.failures[0].line, 6);
+      assert.equal(r.failures[0].col, 17);
+      assert.match(r.failures[0].message, /^cannot use 42 \(untyped int constant\)/);
+      assert.doesNotMatch(r.failures[0].message, /^vet: /, "the prefix is not part of the message");
+    } },
+  { file: "govet_printf_fail.txt", tool: "go build", n: 2, check: (r) => {
+      // Vet's own findings are written exactly like a compile error and carry no prefix,
+      // so a piped log gives no way to tell them apart. Reported as the compiler's is
+      // the honest reading of the text; the prefix above is the one time it does say.
+      assert.equal(r.failures[0].line, 9);
+      assert.match(r.failures[0].message, /fmt\.Printf call needs 1 arg but has 2 args/);
+      assert.match(r.failures[1].message, /format %s has arg 42 of wrong type int/);
     } },
   // Captured on the system perl, 5.34. Perl puts the location at the end of the message,
   // in prose, so nothing recognised it and a failing perl script produced no diagnosis.

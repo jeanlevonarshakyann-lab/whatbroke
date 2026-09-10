@@ -1,0 +1,2 @@
+main.go:9:2: fmt.Printf call needs 1 arg but has 2 args
+main.go:10:20: fmt.Printf format %s has arg 42 of wrong type int

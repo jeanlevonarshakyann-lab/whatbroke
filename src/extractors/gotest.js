@@ -1,8 +1,12 @@
 const FAIL_RE = /^[^\S\n]*--- (FAIL|SKIP): (\S+)/;
 const PANIC_RE = /^panic: (.+?)(?:[^\S\n]\[recovered.*\])?$/m;
 const LOC_RE = /^[^\S\n]+([\w./-]+\.go):(\d+):[^\S\n]*(.*)$/;
-const BUILD_RE = /^(?:\.\/)?([\w./-]+\.go):(\d+):(\d+): (.+)$/;
-const BUILD_ANY = /^(?:\.\/)?[\w./-]+\.go:\d+:\d+: /m;   // same, but scans a whole blob
+// `go vet` prefixes the line when the package will not compile at all - "vet: ./main.go:
+// 6:17: cannot use ..." - and that prefix defeated the anchor, so a vet run that hit a
+// type error came back as a guess with no location, with the file and line sitting in
+// plain sight inside the message. Vet's own findings carry no prefix and already matched.
+const BUILD_RE = /^(vet: )?(?:\.\/)?([\w./-]+\.go):(\d+):(\d+): (.+)$/;
+const BUILD_ANY = /^(?:vet: )?(?:\.\/)?[\w./-]+\.go:\d+:\d+: /m;   // same, but scans a whole blob
 // Go's own runtime/testing frames are never your bug
 const STDLIB = /\/(libexec\/)?src\/(runtime|testing|internal)\//;
 
@@ -22,15 +26,21 @@ export default {
     const failures = [];
 
     // --- compile errors: "./file.go:4:17: cannot use 42 ..." ---
+    let vetted = false;
     for (const l of lines) {
       const m = l.match(BUILD_RE);
       if (m && !/^\s/.test(l)) {
-        failures.push({ file: m[1], line: +m[2], col: +m[3], title: "", severity: "error", message: m[4] });
+        if (m[1]) vetted = true;
+        failures.push({ file: m[2], line: +m[3], col: +m[4], title: "", severity: "error", message: m[5] });
       }
     }
     if (failures.length) {
       const n = failures.length;
-      return { tool: "go build", summary: `${n} compile error${n > 1 ? "s" : ""}`, failures };
+      // Vet's own findings are written exactly like a compile error, so a piped log gives
+      // no way to tell them apart. The prefix is the one time it does say.
+      return vetted
+        ? { tool: "go vet", summary: `${n} error${n > 1 ? "s" : ""}`, failures }
+        : { tool: "go build", summary: `${n} compile error${n > 1 ? "s" : ""}`, failures };
     }
 
     // --- data races ---

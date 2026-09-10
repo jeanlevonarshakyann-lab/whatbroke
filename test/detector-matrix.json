@@ -21,15 +21,43 @@
       "generic": 2
     }
   },
-  "bunrun_crash_fail.txt": {
-    "winner": "output",
-    "parser": "generic",
+  "bun_import_fail.txt": {
+    "winner": "bun",
+    "parser": "bun",
     "failures": 1,
     "claimants": [
+      "bun",
+      "generic"
+    ],
+    "shadow": {
+      "generic": 1
+    }
+  },
+  "bun_syntax_fail.txt": {
+    "winner": "bun",
+    "parser": "bun",
+    "failures": 1,
+    "claimants": [
+      "bun",
       "node",
       "generic"
     ],
-    "shadow": {}
+    "shadow": {
+      "generic": 1
+    }
+  },
+  "bunrun_crash_fail.txt": {
+    "winner": "bun",
+    "parser": "bun",
+    "failures": 1,
+    "claimants": [
+      "bun",
+      "node",
+      "generic"
+    ],
+    "shadow": {
+      "generic": 1
+    }
   },
   "cargo_buildscript_fail.txt": {
     "winner": "cargo",
@@ -430,6 +458,30 @@
     ],
     "shadow": {
       "generic": 4
+    }
+  },
+  "govet_compile_fail.txt": {
+    "winner": "go vet",
+    "parser": "go",
+    "failures": 1,
+    "claimants": [
+      "go",
+      "generic"
+    ],
+    "shadow": {
+      "generic": 1
+    }
+  },
+  "govet_printf_fail.txt": {
+    "winner": "go build",
+    "parser": "go",
+    "failures": 2,
+    "claimants": [
+      "go",
+      "generic"
+    ],
+    "shadow": {
+      "generic": 2
     }
   },
   "gradle_dependency_fail.txt": {
@@ -860,13 +912,40 @@
     "shadow": {}
   },
   "php_fatal_fail.txt": {
-    "winner": "output",
-    "parser": "generic",
+    "winner": "php",
+    "parser": "php",
     "failures": 1,
     "claimants": [
+      "php",
       "generic"
     ],
-    "shadow": {}
+    "shadow": {
+      "generic": 1
+    }
+  },
+  "php_parse_fail.txt": {
+    "winner": "php",
+    "parser": "php",
+    "failures": 1,
+    "claimants": [
+      "php",
+      "generic"
+    ],
+    "shadow": {
+      "generic": 1
+    }
+  },
+  "php_require_fail.txt": {
+    "winner": "php",
+    "parser": "php",
+    "failures": 1,
+    "claimants": [
+      "php",
+      "generic"
+    ],
+    "shadow": {
+      "generic": 1
+    }
   },
   "phpunit_error_fail.txt": {
     "winner": "phpunit",
