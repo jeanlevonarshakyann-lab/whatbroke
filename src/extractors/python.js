@@ -48,11 +48,48 @@ function parseTraceback(body) {
   return { frames, deepest: (user.length ? user : frames).at(-1), err };
 }
 
+// A file that will not compile never runs, so there is no traceback and no frames -
+// just where the parser gave up:
+//
+//   File "syn.py", line 1
+//       def f(:
+//             ^
+//   SyntaxError: invalid syntax
+//
+// That location line is a traceback frame's shape WITHOUT the ", in <name>" a frame
+// always carries, which is what tells the two apart. It is one of the commonest ways a
+// Python run fails, and it was reaching the guess.
+const COMPILE_AT_RE = /^[^\S\n]*File "(.+?)", line (\d+)[^\S\n]*$/;
+const COMPILE_ERR_RE = /^(\w*(?:SyntaxError|IndentationError|TabError)):[^\S\n]*(.*)$/;
+const CARET_RE = /^[^\S\n]*\^+[^\S\n]*$/;
+
+/** The compile error in this log, if it holds one and no traceback. */
+function compileError(lines) {
+  for (let i = 0; i < lines.length; i++) {
+    const at = lines[i].match(COMPILE_AT_RE);
+    if (!at) continue;
+    let stmt;
+    for (let j = i + 1; j < lines.length && j <= i + 4; j++) {
+      const err = lines[j].match(COMPILE_ERR_RE);
+      if (err) {
+        return {
+          file: at[1], line: +at[2],
+          title: err[1], code: err[1], severity: "error",
+          message: err[2].trim() || err[1], stmt,
+        };
+      }
+      if (lines[j].trim() && !CARET_RE.test(lines[j]) && !stmt) stmt = lines[j].trim();
+    }
+  }
+  return null;
+}
+
 export const traceback = {
   name: "python",
   category: "runtime",
   commands: ["python", "python3"],
-  detect: (s) => /^Traceback \(most recent call last\):$/m.test(s),
+  detect: (s) => /^Traceback \(most recent call last\):$/m.test(s) ||
+    !!compileError(s.split("\n")),
   extract(s) {
     const lines = s.split("\n");
     const failures = [];
@@ -78,6 +115,13 @@ export const traceback = {
     // unittest log. When independent Python output exists, only that output belongs
     // to this parser.
     if (!failures.length && unittestFallback) failures.push(unittestFallback);
+    // A compile error stands beside any tracebacks rather than instead of them. As a
+    // fallback it went missing the moment a log held both - a CI job that ran one suite
+    // to a traceback and another to a syntax error reported only the first.
+    const compiled = compileError(lines);
+    if (compiled && !failures.some((f) => f.file === compiled.file && f.line === compiled.line)) {
+      failures.push(compiled);
+    }
     if (!failures.length) return null;
     return { tool: "python", failures };
   },

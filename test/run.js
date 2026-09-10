@@ -251,6 +251,29 @@ const CASES = [
       assert.match(r.failures[0].message, /^Failed opening required 'nothing-here\.php'$/);
       assert.equal(r.failures[0].code, "Error");
     } },
+  // A file that will not compile never runs, so there is no traceback and no frames -
+  // just where the parser gave up. Its location line is a traceback frame's shape
+  // WITHOUT the ", in <name>" a frame always carries, which is what separates them.
+  // One of the commonest ways a Python run fails, and it was reaching the guess.
+  { file: "py_syntax_fail.txt", tool: "python", n: 1, check: (r) => {
+      assert.match(r.failures[0].file, /syn\.py$/);
+      assert.equal(r.failures[0].line, 1);
+      assert.equal(r.failures[0].code, "SyntaxError");
+      assert.equal(r.failures[0].message, "invalid syntax");
+      assert.equal(r.failures[0].stmt, "def f(:");
+    } },
+  { file: "py_indent_fail.txt", tool: "python", n: 1, check: (r) => {
+      assert.equal(r.failures[0].code, "IndentationError");
+      assert.equal(r.failures[0].line, 3);
+    } },
+  // npm leads every line of its own output with "npm ", which is a uniform prefix by any
+  // measure. In a log where npm was not the only tool, taking it off left npm's parser
+  // matching nothing and handed the log to whoever was next.
+  { file: "npm_eresolve_fail.txt", tool: "npm", n: 1, check: (r) => {
+      assert.equal(r.failures[0].code, "ERESOLVE");
+      assert.match(r.failures[0].message, /unable to resolve dependency tree/);
+      assert.equal(r.wrappers, undefined, "npm's own prefix is not a wrapper");
+    } },
   // Captured with dart-sass 1.9x. sass puts its message at the head of a drawn box and
   // the location at the foot, so reading the first line found the problem and never
   // where it was.
