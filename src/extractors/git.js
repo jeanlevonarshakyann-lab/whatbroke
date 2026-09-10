@@ -10,6 +10,11 @@ const CONFLICT = /^CONFLICT \(([^)]+)\): (?:Merge conflict in|.*? in) (.+)$/;
 const REJECTED = /^[^\S\n]*!\s+\[([^\]]+)\][^\S\n]+(\S+)[^\S\n]+->[^\S\n]+(\S+)(?:[^\S\n]+\((.+)\))?$/;
 const OVERWRITE = /^error: Your local changes to the following files would be overwritten by (\w+):$/;
 const DIAGNOSTIC = /^(fatal|error): (.+)$/;
+// Even as a fallback, a bare `fatal:`/`error:` has to say something git would say.
+// Gating the fallback on "git found nothing structural" is not enough on its own: in a
+// log holding more than one tool git still scraped the other one's lines, and claimed
+// cargo's "error: failed to run custom build command for `m2 v0.1.0`" as a git failure.
+const GIT_ISH = /\b(?:git|repository|repo|branch|remote|refs?|HEAD|commits?|merge|rebase|checkout|clone|fetch|pull|push|stash|worktree|index|upstream|pathspec|revision|tree|tracked|untracked|working tree|\.git)\b/i;
 
 // Everything git prints to be helpful rather than to say what went wrong.
 const ADVICE = [
@@ -78,7 +83,7 @@ export default {
       }
 
       const d = l.match(DIAGNOSTIC);
-      if (d && !(rejected && RESTATES.test(d[2]))) bare.push({ title: d[1], label: d[1], severity: "error", message: d[2] });
+      if (d && GIT_ISH.test(d[2]) && !(rejected && RESTATES.test(d[2]))) bare.push({ title: d[1], label: d[1], severity: "error", message: d[2] });
     }
 
     if (!failures.length) failures.push(...bare);

@@ -1,6 +1,11 @@
 const SUREFIRE_RE = /^\[ERROR\]\s{2,}([A-Z]\w*)\.(\w+):(\d+)[^\S\n]+(.+)$/;
 const MAVEN_RE = /^\[ERROR\][^\S\n]+(.+?):\[(\d+),(\d+)\][^\S\n]+(.+)$/;
-const GRADLE_RE = /^(?:e: )?(.+?):(\d+):(\d+):[^\S\n]+(?:(error|warning):[^\S\n]+)?(.+)$/;
+// "file:line:col: message" is the universal compiler diagnostic shape - Go, clang,
+// gcc and rustc all print it - so matching it bare made this parser claim their
+// output whenever a log held more than one tool. What makes such a line Gradle's is
+// either Kotlin's "e: " severity prefix or a JVM source file at the front of it.
+const JVM_SRC = /\.(?:java|kt|kts|groovy|scala|gradle)$/;
+const GRADLE_RE = /^(e: )?(.+?):(\d+):(\d+):[^\S\n]+(?:(error|warning):[^\S\n]+)?(.+)$/;
 const JAVA_RE = /^(.+?\.java):(\d+):[^\S\n]+(error|warning):[^\S\n]+(.+)$/m;
 
 export default {
@@ -19,12 +24,13 @@ export default {
     for (const rawLine of s.split("\n")) {
       const line = rawLine.trim();
       const maven = line.match(MAVEN_RE);
-      const gradle = line.match(GRADLE_RE);
+      const g = line.match(GRADLE_RE);
+      const gradle = g && (g[1] || JVM_SRC.test(g[2])) ? g : null;
       const java = line.match(JAVA_RE);
       const match = maven
         ? { file: maven[1], line: +maven[2], col: +maven[3], message: maven[4] }
         : gradle
-          ? { file: gradle[1], line: +gradle[2], col: +gradle[3], severity: gradle[4], message: gradle[5] }
+          ? { file: gradle[2], line: +gradle[3], col: +gradle[4], severity: gradle[5], message: gradle[6] }
           : java
             ? { file: java[1], line: +java[2], severity: java[3], message: java[4] }
           : null;

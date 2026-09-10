@@ -8,7 +8,11 @@
 // pnpm prints a code, two or more spaces, then the message:
 //    ERR_PNPM_NO_SCRIPT  Missing script: build
 //    ELIFECYCLE  Command failed with exit code 3.
-const PNPM_LINE = /^[^\S\n]+([A-Z][A-Z0-9_]+)[^\S\n]{2,}(.+?)[^\S\n]*$/;
+// The code has to look like one. Matching any indented UPPERCASE word followed by two
+// spaces made this claim vitest's " FAIL  src/x.spec.ts > name" lines as pnpm failures -
+// 56 of them across the fixture corpus. pnpm's codes are ERR_PNPM_* or a node-style
+// E-code: ELIFECYCLE, ENOENT, EACCES.
+const PNPM_LINE = /^[^\S\n]+(ERR_PNPM_[A-Z0-9_]+|E[A-Z]{3,})[^\S\n]{2,}(.+?)[^\S\n]*$/;
 const PNPM_WARN = /^(?:WARN|WARNING|INFO|DEBUG|NOTICE)$/;
 
 export const pnpm = {
