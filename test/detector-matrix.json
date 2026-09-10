@@ -21,15 +21,43 @@
       "generic": 2
     }
   },
-  "bunrun_crash_fail.txt": {
-    "winner": "output",
-    "parser": "generic",
+  "bun_import_fail.txt": {
+    "winner": "bun",
+    "parser": "bun",
     "failures": 1,
     "claimants": [
+      "bun",
+      "generic"
+    ],
+    "shadow": {
+      "generic": 1
+    }
+  },
+  "bun_syntax_fail.txt": {
+    "winner": "bun",
+    "parser": "bun",
+    "failures": 1,
+    "claimants": [
+      "bun",
       "node",
       "generic"
     ],
-    "shadow": {}
+    "shadow": {
+      "generic": 1
+    }
+  },
+  "bunrun_crash_fail.txt": {
+    "winner": "bun",
+    "parser": "bun",
+    "failures": 1,
+    "claimants": [
+      "bun",
+      "node",
+      "generic"
+    ],
+    "shadow": {
+      "generic": 1
+    }
   },
   "cargo_buildscript_fail.txt": {
     "winner": "cargo",

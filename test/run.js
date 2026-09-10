@@ -161,10 +161,32 @@ const CASES = [
   // Four runtimes crashing outside any test. None has a parser and none needs one -
   // they are here to hold the fallback to a standard, because a message with no
   // location is half an answer and the location is right there in the log.
-  { file: "bunrun_crash_fail.txt", tool: "output", n: 1, check: (r) => {
+  // Bun stamps its own version at the foot of a crash, which nothing else writes. Before
+  // that was used, the node parser claimed this - the frames are node-shaped enough - and
+  // a `bun` command was reported as having failed under node.
+  { file: "bunrun_crash_fail.txt", tool: "bun", n: 1, check: (r) => {
       assert.equal(r.failures[0].file, "/home/dev/app/crash.ts");
       assert.equal(r.failures[0].line, 1);
+      assert.equal(r.failures[0].col, 36);
       assert.match(r.failures[0].message, /bun runtime crash/);
+      // the echoed source above the error is numbered; the line the failure is on
+      assert.match(r.failures[0].stmt, /^function boom\(\): never/);
+      assert.deepEqual(r.failures[0].trace, [
+        "boom (/home/dev/app/crash.ts:1:36)", "<anonymous> (/home/dev/app/crash.ts:2:1)",
+      ]);
+      // "error:" is a constant bun prints for a class of failure, not a diagnostic code
+      assert.equal(r.failures[0].label, "error");
+      assert.equal(r.failures[0].code, undefined);
+    } },
+  { file: "bun_syntax_fail.txt", tool: "bun", n: 1, check: (r) => {
+      assert.match(r.failures[0].message, /^Expected identifier but found end of file$/);
+      assert.equal(r.failures[0].line, 1);
+      assert.equal(r.failures[0].stmt, "const x = {");
+    } },
+  { file: "bun_import_fail.txt", tool: "bun", n: 1, check: (r) => {
+      // An unresolved import names no line at all - the path is inside the message.
+      assert.equal(r.failures[0].file, undefined);
+      assert.match(r.failures[0].message, /Cannot find module '\.\/nothing-here'/);
     } },
   { file: "denorun_crash_fail.txt", tool: "output", n: 1, check: (r) => {
       // deno prints the source line and a caret between the message and the frames.
