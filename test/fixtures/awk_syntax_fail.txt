@@ -1,0 +1,5 @@
+awk: syntax error at source line 1
+ context is
+	 >>> BEGIN{ <<< 
+awk: illegal statement at source line 1
+	missing }

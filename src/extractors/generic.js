@@ -14,7 +14,12 @@ const SIGNAL = [
   // The classic unix shape - "curl: (7) Failed to connect", "cp: cannot stat",
   // "ssh: ... Connection refused". A bare "prog: message" is far too broad to
   // treat as an error, so it must also say that something did not work.
-  /^[a-z][\w.+-]*:\s.*\b(?:failed|failure|cannot|can't|not found|refused|denied|no such|unable to|invalid|missing|timed out|unreachable|does not exist|permission)\b/i,
+  // The vocabulary is the failure words a unix tool actually uses, and it was written
+  // around verbs. That missed the nouns: `tar: Error opening archive: Unrecognized
+  // archive format` and `awk: syntax error at source line 1` both name themselves and
+  // then say plainly that something broke, and neither produced any diagnosis at all -
+  // the word is not immediately before a colon, so the pattern above it never fired.
+  /^[a-z][\w.+-]*:\s.*\b(?:failed|failure|cannot|can't|not found|refused|denied|no such|unable to|invalid|missing|timed out|unreachable|does not exist|permission|errors?|fatal|panic|unrecogni[sz]ed|unsupported|corrupt(?:ed)?|malformed|illegal|unbalanced|truncated)\b/i,
 ];
 // A line whose first mark is "|" is the renderer drawing the source, not a diagnostic:
 // rustc, swift and ruff all echo the offending line and hang an annotation off it, and
@@ -22,7 +27,12 @@ const SIGNAL = [
 // four errors for two, and the repeat check cannot catch it - the two copies differ by
 // their prefixes, not by a prefix one of them has.
 const ANNOTATION = /^[^\S\n]*\d*[^\S\n]*\|/;
-const NOISE = [/^[^\S\n]*at /, /^npm (notice|warn)/, /^[^\S\n]*$/, /^warning:/i, ANNOTATION];
+// "note:", "help:" and "hint:" introduce the rest of a diagnostic, never the diagnostic.
+// Widening the vocabulary below to catch tar's "Error opening archive" also caught pip's
+// "note: This error originates from a subprocess, and is likely not a problem with pip",
+// which says the opposite of a diagnosis.
+const CONTINUATION = /^[^\S\n]*(?:note|help|hint):/i;
+const NOISE = [/^[^\S\n]*at /, /^npm (notice|warn)/, /^[^\S\n]*$/, /^warning:/i, ANNOTATION, CONTINUATION];
 
 // Almost every runtime prints "something went wrong" and then says where, on the next
 // line or inside the message itself. Reading only the first line finds the right words

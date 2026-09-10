@@ -217,7 +217,14 @@ function better(candidate, cand, current) {
   if (candidate.kind === "shape") return real(cand) || !real(current);
   // Everything below is an automatically discovered candidate, held to a higher bar
   // because it is as likely to be data as a wrapper.
-  if (!real(cand)) return false;
+  //
+  // The one exception is a log nothing could read at all. A guess made on prefixed text
+  // is strictly worse than the same guess made on clean text - the fallback's patterns
+  // anchor on ^, so `api:test: awk: syntax error at source line 1` matches none of them
+  // and a wrapped awk failure came back silent. Requiring the unstripped text to have
+  // produced NOTHING keeps the bar where it was for everything else: mypy's repeated
+  // source directory still parses as mypy before the strip, so it is still rejected.
+  if (!real(cand)) return !anything(current);
   // A region candidate keeps only part of the log, so it must never displace a reading
   // of the whole. It is for the case where the whole says nothing worth having.
   if (candidate.kind === "region") return !real(current);
