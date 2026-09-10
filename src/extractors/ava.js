@@ -65,16 +65,29 @@ export default {
       if (m) names.push(m[1].replace(/[^\S\n]+\w*(?:Error|Exception) thrown in test$/, "").trim());
     }
 
+    // Where each name's detail block begins, found in one pass. Scanning the whole log
+    // per name made this quadratic - and cubic with the inner loop's own lookup - so a
+    // log with a few thousand roll-call lines took seconds. The fuzzer builds exactly
+    // that by duplicating lines, and it hung CI for half an hour.
+    const nameSet = new Set(names);
+    const blockAt = new Map();
+    lines.forEach((l, i) => {
+      if (i === 0 || ROLL_RE.test(l)) return;
+      const t = l.trim();
+      if (nameSet.has(t) && !blockAt.has(t)) blockAt.set(t, i);
+    });
+
     for (const name of names) {
       // The detail block repeats the name alone on a line, after the rule.
-      const at = lines.findIndex((l, i) => l.trim() === name && i > 0 && !ROLL_RE.test(l));
+      const at = blockAt.get(name) ?? -1;
       if (at < 0) { failures.push({ title: name, subject: name, severity: "error", message: name }); continue; }
 
       let where = null, message = "", code, threw = false;
       const diff = [];
       for (let j = at + 1; j < lines.length && j <= at + 40; j++) {
         if (RULE_RE.test(lines[j])) break;
-        if (lines[j].trim() === names.find((n) => n !== name && lines[j].trim() === n)) break;
+        const here = lines[j].trim();
+        if (here !== name && nameSet.has(here)) break;   // the next failure's block
 
         if (SOURCE_RE.test(lines[j])) continue;
 
