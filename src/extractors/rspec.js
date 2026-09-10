@@ -38,14 +38,28 @@ export default {
       let message = [];
       let file;
       let line;
+      const body = [];
+      // Every line of a numbered example is indented or blank; the block ends at the
+      // first line at column zero. The named terminators below are rspec's own, so in a
+      // log holding another tool they sat far past the end of the block - Playwright
+      // numbers its failures the same way, and its last one ran on into an rspec report
+      // pasted under it and took the "Failure/Error:" line that proves ownership.
       for (let j = i + 1; j < lines.length &&
+        (!lines[j].trim() || /^[^\S\n]/.test(lines[j])) &&
         !/^[^\S\n]+\d+\)[^\S\n]+/.test(lines[j]) &&
         !/^Finished in /.test(lines[j]) &&
         !/^Top \d+ slowest/.test(lines[j]) &&
-        !/^Failed examples:/.test(lines[j]); j++) {
-        const location = lines[j].match(LOCATION_RE);
+        !/^Failed examples:/.test(lines[j]); j++) body.push(lines[j]);
+      // "  1) name" is not rspec's alone: Playwright numbers its failures exactly the
+      // same way, and the terminators above are rspec's own, so in a log holding both
+      // this block ran on past Playwright's failure and swallowed its assertion text.
+      // Under a numbered example rspec always writes either "Failure/Error:" or a
+      // "# ./file:N:in" backtrace line; Playwright writes neither.
+      if (!body.some((l) => /^[^\S\n]*Failure\/Error:/.test(l) || LOCATION_RE.test(l))) continue;
+      for (const l of body) {
+        const location = l.match(LOCATION_RE);
         if (location) { file = location[1]; line = +location[2]; }
-        if (lines[j].trim() && !/^[^\S\n]+# /.test(lines[j])) message.push(lines[j].trim());
+        if (l.trim() && !/^[^\S\n]+# /.test(l)) message.push(l.trim());
       }
       failures.push({
         file, line, title: header[1], subject: header[1], severity: "error",
