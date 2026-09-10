@@ -30,7 +30,7 @@ function capture(text, maxBytes, chunk = 0) {
   return c.finish();
 }
 
-const MARKER = /\n~~~ whatbroke: \d+ bytes of output elided here[^\n]*~~~\n/;
+const MARKER = /\n~~~ whatbroke: \d+ bytes of output elided here[^\n]*~~~\n/g;
 
 // ------------------------------------------------------------- under the cap
 
@@ -78,6 +78,35 @@ test("a failure at the end is still diagnosed, not lost", () => {
     assert.equal(out.failures.length, 3);
     assert.equal(out.truncated, true, "and the run must still declare it was truncated");
   } finally { rmSync(dir, { recursive: true, force: true }); }
+});
+
+test("a diagnostic in the middle survives clean output on both sides", () => {
+  const failure = fx("pytest_fail.txt");
+  const text = "build started\n"
+    + "ordinary compiler output\n".repeat(5000)
+    + failure
+    + "cleanup completed\n".repeat(10000);
+  const r = capture(text, 32768);
+  for (const chunk of [7, 4096]) {
+    assert.deepEqual(capture(text, 32768, chunk), r, `capture changed at chunk size ${chunk}`);
+  }
+  const parsed = analyse(r.text);
+  assert.equal(r.truncated, true);
+  assert.equal(parsed?.tool, "pytest", "the middle diagnostic must still reach its parser");
+  assert.equal(parsed?.failures.length, 3);
+  assert.match(r.text, /cleanup completed\n$/, "the tail remains available for shutdown errors");
+  const gaps = [...r.text.matchAll(/whatbroke: (\d+) bytes of output elided here/g)];
+  assert.ok(gaps.length >= 2, "separate missing regions must remain visibly separate");
+  assert.equal(gaps.reduce((sum, match) => sum + Number(match[1]), 0), r.elided);
+  assert.equal(r.elided + Buffer.byteLength(r.text.replace(MARKER, "")), Buffer.byteLength(text));
+});
+
+test("diagnostics already in the tail do not spend the capture budget twice", () => {
+  const max = 20000;
+  const r = capture("ordinary output\n".repeat(20000) + fx("pytest_fail.txt"), max, 997);
+  const payload = Buffer.byteLength(r.text.replace(MARKER, ""));
+  assert.ok(payload > max - 100, `only ${payload} of ${max} available bytes were used`);
+  assert.equal(analyse(r.text)?.failures.length, 3);
 });
 
 test("the capture stays within its budget", () => {

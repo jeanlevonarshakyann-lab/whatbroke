@@ -5,7 +5,16 @@ import { createRequire } from "node:module";
 import { constants as osConstants } from "node:os";
 import { analyse } from "../src/index.js";
 import { createCapture } from "../src/capture.js";
-import { runIdentity, loadRun, saveRun, compare, trackedCauseId } from "../src/history.js";
+import {
+  runIdentity,
+  legacyRunIdentity,
+  loadRun,
+  loadLegacyRun,
+  saveRun,
+  compare,
+  trackedCauseId,
+  legacyTrackedCauseId,
+} from "../src/history.js";
 import { render, setColor } from "../src/render.js";
 import { normTitle } from "../src/cluster.js";
 const { version } = createRequire(import.meta.url)("../package.json");
@@ -260,11 +269,35 @@ function writeFallback(fallback, truncated, executionError) {
  *  the NEXT run announce everything it lost as newly appeared. */
 function track(r, truncated, executionError) {
   if (!r) return { compared: false, reason: "nothing-parsed", fresh: [], gone: null };
-  const ids = [...new Set([r, ...(r.others ?? [])].flatMap((tool) =>
-    tool.failures.map((f) => trackedCauseId(f, tool.tool))))];
-  const identity = runIdentity({ cwd: process.cwd(), tool: r.tool, argv });
+  const pairs = new Map();
+  for (const tool of [r, ...(r.others ?? [])]) {
+    for (const failure of tool.failures) {
+      const current = trackedCauseId(failure, tool.tool);
+      if (!pairs.has(current)) pairs.set(current, legacyTrackedCauseId(failure, tool.tool));
+    }
+  }
+  const ids = [...pairs.keys()];
+  const identityParts = { cwd: process.cwd(), tool: r.tool, argv };
+  const identity = runIdentity(identityParts);
   const trustworthy = !truncated && !executionError;
-  const result = compare(loadRun(identity), ids, { truncated, trustworthy });
+  let previous = loadRun(identity);
+  let comparisonIds = ids;
+  let migrated = false;
+  if (!previous) {
+    previous = loadLegacyRun(legacyRunIdentity(identityParts));
+    if (previous) {
+      comparisonIds = [...pairs.values()];
+      migrated = true;
+    }
+  }
+  const result = compare(previous, comparisonIds, { truncated, trustworthy });
+  if (migrated) {
+    const freshLegacy = new Set(result.fresh);
+    result.fresh = [...pairs].filter(([, legacy]) => freshLegacy.has(legacy)).map(([current]) => current);
+    result.gone = null;
+    result.goneWithheld = "identity-migration";
+    result.migrated = true;
+  }
   if (trustworthy) {
     result.recorded = saveRun(identity, { ranAt: new Date().toISOString(), tool: r.tool, causes: ids });
   } else {

@@ -1,7 +1,7 @@
 import { mkdirSync, readFileSync, writeFileSync, renameSync, unlinkSync } from "node:fs";
 import { homedir, tmpdir } from "node:os";
 import { join, resolve } from "node:path";
-import { fingerprint, causeId } from "./cluster.js";
+import { fingerprint, legacyFingerprint, causeId, keyOf } from "./cluster.js";
 
 // Comparing two runs is only meaningful when they asked the same question. A pytest
 // run and a jest run share no vocabulary; `pytest tests/unit` and `pytest tests/api`
@@ -13,11 +13,20 @@ import { fingerprint, causeId } from "./cluster.js";
 // 4: a compile failure's echoed source line no longer enters its cause key - it is the
 // instance, not the identity - so every such cause is fingerprinted differently. A
 // record written before this would compare as all-new.
-const IDENTITY_VERSION = 4;
+// 5: persistent identifiers move from 32-bit FNV-1a to a 96-bit SHA-256 prefix. A v4
+// record can still be compared once using its legacy IDs, then the current run is saved
+// under the new identity. Claims that causes disappeared are withheld during that one
+// transition because a legacy collision cannot be disproved from the saved hashes.
+const IDENTITY_VERSION = 5;
+const LEGACY_IDENTITY_VERSION = 4;
 
 /** Identical words from different tools are separate causes in a mixed run. */
 export const trackedCauseId = (failure, tool = failure.tool) =>
   fingerprint(JSON.stringify([tool ?? "", causeId(failure)]));
+
+const legacyCauseId = (failure) => legacyFingerprint(keyOf(failure));
+export const legacyTrackedCauseId = (failure, tool = failure.tool) =>
+  legacyFingerprint(JSON.stringify([tool ?? "", legacyCauseId(failure)]));
 
 /** Where a run's fingerprints live. Never the project: whatbroke promises it writes
  *  nothing into your working directory, and a tool that quietly drops a state file
@@ -36,15 +45,27 @@ export function runIdentity({ cwd, tool, argv }) {
   return fingerprint(JSON.stringify([IDENTITY_VERSION, resolve(cwd), tool ?? "", argv ?? []]));
 }
 
+export function legacyRunIdentity({ cwd, tool, argv }) {
+  return legacyFingerprint(JSON.stringify([
+    LEGACY_IDENTITY_VERSION,
+    resolve(cwd),
+    tool ?? "",
+    argv ?? [],
+  ]));
+}
+
 const fileFor = (identity) => join(cacheDir(), `${identity}.json`);
 
-export function loadRun(identity) {
+function readRun(identity, version) {
   try {
     const saved = JSON.parse(readFileSync(fileFor(identity), "utf8"));
-    if (saved?.version !== IDENTITY_VERSION || !Array.isArray(saved.causes)) return null;
+    if (saved?.version !== version || !Array.isArray(saved.causes)) return null;
     return saved;
   } catch { return null; }
 }
+
+export const loadRun = (identity) => readRun(identity, IDENTITY_VERSION);
+export const loadLegacyRun = (identity) => readRun(identity, LEGACY_IDENTITY_VERSION);
 
 /** Write via a temporary file and rename, so an interrupted run leaves the previous
  *  state intact rather than a half-written file that reads as "nothing was failing". */
