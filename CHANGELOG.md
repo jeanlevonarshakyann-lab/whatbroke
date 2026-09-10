@@ -2,6 +2,10 @@
 
 ## Unreleased
 
+- Added a package-boundary smoke test: CI now builds the npm tarball, installs it into
+  a clean temporary project without network access, runs both installed command shims,
+  and parses a real captured failure through the installed package.
+
 - Fixed: Buildkite's `--timestamp-lines` prefix prevented most captured logs from
   reaching their parser; its bracketed local timestamp is now removed before analysis.
 
