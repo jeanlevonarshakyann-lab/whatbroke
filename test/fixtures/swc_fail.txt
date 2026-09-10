@@ -1,0 +1,13 @@
+  x Expression expected
+   ,-[swcbad.js:1:1]
+ 1 | const x = ;
+   :           ^
+   `----
+
+
+Caused by:
+    Syntax Error
+Error: Failed to compile 1 file with swc.
+    at Object.assertCompilationResult (/private/tmp/claude-501/-Users-jean-levonarshakyan-Documents-claude/6785c633-7fde-4a4d-a2b9-a97bfe2b2de6/scratchpad/tools/node_modules/@swc/cli/lib/swc/util.js:140:15)
+    at files (/private/tmp/claude-501/-Users-jean-levonarshakyan-Documents-claude/6785c633-7fde-4a4d-a2b9-a97bfe2b2de6/scratchpad/tools/node_modules/@swc/cli/lib/swc/file.js:196:18)
+    at async default_1 (/private/tmp/claude-501/-Users-jean-levonarshakyan-Documents-claude/6785c633-7fde-4a4d-a2b9-a97bfe2b2de6/scratchpad/tools/node_modules/@swc/cli/lib/swc/file.js:213:9)

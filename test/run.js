@@ -296,6 +296,16 @@ const CASES = [
       // the location is prose inside the header and must not be left in the message
       assert.doesNotMatch(r.failures[0].message, /on line|column/);
     } },
+  // Captured with @swc/cli 0.7. swc reports through miette, the Rust diagnostic
+  // renderer, and ends with a tally that says nothing - which is what was being read,
+  // under node's name, losing both the message and the location.
+  { file: "swc_fail.txt", tool: "swc", n: 1, check: (r) => {
+      assert.equal(r.failures[0].file, "swcbad.js");
+      assert.equal(r.failures[0].line, 1);
+      assert.equal(r.failures[0].message, "Expression expected");
+      assert.equal(r.failures[0].stmt, "const x = ;");
+      assert.doesNotMatch(JSON.stringify(r), /Failed to compile/);
+    } },
   // Captured with @babel/cli 7. Babel names the file inside its message and follows the
   // code frame with its own parser's stack - twenty frames of @babel/parser.
   { file: "babel_fail.txt", tool: "babel", n: 1, check: (r) => {
@@ -2144,6 +2154,10 @@ try {
     // over a Node stack. Both parsers match by design; mocha is listed first and reports
     // the file that would not load rather than a frame inside the module loader.
     "mocha_load_fail.txt": ["mocha", "node"],
+    // swc ends a failed compile with "Error: Failed to compile 1 file with swc.", which
+    // node reads as its own. Both parsers match by design; swc is listed first and
+    // reports the diagnostic miette drew above that line rather than the tally itself.
+    "swc_fail.txt": ["swc", "node"],
   };
   const found = {};
   for (const file of readdirSync(join(here, "fixtures"))) {

@@ -4,6 +4,9 @@
 
 ## 0.4.0 — 2026-09-10
 
+- Reads swc. It reports through miette, the Rust diagnostic renderer, and ends with a
+  tally that says nothing - which is what was being read, under node's name, losing both
+  the message and the location.
 - Reads Biome and oxlint, the two linters most likely to be in a new JS project. Biome
   heads each finding with the rule path and follows it with advice and a fix diff, which
   are not the diagnosis; oxlint puts the whole finding on one line with its `help:`
