@@ -1235,6 +1235,35 @@ try {
   pass++;
 } catch (e) { console.log(`  FAIL near-failure duplicate line\n       ${e.message}`); fail++; }
 
+// a headline that is the whole diagnosis
+try {
+  const { render, setColor } = await import("../src/render.js");
+  setColor(false);
+
+  // yarn and kubectl have nothing but the sentence: no file to open, no code, no unwind.
+  // The block underneath added a bare "error" label and said the sentence again.
+  for (const name of ["yarn_fail.txt", "kubectl_noserver_fail.txt"]) {
+    const out = render(analyse(fx(name)), { source: false });
+    const body = out.split("\n").filter((l) => l.trim());
+    assert.equal(body.length, 1, `${name} says it more than once:\n${out}`);
+    assert.match(body[0], /^  \u2717 /, `${name}: the headline should be what survives`);
+    assert.doesNotMatch(out, /^ +error$/m, `${name}: a bare severity label is not a diagnosis`);
+  }
+
+  // pnpm carries a real code, so the block stays - only the echoed sentence goes.
+  const pnpm = render(analyse(fx("pnpm_script_fail.txt")), { source: false });
+  assert.match(pnpm, /ERR_PNPM_NO_SCRIPT/, "the code is why the block is worth keeping");
+  const echoes = pnpm.split("\n").filter((l) => l.includes("Missing script: nonexistent-script"));
+  assert.equal(echoes.length, 1, `the message appears ${echoes.length} times:\n${pnpm}`);
+
+  // and a headline that merely counts must never swallow the failures under it
+  const counted = render(analyse(fx("eslint_fail.txt")), { source: false });
+  assert.ok(counted.split("\n").filter((l) => l.trim()).length > 2,
+    "a counting headline is not the whole diagnosis");
+  console.log("  ok   a headline that is the whole diagnosis is not said twice");
+  pass++;
+} catch (e) { console.log(`  FAIL headline said twice\n       ${e.message}`); fail++; }
+
 // a message that says one thing many times
 try {
   const { collapseRepeats } = await import("../src/util.js");
