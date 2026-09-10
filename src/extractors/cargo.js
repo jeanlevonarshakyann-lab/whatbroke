@@ -13,7 +13,11 @@ const PANIC_ANYWHERE = new RegExp(PANIC_RE.source, "m");
 const BUILD_SCRIPT = /^error: failed to run custom build command/m;
 // A dependency that cannot be resolved never reaches the compiler, so there is no
 // E-code and no --> line for detection to key on.
-const RESOLVE_RE = /^error: (no matching package named|failed to select a version|failed to parse manifest|could not find `[^`]+` in registry)/m;
+// Cargo's own toplevel complaints - the ones that name no source file because none is
+// at fault. Every other bare `error:` line that carries no code, no `-->` and no lint
+// belongs to some other tool; git writes `error: Your local changes ...`.
+const CARGO_OWN = /^(?:no matching package named|failed to select a version|failed to parse manifest|could not find `[^`]+` in registry|failed to run custom build command|failed to (?:load|download|verify) )/;
+const RESOLVE_RE = new RegExp(`^error: ${CARGO_OWN.source.slice(1)}`, "m");
 const STDLIB = /\/rustlib\/|\/\.cargo\/registry\//;
 // "could not compile ... due to N previous errors" is a tally, not a distinct error
 const TALLY_RE = /^could not compile|^aborting due to|^test failed, to rerun/;
@@ -106,6 +110,9 @@ export default {
         const sm = lines[j].match(/^[^\S\n]*(\d+)\s\|\s?(.*)$/);
         if (sm && loc && +sm[1] === loc.line && !stmt) stmt = sm[2];
       }
+      // An `error:` with no location, no E-code and no lint behind it is not a rustc
+      // diagnostic - it is a line that happens to start with the word.
+      if (!loc && !m[1] && !lint && !CARGO_OWN.test(m[2])) continue;
       failures.push({
         file: loc?.file, line: loc?.line, col: loc?.col,
         title: m[1] ?? lint ?? "", code: m[1] ?? (lint || undefined), severity: "error", message: [m[2], note].filter(Boolean).join("\n"), stmt,

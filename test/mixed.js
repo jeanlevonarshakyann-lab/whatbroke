@@ -13,6 +13,7 @@ import { fileURLToPath } from "node:url";
 import { dirname, join } from "node:path";
 import { spawnSync } from "node:child_process";
 import assert from "node:assert/strict";
+import { readdirSync } from "node:fs";
 import { analyse } from "../src/index.js";
 
 const here = dirname(fileURLToPath(import.meta.url));
@@ -269,6 +270,77 @@ test("a single-tool log gains nothing and loses nothing", () => {
     const r = analyse(fx(name));
     assert.equal(r.others, undefined, `${name} grew an others list it should not have`);
   }
+});
+
+// ------------------------------------------- a pair never invents a failure
+
+// Two logs concatenated cannot contain more failures than the two contain apart. When
+// they do, some parser matched a line it does not own - and every one of those found so
+// far was the same shape of mistake: a word that half the tools in existence write at
+// line start ("error:", "Error:", "FAIL", "file:line:col:"), matched with nothing behind
+// it to say whose it was.
+//
+// These six are the exact pairs that were wrong, each named by the parser that was
+// over-claiming and the line it took. They are listed individually rather than left to
+// the sweep below so a regression says which parser broke.
+const OVERCLAIMS = [
+  // node scanned the whole log for stack frames, so Go's expected-error string
+  // "Error: if any flags in the group ..." adopted bun's frames.
+  ["node",   "bun_fail.txt",             "gotest_cluster_fail.txt"],
+  // git's bare `error:`/`fatal:` fallback took cargo's toplevel error.
+  ["git",    "cargo_buildscript_fail.txt", "git_norepo_fail.txt"],
+  // cargo pushed a compile error for any `error:` line, with no code and no location.
+  ["cargo",  "cargo_manifest_fail.txt",  "git_overwrite_fail.txt"],
+  // "file:line:col: message" is every compiler's shape, not Gradle's; clang's `note:`
+  // lines came through as JVM compile errors under all three JVM tool names.
+  ["jvm",    "clang_bulk_fail.txt",      "javac_fail.txt"],
+  ["gradle", "clang_bulk_fail.txt",      "gradle_fail.txt"],
+  ["maven",  "clang_bulk_fail.txt",      "maven_fail.txt"],
+  // pnpm's error-code pattern matched any indented uppercase word, which is vitest's
+  // " FAIL  src/x.spec.ts > name".
+  ["pnpm",   "pnpm_lifecycle_fail.txt",  "vitest_cluster_fail.txt"],
+  // python's traceback ran to the end of the log, so the exception line came from
+  // whatever printed next - deno's "error: Test failed" is shaped like one.
+  ["python", "py_traceback.txt",         "deno_fail.txt"],
+];
+
+test("a pair of logs never yields more failures than the two apart", () => {
+  const bad = [];
+  for (const [who, a, b] of OVERCLAIMS) {
+    const apart = alone([a, b]);
+    const together = recovered(analyse(fx(a) + "\n" + fx(b)));
+    if (together > apart) bad.push(`${who}: ${a} + ${b} gave ${together}, the parts give ${apart}`);
+  }
+  assert.deepEqual(bad, [], "a parser claimed lines belonging to the other tool");
+});
+
+// The named cases above are the ones already understood. This sweep is how the next one
+// gets found: every ordered pair of fixtures, counted the same way. It is a ratchet -
+// the number may fall, and lowering the ceiling with it is part of the fix. It may not
+// rise. Raising it means a change made whatbroke claim more than it can see, and the
+// right response is to explain the new pairs, not to edit this number.
+const CEILING = 19;
+
+test("no more pairs over-claim than the last time this was measured", () => {
+  const names = readdirSync(join(here, "fixtures"));
+  const solo = new Map();
+  for (const n of names) {
+    try { solo.set(n, analyse(fx(n))); } catch { solo.set(n, null); }
+  }
+  const over = [];
+  for (const a of names) {
+    if (!solo.get(a)) continue;
+    for (const b of names) {
+      if (a === b || !solo.get(b)) continue;
+      const apart = solo.get(a).failures.length + solo.get(b).failures.length;
+      let r;
+      try { r = analyse(fx(a) + "\n" + fx(b)); } catch { continue; }
+      if (recovered(r) > apart) over.push(`${a} + ${b}`);
+    }
+  }
+  assert.ok(over.length <= CEILING,
+    `${over.length} pairs over-claim, ceiling is ${CEILING}:\n       ` + over.slice(0, 6).join("\n       "));
+  if (over.length < CEILING) console.log(`       ${over.length} of ${names.length * (names.length - 1)} pairs over-claim (ceiling ${CEILING} - lower it)`);
 });
 
 console.log(`\n  ${pass} passed, ${fail} failed`);

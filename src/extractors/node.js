@@ -20,11 +20,16 @@ export default {
     }
     if (errIdx < 0) return null;
 
-    // frames after the error line
+    // Frames follow the error, and follow it closely: a real stack starts on the next
+    // line or the one after a blank. Scanning forward without limit meant that in a log
+    // holding more than one tool, an "Error:" line belonging to somebody else - Go
+    // printing an expected error string in a test - reached down the log and adopted
+    // another tool's frames.
+    const FRAME_GAP = 3;
     const frames = [];
     for (let i = errIdx + 1; i < lines.length; i++) {
       const m = lines[i].match(/^[^\S\n]+at (?:(.+?) \()?(.+?):(\d+):(\d+)\)?$/);
-      if (!m) { if (frames.length) break; else continue; }
+      if (!m) { if (frames.length || i - errIdx > FRAME_GAP) break; else continue; }
       frames.push({ fn: m[1] ?? "<anonymous>", file: unfile(m[2]), line: +m[3], col: +m[4] });
     }
     const user = frames.filter((f) => !isNoise(f.file));
@@ -47,6 +52,12 @@ export default {
     // for a syntax error; and failing both, no location at all. Reporting
     // node:internal/modules/esm/resolve:275 is true and useless, and it reads as though
     // the bug were in node.
+    // An "Error:" line with no stack under it and no header above it is not a Node
+    // failure - it is a line that happens to start with the word, and in a log holding
+    // more than one tool it usually belongs to another one. Go prints expected error
+    // strings in test output that read exactly like this.
+    if (!frames.length && !header) return null;
+
     const usable = (loc) => (loc && !isNoise(loc.file) ? loc : null);
     const top = user[0] ?? usable(header) ?? usable(frames[0]);
 
