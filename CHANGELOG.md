@@ -4,6 +4,17 @@
 
 ## 0.4.0 — 2026-09-10
 
+- Mixed-log ownership is now exact across all 13,414 ordered cross-parser fixture
+  pairs. Failures carry private source ranges so two parsers cannot report the same raw
+  diagnostic region, without changing terminal output or the version-1 JSON schema.
+- Tightened parser boundaries found by the exact sweep: Node and Python now retain
+  independent exception blocks, and Bun, Cargo, Deno, ESLint, mypy, PHP, pnpm, Ruff and
+  Swift stop claiming or borrowing another tool's diagnostic text.
+- CI-stamped progress redraws using bare carriage returns are normalised without losing
+  their parser. The invariant now covers 868 fixture/stamp combinations.
+- Recorded 22 fresh failing commands across 11 installed tool families as the 0.4.0
+  release gate; all were parsed by their expected tool.
+
 - Large captures now keep bounded windows around probable diagnostics between the head
   and tail, so a real failure cannot disappear merely because cleanup output followed it.
 - Replaced persistent 32-bit fingerprints with 96-bit SHA-256 prefixes. The last v4

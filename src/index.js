@@ -36,7 +36,8 @@ import pip from "./extractors/pip.js";
 import generic from "./extractors/generic.js";
 import { stripAnsi, stripCiPrefix, isNoise, collapseRepeats } from "./util.js";
 import { clusterFailures } from "./cluster.js";
-import { wrapperCandidates } from "./normalize.js";
+import { stripRedrawnCiPrefix, wrapperCandidates } from "./normalize.js";
+import { addSourceRanges, preserveSourceRange, rangesOverlap, setParser } from "./ownership.js";
 
 // order matters: most specific first, generic last
 export const EXTRACTORS = [pytest, nodetest, bun, bunRuntime, deno, denoRuntime, playwright, jest, vitest, unittest, traceback, eslint, ruff, pyright, mypy, cmake, terraform, swift, clang, ruby, perl, php, rspec, jvm, dotnettest, dotnet, phpunit, cargo, gotest, esbuild, vite, node, tsc, git, kubectl, npm, pnpm, yarn, pip, generic];
@@ -46,7 +47,9 @@ function dedupeFailures(failures) {
   // Collapsing here rather than in each parser puts it on every failure that reaches the
   // reader, from every parser, and it happens before the key is built - so two failures
   // that differ only in how many times they repeated themselves also dedupe.
-  return failures.map((f) => (f.message ? { ...f, message: collapseRepeats(f.message) } : f))
+  return failures.map((f) => (f.message
+    ? preserveSourceRange(f, { ...f, message: collapseRepeats(f.message) })
+    : f))
     .filter((failure) => {
     const key = JSON.stringify([
       failure.file ?? null, failure.line ?? null, failure.col ?? null,
@@ -76,6 +79,17 @@ function sameLocatedDiagnostic(a, b) {
   return text.length > 0 && text === message(b);
 }
 
+/** Different parsers may describe one raw line with different public fields. The
+ * private source range is the tie-breaker: only diagnostics grounded in the same raw
+ * region and carrying the same message may suppress one another. */
+function sameSourceDiagnostic(a, b) {
+  if (!rangesOverlap(a, b)) return false;
+  const x = String(a.message ?? "").trim();
+  const y = String(b.message ?? "").trim();
+  if (!x || !y) return false;
+  return x === y || (Math.min(x.length, y.length) >= 4 && (x.includes(y) || y.includes(x)));
+}
+
 /** A CI log often holds a lint run, a typecheck and a test run one after another.
  *  Only one extractor can own the output, so name the others rather than dropping
  *  their failures without a word. */
@@ -98,16 +112,18 @@ function otherTools(s, winner, mine, cluster) {
     locations.set(key, at);
   };
   mine.forEach(remember);
+  const claimedFailures = [...mine];
   const others = [];
   for (const ex of EXTRACTORS) {
     if (ex === winner || ex.name === "generic") continue;
     let r = null;
-    try { if (ex.detect(s)) r = ex.extract(s); } catch { r = null; }
+    try { if (ex.detect(s)) r = addSourceRanges(s, ex.extract(s)); } catch { r = null; }
     if (!r?.failures?.length) continue;
     // A shared location does not prove a shared diagnostic, and missing locations
     // say nothing at all. Compare diagnostic content consistently for the winner and other tools.
     const fresh = dedupeFailures(r.failures
       .filter((f) => !claimed.has(exact(f)))
+      .filter((f) => !claimedFailures.some((g) => sameSourceDiagnostic(f, g)))
       .filter((f) => !(locations.get(JSON.stringify([f.file, f.line])) ?? [])
         .some((g) => sameLocatedDiagnostic(f, g)))
       // A tool's CLI wrapper reports that the tool exited non-zero, and that stack sits
@@ -117,7 +133,8 @@ function otherTools(s, winner, mine, cluster) {
       // at - it happened entirely inside a runtime or a tool's own internals. From a
       // tool that does not own the log that is a wrapper reporting the exit, not a
       // finding. The winner keeps its own, because sometimes that really is all there is.
-      .filter((f) => !(f.hiddenFrames > 0 && f.trace?.length === 0))
+      .filter((f) => !(f.hiddenFrames > 0 && f.trace?.length === 0 &&
+        !f.file && !/\[ERR_[A-Z_]+\]/.test(f.code ?? "")))
       // A diagnostic with no location and no code, from a tool that does NOT own this
       // log, is a stray match on somebody else's text far more often than a finding.
       // bun prints `error: expect(received).toEqual(expected)` and cargo's `^error:`
@@ -127,14 +144,14 @@ function otherTools(s, winner, mine, cluster) {
       // log, an unanchored `error: linking with cc failed` is exactly the answer.
       .filter((f) => f.file || f.code || f.subject || f.label));
     if (!fresh.length) continue;
-    for (const f of fresh) { claimed.add(exact(f)); remember(f); }
+    for (const f of fresh) { claimed.add(exact(f)); claimedFailures.push(f); remember(f); }
     others.push({
       tool: r.tool,
       count: fresh.length,
       summary: fresh.length === r.failures.length ? r.summary : undefined,
       // Grouping is per tool: a signature only means something within one vocabulary.
       clusters: cluster ? clusterFailures(fresh) : null,
-      failures: fresh.map((f) => ({ tool: r.tool, category: ex.category, ...f })),
+      failures: fresh.map((f) => preserveSourceRange(f, { tool: r.tool, category: ex.category, ...f })),
     });
   }
   return dropEchoes(mine, others);
@@ -189,7 +206,7 @@ function ordered(command) {
 function parse(s, command) {
   for (const ex of ordered(command)) {
     let r = null;
-    try { if (ex.detect(s)) r = ex.extract(s); } catch { r = null; }
+    try { if (ex.detect(s)) r = addSourceRanges(s, ex.extract(s)); } catch { r = null; }
     if (r?.failures?.length) return { extractor: ex, result: r };
   }
   return null;
@@ -285,26 +302,33 @@ function unwrap(s, command) {
   return { text, hit, wrappers };
 }
 
-export function analyse(raw, { cluster = true, command = null } = {}) {
+function analyseWhole(raw, { cluster = true, command = null } = {}) {
   // Windows tools, and logs pasted out of Windows CI, arrive with CRLF. Every
   // parser anchors on $, so a stray \r makes all of them silently match nothing.
   // A byte-order mark is not content. PowerShell writes one at the head of anything it
   // redirects, so a log captured on Windows and piped in later begins with U+FEFF - and
   // every parser anchors on ^, so the first line stops matching. 25 of the fixtures read
   // differently with one in front of them; bun's unresolved import fell to the guess.
-  const base = stripCiPrefix(stripAnsi(raw.replace(/^\uFEFF/, ""))).replace(/\r\n?/g, "\n");
+  const base = stripRedrawnCiPrefix(stripCiPrefix(stripAnsi(raw.replace(/^\uFEFF/, ""))))
+    .replace(/\r\n?/g, "\n");
   const { text: s, hit, wrappers } = unwrap(base, command);
   if (!hit) return null;
   const r = hit.result;
   // dedupe first: it collapses the SAME diagnostic printed twice, so cluster
   // sizes end up counting real distinct sites rather than print repetitions.
-  const failures = dedupeFailures(r.failures).map((f) => ({ tool: r.tool, category: hit.extractor.category, ...f }));
+  const failures = dedupeFailures(r.failures)
+    .map((f) => preserveSourceRange(f, { tool: r.tool, category: hit.extractor.category, ...f }));
   const clusters = cluster ? clusterFailures(failures) : null;
   const others = otherTools(s, hit.extractor, failures, cluster);
-  return {
+  const answer = {
     ...r, failures, clusters,
     ...(others.length ? { others } : {}),
     // Which package or build step the output came from is worth keeping, not discarding.
     ...(wrappers.length ? { wrappers } : {}),
   };
+  return setParser(answer, hit.extractor);
+}
+
+export function analyse(raw, { cluster = true, command = null } = {}) {
+  return analyseWhole(raw, { cluster, command });
 }

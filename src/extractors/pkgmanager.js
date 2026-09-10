@@ -23,7 +23,7 @@ export const pnpm = {
   // ERR_PNPM_* is pnpm's alone. ELIFECYCLE is shared with npm, but npm writes it as
   // `npm error code ELIFECYCLE`, never as an indented column.
   detect: (s) => /^[^\S\n]+ERR_PNPM_[A-Z0-9_]+[^\S\n]{2,}/m.test(s) ||
-    (/^[^\S\n]+ELIFECYCLE[^\S\n]{2,}/m.test(s) && !/^npm (?:error|ERR!)[^\S\n]/m.test(s)),
+    /^[^\S\n]+ELIFECYCLE[^\S\n]{2,}/m.test(s),
 
   extract(s) {
     const failures = [];

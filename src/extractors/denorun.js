@@ -37,20 +37,26 @@ export default {
     // a tally. Without this exclusion both claimed the same log - harmlessly, since this
     // one reads nothing out of it, but a parser that claims a log it cannot read is noise
     // in the collision matrix.
-    if (/^[^\S\n]*ERRORS[^\S\n]*$/m.test(s)) return false;
     const lines = s.split("\n");
-    if (lines.some((l) => CHECK_RE.test(l))) return true;
+    const testStart = lines.findIndex((l) => /^[^\S\n]*ERRORS[^\S\n]*$/.test(l));
+    const testEnd = testStart < 0 ? -1 : lines.findIndex((l, i) => i >= testStart && /^error: Test failed$/.test(l));
+    const outsideTest = (_, i) => testStart < 0 || i < testStart || (testEnd >= 0 && i > testEnd);
+    if (lines.some((l, i) => outsideTest(l, i) && CHECK_RE.test(l))) return true;
     // "error: ..." on its own belongs to half the tools in existence, so it has to be
     // corroborated by a frame on a URL, which is deno's alone among them.
-    return lines.some((l) => ERR_RE.test(l)) && lines.some((l) => /^[^\S\n]+at .*file:\/\//.test(l));
+    return lines.some((l, i) => outsideTest(l, i) && ERR_RE.test(l)) &&
+      lines.some((l, i) => outsideTest(l, i) && /^[^\S\n]+at .*file:\/\//.test(l));
   },
 
   extract(s) {
     const lines = s.split("\n");
     const failures = [];
     let checked = false;
+    const testStart = lines.findIndex((l) => /^[^\S\n]*ERRORS[^\S\n]*$/.test(l));
+    const testEnd = testStart < 0 ? -1 : lines.findIndex((l, i) => i >= testStart && /^error: Test failed$/.test(l));
 
     for (let i = 0; i < lines.length; i++) {
+      if (testStart >= 0 && i >= testStart && (testEnd < 0 || i <= testEnd)) continue;
       if (TALLY_RE.test(lines[i])) continue;
       const check = lines[i].match(CHECK_RE);
       const err = !check && lines[i].match(ERR_RE);

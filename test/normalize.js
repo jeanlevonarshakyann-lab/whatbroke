@@ -13,6 +13,7 @@ import { readFileSync, readdirSync } from "node:fs";
 import { fileURLToPath } from "node:url";
 import { dirname, join } from "node:path";
 import assert from "node:assert/strict";
+import { isDeepStrictEqual } from "node:util";
 import { analyse } from "../src/index.js";
 import { wrapperCandidates } from "../src/normalize.js";
 
@@ -227,6 +228,27 @@ test("a log that came out of CI reads exactly as it went in", () => {
   assert.ok(checked > 200, `only ${checked} stamped logs exercised`);
   assert.deepEqual(changed.slice(0, 6), [], "a stamped log lost its parser");
   console.log(`       ${checked} stamped logs across ${Object.keys(CI_STAMPS).length} CI formats`);
+});
+
+test("a CI-stamped redraw blob survives bare carriage returns", () => {
+  const changed = [];
+  let checked = 0;
+  for (const name of readdirSync(fixtures)) {
+    const base = analyse(fx(name));
+    if (!base?.failures.length) continue;
+    for (const [runner, fn] of Object.entries(CI_STAMPS)) {
+      checked++;
+      // The collector sees one physical line and stamps it once. The tool's redraws
+      // become logical lines only after whatbroke receives the byte stream.
+      const got = analyse(fn(fx(name).replace(/\n/g, "\r"), 0));
+      if (got?.tool !== base.tool || !isDeepStrictEqual(got?.failures, base.failures)) {
+        changed.push(`${name} + ${runner}: ${base.tool}/${base.failures.length} -> ${got?.tool ?? "none"}/${got?.failures.length ?? 0}`);
+      }
+    }
+  }
+  assert.ok(checked > 200, `only ${checked} redraw blobs exercised`);
+  assert.deepEqual(changed.slice(0, 6), [], "a stamped redraw blob changed its diagnosis");
+  console.log(`       ${checked} stamped redraw blobs across ${Object.keys(CI_STAMPS).length} CI formats`);
 });
 
 console.log(`\n  ${pass} passed, ${fail} failed`);

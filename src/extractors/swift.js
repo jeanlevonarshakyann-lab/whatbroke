@@ -57,6 +57,9 @@ export default {
 
       const m = line.match(DIAGNOSTIC_RE);
       if (!m) continue;
+      // The detector may see a .swift diagnostic elsewhere in a mixed build. The
+      // clang-shaped line being extracted still has to be Swift's own source.
+      if (!/\.swift$/.test(m[1])) continue;
       const severity = m[4];
       // The pattern admits "note" because it is clang's diagnostic shape, and clang does
       // write standalone notes. swiftc 6 does not: it draws them inside the gutter

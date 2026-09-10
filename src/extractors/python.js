@@ -55,18 +55,31 @@ export const traceback = {
   detect: (s) => /^Traceback \(most recent call last\):$/m.test(s),
   extract(s) {
     const lines = s.split("\n");
-    const start = lines.findIndex((l) => HEADER.test(l));
-    if (start < 0) return null;
-    const { deepest, err } = parseTraceback(tracebackBody(lines, start));
-    if (!deepest && !err) return null;
-    return {
-      tool: "python",
-      failures: [{
+    const failures = [];
+    let unittestFallback = null;
+    for (let start = 0; start < lines.length; start++) {
+      if (!HEADER.test(lines[start])) continue;
+      // unittest owns tracebacks framed by its FAIL/ERROR header. The generic Python
+      // parser must still keep scanning: a standalone traceback may follow the test
+      // summary in a mixed CI log.
+      const framedByUnittest = /^(?:FAIL|ERROR): /.test(lines[start - 2] ?? "") &&
+        /^-{10,}$/.test(lines[start - 1] ?? "");
+      const { deepest, err } = parseTraceback(tracebackBody(lines, start));
+      if (!deepest && !err) continue;
+      const failure = {
         file: deepest?.file, line: deepest?.line,
         title: deepest?.fn ?? "traceback", subject: deepest?.fn, severity: "error",
         message: err, stmt: deepest?.code,
-      }],
-    };
+      };
+      if (framedByUnittest) unittestFallback ??= failure;
+      else failures.push(failure);
+    }
+    // Preserve the detector matrix's historical losing-parser probe on a pure
+    // unittest log. When independent Python output exists, only that output belongs
+    // to this parser.
+    if (!failures.length && unittestFallback) failures.push(unittestFallback);
+    if (!failures.length) return null;
+    return { tool: "python", failures };
   },
 };
 

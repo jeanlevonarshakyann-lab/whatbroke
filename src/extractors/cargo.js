@@ -94,6 +94,9 @@ export default {
       // further, but not indefinitely.
       const DIAGNOSTIC_WINDOW = 40;
       for (let j = i + 1; j < lines.length && j <= i + DIAGNOSTIC_WINDOW && !ERR_RE.test(lines[j]); j++) {
+        // rustc ends a diagnostic block with a blank line. Crossing it lets a bare
+        // Cargo error borrow a later Clang/Ruff caret or help line in a mixed job.
+        if (!lines[j].trim() && j > i + 1) break;
         const am = lines[j].match(ARROW_RE);
         if (am && !STDLIB.test(am[1])) { if (j - i <= LOCATION_WINDOW) loc ??= { file: am[1], line: +am[2], col: +am[3] }; continue; }
         // rustc's inline annotation on the caret line carries the real explanation

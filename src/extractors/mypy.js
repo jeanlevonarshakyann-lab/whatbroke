@@ -12,7 +12,6 @@ export default {
   category: "typecheck",
   commands: ["mypy"],
   detect: (s) =>
-    !/(?:clang|gcc|\bg\+\+|cc1|ld:|^> Task .+ FAILED$|^FAILURE: Build failed)/im.test(s) &&
     (/^[^\S\n]*Found \d+ errors? in \d+ files?/m.test(s) ||
       // Python source and stubs can include columns and omit the summary.
       // A bare file:line diagnostic also matches javac, so require an extension.

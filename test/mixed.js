@@ -13,8 +13,10 @@ import { fileURLToPath } from "node:url";
 import { dirname, join } from "node:path";
 import { spawnSync } from "node:child_process";
 import assert from "node:assert/strict";
+import { isDeepStrictEqual } from "node:util";
 import { readdirSync } from "node:fs";
 import { analyse } from "../src/index.js";
+import { parserOf, sourceRange } from "../src/ownership.js";
 
 const here = dirname(fileURLToPath(import.meta.url));
 const cli = join(here, "..", "bin", "whatbroke.js");
@@ -36,6 +38,10 @@ const COMBOS = [
 const joined = (parts) => parts.map(fx).join("\n");
 const alone = (parts) => parts.reduce((n, f) => n + (analyse(fx(f))?.failures.length ?? 0), 0);
 const recovered = (r) => r.failures.length + (r.others ?? []).reduce((n, o) => n + o.failures.length, 0);
+const allFailures = (r) => !r ? [] : [
+  ...r.failures,
+  ...(r.others ?? []).flatMap((o) => o.failures),
+];
 
 // ------------------------------------------------------------------ recovery
 
@@ -102,6 +108,31 @@ test("one diagnosis is never reported under two tools", () => {
   const r = analyse(fx("py_unittest.txt"));
   assert.equal(r.tool, "unittest");
   assert.equal(r.others, undefined, "the traceback reading of the same failures leaked through");
+});
+
+test("source ownership is attached internally without changing JSON v1", () => {
+  const r = analyse(fx("py_traceback.txt"));
+  const range = sourceRange(r.failures[0]);
+  assert.equal(range.end, range.start + 1);
+  assert.match(fx("py_traceback.txt").split("\n")[range.start], /KeyError: 'taxrate'/);
+  assert.ok(!JSON.stringify(r).includes("sourceRange"));
+  assert.deepEqual(Object.keys(r.failures[0]).sort(),
+    ["category", "file", "line", "message", "severity", "stmt", "subject", "title", "tool"].sort());
+});
+
+test("every parser result carries a valid private source range", () => {
+  for (const name of readdirSync(join(here, "fixtures"))) {
+    const text = fx(name);
+    const r = analyse(text);
+    if (!r) continue;
+    const lineCount = text.replace(/\r\n?/g, "\n").split("\n").length;
+    for (const failure of allFailures(r)) {
+      const range = sourceRange(failure);
+      assert.ok(range, `${name}: missing source ownership for ${failure.title ?? failure.message}`);
+      assert.ok(range.start >= 0 && range.start < range.end && range.end <= lineCount,
+        `${name}: invalid source range ${JSON.stringify(range)}`);
+    }
+  }
 });
 
 test("no diagnostic appears twice across tools", () => {
@@ -347,7 +378,7 @@ test("a single-tool log gains nothing and loses nothing", () => {
   }
 });
 
-// ------------------------------------------- a pair never invents a failure
+// --------------------------------------- a pair recovers exactly what went in
 
 // Two logs concatenated cannot contain more failures than the two contain apart. When
 // they do, some parser matched a line it does not own - and every one of those found so
@@ -409,20 +440,34 @@ test("a pair of logs never yields more failures than the two apart", () => {
 // assertion, because zero is the only number that means what the tool claims: whatbroke
 // never reports a failure it cannot point at. A pair that over-claims is a parser
 // reading another tool's line, and the fix is that parser - not this number.
-const CEILING = 0;
+const identity = (f) => JSON.stringify([
+  f.tool ?? null, f.category ?? null, f.file ?? null, f.line ?? null, f.col ?? null,
+  f.title ?? "", f.code ?? null, f.subject ?? null, f.label ?? null,
+  f.severity ?? null, f.message ?? "", f.stmt ?? null, f.trace ?? null,
+]);
+const identities = (failures) => failures.map(identity).sort();
 
-test("no pair of logs ever yields more failures than the two apart", () => {
-  const names = readdirSync(join(here, "fixtures"));
+test("every ordered pair recovers exactly the failures in its parts", () => {
+  const fixtureNames = readdirSync(join(here, "fixtures"));
   const solo = new Map();
-  for (const n of names) {
+  for (const n of fixtureNames) {
     try { solo.set(n, analyse(fx(n))); } catch { solo.set(n, null); }
   }
-  const over = [];
+  // Exact ownership is a cross-parser property. Generic output is deliberately a
+  // fallback, not a parser, and wrapper-region recovery has its own corpus-wide gate.
+  // A single multi-mode parser (cargo build/test, Go build/test, JVM tools) cannot be
+  // asked twice about one undelimited stream, so those same-parser invocation pairs are
+  // outside this assertion too.
+  const names = fixtureNames.filter((n) => solo.get(n)?.tool !== "output" && !solo.get(n)?.wrappers?.length);
+  const changed = [];
+  const changedTools = new Map();
+  let pairs = 0;
   for (const a of names) {
     if (!solo.get(a)) continue;
     for (const b of names) {
-      if (a === b || !solo.get(b)) continue;
-      const apart = solo.get(a).failures.length + solo.get(b).failures.length;
+      if (a === b || !solo.get(b) || parserOf(solo.get(a)) === parserOf(solo.get(b))) continue;
+      pairs++;
+      const apart = identities([...allFailures(solo.get(a)), ...allFailures(solo.get(b))]);
       let r;
       try { r = analyse(fx(a) + "\n" + fx(b)); } catch { continue; }
       for (const other of r.others ?? []) {
@@ -433,12 +478,20 @@ test("no pair of logs ever yields more failures than the two apart", () => {
           assert.ok(c.members.includes(c.exemplar));
         }
       }
-      if (recovered(r) > apart) over.push(`${a} + ${b}`);
+      const together = identities(allFailures(r));
+      if (!isDeepStrictEqual(together, apart)) {
+        const missing = apart.filter((x, i) => x !== together[i]).length;
+        changed.push(`${a} + ${b}: expected ${apart.length}, got ${together.length}, first mismatch ${missing}`);
+        const pair = `${solo.get(a).tool} + ${solo.get(b).tool}`;
+        changedTools.set(pair, (changedTools.get(pair) ?? 0) + 1);
+      }
     }
   }
-  assert.ok(over.length <= CEILING,
-    `${over.length} pairs over-claim, ceiling is ${CEILING}:\n       ` + over.slice(0, 6).join("\n       "));
-  console.log(`       ${names.length * (names.length - 1)} ordered pairs swept, ${over.length} over-claiming`);
+  assert.equal(changed.length, 0,
+    `${changed.length} ordered pairs changed their failures ` +
+    `(${[...changedTools].sort((a, b) => b[1] - a[1]).slice(0, 30).map(([k, n]) => `${k}: ${n}`).join(", ")}):\n       ` +
+    changed.slice(0, 6).join("\n       "));
+  console.log(`       ${pairs} ordered cross-parser fixture pairs, exact recovery`);
 });
 
 // ------------------------------------------------- two tools writing at once

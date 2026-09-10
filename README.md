@@ -287,18 +287,12 @@ One failure read two ways is not two failures. A Python traceback ends
 reading is dropped, because it says strictly less: its message sits inside the other's
 and it knows less about where the failure is.
 
-One honest limit remains: parsers are asked about the whole log rather than the region
-they own, so in a concatenated log a parser can still match a fragment of another tool's
-output. Every combination that actually co-occurs in a CI job is exact; the residue is
-arbitrary pairs — a Rust build log next to a PHPUnit run — where a named second tool may
-show one failure too many. The winning tool's diagnosis is never affected.
-
-Closing it properly means each parser reporting which lines its findings came from.
-Deriving that from the text instead was tried and measured: 99% of failures can be
-located that way, and it removes about a third of the residue, which is not enough to
-call it solved. What it did find is the residue's real cause — parsers with a loose
-`error:` pattern reaching into another tool's output — and those are worth fixing one at
-a time as they turn up.
+Every extracted failure carries a private source range identifying the raw diagnostic
+region that produced it. That ownership never appears in terminal output or JSON v1,
+but it prevents two parsers from reporting the same region. The ordered-pair sweep now
+requires exact recovery of both logs' standalone failures across all 13,414 applicable
+cross-parser fixture pairs, rather than merely checking that the combined count did not
+grow.
 
 CI stamps every line — GitHub Actions prefixes an ISO timestamp, and `gh run view --log`
 puts the job and step in front of that. Every parser here anchors on the start of a line,
@@ -453,10 +447,11 @@ reads whichever is there and hands it to the tool that actually failed.
 Wrappers stack, too: a monorepo runner relaying a container relaying a test run is peeled
 a layer at a time, and each layer is named on the result.
 
-One known limit: a tool that redraws a progress line with a bare carriage return packs
-many logical lines into one physical line. A runner stamps that blob once, so after the
-carriage returns are normalised most of the interior lines carry no prefix and the
-uniformity check correctly declines to act.
+Tools that redraw progress with bare carriage returns pack many logical lines into one
+physical line. A CI collector stamps that blob once, so whatbroke removes a vetted CI
+stamp before expanding the redraws into lines. Automatically inferred prefixes still
+need multiple physical lines; a one-line literal prefix cannot safely be distinguished
+from the tool's own output.
 
 ## When the log is too big
 

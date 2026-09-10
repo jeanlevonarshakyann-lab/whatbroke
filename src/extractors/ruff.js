@@ -27,6 +27,7 @@ export default {
       const a = lines[i + 1].match(ARROW_RE);
       let fix = "";
       for (let j = i + 2; j < lines.length && !headerAt(j); j++) {
+        if (!lines[j].trim() || /^Found \d+ errors?\.?$/.test(lines[j])) break;
         const f = lines[j].match(/^[^\S\n]*help:[^\S\n]*(.+)$/);
         if (f) { fix = f[1]; break; }
       }
