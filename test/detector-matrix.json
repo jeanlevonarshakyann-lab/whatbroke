@@ -991,6 +991,16 @@
       "generic": 5
     }
   },
+  "npm_eresolve_fail.txt": {
+    "winner": "npm",
+    "parser": "npm",
+    "failures": 1,
+    "claimants": [
+      "npm",
+      "generic"
+    ],
+    "shadow": {}
+  },
   "npm_fail.txt": {
     "winner": "npm",
     "parser": "npm",
@@ -1210,6 +1220,28 @@
       "generic"
     ],
     "shadow": {}
+  },
+  "py_indent_fail.txt": {
+    "winner": "python",
+    "parser": "python",
+    "failures": 1,
+    "claimants": [
+      "python",
+      "generic"
+    ],
+    "shadow": {}
+  },
+  "py_syntax_fail.txt": {
+    "winner": "python",
+    "parser": "python",
+    "failures": 1,
+    "claimants": [
+      "python",
+      "generic"
+    ],
+    "shadow": {
+      "generic": 1
+    }
   },
   "py_traceback.txt": {
     "winner": "python",

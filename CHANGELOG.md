@@ -4,6 +4,15 @@
 
 ## 0.4.0 — 2026-09-10
 
+- A Python file that will not compile is read rather than guessed at. It produces no
+  traceback and no frames, just the location the parser gave up at - a traceback frame's
+  shape without the ", in <name>" a frame always carries. It stands beside any tracebacks
+  in the same log rather than instead of them.
+- A tool's own line prefix is no longer mistaken for a wrapper. npm leads every line of
+  its output with "npm ", and in a log where npm was not the only tool, taking that off
+  left npm's parser matching nothing and handed the log to whoever was next. A strip that
+  destroys the reading already there is not an improvement, however different the tool
+  that inherits it.
 - Reads sass, webpack and prettier. sass puts its message at the head of a drawn box and
   the location at the foot, so reading the first line found the problem and never where
   it was. webpack follows each error with the resolver's entire search - forty lines of

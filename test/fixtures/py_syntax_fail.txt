@@ -1,0 +1,4 @@
+  File "/home/dev/app/syn.py", line 1
+    def f(:
+          ^
+SyntaxError: invalid syntax

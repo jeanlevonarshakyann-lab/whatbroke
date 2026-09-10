@@ -267,7 +267,17 @@ function better(candidate, cand, current) {
   // of the whole. It is for the case where the whole says nothing worth having.
   if (candidate.kind === "region") return !real(current);
   if (!real(current)) return true;
-  if (cand.result.tool !== current.result.tool) return true;
+  if (cand.result.tool !== current.result.tool) {
+    // A different tool owning the log is usually the clearest evidence a wrapper came
+    // off. It is not evidence when the strip DESTROYED the reading that was there: npm
+    // leads every line of its own output with "npm ", and in a log where npm was not the
+    // only tool, taking that off left npm's parser matching nothing and handed the log
+    // to whoever was next. The prefix a tool writes about itself is not a wrapper.
+    let survives = true;
+    try { survives = !!current.extractor.extract(candidate.text)?.failures?.length; }
+    catch { survives = false; }
+    return survives;
+  }
   // Same tool, but more of the log readable once the prefix is gone. A parser can match
   // through a wrapper and swallow it: tsc reads `api:test: tsconfig.json(1,34): error`
   // as a file literally named "api:test: tsconfig.json", and misses the line that has
