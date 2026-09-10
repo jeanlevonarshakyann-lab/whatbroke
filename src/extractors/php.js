@@ -59,6 +59,8 @@ export default {
         // "#N {main}" is the entry point and carries nothing.
         const frames = [];
         for (let j = i + 1; j < lines.length && j <= i + 32; j++) {
+          if (THROWN_RE.test(lines[j]) || (!lines[j].trim() && j > i + 1) ||
+              (j > i + 1 && (UNCAUGHT_RE.test(lines[j]) || FATAL_RE.test(lines[j]) || PARSE_RE.test(lines[j])))) break;
           if (/^Stack trace:$/.test(lines[j])) continue;
           const f = lines[j].match(FRAME_RE);
           if (!f) { if (frames.length) break; else continue; }

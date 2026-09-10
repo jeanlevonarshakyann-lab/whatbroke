@@ -16,7 +16,11 @@ export default {
   extract(s) {
     if (CONFIG_BANNER.test(s)) {
       const lines = s.split("\n");
-      const at = lines.findIndex((l) => CONFIG_ERROR.test(l));
+      const banner = lines.findIndex((l) => CONFIG_BANNER.test(l));
+      // A previous command may also have thrown a TypeError. ESLint's configuration
+      // exception is the first one after its own banner, never before it.
+      const relative = lines.slice(banner + 1).findIndex((l) => CONFIG_ERROR.test(l));
+      const at = relative < 0 ? -1 : banner + 1 + relative;
       if (at >= 0) {
         const m = lines[at].match(CONFIG_ERROR);
         return {

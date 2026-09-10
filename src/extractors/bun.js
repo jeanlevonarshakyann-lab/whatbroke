@@ -99,7 +99,7 @@ export const bunRuntime = {
   name: "bun",
   category: "runtime",
   commands: ["bun", "bunx"],
-  detect: (s) => BUN_FOOTER.test(s) && !/^\(fail\)[^\S\n]+/m.test(s),
+  detect: (s) => BUN_FOOTER.test(s),
 
   extract(s) {
     const lines = s.split("\n");

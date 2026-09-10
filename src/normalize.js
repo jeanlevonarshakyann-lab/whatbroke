@@ -24,6 +24,10 @@ const SHAPE_UNIFORM = 0.4;
 const MIN_PREFIX = 2;
 const MAX_PREFIX = 200;
 const MAX_LITERAL_CANDIDATES = 4;   // bound the parses a single log can cost
+// These are tool syntax, not relay syntax. In a mixed log, stripping one can make a
+// different parser win and therefore look like an improvement even though it erased a
+// complete Maven or npm invocation.
+const NATIVE_PREFIX = /^(?:\[ERROR\][^\S\n]+|npm (?:error|ERR!)[^\S\n]?)$/;
 
 const sample = (text) => text.split("\n").filter((l) => l.trim()).slice(0, SAMPLE_LINES);
 
@@ -110,6 +114,19 @@ const stripLiteral = (text, p) =>
 
 const stripShape = (text, re) => text.split("\n").map((l) => l.replace(re, "")).join("\n");
 
+/** A progress renderer uses bare carriage returns inside one physical line. A CI
+ * collector consequently stamps the whole blob once, rather than stamping each
+ * logical line. Remove that one vetted stamp before CR normalisation expands the blob
+ * and makes the prefix appear non-uniform. Literal prefixes remain too ambiguous to
+ * infer from a single physical line. */
+export function stripRedrawnCiPrefix(text) {
+  if (!/\r(?!\n)/.test(text)) return text;
+  for (const { re } of SHAPES) {
+    if (re.test(text)) return text.replace(re, "");
+  }
+  return text;
+}
+
 // Docker BuildKit ends a failed build by quoting the failing step's own output between
 // two rules, then states the mechanism:
 //
@@ -169,6 +186,7 @@ export function wrapperCandidates(text) {
   // taken when nothing real parsed from the whole text - see `better` in index.js.
   if (block) out.push({ kind: "region", wrapper: "docker buildkit", text: block });
   for (const literal of literalCandidates(literalPrefix(text))) {
+    if (NATIVE_PREFIX.test(literal)) continue;
     out.push({ kind: "literal", wrapper: literal, text: stripLiteral(text, literal) });
   }
   return out.filter((c) => c.text !== text);
