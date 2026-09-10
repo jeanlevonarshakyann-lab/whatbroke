@@ -89,7 +89,7 @@ export default {
       // reach forward and adopt an unrelated tool's location: bun writes `error:` at
       // line start, and ruff writes `--> file:line:col`, so the two combined produced a
       // Rust compile error at a Python file that nothing had reported.
-      const LOCATION_WINDOW = 3;
+      const LOCATION_WINDOW = 1;
       // The rest of a diagnostic - notes, the echoed source, clippy's lint link - trails
       // further, but not indefinitely.
       const DIAGNOSTIC_WINDOW = 40;

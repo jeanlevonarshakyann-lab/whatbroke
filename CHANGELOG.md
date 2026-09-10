@@ -2,6 +2,10 @@
 
 ## Unreleased
 
+- Fixed mixed-log echo filtering: rebuild clusters after removing duplicates so retained failures keep valid indices and terminal output cannot crash.
+- Fixed distinct diagnostics disappearing when they share a location with the primary tool, or when neither has a location. Tightened Ruff, Cargo and Yarn matches exposed by retaining those diagnostics.
+- Fixed `--since-last` overlooking secondary tools. History now tracks causes from every reported tool and marks new secondary failures; older history records start a fresh baseline.
+
 - Fixed: git reported cargo's "could not compile … due to 3 previous errors" — a tally
   cargo itself suppresses — as a git failure, and kubectl reported deno's
   "error: Test failed" as a kubectl one. `error:` and `fatal:` at line start belong to

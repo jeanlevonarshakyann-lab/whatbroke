@@ -8,7 +8,7 @@ import { join, dirname, resolve } from "node:path";
 import { fileURLToPath } from "node:url";
 import { spawnSync } from "node:child_process";
 import assert from "node:assert/strict";
-import { compare, cacheDir, runIdentity } from "../src/history.js";
+import { compare, cacheDir, runIdentity, trackedCauseId } from "../src/history.js";
 import { causeId } from "../src/cluster.js";
 import { analyse } from "../src/index.js";
 
@@ -74,6 +74,38 @@ test("a cause that merely moves position is not called new", () => {
     "dropping failures must not manufacture new causes");
 });
 
+test("new and removed secondary-tool causes are tracked and marked", () => {
+  const lint = fx("eslint_fail.txt");
+  const type = "/app/new.ts(20,7): error TS2322: Type 'string' is not assignable to type 'number'.\n";
+  for (const flags of [[], ["--no-cluster"]]) {
+    const store = cache();
+    run(store, lint, flags);
+    const changed = run(store, lint + type, flags);
+    assert.equal(changed.status, 0, changed.stderr);
+    assert.match(changed.stdout, /1 new since your last run/);
+    const marked = changed.stdout.split("\n").filter(l => /\bnew$/.test(l));
+    assert.equal(marked.length, 1);
+    assert.match(marked[0], /TS2322/);
+    assert.equal((changed.stdout.match(/since your last run/g) ?? []).length, 1);
+    const same = JSON.parse(run(store, lint + type, [...flags, "--json"]).stdout);
+    assert.deepEqual(same.since.fresh, []);
+    assert.equal(same.since.gone, 0);
+    const removed = JSON.parse(run(store, lint, [...flags, "--json"]).stdout);
+    assert.equal(removed.since.gone, 1);
+  }
+});
+
+test("secondary history is exposed in JSON and the GitHub notice", () => {
+  const type = "/app/new.ts(20,7): error TS2322: Type 'string' is not assignable to type 'number'.\n";
+  for (const flag of ["--json", "--github-actions"]) {
+    const store = cache();
+    run(store, fx("eslint_fail.txt"));
+    const next = run(store, fx("eslint_fail.txt") + type, [flag]);
+    if (flag === "--json") assert.equal(JSON.parse(next.stdout).since.fresh.length, 1);
+    else assert.match(next.stdout, /1 new since the last tracked run/);
+  }
+});
+
 // ------------------------------------------------------------------- refusing
 
 test("a truncated run never claims a cause is gone", () => {
@@ -109,16 +141,16 @@ test("no previous run means no comparison, not an empty one", () => {
 });
 
 test("a record from an older identity scheme is ignored, not misread", () => {
-  const store = cache();
-  // Cause fingerprints changed when failures began declaring `code` instead of relying
-  // on `title`. A stale record must not be compared against: every cause would look new
-  // and the tool would announce a regression it invented out of its own upgrade.
-  writeFileSync(join(store, "deadbeef.json"), JSON.stringify({
-    version: 1, ranAt: "2026-01-01T00:00:00.000Z", tool: "pytest", causes: ["aaaa1111", "bbbb2222"],
-  }));
-  const r = run(store, fx("pytest_fail.txt"));
-  assert.match(r.stdout, /first tracked run/, "an old record was treated as comparable");
-  assert.doesNotMatch(r.stdout, /new since your last run/);
+  for (const version of [1, 2]) {
+    const store = cache();
+    run(store, fx("pytest_fail.txt"));
+    const path = join(store, stored(store)[0]);
+    const saved = JSON.parse(readFileSync(path, "utf8"));
+    writeFileSync(path, JSON.stringify({ ...saved, version, causes: [] }));
+    const r = run(store, fx("pytest_fail.txt"));
+    assert.match(r.stdout, /first tracked run/, "an old record was treated as comparable");
+    assert.doesNotMatch(r.stdout, /new since your last run/);
+  }
 });
 
 // ------------------------------------------------------------------ identity
@@ -148,6 +180,12 @@ test("a cause id survives a rerun but separates two different bugs", () => {
   const two = analyse(fx("pytest_fail.txt"));
   assert.equal(causeId(one.failures[0]), causeId(two.failures[0]));
   assert.notEqual(causeId(one.failures[0]), causeId(one.failures[1]));
+});
+
+test("history distinguishes identical diagnostic text from different tools", () => {
+  const failure = { code: "E100", message: "Cannot resolve module" };
+  assert.notEqual(trackedCauseId(failure, "tool-a"), trackedCauseId(failure, "tool-b"));
+  assert.equal(trackedCauseId(failure, "tool-a"), trackedCauseId({ ...failure, line: 20 }, "tool-a"));
 });
 
 // -------------------------------------------------------------------- storage

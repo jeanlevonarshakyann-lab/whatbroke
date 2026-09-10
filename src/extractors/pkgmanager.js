@@ -65,6 +65,9 @@ export const yarn = {
       if (YARN_ADVICE.test(l)) break;
       const m = l.match(YARN_LINE);
       if (!m || m[1] !== "error") continue;
+      // TypeScript's location-free diagnostics also start with "error ". Its code
+      // identifies the owner even when a yarn banner is elsewhere in the same log.
+      if (/^TS\d+: /.test(m[2])) continue;
       failures.push({ title: "error", label: "error", severity: "error", message: m[2] });
     }
     if (!failures.length) return null;

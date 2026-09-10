@@ -4,7 +4,8 @@ const HEAD_RE = /^([A-Z]+\d+)(?:[^\S\n]+\[[*x]\])?[^\S\n]+(.+)$/;
 // `invalid-syntax: unexpected EOF while parsing`, and requiring a code meant a run that
 // said "Found 1 error." came back with none at all - which is the ordinary case of
 // running ruff over a file with a typo in it.
-const BARE_HEAD_RE = /^([a-z][\w-]*):[^\S\n]+(.+)$/;
+// Bare error:/help: also precede arrows in other tools; they are not Ruff rules.
+const BARE_HEAD_RE = /^(invalid-syntax):[^\S\n]+(.+)$/;
 const ARROW_RE = /^[^\S\n]*-->[^\S\n]+(.+?):(\d+):(\d+)[^\S\n]*$/;
 
 export default {
