@@ -205,6 +205,7 @@ them.
 | **bun test** | test name, `file:line`, the matcher — not bun's echoed source |
 | **node --test** | test name, `file:line`, and the assertion out of TAP's YAML block |
 | **Node stack traces** | the error, the caret, your frames; `node:internal` hidden |
+| **Playwright** | the test name, the line that actually threw, and the offending expression — not the paths to its artifact files |
 | **jest** | test name, `file:line`, the matcher, expected vs received |
 | **vitest** | same, with the real source line — not vitest's truncated `…` version |
 | **eslint** | errors only; warnings counted and set aside |

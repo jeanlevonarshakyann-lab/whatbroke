@@ -10,6 +10,23 @@ const fx = (n) => readFileSync(join(here, "fixtures", n), "utf8");
 const cli = join(here, "..", "bin", "whatbroke.js");
 
 const CASES = [
+  // Captured with @playwright/test. Playwright heads a failure with the location of the
+  // TEST and then gives the location of the THROW further down, and closes each block
+  // with a path to an artifact to go and read.
+  { file: "playwright_fail.txt", tool: "playwright", n: 2, check: (r) => {
+      assert.equal(r.summary, "2 failed");
+      assert.deepEqual(r.failures.map((f) => f.title), ["adds up", "throws"]);
+      // the throw's line, not the test's declaration line
+      assert.equal(r.failures[0].line, 3);
+      assert.equal(r.failures[1].line, 7);
+      assert.match(r.failures[0].stmt, /expect\(1049\)\.toBe\(1050\)/);
+      assert.match(r.failures[1].message, /Cannot read properties of null/);
+      // "Error Context: test-results/..." is a file to open, not a failure - the guess
+      // counted both of them as errors and missed the second real one
+      assert.doesNotMatch(JSON.stringify(r.failures), /Error Context|error-context\.md/);
+      // and the run's tally is not part of the last failure's message
+      assert.doesNotMatch(r.failures[1].message, /2 failed/);
+    } },
   // Captured with pyright 1.x. It puts the column after the line with a dash between
   // location and severity, and names the rule in brackets - sometimes at the end of an
   // indented explanation, sometimes at the end of the message itself.
