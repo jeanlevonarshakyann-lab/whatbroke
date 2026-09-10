@@ -18,9 +18,12 @@ const here = dirname(fileURLToPath(import.meta.url));
 const cli = join(here, "..", "bin", "whatbroke.js");
 
 let pass = 0, fail = 0;
+const results = [];
 const test = (name, fn) => {
-  try { fn(); console.log(`  ok   ${name}`); pass++; }
-  catch (e) { console.log(`  FAIL ${name}\n       ${e.message}`); fail++; }
+  results.push(Promise.resolve().then(fn).then(
+    () => { console.log(`  ok   ${name}`); pass++; },
+    (e) => { console.log(`  FAIL ${name}\n       ${e.message}`); fail++; },
+  ));
 };
 
 const cache = mkdtempSync(join(tmpdir(), "wb-guarantee-"));
@@ -110,6 +113,55 @@ test("JSON always says what the command did, parsed or not", () => {
   }
 });
 
+// ------------------------------------------------ the headline over a failure
+
+// A tool's own tally is not always a description of what went wrong. jest prints
+// "Tests: 0 total" when a suite throws before declaring one; vitest prints "no tests";
+// rspec prints "0 examples, 0 failures"; PHPUnit counts failures and errors separately
+// and prints "0 failures" for a run that errored. Each of those was a real headline over
+// a real failure, and each read as though nothing had happened. Four parsers, one
+// mistake, found one at a time - so it is worth asserting once, over everything.
+const SAYS_SOMETHING_BROKE =
+  /\b(fail\w*|error\w*|problem\w*|broke\w*|crash\w*|panic\w*|conflict\w*|rejected|unable|cannot|could not|did not|not found|no matching|missing|invalid|unresolved|abort\w*)\b/i;
+
+/** Does this headline admit that something went wrong? */
+function misleading(summary) {
+  if (!SAYS_SOMETHING_BROKE.test(summary)) return true;
+  // "0 examples, 0 failures" says the word and still claims nothing happened.
+  const counts = (summary.match(/\d+/g) ?? []).map(Number);
+  return counts.length > 0 && counts.every((n) => n === 0);
+}
+
+test("a headline over real failures never reads like success", async () => {
+  const { analyse } = await import("../src/index.js");
+  const { readdirSync, readFileSync } = await import("node:fs");
+  const fixtures = join(here, "fixtures");
+  const bad = [];
+  let checked = 0;
+  for (const name of readdirSync(fixtures)) {
+    let r;
+    try { r = analyse(readFileSync(join(fixtures, name), "utf8")); } catch { continue; }
+    if (!r?.failures.length || !r.summary) continue;
+    checked++;
+    if (misleading(r.summary)) bad.push(`${name} (${r.tool}): ${JSON.stringify(r.summary)}`);
+  }
+  assert.ok(checked > 50, `only ${checked} headlines exercised`);
+  assert.deepEqual(bad, [], "a run that failed was headlined as though it had not");
+});
+
+test("the headline guard catches the wordings it was written for", () => {
+  // Vacuous guards are worse than none: these are the four real headlines that shipped.
+  for (const was of ["0 total", "no tests", "0 examples, 0 failures", "0 failures"]) {
+    assert.ok(misleading(was), `${JSON.stringify(was)} should be caught`);
+  }
+  for (const now of ["1 failed, 1 total (no tests ran)", "1 failed (1) (no tests ran)",
+    "0 examples, 0 failures, 1 error occurred outside of examples", "1 error",
+    "build failed", "panic", "3 errors in 1 file", "2 conflicted files"]) {
+    assert.ok(!misleading(now), `${JSON.stringify(now)} should pass`);
+  }
+});
+
+await Promise.all(results);
 rmSync(cache, { recursive: true, force: true });
 console.log(`\n  ${pass} passed, ${fail} failed`);
 process.exit(fail ? 1 : 0);
