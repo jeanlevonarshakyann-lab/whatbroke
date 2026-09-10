@@ -53,11 +53,26 @@ export default {
     // No tally, no numbered blocks: mocha only writes them under one. Scanning without
     // it meant a mocha run that never reached its tally - a file that would not load -
     // still read whatever numbered blocks another tool had put in the same log.
-    const declared = s.match(FAILING_RE);
-    const limit = declared ? +declared[1] : 0;
-    const from = declared ? lines.findIndex((l) => FAILING_RE.test(l)) : 0;
+    //
+    // One log can hold more than one mocha run - `mocha test/unit` then
+    // `mocha test/integration`, or a package at a time across a monorepo - and there is
+    // then a tally per run. Reading only the first one stopped at that run's count and
+    // dropped every failure the later runs reported. Each tally bounds its own blocks,
+    // which is the same rule applied as many times as mocha stated it.
+    const tallies = [];
+    lines.forEach((l, i) => {
+      const m = l.match(FAILING_RE);
+      if (m) tallies.push({ at: i, limit: +m[1] });
+    });
 
-    for (let i = from + 1; i < lines.length && failures.length < limit; i++) {
+    for (const [t, tally] of tallies.entries()) {
+      const end = tallies[t + 1]?.at ?? lines.length;
+      const before = failures.length;
+      scan(tally.at + 1, end, tally.limit + before);
+    }
+
+    function scan(start, end, limit) {
+    for (let i = start; i < end && failures.length < limit; i++) {
       const head = lines[i].match(HEAD_RE);
       if (!head) continue;
       // The list at the top repeats every number without a body. A real block has the
@@ -99,6 +114,7 @@ export default {
       });
       i += 1;
     }
+    }
 
     if (!failures.length) {
       // A file that will not load never reaches the tally, so there is no numbered
@@ -131,9 +147,11 @@ export default {
     }
     if (!failures.length) return null;
 
-    const failing = s.match(FAILING_RE), passing = s.match(PASSING_RE);
-    const summary = failing
-      ? `${failing[1]} failing${passing ? `, ${passing[1]} passing` : ""}`
+    // With more than one run in the log the headline is the whole job, not its first part.
+    const total = (re) => lines.reduce((n, l) => n + (+(l.match(re)?.[1] ?? 0)), 0);
+    const failing = total(FAILING_RE), passing = total(PASSING_RE);
+    const summary = tallies.length
+      ? `${failing} failing${passing ? `, ${passing} passing` : ""}`
       : undefined;
     return { tool: "mocha", summary, failures };
   },

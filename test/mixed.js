@@ -614,5 +614,45 @@ test("two tools writing into one pipe never crash it or double a diagnosis", () 
   console.log(`       ${pairs} interleavings, seed ${20260910}`);
 });
 
+// The cross-parser sweep above pairs logs from DIFFERENT tools. One tool's log twice is
+// the commoner shape in practice - `pnpm -r lint` and `turbo run test` put a package at
+// a time into one stream, and a CI job runs `cargo clippy` and then `cargo test` - and
+// nothing checked it. Four parsers were dropping the second run entirely, and each did
+// it silently: eslint on a configuration error, cargo on a panic, PHPUnit on an internal
+// error, and mocha by reading only the first of the tallies that bound its blocks.
+//
+// A parser that sets findings aside DELIBERATELY is not the same thing and is allowed:
+// pylint's advisory findings step behind a real error, and its headline says so. The
+// test is whether the headline accounts for what is missing.
+test("one tool's log twice keeps both runs", () => {
+  const byTool = new Map();
+  for (const name of readdirSync(join(here, "fixtures"))) {
+    let r;
+    try { r = analyse(fx(name)); } catch { continue; }
+    if (!r?.failures.length || r.tool === "output") continue;
+    if (!byTool.has(r.tool)) byTool.set(r.tool, []);
+    byTool.get(r.tool).push({ name, text: fx(name), n: r.failures.length });
+  }
+  const silent = [];
+  let pairs = 0;
+  for (const list of byTool.values()) {
+    for (const a of list) for (const b of list) {
+      if (a.name === b.name) continue;
+      pairs++;
+      let r;
+      try { r = analyse(`${a.text.replace(/\n*$/, "\n")}\n${b.text}`); } catch { continue; }
+      const got = r?.failures.length ?? 0;
+      if (got >= Math.max(a.n, b.n)) continue;
+      const admits = /hidden|advisory|elsewhere|suppress|not shown/i.test(r?.summary ?? "");
+      if (!admits) {
+        silent.push(`${a.name}(${a.n})+${b.name}(${b.n}) -> ${got} ${JSON.stringify(r?.summary ?? "")}`);
+      }
+    }
+  }
+  assert.ok(pairs > 300, `only ${pairs} same-tool pairs exercised`);
+  assert.deepEqual(silent.slice(0, 6), [], "a run's failures went missing without a word");
+  console.log(`       ${pairs} same-tool ordered pairs`);
+});
+
 console.log(`\n  ${pass} passed, ${fail} failed`);
 process.exit(fail ? 1 : 0);

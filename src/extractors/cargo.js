@@ -23,7 +23,10 @@ const CARGO_OWN = /^(?:no matching package named|failed to select a version|fail
 const RESOLVE_RE = new RegExp(`^error: ${CARGO_OWN.source.slice(1)}`, "m");
 const STDLIB = /\/rustlib\/|\/\.cargo\/registry\//;
 // "could not compile ... due to N previous errors" is a tally, not a distinct error
-const TALLY_RE = /^could not compile|^aborting due to|^test failed, to rerun/;
+// Cargo's own report of a failure that was already printed above it. "failed to run
+// custom build command" belongs here with the rest: it is what cargo says after a build
+// script has already panicked and said why, and counting it made one failure into two.
+const TALLY_RE = /^could not compile|^aborting due to|^test failed, to rerun|^failed to run custom build command/;
 
 export default {
   name: "cargo",
@@ -66,23 +69,11 @@ export default {
         severity: "error", message: msg.join("\n"),
       });
     }
-    if (failures.length) {
-      // "FAILED. 1 passed; 2 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.00s"
-      // -> "1 passed; 2 failed"
-      const sm = s.match(/^test result: \w+\.[^\S\n]*(.+?)[^\S\n]*$/m);
-      const summary = sm?.[1]
-        .split(";")
-        .map((p) => p.trim())
-        .filter((p) => p && !/^0 /.test(p) && !/^finished in/.test(p))
-        .join("; ");
-      // A panic inside a build script is not a test result, however alike they look -
-      // and neither is a panic from `cargo run`. A program that panicked on its own says
-      // only "thread 'main' panicked at ...", with no tally and no test named above it,
-      // and reporting that as a test failure names a command nobody ran.
-      if (BUILD_SCRIPT.test(s)) return { tool: "cargo", summary: "build script failed", failures };
-      if (!RAN_TESTS.test(s)) return { tool: "cargo", summary: "panicked", failures };
-      return { tool: "cargo test", summary: summary || undefined, failures };
-    }
+    // A panic used to end the read here. One cargo invocation does not both fail to
+    // compile and panic, so there was nothing after it worth scanning - but a CI job
+    // that runs `cargo clippy` and then `cargo test` puts both in one log, and returning
+    // early threw clippy's fifteen findings away without saying so.
+    const panics = failures.length;
 
     // --- compile errors ---
     for (let i = 0; i < lines.length; i++) {
@@ -136,6 +127,25 @@ export default {
     }
 
     if (!failures.length) return null;
+    if (panics) {
+      // "FAILED. 1 passed; 2 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.00s"
+      // -> "1 passed; 2 failed"
+      const sm = s.match(/^test result: \w+\.[^\S\n]*(.+?)[^\S\n]*$/m);
+      const summary = sm?.[1]
+        .split(";")
+        .map((p) => p.trim())
+        .filter((p) => p && !/^0 /.test(p) && !/^finished in/.test(p))
+        .join("; ");
+      const extra = failures.length - panics;
+      const also = extra ? ` — ${extra} compile error${extra > 1 ? "s" : ""} as well` : "";
+      // A panic inside a build script is not a test result, however alike they look -
+      // and neither is a panic from `cargo run`. A program that panicked on its own says
+      // only "thread 'main' panicked at ...", with no tally and no test named above it,
+      // and reporting that as a test failure names a command nobody ran.
+      if (BUILD_SCRIPT.test(s)) return { tool: "cargo", summary: `build script failed${also}`, failures };
+      if (!RAN_TESTS.test(s)) return { tool: "cargo", summary: `panicked${also}`, failures };
+      return { tool: "cargo test", summary: (summary ? summary + also : also.trim()) || undefined, failures };
+    }
     const n = failures.length;
     return { tool: "cargo", summary: `${n} error${n > 1 ? "s" : ""}`, failures };
   },
