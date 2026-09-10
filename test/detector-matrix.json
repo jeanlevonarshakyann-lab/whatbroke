@@ -1201,6 +1201,16 @@
     ],
     "shadow": {}
   },
+  "prettier_fail.txt": {
+    "winner": "prettier",
+    "parser": "prettier",
+    "failures": 1,
+    "claimants": [
+      "prettier",
+      "generic"
+    ],
+    "shadow": {}
+  },
   "py_traceback.txt": {
     "winner": "python",
     "parser": "python",
@@ -1376,6 +1386,30 @@
       "generic"
     ],
     "shadow": {}
+  },
+  "sass_fail.txt": {
+    "winner": "sass",
+    "parser": "sass",
+    "failures": 1,
+    "claimants": [
+      "sass",
+      "generic"
+    ],
+    "shadow": {
+      "generic": 1
+    }
+  },
+  "sass_import_fail.txt": {
+    "winner": "sass",
+    "parser": "sass",
+    "failures": 1,
+    "claimants": [
+      "sass",
+      "generic"
+    ],
+    "shadow": {
+      "generic": 1
+    }
   },
   "stylelint_fail.txt": {
     "winner": "stylelint",
@@ -1555,6 +1589,30 @@
     "failures": 1,
     "claimants": [
       "vitest",
+      "generic"
+    ],
+    "shadow": {
+      "generic": 2
+    }
+  },
+  "webpack_parse_fail.txt": {
+    "winner": "webpack",
+    "parser": "webpack",
+    "failures": 1,
+    "claimants": [
+      "webpack",
+      "generic"
+    ],
+    "shadow": {
+      "generic": 1
+    }
+  },
+  "webpack_resolve_fail.txt": {
+    "winner": "webpack",
+    "parser": "webpack",
+    "failures": 1,
+    "claimants": [
+      "webpack",
       "generic"
     ],
     "shadow": {

@@ -1,0 +1,6 @@
+Error: Can't find stylesheet to import.
+  ╷
+1 │ @use "nowhere";
+  │ ^^^^^^^^^^^^^^
+  ╵
+  bad2.scss 1:1  root stylesheet

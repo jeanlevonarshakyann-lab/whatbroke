@@ -1,0 +1,12 @@
+assets by status 348 bytes [cached] 1 asset
+./wsrc/syn.js 12 bytes [built] [code generated] [1 error]
+
+ERROR in ./wsrc/syn.js 1:10
+Module parse failed: Unexpected token (1:10)
+File was parsed as module type 'javascript/esm'.
+You may need an appropriate loader to handle this file type, currently no loaders are configured to process this file. See https://webpack.js.org/concepts#loaders
+> 1 | const x = ;
+    |           ^
+  2 |
+
+webpack 5.110.3 compiled with 1 error in 76 ms

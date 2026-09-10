@@ -47,6 +47,10 @@ const PROBABLE_DIAGNOSTIC = new RegExp([
   "\\bat [\\w./\\\\-]+\\.\\w+ line \\d+",
   // TAP says it with two words that are not otherwise failure vocabulary at all
   "^[^\\S\\n]*not ok\\b",
+  // prettier --check writes nothing but "[warn] file.js", and exits non-zero on it. A
+  // warning is not a failure, which is why the word is otherwise excluded here - but
+  // for deciding what to KEEP, a log made entirely of them has nothing else to keep.
+  "^\\[(?:warn|error)\\]",
   // Go's tally and the bullets test runners draw carry no word at all
   "^\\s*(?:---\\s*FAIL|FAIL\\b|\\u25cf|\\u2717|\\u2716|\\u00d7)",
 ].join("|"), "im");

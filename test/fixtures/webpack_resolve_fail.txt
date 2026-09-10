@@ -1,0 +1,22 @@
+assets by status 258 bytes [cached] 1 asset
+./wsrc/index.js 56 bytes [built] [code generated]
+
+ERROR in ./wsrc/index.js 1:0-36
+Module not found: Error: Can't resolve './missing.js' in '/home/dev/app/wsrc'
+resolve './missing.js' in '/home/dev/app/wsrc'
+  using description file: /home/dev/app/package.json (relative path: ./wsrc)
+    Field 'browser' doesn't contain a valid alias configuration
+    aliased from extension alias with mapping '.js' to '.js'
+      using description file: /home/dev/app/package.json (relative path: ./wsrc/missing.js)
+        Field 'browser' doesn't contain a valid alias configuration
+        /home/dev/app/wsrc/missing.js doesn't exist
+    Failed to alias from extension alias with mapping '.js' to '.js' for './missing.js': undefined
+    aliased from extension alias with mapping '.js' to '.ts'
+      using description file: /home/dev/app/package.json (relative path: ./wsrc/missing.ts)
+        Field 'browser' doesn't contain a valid alias configuration
+        /home/dev/app/wsrc/missing.ts doesn't exist
+    using description file: /home/dev/app/package.json (relative path: ./wsrc/missing.js)
+      Field 'browser' doesn't contain a valid alias configuration
+      /home/dev/app/wsrc/missing.js doesn't exist
+
+webpack 5.110.3 compiled with 1 error in 94 ms

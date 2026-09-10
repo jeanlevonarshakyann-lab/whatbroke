@@ -4,6 +4,11 @@
 
 ## 0.4.0 — 2026-09-10
 
+- Reads sass, webpack and prettier. sass puts its message at the head of a drawn box and
+  the location at the foot, so reading the first line found the problem and never where
+  it was. webpack follows each error with the resolver's entire search - forty lines of
+  how it looked rather than what went wrong - and that trace is now dropped. prettier
+  --check exits non-zero while naming only files, so the failure said nothing at all.
 - Reads stylelint and node-tap. Both produced no diagnosis at all. stylelint reports
   like eslint but marks severity with a glyph rather than a word, so eslint's own parser
   did not see it. node-tap emits TAP 14 with an `at:` block where `node --test` writes
