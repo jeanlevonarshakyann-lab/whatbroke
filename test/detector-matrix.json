@@ -1,4 +1,13 @@
 {
+  "awk_syntax_fail.txt": {
+    "winner": "output",
+    "parser": "generic",
+    "failures": 2,
+    "claimants": [
+      "generic"
+    ],
+    "shadow": {}
+  },
   "bun_fail.txt": {
     "winner": "bun test",
     "parser": "bun test",
@@ -577,7 +586,7 @@
       "generic"
     ],
     "shadow": {
-      "generic": 3
+      "generic": 4
     }
   },
   "make_driver_fail.txt": {
@@ -1113,6 +1122,15 @@
     "shadow": {
       "generic": 3
     }
+  },
+  "tar_format_fail.txt": {
+    "winner": "output",
+    "parser": "generic",
+    "failures": 1,
+    "claimants": [
+      "generic"
+    ],
+    "shadow": {}
   },
   "terraform_validate_fail.txt": {
     "winner": "terraform",
