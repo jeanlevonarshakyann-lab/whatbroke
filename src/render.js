@@ -1,6 +1,7 @@
 import { relPath } from "./util.js";
 import { snippet, contextFor } from "./snippet.js";
-import { normTitle, causeId } from "./cluster.js";
+import { normTitle } from "./cluster.js";
+import { trackedCauseId } from "./history.js";
 
 // A failure message line longer than this is padding - pytest lists every
 // available fixture, rustc lists every trait impl. Keep the head, drop the rest.
@@ -92,7 +93,7 @@ export function render(result, { max = 5, cwd = true, source = true, cluster = t
     out.push(`    ${C.yellow}${reported.length} likely cause${reported.length > 1 ? "s" : ""}, ` +
              `${sites} site${sites > 1 ? "s" : ""}${others ? ` (+${others} other${others > 1 ? "s" : ""})` : ""}${C.reset}`);
   }
-  if (since?.compared) {
+  if (!secondary && since?.compared) {
     const n = since.fresh.length;
     // "nothing new" is worth a line of its own: the same wall of red as yesterday,
     // with nothing added, is a different situation from a wall that just grew.
@@ -102,7 +103,7 @@ export function render(result, { max = 5, cwd = true, source = true, cluster = t
     if (since.gone > 0) {
       out.push(`    ${C.dim}${since.gone} from that run ${since.gone > 1 ? "are" : "is"} no longer reported${C.reset}`);
     }
-  } else if (since && !since.compared && since.reason === "no-previous-run") {
+  } else if (!secondary && since && !since.compared && since.reason === "no-previous-run") {
     out.push(`    ${C.dim}first tracked run — nothing to compare against yet${C.reset}`);
   }
   if (result.others?.length) {
@@ -128,7 +129,7 @@ export function render(result, { max = 5, cwd = true, source = true, cluster = t
     const more = unit.reported
       ? `  ${C.yellow}${family ? `(${unit.size} cases)` : `(+${kin.length} more site${kin.length > 1 ? "s" : ""})`}${C.reset}`
       : "";
-    const isNew = since?.compared && since.fresh.includes(causeId(f))
+    const isNew = since?.compared && since.fresh.includes(trackedCauseId(f, result.tool))
       ? `  ${C.bold}${C.yellow}new${C.reset}` : "";
     if (loc || title) out.push(`  ${loc}${title}${more}${isNew}`);
 
@@ -221,7 +222,7 @@ export function render(result, { max = 5, cwd = true, source = true, cluster = t
     out.push("");
     out.push(render(
       { tool: other.tool, summary: other.summary, failures: other.failures, clusters: other.clusters },
-      { max: max === Infinity ? Infinity : OTHER_MAX, cwd, source, cluster, secondary: true },
+      { max: max === Infinity ? Infinity : OTHER_MAX, cwd, source, cluster, since, secondary: true },
     ));
   }
 

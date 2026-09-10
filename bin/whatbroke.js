@@ -5,8 +5,7 @@ import { createRequire } from "node:module";
 import { constants as osConstants } from "node:os";
 import { analyse } from "../src/index.js";
 import { createCapture } from "../src/capture.js";
-import { causeId } from "../src/cluster.js";
-import { runIdentity, loadRun, saveRun, compare } from "../src/history.js";
+import { runIdentity, loadRun, saveRun, compare, trackedCauseId } from "../src/history.js";
 import { render, setColor } from "../src/render.js";
 import { normTitle } from "../src/cluster.js";
 const { version } = createRequire(import.meta.url)("../package.json");
@@ -261,8 +260,8 @@ function writeFallback(fallback, truncated, executionError) {
  *  the NEXT run announce everything it lost as newly appeared. */
 function track(r, truncated, executionError) {
   if (!r) return { compared: false, reason: "nothing-parsed", fresh: [], gone: null };
-  const ids = [...new Set((r.clusters ?? r.failures.map((_, i) => ({ exemplar: i })))
-    .map((u) => causeId(r.failures[u.exemplar])))];
+  const ids = [...new Set([r, ...(r.others ?? [])].flatMap((tool) =>
+    tool.failures.map((f) => trackedCauseId(f, tool.tool))))];
   const identity = runIdentity({ cwd: process.cwd(), tool: r.tool, argv });
   const trustworthy = !truncated && !executionError;
   const result = compare(loadRun(identity), ids, { truncated, trustworthy });

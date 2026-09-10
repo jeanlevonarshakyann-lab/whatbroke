@@ -49,6 +49,24 @@ function dedupeFailures(failures) {
   });
 }
 
+/** Two parsers may label the same diagnostic differently. Require both a real
+ * location and matching message, allowing a code printed as a trailing suffix. */
+function sameLocatedDiagnostic(a, b) {
+  if (!a.file || !a.line || a.file !== b.file || a.line !== b.line) return false;
+  if (a.col && b.col && a.col !== b.col) return false;
+  if (a.code && b.code && a.code !== b.code) return false;
+  const message = (f) => {
+    let text = String(f.message ?? "").trim();
+    for (const code of [a.code, b.code].filter(Boolean)) {
+      const suffix = ` [${code}]`;
+      if (text.endsWith(suffix)) text = text.slice(0, -suffix.length).trimEnd();
+    }
+    return text;
+  };
+  const text = message(a);
+  return text.length > 0 && text === message(b);
+}
+
 /** A CI log often holds a lint run, a typecheck and a test run one after another.
  *  Only one extractor can own the output, so name the others rather than dropping
  *  their failures without a word. */
@@ -60,22 +78,29 @@ function dedupeFailures(failures) {
  *  `failures` still means "what the winning tool reported", unchanged, so nothing that
  *  reads it sees a different shape. Everything else arrives here, attributed. */
 function otherTools(s, winner, mine, cluster) {
-  const at = (f) => `${f.file ?? ""}:${f.line ?? ""}`;
   const exact = (f) => JSON.stringify([f.file ?? null, f.line ?? null, f.col ?? null, f.title ?? "", f.message ?? ""]);
-  const seen = new Set(mine.map(at));
-  const claimed = new Set();
+  const claimed = new Set(mine.map(exact));
+  const locations = new Map();
+  const remember = (f) => {
+    if (!f.file || !f.line) return;
+    const key = JSON.stringify([f.file, f.line]);
+    const at = locations.get(key) ?? [];
+    at.push(f);
+    locations.set(key, at);
+  };
+  mine.forEach(remember);
   const others = [];
   for (const ex of EXTRACTORS) {
     if (ex === winner || ex.name === "generic") continue;
     let r = null;
     try { if (ex.detect(s)) r = ex.extract(s); } catch { r = null; }
     if (!r?.failures?.length) continue;
-    // Some tools report the same failure a second way - unittest prints its
-    // failures AS Python tracebacks. If every location is one the winner already
-    // covers, this is the same output read twice, not another tool that failed.
+    // A shared location does not prove a shared diagnostic, and missing locations
+    // say nothing at all. Compare diagnostic content consistently for the winner and other tools.
     const fresh = dedupeFailures(r.failures
-      .filter((f) => !seen.has(at(f)))
       .filter((f) => !claimed.has(exact(f)))
+      .filter((f) => !(locations.get(JSON.stringify([f.file, f.line])) ?? [])
+        .some((g) => sameLocatedDiagnostic(f, g)))
       // A tool's CLI wrapper reports that the tool exited non-zero, and that stack sits
       // entirely in node internals. It is the same failure a second time, told worse.
       .filter((f) => !isNoise(f.file))
@@ -93,16 +118,11 @@ function otherTools(s, winner, mine, cluster) {
       // log, an unanchored `error: linking with cc failed` is exactly the answer.
       .filter((f) => f.file || f.code || f.subject || f.label));
     if (!fresh.length) continue;
-    // Between two OTHER tools the location alone is too blunt: eslint and tsc can flag
-    // the same line for entirely different reasons, and dropping one of those loses a
-    // real diagnosis. Only an identical diagnostic is a repeat. The winner keeps the
-    // looser location test above, which is what stops unittest's failures arriving a
-    // second time as Python tracebacks.
-    for (const f of fresh) claimed.add(exact(f));
+    for (const f of fresh) { claimed.add(exact(f)); remember(f); }
     others.push({
       tool: r.tool,
       count: fresh.length,
-      summary: r.summary,
+      summary: fresh.length === r.failures.length ? r.summary : undefined,
       // Grouping is per tool: a signature only means something within one vocabulary.
       clusters: cluster ? clusterFailures(fresh) : null,
       failures: fresh.map((f) => ({ tool: r.tool, category: ex.category, ...f })),
@@ -133,8 +153,11 @@ function dropEchoes(mine, others) {
   for (const other of others) {
     const failures = other.failures.filter((f) => !echoes(f));
     if (!failures.length) continue;
-    kept.push({ ...other, count: failures.length, failures,
-      clusters: other.clusters ? other.clusters.filter((c) => c.members.every((i) => !echoes(other.failures[i]))) : null });
+    if (failures.length === other.failures.length) { kept.push(other); continue; }
+    // Filtering shifts indices and may remove just one member of a group. Rebuild
+    // the partition against the retained array; the old tool tally is also stale.
+    kept.push({ ...other, count: failures.length, failures, summary: undefined,
+      clusters: other.clusters ? clusterFailures(failures) : null });
   }
   return kept;
 }

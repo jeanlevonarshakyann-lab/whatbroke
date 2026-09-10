@@ -1,18 +1,20 @@
 import { mkdirSync, readFileSync, writeFileSync, renameSync, unlinkSync } from "node:fs";
 import { homedir, tmpdir } from "node:os";
 import { join, resolve } from "node:path";
-import { fingerprint } from "./cluster.js";
+import { fingerprint, causeId } from "./cluster.js";
 
 // Comparing two runs is only meaningful when they asked the same question. A pytest
 // run and a jest run share no vocabulary; `pytest tests/unit` and `pytest tests/api`
 // do not even cover the same code, so a cause missing from the second is not a cause
 // that was fixed. The identity below is therefore the whole invocation, and runs that
 // differ in any part of it simply never meet.
-// 2: a cause is fingerprinted from the failure's declared `code`/`label` rather than
-// its `title`, so every identity from version 1 is stale. Bumping means those records
-// are ignored outright - a mismatched cache would report every cause as newly appeared,
-// which is the tool inventing a regression out of its own upgrade.
-const IDENTITY_VERSION = 2;
+// 3: records now include every tool's causes, qualified by tool. Earlier records
+// omitted secondary tools, so comparing them would invent new failures on upgrade.
+const IDENTITY_VERSION = 3;
+
+/** Identical words from different tools are separate causes in a mixed run. */
+export const trackedCauseId = (failure, tool = failure.tool) =>
+  fingerprint(JSON.stringify([tool ?? "", causeId(failure)]));
 
 /** Where a run's fingerprints live. Never the project: whatbroke promises it writes
  *  nothing into your working directory, and a tool that quietly drops a state file

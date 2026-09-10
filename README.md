@@ -399,6 +399,12 @@ same directory**. `pytest tests/unit` and `pytest tests/api` do not cover the sa
 code, so a cause missing from one is not a cause that got fixed; they keep separate
 histories and never meet.
 
+For mixed logs, the primary tool identifies the run, and comparison includes every
+reported tool's causes. New failures are marked in their own tool's section; identical
+messages from different tools keep separate identities. Older history records that
+only tracked the primary tool are ignored, so the first run after upgrading establishes
+a fresh baseline.
+
 The two claims are not equally cheap. "New" is a statement about what is present, and
 it is safe. "No longer reported" is a statement about *absence*, and absence is only
 evidence when the run actually got far enough to speak — so it is withheld whenever the

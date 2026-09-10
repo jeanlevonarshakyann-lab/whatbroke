@@ -129,6 +129,66 @@ test("two tools may both flag the same line for different reasons", () => {
   assert.notEqual(online3[0].title, online3[1].title);
 });
 
+test("distinct diagnostics survive a shared location with the winner", () => {
+  const lint = "\n/app/a.ts\n  1:7   error    'unused' is assigned a value but never used  no-unused-vars\n\n✖ 1 problem (1 error, 0 warnings)\n";
+  const types = "/app/a.ts(1,7): error TS2322: Type 'string' is not assignable to type 'number'.\n";
+  for (const command of [null, ["tsc"]]) {
+    const r = analyse(lint + types, { command });
+    assert.equal(recovered(r), 2);
+    const codes = [r, ...(r.others ?? [])].flatMap(o => o.failures.map(f => f.code));
+    assert.deepEqual(codes.sort(), ["TS2322", "no-unused-vars"].sort());
+  }
+});
+
+test("unrelated diagnostics without locations are not duplicates", () => {
+  const r = analyse("error TS18003: No inputs were found in config file 'tsconfig.json'.\n" +
+    "fatal: not a git repository (or any of the parent directories): .git\n");
+  assert.equal(recovered(r), 2);
+  assert.equal(r.others[0].tool, "git");
+});
+
+const echoLog = `Traceback (most recent call last):
+  File "/app/install.py", line 10, in install
+    raise RuntimeError("No matching distribution found for package_one")
+RuntimeError: No matching distribution found for package_one
+ERROR: No matching distribution found for package_one
+ERROR: No matching distribution found for package_two
+`;
+
+test("removing an echo leaves a valid partition of the surviving failures", () => {
+  for (const cluster of [true, false]) {
+    const r = analyse(echoLog, { cluster });
+    const pip = r.others.find(o => o.tool === "pip");
+    assert.equal(pip.failures.length, 1);
+    assert.equal(pip.failures[0].subject, "package_two");
+    assert.equal(pip.summary, undefined, "the original two-error tally is now stale");
+    if (!cluster) { assert.equal(pip.clusters, null); continue; }
+    assert.deepEqual(pip.clusters.flatMap(c => c.members), [0]);
+    assert.equal(pip.clusters[0].exemplar, 0);
+  }
+});
+
+test("an echo cannot remove retained members of its cluster", () => {
+  const log = echoLog.replaceAll("package_one", "package-1")
+    .replaceAll("package_two", "package-2") + "ERROR: No matching distribution found for package-3\n";
+  const pip = analyse(log).others.find(o => o.tool === "pip");
+  assert.equal(pip.failures.length, 2);
+  assert.deepEqual(pip.clusters.flatMap(c => c.members).sort(), [0, 1]);
+});
+
+test("echo filtering preserves terminal output, annotations, and command status", () => {
+  for (const args of [["--no-source"], ["--github-actions"], ["--json"]]) {
+    const r = spawnSync(process.execPath, [cli, ...args, "-q", process.execPath, "-e",
+      `process.stdout.write(${JSON.stringify(echoLog)}); process.exitCode = 7`], {
+      encoding: "utf8", env: { ...process.env, GITHUB_STEP_SUMMARY: "", NO_COLOR: "1" },
+    });
+    assert.equal(r.status, 7, r.stderr);
+    assert.match(r.stdout, /package_two/);
+    assert.doesNotMatch(r.stderr, /TypeError/);
+    if (args[0] === "--json") assert.equal(JSON.parse(r.stdout).others[0].clusters[0].exemplar, 0);
+  }
+});
+
 // ------------------------------------------------- claims from a losing tool
 
 test("a tool that does not own the log cannot contribute an unanchored failure", () => {
@@ -220,6 +280,21 @@ test("a loose error pattern does not claim another tool's line", () => {
     ["deno_fail.txt", "kubectl_noserver_fail.txt"]]) {
     const r = analyse(joined([a, b]));
     assert.equal(recovered(r), alone([a, b]), `${a} + ${b}`);
+  }
+});
+
+test("shared-location deduplication does not conceal another parser's loose matches", () => {
+  for (const parts of [
+    ["cargo_manifest_fail.txt", "ruff_fail.txt"],
+    ["clippy_fail.txt", "ruff_fail.txt"],
+    ["clippy_fail.txt", "ruff_syntax_fail.txt"],
+    ["kubectl_yaml_fail.txt", "ruff_fail.txt"],
+    ["kubectl_yaml_fail.txt", "ruff_syntax_fail.txt"],
+    ["tsc_config_fail.txt", "yarn_fail.txt"],
+  ]) {
+    for (const order of [parts, [...parts].reverse()]) {
+      assert.equal(recovered(analyse(joined(order))), alone(parts), order.join(" + "));
+    }
   }
 });
 
@@ -319,7 +394,7 @@ test("a pair of logs never yields more failures than the two apart", () => {
 // the number may fall, and lowering the ceiling with it is part of the fix. It may not
 // rise. Raising it means a change made whatbroke claim more than it can see, and the
 // right response is to explain the new pairs, not to edit this number.
-const CEILING = 19;
+const CEILING = 13;
 
 test("no more pairs over-claim than the last time this was measured", () => {
   const names = readdirSync(join(here, "fixtures"));
@@ -335,6 +410,14 @@ test("no more pairs over-claim than the last time this was measured", () => {
       const apart = solo.get(a).failures.length + solo.get(b).failures.length;
       let r;
       try { r = analyse(fx(a) + "\n" + fx(b)); } catch { continue; }
+      for (const other of r.others ?? []) {
+        const members = other.clusters.flatMap(c => c.members).sort((a, b) => a - b);
+        assert.deepEqual(members, [...other.failures.keys()], `${a} + ${b}: invalid ${other.tool} partition`);
+        for (const c of other.clusters) {
+          assert.equal(c.size, c.members.length);
+          assert.ok(c.members.includes(c.exemplar));
+        }
+      }
       if (recovered(r) > apart) over.push(`${a} + ${b}`);
     }
   }
