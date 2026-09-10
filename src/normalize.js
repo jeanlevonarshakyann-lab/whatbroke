@@ -61,6 +61,14 @@ function literalPrefix(text) {
     // Do not swallow the log's own indentation. eslint puts its problems under the
     // file they belong to, so the shared prefix runs on into that indentation - and
     // removing it takes away the very thing eslint's parser matches on.
+    //
+    // Trailing whitespace was not the whole of it. A log that is mostly stack frames -
+    // a mocha file that would not load is ten "    at ..." lines and two of content -
+    // shares the frames' own indentation AND what follows it, so the prefix came out as
+    // "api:test:     at " with the indentation buried in the middle where trimming the
+    // tail cannot reach. Cut at the first run of three or more spaces: a runner writes
+    // one ("api:test: ", "pod/api-7d9 ") or two ("api-1  | "), and indentation is four.
+    p = p.replace(/[^\S\n]{3,}[\s\S]*$/, " ");
     p = p.replace(/[^\S\n]+$/, " ");
     if (p.length > MIN_PREFIX && p.trim() && p.length > best.length) best = p;
   }

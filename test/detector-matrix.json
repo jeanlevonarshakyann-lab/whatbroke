@@ -729,6 +729,57 @@
       "generic": 1
     }
   },
+  "mocha_fail.txt": {
+    "winner": "mocha",
+    "parser": "mocha",
+    "failures": 2,
+    "claimants": [
+      "mocha",
+      "node",
+      "generic"
+    ],
+    "shadow": {}
+  },
+  "mocha_hook_fail.txt": {
+    "winner": "mocha",
+    "parser": "mocha",
+    "failures": 1,
+    "claimants": [
+      "mocha",
+      "node",
+      "generic"
+    ],
+    "shadow": {
+      "generic": 1
+    }
+  },
+  "mocha_load_fail.txt": {
+    "winner": "mocha",
+    "parser": "mocha",
+    "failures": 1,
+    "claimants": [
+      "mocha",
+      "node",
+      "generic"
+    ],
+    "shadow": {
+      "node": 1,
+      "generic": 1
+    }
+  },
+  "mocha_timeout_fail.txt": {
+    "winner": "mocha",
+    "parser": "mocha",
+    "failures": 1,
+    "claimants": [
+      "mocha",
+      "node",
+      "generic"
+    ],
+    "shadow": {
+      "generic": 1
+    }
+  },
   "mypy_columns_fail.txt": {
     "winner": "mypy",
     "parser": "mypy",

@@ -251,6 +251,43 @@ const CASES = [
       assert.match(r.failures[0].message, /^Failed opening required 'nothing-here\.php'$/);
       assert.equal(r.failures[0].code, "Error");
     } },
+  // Captured with mocha 11. A failing run produced no diagnosis at all before this -
+  // not a worse answer, nothing - and mocha is among the most widely used JS runners.
+  { file: "mocha_fail.txt", tool: "mocha", n: 2, check: (r) => {
+      assert.equal(r.summary, "2 failing, 1 passing");
+      assert.equal(r.failures[0].file, "test/sum.test.js");
+      assert.equal(r.failures[0].line, 6);
+      // the suite and the test are on separate lines; the reader wants both
+      assert.equal(r.failures[0].subject, "invoice totals an invoice");
+      assert.match(r.failures[0].message, /Expected values to be strictly equal/);
+      assert.match(r.failures[1].message, /token should carry exp/);
+      // node's own frames are under every one of these and are never the answer
+      assert.doesNotMatch(JSON.stringify(r.failures), /node:internal/);
+    } },
+  { file: "mocha_hook_fail.txt", tool: "mocha", n: 1, check: (r) => {
+      // a hook that throws is named for the hook, and the message is the throw - not
+      // the hook's name repeated back
+      assert.match(r.failures[0].subject, /before all/);
+      assert.equal(r.failures[0].message, "payment gateway unreachable");
+      assert.equal(r.failures[0].line, 2);
+    } },
+  { file: "mocha_timeout_fail.txt", tool: "mocha", n: 1, check: (r) => {
+      // a timeout unwinds entirely inside node's timers, so there is no frame of yours
+      // to point at. Reporting node:internal/timers as the place your test failed is
+      // worse than reporting no place at all.
+      assert.equal(r.failures[0].file, undefined);
+      assert.match(r.failures[0].message, /^Timeout of 50ms exceeded/);
+      // mocha repeats the test file in that message; the location already said it
+      assert.doesNotMatch(r.failures[0].message, /\(\//);
+    } },
+  { file: "mocha_load_fail.txt", tool: "mocha", n: 1, check: (r) => {
+      // a file that will not load never reaches the tally, so there is no numbered
+      // block - just mocha's own line over a Node stack
+      assert.equal(r.failures[0].file, "/home/dev/app/test/syn.test.js");
+      assert.equal(r.failures[0].line, 2);
+      assert.equal(r.failures[0].code, "SyntaxError");
+      assert.equal(r.failures[0].message, "Unexpected end of input");
+    } },
   // Captured with go 1.25. `go vet` prefixes the line when the package will not compile
   // at all, and that prefix defeated the anchor - so a vet run that hit a type error came
   // back as a guess with no location, with the file and line sitting in plain sight
@@ -1900,6 +1937,10 @@ try {
     // parsers match by design; eslint is listed first and reports the config error
     // rather than a line inside eslint's own internals.
     "eslint_config_fail.txt": ["eslint", "node"],
+    // a file mocha cannot load never reaches its tally, so the log is mocha's own line
+    // over a Node stack. Both parsers match by design; mocha is listed first and reports
+    // the file that would not load rather than a frame inside the module loader.
+    "mocha_load_fail.txt": ["mocha", "node"],
   };
   const found = {};
   for (const file of readdirSync(join(here, "fixtures"))) {

@@ -1,0 +1,21 @@
+
+ Exception during run: /home/dev/app/test/syn.test.js:2
+
+
+
+SyntaxError: Unexpected end of input
+    at wrapSafe (node:internal/modules/cjs/loader:1713:18)
+    at Module._compile (node:internal/modules/cjs/loader:1755:20)
+    at Object..js (node:internal/modules/cjs/loader:1913:10)
+    at Module.load (node:internal/modules/cjs/loader:1505:32)
+    at Function._load (node:internal/modules/cjs/loader:1309:12)
+    at wrapModuleLoad (node:internal/modules/cjs/loader:254:19)
+    at loadCJSModuleWithModuleLoad (node:internal/modules/esm/translators:335:3)
+    at ModuleWrap.<anonymous> (node:internal/modules/esm/translators:235:7)
+    at ModuleJob.run (node:internal/modules/esm/module_job:343:25)
+    at async onImport.tracePromise.__proto__ (node:internal/modules/esm/loader:681:26)
+    at async formattedImport (/home/dev/app/node_modules/mocha/lib/nodejs/esm-utils.cjs:11:14)
+    at async Object.requireModule [as requireOrImport] (/home/dev/app/node_modules/mocha/lib/nodejs/esm-utils.cjs:106:30)
+    at async exports.loadFilesAsync (/home/dev/app/node_modules/mocha/lib/nodejs/esm-utils.cjs:175:20)
+    at async singleRun (/home/dev/app/node_modules/mocha/lib/cli/run-helpers.cjs:174:3)
+    at async exports.handler (/home/dev/app/node_modules/mocha/lib/cli/run.cjs:143:5)

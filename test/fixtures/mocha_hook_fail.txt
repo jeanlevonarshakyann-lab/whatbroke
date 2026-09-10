@@ -1,0 +1,17 @@
+
+
+  gateway
+    1) "before all" hook for "charges"
+
+
+  0 passing (1ms)
+  1 failing
+
+  1) gateway
+       "before all" hook for "charges":
+     Error: payment gateway unreachable
+      at Context.<anonymous> (test/hook.test.js:2:24)
+      at process.processImmediate (node:internal/timers:484:21)
+
+
+
