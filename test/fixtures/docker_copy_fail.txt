@@ -1,0 +1,20 @@
+#4 DONE 0.0s
+
+#5 [2/2] COPY missing-file.txt /tmp/
+#5 ERROR: failed to calculate checksum of ref la7180i24qig76k19eu2csvil::z81dtk8xalgmm6qoaggocl7z0: "/missing-file.txt": not found
+
+#6 [1/2] FROM docker.io/library/debian:stable-slim@sha256:04634311a8d5fc442b6eb06d792293c4f3e2268652ca7634e00ce8ef5cc0a28a
+#6 resolve docker.io/library/debian:stable-slim@sha256:04634311a8d5fc442b6eb06d792293c4f3e2268652ca7634e00ce8ef5cc0a28a done
+#6 CANCELED
+------
+ > [2/2] COPY missing-file.txt /tmp/:
+------
+Dockerfile.copy:2
+--------------------
+   1 |     FROM debian:stable-slim
+   2 | >>> COPY missing-file.txt /tmp/
+   3 |     
+--------------------
+ERROR: failed to build: failed to solve: failed to compute cache key: failed to calculate checksum of ref la7180i24qig76k19eu2csvil::z81dtk8xalgmm6qoaggocl7z0: "/missing-file.txt": not found
+
+View build details: docker-desktop://dashboard/build/desktop-linux/desktop-linux/dnag89blg7bqxaocya0nf85pf
