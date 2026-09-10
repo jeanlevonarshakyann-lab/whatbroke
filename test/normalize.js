@@ -210,6 +210,27 @@ const CI_STAMPS = {
     `Sep 10 10:16:${String(54 + (i % 5)).padStart(2, "0")} runner app[123]: ${l}`,
 };
 
+// Not every prefix is a timestamp. `kubectl logs -f` on more than one pod, and
+// `docker compose up`, lead each line with the source instead - a fixed literal with no
+// shape to recognise, so it has to be found by comparing lines against each other.
+// A floor of three lines made those unrecoverable on a short log; there is no floor now,
+// because `better` in index.js refuses a discovered strip that does not demonstrably
+// improve the parse, which is the guard that actually matters.
+//
+// These are kept apart from the stamps above because the redraw-blob test cannot use
+// them: a blob is ONE physical line, and a prefix found by comparison has nothing to
+// compare it with. That limitation is real and stays documented at the head of the file.
+const LITERAL_PREFIXES = {
+  "kubectl logs (pod name)": (l) => `api-7d9f8c4b6-x2klm ${l}`,
+  "docker compose (service)": (l) => `api-1  | ${l}`,
+  // CI also stamps what a monorepo runner already stamped. Both layers come off in one
+  // pass; the point here is that a SHORT log survives both.
+  "GitHub Actions over Turborepo": (l, i) =>
+    `2026-09-10T10:16:${String(54 + (i % 5)).padStart(2, "0")}.1234567Z api:test: ${l}`,
+  "Jenkins over pnpm": (l, i) =>
+    `[10:16:${String(54 + (i % 5)).padStart(2, "0")}] packages/api test$ ${l}`,
+};
+
 test("a log that came out of CI reads exactly as it went in", () => {
   const changed = [];
   let checked = 0;
@@ -217,7 +238,7 @@ test("a log that came out of CI reads exactly as it went in", () => {
     if (usesBareCr(fx(name))) continue;
     const base = analyse(fx(name));
     if (!base?.failures.length) continue;
-    for (const [runner, fn] of Object.entries(CI_STAMPS)) {
+    for (const [runner, fn] of Object.entries({ ...CI_STAMPS, ...LITERAL_PREFIXES })) {
       checked++;
       const got = analyse(wrap(fx(name), fn));
       const want = `${base.tool}/${base.failures.length}`;
@@ -227,7 +248,7 @@ test("a log that came out of CI reads exactly as it went in", () => {
   }
   assert.ok(checked > 200, `only ${checked} stamped logs exercised`);
   assert.deepEqual(changed.slice(0, 6), [], "a stamped log lost its parser");
-  console.log(`       ${checked} stamped logs across ${Object.keys(CI_STAMPS).length} CI formats`);
+  console.log(`       ${checked} logs across ${Object.keys(CI_STAMPS).length} CI stamps and ${Object.keys(LITERAL_PREFIXES).length} literal prefixes`);
 });
 
 test("a CI-stamped redraw blob survives bare carriage returns", () => {

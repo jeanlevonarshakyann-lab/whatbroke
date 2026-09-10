@@ -259,7 +259,21 @@ function better(candidate, cand, current) {
   // as a file literally named "api:test: tsconfig.json", and misses the line that has
   // no location at all. mypy's repeated source directory, by contrast, leaves the count
   // exactly where it was - which is what says it was data rather than a wrapper.
-  return cand.result.failures.length > current.result.failures.length;
+  if (cand.result.failures.length > current.result.failures.length) return true;
+  // The mirror of that, and the reason it is not enough on its own: a parser can also
+  // match through a wrapper and report MORE than it should, because the prefix defeats
+  // the de-duplication that would have joined two lines into one diagnosis. Perl's
+  // location is prose at the end of the message rather than an anchor at the start, so
+  // a one-line runner prefix left it parsing and split "Can't locate ... at f line 2"
+  // from "BEGIN failed--compilation aborted at f line 2" into two failures.
+  //
+  // What says the prefix is a wrapper rather than data is that it is sitting INSIDE the
+  // text the parser reported. mypy's repeated source directory - the case this gate
+  // exists for - is in the `file` of its failures, which is the parser reading a path
+  // correctly; it never leads a message.
+  const swallowed = current.result.failures.some((f) =>
+    String(f.message ?? "").startsWith(candidate.wrapper) || String(f.stmt ?? "").startsWith(candidate.wrapper));
+  return swallowed && cand.result.failures.length < current.result.failures.length;
 }
 
 const MAX_WRAPPER_LAYERS = 3;   // CI stamps a monorepo runner that stamps a container
