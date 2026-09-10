@@ -814,6 +814,18 @@
       "generic": 4
     }
   },
+  "gotest_json_fail.txt": {
+    "winner": "go test",
+    "parser": "go test -json",
+    "failures": 4,
+    "claimants": [
+      "go test -json",
+      "generic"
+    ],
+    "shadow": {
+      "generic": 1
+    }
+  },
   "gotest_verbose_fail.txt": {
     "winner": "go test",
     "parser": "go",

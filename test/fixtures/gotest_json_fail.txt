@@ -1,0 +1,67 @@
+{"Time":"2026-09-11T09:37:40.506931+10:00","Action":"start","Package":"gtv/p1"}
+{"Time":"2026-09-11T09:37:40.507122+10:00","Action":"start","Package":"gtv/p2"}
+{"Time":"2026-09-11T09:37:40.685725+10:00","Action":"run","Package":"gtv/p1","Test":"TestAdd"}
+{"Time":"2026-09-11T09:37:40.685841+10:00","Action":"output","Package":"gtv/p1","Test":"TestAdd","Output":"=== RUN   TestAdd\n","OutputType":"frame"}
+{"Time":"2026-09-11T09:37:40.685916+10:00","Action":"output","Package":"gtv/p1","Test":"TestAdd","Output":"    p1_test.go:7: Add(2, 2) = 5, want 4\n","OutputType":"error"}
+{"Time":"2026-09-11T09:37:40.685945+10:00","Action":"output","Package":"gtv/p1","Test":"TestAdd","Output":"--- FAIL: TestAdd (0.00s)\n","OutputType":"frame"}
+{"Time":"2026-09-11T09:37:40.685962+10:00","Action":"fail","Package":"gtv/p1","Test":"TestAdd","Elapsed":0}
+{"Time":"2026-09-11T09:37:40.68598+10:00","Action":"run","Package":"gtv/p1","Test":"TestTable"}
+{"Time":"2026-09-11T09:37:40.685987+10:00","Action":"output","Package":"gtv/p1","Test":"TestTable","Output":"=== RUN   TestTable\n","OutputType":"frame"}
+{"Time":"2026-09-11T09:37:40.685995+10:00","Action":"run","Package":"gtv/p1","Test":"TestTable/zero"}
+{"Time":"2026-09-11T09:37:40.686003+10:00","Action":"output","Package":"gtv/p1","Test":"TestTable/zero","Output":"=== RUN   TestTable/zero\n","OutputType":"frame"}
+{"Time":"2026-09-11T09:37:40.686011+10:00","Action":"output","Package":"gtv/p1","Test":"TestTable/zero","Output":"    p1_test.go:22: Add(0, 0) = 1, want 0\n","OutputType":"error"}
+{"Time":"2026-09-11T09:37:40.686034+10:00","Action":"output","Package":"gtv/p1","Test":"TestTable/zero","Output":"--- FAIL: TestTable/zero (0.00s)\n","OutputType":"frame"}
+{"Time":"2026-09-11T09:37:40.686043+10:00","Action":"fail","Package":"gtv/p1","Test":"TestTable/zero","Elapsed":0}
+{"Time":"2026-09-11T09:37:40.68605+10:00","Action":"run","Package":"gtv/p1","Test":"TestTable/ones"}
+{"Time":"2026-09-11T09:37:40.686059+10:00","Action":"output","Package":"gtv/p1","Test":"TestTable/ones","Output":"=== RUN   TestTable/ones\n","OutputType":"frame"}
+{"Time":"2026-09-11T09:37:40.686068+10:00","Action":"output","Package":"gtv/p1","Test":"TestTable/ones","Output":"--- PASS: TestTable/ones (0.00s)\n","OutputType":"frame"}
+{"Time":"2026-09-11T09:37:40.686076+10:00","Action":"pass","Package":"gtv/p1","Test":"TestTable/ones","Elapsed":0}
+{"Time":"2026-09-11T09:37:40.686085+10:00","Action":"output","Package":"gtv/p1","Test":"TestTable","Output":"--- FAIL: TestTable (0.00s)\n","OutputType":"frame"}
+{"Time":"2026-09-11T09:37:40.686094+10:00","Action":"fail","Package":"gtv/p1","Test":"TestTable","Elapsed":0}
+{"Time":"2026-09-11T09:37:40.686102+10:00","Action":"run","Package":"gtv/p1","Test":"TestParallelA"}
+{"Time":"2026-09-11T09:37:40.686108+10:00","Action":"output","Package":"gtv/p1","Test":"TestParallelA","Output":"=== RUN   TestParallelA\n","OutputType":"frame"}
+{"Time":"2026-09-11T09:37:40.686126+10:00","Action":"output","Package":"gtv/p1","Test":"TestParallelA","Output":"=== PAUSE TestParallelA\n","OutputType":"frame"}
+{"Time":"2026-09-11T09:37:40.686135+10:00","Action":"pause","Package":"gtv/p1","Test":"TestParallelA"}
+{"Time":"2026-09-11T09:37:40.686143+10:00","Action":"run","Package":"gtv/p1","Test":"TestParallelB"}
+{"Time":"2026-09-11T09:37:40.686149+10:00","Action":"output","Package":"gtv/p1","Test":"TestParallelB","Output":"=== RUN   TestParallelB\n","OutputType":"frame"}
+{"Time":"2026-09-11T09:37:40.686157+10:00","Action":"output","Package":"gtv/p1","Test":"TestParallelB","Output":"=== PAUSE TestParallelB\n","OutputType":"frame"}
+{"Time":"2026-09-11T09:37:40.686164+10:00","Action":"pause","Package":"gtv/p1","Test":"TestParallelB"}
+{"Time":"2026-09-11T09:37:40.686174+10:00","Action":"run","Package":"gtv/p1","Test":"TestOK"}
+{"Time":"2026-09-11T09:37:40.68618+10:00","Action":"output","Package":"gtv/p1","Test":"TestOK","Output":"=== RUN   TestOK\n","OutputType":"frame"}
+{"Time":"2026-09-11T09:37:40.686191+10:00","Action":"output","Package":"gtv/p1","Test":"TestOK","Output":"--- PASS: TestOK (0.00s)\n","OutputType":"frame"}
+{"Time":"2026-09-11T09:37:40.68622+10:00","Action":"pass","Package":"gtv/p1","Test":"TestOK","Elapsed":0}
+{"Time":"2026-09-11T09:37:40.686224+10:00","Action":"cont","Package":"gtv/p1","Test":"TestParallelA"}
+{"Time":"2026-09-11T09:37:40.686226+10:00","Action":"output","Package":"gtv/p1","Test":"TestParallelA","Output":"=== CONT  TestParallelA\n","OutputType":"frame"}
+{"Time":"2026-09-11T09:37:40.686229+10:00","Action":"output","Package":"gtv/p1","Test":"TestParallelA","Output":"    p1_test.go:30: A says hello\n"}
+{"Time":"2026-09-11T09:37:40.686231+10:00","Action":"output","Package":"gtv/p1","Test":"TestParallelA","Output":"    p1_test.go:32: Add(1, 0) should be 1\n","OutputType":"error"}
+{"Time":"2026-09-11T09:37:40.686233+10:00","Action":"cont","Package":"gtv/p1","Test":"TestParallelB"}
+{"Time":"2026-09-11T09:37:40.686235+10:00","Action":"output","Package":"gtv/p1","Test":"TestParallelB","Output":"=== CONT  TestParallelB\n","OutputType":"frame"}
+{"Time":"2026-09-11T09:37:40.686237+10:00","Action":"output","Package":"gtv/p1","Test":"TestParallelB","Output":"    p1_test.go:38: B says hello\n"}
+{"Time":"2026-09-11T09:37:40.68624+10:00","Action":"output","Package":"gtv/p1","Test":"TestParallelA","Output":"--- FAIL: TestParallelA (0.00s)\n","OutputType":"frame"}
+{"Time":"2026-09-11T09:37:40.686242+10:00","Action":"fail","Package":"gtv/p1","Test":"TestParallelA","Elapsed":0}
+{"Time":"2026-09-11T09:37:40.686244+10:00","Action":"output","Package":"gtv/p1","Test":"TestParallelB","Output":"--- PASS: TestParallelB (0.00s)\n","OutputType":"frame"}
+{"Time":"2026-09-11T09:37:40.686246+10:00","Action":"pass","Package":"gtv/p1","Test":"TestParallelB","Elapsed":0}
+{"Time":"2026-09-11T09:37:40.686248+10:00","Action":"output","Package":"gtv/p1","Output":"FAIL\n","OutputType":"frame"}
+{"Time":"2026-09-11T09:37:40.686591+10:00","Action":"output","Package":"gtv/p1","Output":"FAIL\tgtv/p1\t0.179s\n","OutputType":"frame"}
+{"Time":"2026-09-11T09:37:40.686614+10:00","Action":"fail","Package":"gtv/p1","Elapsed":0.18}
+{"Time":"2026-09-11T09:37:40.860339+10:00","Action":"run","Package":"gtv/p2","Test":"TestNilMap"}
+{"Time":"2026-09-11T09:37:40.860477+10:00","Action":"output","Package":"gtv/p2","Test":"TestNilMap","Output":"=== RUN   TestNilMap\n","OutputType":"frame"}
+{"Time":"2026-09-11T09:37:40.860513+10:00","Action":"output","Package":"gtv/p2","Test":"TestNilMap","Output":"--- FAIL: TestNilMap (0.00s)\n","OutputType":"frame"}
+{"Time":"2026-09-11T09:37:40.862941+10:00","Action":"output","Package":"gtv/p2","Test":"TestNilMap","Output":"panic: assignment to entry in nil map [recovered, repanicked]\n"}
+{"Time":"2026-09-11T09:37:40.863013+10:00","Action":"output","Package":"gtv/p2","Test":"TestNilMap","Output":"\n"}
+{"Time":"2026-09-11T09:37:40.863023+10:00","Action":"output","Package":"gtv/p2","Test":"TestNilMap","Output":"goroutine 34 [running]:\n"}
+{"Time":"2026-09-11T09:37:40.863039+10:00","Action":"output","Package":"gtv/p2","Test":"TestNilMap","Output":"testing.tRunner.func1.2({0x102bda548, 0x102c11100})\n"}
+{"Time":"2026-09-11T09:37:40.863046+10:00","Action":"output","Package":"gtv/p2","Test":"TestNilMap","Output":"\t/opt/homebrew/Cellar/go/1.27.1/libexec/src/testing/testing.go:2123 +0x1a0\n"}
+{"Time":"2026-09-11T09:37:40.863059+10:00","Action":"output","Package":"gtv/p2","Test":"TestNilMap","Output":"testing.tRunner.func1()\n"}
+{"Time":"2026-09-11T09:37:40.863065+10:00","Action":"output","Package":"gtv/p2","Test":"TestNilMap","Output":"\t/opt/homebrew/Cellar/go/1.27.1/libexec/src/testing/testing.go:2126 +0x2c8\n"}
+{"Time":"2026-09-11T09:37:40.863073+10:00","Action":"output","Package":"gtv/p2","Test":"TestNilMap","Output":"panic({0x102bda548?, 0x102c11100?})\n"}
+{"Time":"2026-09-11T09:37:40.863079+10:00","Action":"output","Package":"gtv/p2","Test":"TestNilMap","Output":"\t/opt/homebrew/Cellar/go/1.27.1/libexec/src/runtime/panic.go:859 +0x120\n"}
+{"Time":"2026-09-11T09:37:40.863084+10:00","Action":"output","Package":"gtv/p2","Test":"TestNilMap","Output":"gtv/p2.TestNilMap(0x32235ff54248?)\n"}
+{"Time":"2026-09-11T09:37:40.86309+10:00","Action":"output","Package":"gtv/p2","Test":"TestNilMap","Output":"\t/home/dev/gtv/p2/p2_test.go:7 +0x34\n"}
+{"Time":"2026-09-11T09:37:40.863123+10:00","Action":"output","Package":"gtv/p2","Test":"TestNilMap","Output":"testing.tRunner(0x32235ff54248, 0x102bf73e8)\n"}
+{"Time":"2026-09-11T09:37:40.863129+10:00","Action":"output","Package":"gtv/p2","Test":"TestNilMap","Output":"\t/opt/homebrew/Cellar/go/1.27.1/libexec/src/testing/testing.go:2193 +0xc4\n"}
+{"Time":"2026-09-11T09:37:40.863134+10:00","Action":"output","Package":"gtv/p2","Test":"TestNilMap","Output":"created by testing.(*T).Run in goroutine 1\n"}
+{"Time":"2026-09-11T09:37:40.863146+10:00","Action":"output","Package":"gtv/p2","Test":"TestNilMap","Output":"\t/opt/homebrew/Cellar/go/1.27.1/libexec/src/testing/testing.go:2258 +0x3b8\n"}
+{"Time":"2026-09-11T09:37:40.86376+10:00","Action":"fail","Package":"gtv/p2","Test":"TestNilMap","Elapsed":0}
+{"Time":"2026-09-11T09:37:40.863783+10:00","Action":"output","Package":"gtv/p2","Output":"FAIL\tgtv/p2\t0.353s\n","OutputType":"frame"}
+{"Time":"2026-09-11T09:37:40.863801+10:00","Action":"fail","Package":"gtv/p2","Elapsed":0.357}

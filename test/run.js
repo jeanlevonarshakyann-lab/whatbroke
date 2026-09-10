@@ -1491,6 +1491,13 @@ const CASES = [
       assert.deepEqual(r.failures.map((f) => [f.title, f.line]),
         [["TestAdd", 7], ["TestTable/zero", 22], ["TestParallelA", 30], ["TestNilMap", 7]]);
     } },
+  // The same Go project run a third time, under -json: the test2json stream gotestsum and
+  // most Go CI keep, which came back as one guess made of raw JSON.
+  { file: "gotest_json_fail.txt", tool: "go test", n: 4, check: (r) => {
+      assert.deepEqual(r.failures.map((f) => [f.title, f.line]),
+        [["TestAdd", 7], ["TestTable/zero", 22], ["TestParallelA", 30], ["TestNilMap", 7]]);
+      assert.doesNotMatch(JSON.stringify(r.failures), /"Action"|B says hello/);
+    } },
   { file: "rspec_fail.txt", tool: "rspec", n: 2, check: (r) => {
       assert.equal(r.summary, "3 examples, 2 failures");
       assert.equal(r.failures[0].title, "shop totals an invoice");
@@ -3256,6 +3263,18 @@ try {
   console.log("  ok   go test -v says what plain go test says");
   pass++;
 } catch (e) { console.log(`  FAIL go -v vs plain\n       ${e.message}`); fail++; }
+
+// -json is the third encoding of the same run, and has to say the same thing as the
+// plain one: file, line, test and message for every failure. The stream is rebuilt into
+// the verbose log inside the parser, so this is also the check that the rebuild is exact.
+try {
+  const plain = analyse(fx("gotest_verbose_plain_fail.txt"));
+  const json = analyse(fx("gotest_json_fail.txt"));
+  const facts = (r) => r.failures.map((f) => [f.file, f.line, f.title, f.message]);
+  assert.deepEqual(facts(json), facts(plain), "-json reads a different set of failures from the same run");
+  console.log("  ok   go test -json says what plain go test says");
+  pass++;
+} catch (e) { console.log(`  FAIL go -json vs plain\n       ${e.message}`); fail++; }
 
 const cliResults = await (await import("./cli.js")).runCliTests();
 pass += cliResults.pass;

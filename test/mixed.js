@@ -501,7 +501,9 @@ test("a pair of logs never yields more failures than the two apart", () => {
 // never reports a failure it cannot point at. A pair that over-claims is a parser
 // reading another tool's line, and the fix is that parser - not this number.
 // Logs whose owner is not go, but whose content is partly go's own output.
-const GO_UNDER_ANOTHER_OWNER = new Set(["golangci_typecheck_fail.txt"]);
+// gotest_json_fail is the same: go test -json is rebuilt into go's verbose log and read
+// by go's own parser, so pairing it with a go log is two go invocations in one stream.
+const GO_UNDER_ANOTHER_OWNER = new Set(["golangci_typecheck_fail.txt", "gotest_json_fail.txt"]);
 
 // Each group is ONE run captured more than once - as text and as JSON - so the fixtures
 // can be compared against each other. Concatenating two from a group is not two runs, it
@@ -552,8 +554,10 @@ test("every ordered pair recovers exactly the failures in its parts", () => {
       // present both ways - but two of them move from "go build" to "go vet", because
       // the joined stream contains a `vet.exe:` line and nothing says which invocation
       // an unprefixed line came from. That is the ambiguity above, not a loss.
-      if ((GO_UNDER_ANOTHER_OWNER.has(a) && parserOf(solo.get(b))?.name === "go") ||
-          (GO_UNDER_ANOTHER_OWNER.has(b) && parserOf(solo.get(a))?.name === "go")) continue;
+      // Two such logs paired with each other are the same thing again: go output from two
+      // invocations in one stream, only with neither side owned by go's own parser.
+      const goish = (n) => GO_UNDER_ANOTHER_OWNER.has(n) || parserOf(solo.get(n))?.name === "go";
+      if ((GO_UNDER_ANOTHER_OWNER.has(a) && goish(b)) || (GO_UNDER_ANOTHER_OWNER.has(b) && goish(a))) continue;
       if (sameRun(a, b)) continue;
       pairs++;
       const apart = identities([...allFailures(solo.get(a)), ...allFailures(solo.get(b))]);

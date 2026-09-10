@@ -218,6 +218,7 @@ them.
 | **eslint** | errors only; warnings counted and set aside |
 | **eslint `-f json`** | the same failures read from eslint's own report — rule, line and column exactly as the table prints them. The report is one line, so it is found wherever it sits in a log, under a package runner's banner included |
 | **go test** | test name, `file:line`, the message; panics resolved past the runtime frames, and `-race` reports at the racing line |
+| **go test -json** | the same failures as `go test -v`, from the test2json stream gotestsum and most Go CI keep. Each output event is a line of the verbose log, so the log is rebuilt line for line and read by go's own parser — subtests, parallel tests and panics included |
 | **go build** | compile errors with source context |
 | **go vet** | the location, which sits inside the message when vet reports a package that will not compile |
 | **cargo test** | test name, `file:line`, the assertion and its left/right values |
