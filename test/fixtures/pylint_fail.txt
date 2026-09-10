@@ -1,0 +1,9 @@
+************* Module lint_me
+lint_me.py:1:0: C0114: Missing module docstring (missing-module-docstring)
+lint_me.py:2:0: C0116: Missing function or method docstring (missing-function-docstring)
+lint_me.py:3:4: W0612: Unused variable 'unused' (unused-variable)
+lint_me.py:1:0: W0611: Unused import os (unused-import)
+
+-----------------------------------
+Your code has been rated at 2.00/10
+

@@ -232,6 +232,9 @@ them.
 | **oxlint** | the rule name as the code and the finding without the `help:` suggestion appended to it |
 | **stylelint** | the rule name as the code, `file:line:col`, and the problem — warnings counted and set aside, like eslint |
 | **markdownlint** | the rule code, `file:line:col`, and what the rule wanted — `[Expected: 1; Actual: 2]` is the whole answer for a spacing rule |
+| **flake8** | the check code as the code and `file:line:col` — the code is what goes in a `noqa` comment |
+| **pylint** | the symbolic name as the title and the numeric code beside it; when a run has real errors the convention and refactor advice steps aside and is counted |
+| **black** | which files failed the format check, and for one it cannot parse, the reason and the position |
 | **ruff** | rule code, `file:line`, the message and ruff's own fix hint |
 | **pyright** | the rule name as the code, the column, and the indented line that says *why* — not the column pasted into the message |
 | **mypy** | error code, `file:line`, the type-checking message; notes and warnings set aside |

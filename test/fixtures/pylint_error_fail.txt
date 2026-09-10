@@ -1,0 +1,9 @@
+************* Module err
+err.py:1:0: C0114: Missing module docstring (missing-module-docstring)
+err.py:2:0: C0116: Missing function or method docstring (missing-function-docstring)
+err.py:3:11: E0602: Undefined variable 'undefined_name' (undefined-variable)
+err.py:1:0: W0611: Unused import os (unused-import)
+
+-----------------------------------
+Your code has been rated at 0.00/10
+
