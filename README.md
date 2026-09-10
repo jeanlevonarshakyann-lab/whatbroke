@@ -431,9 +431,15 @@ the start of a line, so before whatbroke understood these, a wrapped pytest run 
 whatbroke finds the prefix and removes it, then says which one it removed, because
 knowing the failure came from `api:test:` is worth keeping.
 
-Nothing is stripped on a hunch. A candidate prefix is removed only if removing it makes
-a real parser find something it could not find before — so npm's `npm error ` and mypy's
-repeated source directory, which look exactly like wrappers, are left alone. The
+Nothing is stripped on a hunch. A candidate prefix is removed only if removing it
+demonstrably improves the parse: a real parser finds something it could not find before,
+a different tool turns out to own the log, or the prefix was being swallowed into the
+messages of the parser that did read it. That last one is how perl is handled — it writes
+its location as prose at the end of the message rather than as an anchor at the start, so
+it keeps parsing straight through a wrapper, and the wrapper then splits one diagnosis in
+two. npm's `npm error ` and mypy's repeated source directory, which look exactly like
+wrappers, are left alone: mypy's ends up in the `file` of its failures, which is a parser
+reading a path correctly, and a swallowed wrapper leads the message instead. The
 invariant is not "strip prefixes", it is "never come out worse than going in", and it is
 tested by wrapping every captured fixture in every runner's prefix and requiring the same
 tool and the same failures out the other side.
@@ -449,9 +455,14 @@ a layer at a time, and each layer is named on the result.
 
 Tools that redraw progress with bare carriage returns pack many logical lines into one
 physical line. A CI collector stamps that blob once, so whatbroke removes a vetted CI
-stamp before expanding the redraws into lines. Automatically inferred prefixes still
-need multiple physical lines; a one-line literal prefix cannot safely be distinguished
-from the tool's own output.
+stamp before expanding the redraws into lines.
+
+A prefix with no vetted shape — a pod name, a compose service — has to be inferred by
+comparing lines against each other, and a redraw blob is a single physical line with
+nothing to compare it with. That one case is not recoverable. A short log is: the length
+floor that used to guard it is gone, because refusing a strip that does not improve the
+parse is the guard that actually does the work, and a one-line failure inside a runner's
+prefix is exactly the log whose whole diagnosis is that line.
 
 ## When the log is too big
 

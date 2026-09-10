@@ -4,6 +4,26 @@
 
 ## 0.4.0 — 2026-09-10
 
+- A prefix with no vetted shape — `kubectl logs -f` naming the pod, `docker compose`
+  naming the service — is now recovered on a log of any length. The length floor that
+  guarded prefix inference cost ten fixtures their parser under one of those, and the
+  same ten under a CI stamp layered over a monorepo runner; refusing a strip that does
+  not demonstrably improve the parse is the guard that actually does the work, and a
+  one-line failure inside a runner's prefix is exactly the log whose whole diagnosis is
+  that line. A prefix inside a carriage-return redraw blob remains unrecoverable, because
+  a single physical line offers nothing to compare against.
+- A wrapper that a parser swallowed is now removed. Perl writes its location as prose at
+  the end of the message rather than as an anchor at the start, so it parsed straight
+  through a runner prefix — and the prefix then defeated the de-duplication that joins
+  its two lines, reporting two failures where a clean log reports one.
+- Source ranges are located on demand rather than for every parser that claims the text.
+  A single-tool log computed all of them and read none: 90 ESLint problems inside a
+  100,000-line build log cost 4.5s, now 0.48s. Every range across 124 mixed logs is
+  byte-identical to the eager version.
+- `sameSourceDiagnostic` compares message text before asking for a source range, since
+  both must hold and asking is what forces the location work. ESLint, tsc and Jest in a
+  100,000-line log: 2.0s to 0.45s, with identical output across all 15,252 ordered pairs.
+
 - Mixed-log ownership is now exact across all 13,414 ordered cross-parser fixture
   pairs. Failures carry private source ranges so two parsers cannot report the same raw
   diagnostic region, without changing terminal output or the version-1 JSON schema.
