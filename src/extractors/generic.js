@@ -16,7 +16,13 @@ const SIGNAL = [
   // treat as an error, so it must also say that something did not work.
   /^[a-z][\w.+-]*:\s.*\b(?:failed|failure|cannot|can't|not found|refused|denied|no such|unable to|invalid|missing|timed out|unreachable|does not exist|permission)\b/i,
 ];
-const NOISE = [/^[^\S\n]*at /, /^npm (notice|warn)/, /^[^\S\n]*$/, /^warning:/i];
+// A line whose first mark is "|" is the renderer drawing the source, not a diagnostic:
+// rustc, swift and ruff all echo the offending line and hang an annotation off it, and
+// the annotation repeats the message word for word. Counting both said swiftc reported
+// four errors for two, and the repeat check cannot catch it - the two copies differ by
+// their prefixes, not by a prefix one of them has.
+const ANNOTATION = /^[^\S\n]*\d*[^\S\n]*\|/;
+const NOISE = [/^[^\S\n]*at /, /^npm (notice|warn)/, /^[^\S\n]*$/, /^warning:/i, ANNOTATION];
 
 // Almost every runtime prints "something went wrong" and then says where, on the next
 // line or inside the message itself. Reading only the first line finds the right words

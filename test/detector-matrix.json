@@ -1039,6 +1039,30 @@
     ],
     "shadow": {}
   },
+  "swiftc_driver_fail.txt": {
+    "winner": "swift",
+    "parser": "swift",
+    "failures": 1,
+    "claimants": [
+      "swift",
+      "generic"
+    ],
+    "shadow": {
+      "generic": 1
+    }
+  },
+  "swiftc_fail.txt": {
+    "winner": "swift",
+    "parser": "swift",
+    "failures": 2,
+    "claimants": [
+      "swift",
+      "generic"
+    ],
+    "shadow": {
+      "generic": 3
+    }
+  },
   "terraform_validate_fail.txt": {
     "winner": "terraform",
     "parser": "terraform",

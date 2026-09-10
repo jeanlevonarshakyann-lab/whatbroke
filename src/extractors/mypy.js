@@ -1,5 +1,11 @@
 const MAX_NOTES = 2;
 const DIAGNOSTIC_RE = /^(.+?):(\d+)(?::(\d+))?:[^\S\n]+(error|warning|note):[^\S\n]+(.+?)(?:[^\S\n]+\[([^\]]+)\])?$/;
+// mypy only ever reports Python source. "file:line: error: message" is not its shape
+// alone - javac writes it, and swiftc writes "<unknown>:0: error: ..." when the driver
+// has no source to point at, which a mypy run pasted above it claimed as a fourth type
+// error. The detect gate already required an extension on the no-summary path; the
+// extract had no such gate, so a run carrying "Found N errors" claimed anything.
+const PYTHON_SRC = /\.pyi?$/;
 
 export default {
   name: "mypy",
@@ -21,7 +27,7 @@ export default {
     let warnings = 0;
     for (let i = 0; i < lines.length; i++) {
       const match = lines[i].match(DIAGNOSTIC_RE);
-      if (!match || match[4] === "note") continue;
+      if (!match || match[4] === "note" || !PYTHON_SRC.test(match[1])) continue;
       if (match[4] === "warning") { warnings++; continue; }
       // A note at the SAME file and line continues this error - for a call-overload
       // failure the notes carry the valid signatures, which is the whole answer.
