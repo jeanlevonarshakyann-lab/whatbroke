@@ -1,12 +1,12 @@
-PHP Warning:  require(nothing-here.php): Failed to open stream: No such file or directory in /private/tmp/claude-501/-Users-jean-levonarshakyan-Documents-claude/6785c633-7fde-4a4d-a2b9-a97bfe2b2de6/scratchpad/swiss/p3.php on line 2
+PHP Warning:  require(nothing-here.php): Failed to open stream: No such file or directory in /home/dev/app/p3.php on line 2
 
-Warning: require(nothing-here.php): Failed to open stream: No such file or directory in /private/tmp/claude-501/-Users-jean-levonarshakyan-Documents-claude/6785c633-7fde-4a4d-a2b9-a97bfe2b2de6/scratchpad/swiss/p3.php on line 2
-PHP Fatal error:  Uncaught Error: Failed opening required 'nothing-here.php' (include_path='.:/opt/homebrew/Cellar/php/8.5.10/share/php/pear') in /private/tmp/claude-501/-Users-jean-levonarshakyan-Documents-claude/6785c633-7fde-4a4d-a2b9-a97bfe2b2de6/scratchpad/swiss/p3.php:2
+Warning: require(nothing-here.php): Failed to open stream: No such file or directory in /home/dev/app/p3.php on line 2
+PHP Fatal error:  Uncaught Error: Failed opening required 'nothing-here.php' (include_path='.:/opt/homebrew/Cellar/php/8.5.10/share/php/pear') in /home/dev/app/p3.php:2
 Stack trace:
 #0 {main}
-  thrown in /private/tmp/claude-501/-Users-jean-levonarshakyan-Documents-claude/6785c633-7fde-4a4d-a2b9-a97bfe2b2de6/scratchpad/swiss/p3.php on line 2
+  thrown in /home/dev/app/p3.php on line 2
 
-Fatal error: Uncaught Error: Failed opening required 'nothing-here.php' (include_path='.:/opt/homebrew/Cellar/php/8.5.10/share/php/pear') in /private/tmp/claude-501/-Users-jean-levonarshakyan-Documents-claude/6785c633-7fde-4a4d-a2b9-a97bfe2b2de6/scratchpad/swiss/p3.php:2
+Fatal error: Uncaught Error: Failed opening required 'nothing-here.php' (include_path='.:/opt/homebrew/Cellar/php/8.5.10/share/php/pear') in /home/dev/app/p3.php:2
 Stack trace:
 #0 {main}
-  thrown in /private/tmp/claude-501/-Users-jean-levonarshakyan-Documents-claude/6785c633-7fde-4a4d-a2b9-a97bfe2b2de6/scratchpad/swiss/p3.php on line 2
+  thrown in /home/dev/app/p3.php on line 2
