@@ -1,0 +1,6 @@
+# probe/pkg
+pkg\helper.go:4:9: undefined: undefinedThing
+# probe
+.\main.go:6:6: x declared and not used
+.\main.go:6:14: cannot use "not an int" (untyped string constant) as int value in variable declaration
+.\main.go:7:14: undefined: y

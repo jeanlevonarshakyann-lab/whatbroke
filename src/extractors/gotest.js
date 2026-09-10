@@ -1,12 +1,19 @@
 const FAIL_RE = /^[^\S\n]*--- (FAIL|SKIP): (\S+)/;
 const PANIC_RE = /^panic: (.+?)(?:[^\S\n]\[recovered.*\])?$/m;
-const LOC_RE = /^[^\S\n]+([\w./-]+\.go):(\d+):[^\S\n]*(.*)$/;
+const LOC_RE = /^[^\S\n]+([\w./\\-]+\.go):(\d+):[^\S\n]*(.*)$/;
 // `go vet` prefixes the line when the package will not compile at all - "vet: ./main.go:
 // 6:17: cannot use ..." - and that prefix defeated the anchor, so a vet run that hit a
 // type error came back as a guess with no location, with the file and line sitting in
 // plain sight inside the message. Vet's own findings carry no prefix and already matched.
-const BUILD_RE = /^(vet: )?(?:\.\/)?([\w./-]+\.go):(\d+):(\d+): (.+)$/;
-const BUILD_ANY = /^(?:vet: )?(?:\.\/)?[\w./-]+\.go:\d+:\d+: /m;   // same, but scans a whole blob
+//
+// On Windows the prefix is `vet.exe: ` and the path is `pkg\helper.go` or `.\main.go`,
+// separators and all. A class written [\w./-] matches none of that, so `go build` on a
+// Windows runner fell through to the fallback and `go vet` lost both its locations -
+// while `go test` was unaffected, because the testing package prints a bare basename and
+// the runtime writes its frames with forward slashes even there. Captured on
+// windows-latest rather than assumed; go_windows_build_fail is that output.
+const BUILD_RE = /^(vet(?:\.exe)?: )?(?:\.[\\/])?([\w./\\-]+\.go):(\d+):(\d+): (.+)$/;
+const BUILD_ANY = /^(?:vet(?:\.exe)?: )?(?:\.[\\/])?[\w./\\-]+\.go:\d+:\d+: /m;   // same, but scans a whole blob
 // Go's own runtime/testing frames are never your bug
 const STDLIB = /\/(libexec\/)?src\/(runtime|testing|internal)\//;
 
