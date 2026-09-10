@@ -782,6 +782,18 @@
     ],
     "shadow": {}
   },
+  "make_command_fail.txt": {
+    "winner": "make",
+    "parser": "make",
+    "failures": 1,
+    "claimants": [
+      "make",
+      "generic"
+    ],
+    "shadow": {
+      "generic": 2
+    }
+  },
   "make_compile_fail.txt": {
     "winner": "clang",
     "parser": "clang",
@@ -804,6 +816,78 @@
     ],
     "shadow": {
       "generic": 3
+    }
+  },
+  "make_function_fail.txt": {
+    "winner": "make",
+    "parser": "make",
+    "failures": 1,
+    "claimants": [
+      "make",
+      "generic"
+    ],
+    "shadow": {
+      "generic": 1
+    }
+  },
+  "make_include_fail.txt": {
+    "winner": "make",
+    "parser": "make",
+    "failures": 1,
+    "claimants": [
+      "make",
+      "generic"
+    ],
+    "shadow": {
+      "generic": 1
+    }
+  },
+  "make_nested_fail.txt": {
+    "winner": "clang",
+    "parser": "clang",
+    "failures": 1,
+    "claimants": [
+      "clang",
+      "generic"
+    ],
+    "shadow": {
+      "generic": 3
+    }
+  },
+  "make_norule_bsdquote_fail.txt": {
+    "winner": "make",
+    "parser": "make",
+    "failures": 1,
+    "claimants": [
+      "make",
+      "generic"
+    ],
+    "shadow": {
+      "generic": 1
+    }
+  },
+  "make_norule_fail.txt": {
+    "winner": "make",
+    "parser": "make",
+    "failures": 1,
+    "claimants": [
+      "make",
+      "generic"
+    ],
+    "shadow": {
+      "generic": 1
+    }
+  },
+  "make_separator_fail.txt": {
+    "winner": "make",
+    "parser": "make",
+    "failures": 1,
+    "claimants": [
+      "make",
+      "generic"
+    ],
+    "shadow": {
+      "generic": 1
     }
   },
   "markdownlint_fail.txt": {

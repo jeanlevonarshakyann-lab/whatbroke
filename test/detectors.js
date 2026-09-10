@@ -185,6 +185,24 @@ test("every parser appears in the README's table", () => {
   assert.deepEqual(undocumented, [], "a parser reads a tool the README does not mention");
 });
 
+// Being mentioned is not the same as being described. The make row read "no parser of its
+// own" for a while after make got one - the check above passed the whole time, because it
+// looks for the name and the name was right there in the sentence denying it. A row that
+// disclaims a parser the tool actually has is worse than no row: it is the README stating
+// the opposite of the truth.
+test("no README row denies a parser that exists", () => {
+  const readme = readFileSync(join(fixtures, "..", "..", "README.md"), "utf8");
+  const denied = [];
+  for (const row of readme.split("\n").filter((l) => l.startsWith("| **"))) {
+    if (!/no parser of its own/i.test(row)) continue;
+    const subject = row.match(/^\|[^\S\n]*\*\*(.+?)\*\*/)?.[1]?.toLowerCase();
+    if (!subject) continue;
+    if (EXTRACTORS.some((ex) => ex.name.toLowerCase() === subject ||
+        (ex.commands ?? []).some((c) => c.toLowerCase() === subject))) denied.push(subject);
+  }
+  assert.deepEqual(denied, [], "the README says a tool has no parser, and it has one");
+});
+
 test("every failure carries a category", () => {
   for (const name of readdirSync(fixtures)) {
     const r = safely(() => analyse(readFileSync(join(fixtures, name), "utf8")), null);

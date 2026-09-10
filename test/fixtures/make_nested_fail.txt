@@ -1,0 +1,11 @@
+make -C sub
+make[1]: Entering directory '/t/e/sub'
+cc -c bad.c -o bad.o
+bad.c: In function 'f':
+bad.c:1:17: error: 'undeclared_thing' undeclared (first use in this function)
+    1 | int f(){ return undeclared_thing; }
+      |                 ^~~~~~~~~~~~~~~~
+bad.c:1:17: note: each undeclared identifier is reported only once for each function it appears in
+make[1]: *** [Makefile:2: all] Error 1
+make[1]: Leaving directory '/t/e/sub'
+make: *** [Makefile:2: all] Error 2

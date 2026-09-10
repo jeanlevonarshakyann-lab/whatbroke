@@ -26,7 +26,8 @@ const CASES = [
     } },
   // Captured with CMake 4.4 and ninja 1.13. ninja gets no parser on purpose: what fails
   // under it is a compiler, which already has one, and its own "FAILED: [code=1]" line
-  // restates the failure without adding to it - exactly as make's does.
+  // restates the failure without adding to it - exactly as make's exit line does. make
+  // has a parser only for the failures make itself raises; see make_separator_fail.
   { file: "cmake_configure_fail.txt", tool: "cmake", n: 2, check: (r) => {
       assert.equal(r.failures[0].file, "CMakeLists.txt");
       assert.equal(r.failures[0].line, 3);
@@ -867,9 +868,9 @@ const CASES = [
       // mypy run pasted above this claimed it as a type error. mypy reports only Python.
       assert.doesNotMatch(r.failures[0].message, /^error: /, "the doubled word survived");
     } },
-  // Captured with GNU make 3.81 driving Apple clang. make itself needs no parser: the
-  // compiler underneath already has one, and `make: *** [bad.o] Error 1` restates the
-  // failure without adding to it.
+  // Captured with GNU make 3.81 driving Apple clang. What fails under make is a
+  // compiler, which already has a parser, and `make: *** [bad.o] Error 1` restates that
+  // without adding to it - so make's parser declines these logs entirely.
   { file: "make_compile_fail.txt", tool: "clang", n: 3, check: (r) => {
       assert.equal(r.failures[0].file, "bad.c");
       assert.equal(r.failures[0].line, 3);
@@ -883,6 +884,49 @@ const CASES = [
       assert.equal(r.failures[0].file, undefined);
       assert.equal(r.failures[0].severity, "error");
       assert.doesNotMatch(JSON.stringify(r.failures), /no input files|make: \*\*\*/);
+    } },
+  // Captured with GNU make 4.4.1 on Debian, and 3.81 on macOS for the two shapes that
+  // differ. make ends a line "Stop." when make itself is refusing to continue, and
+  // "Error N" when it is only relaying somebody else's exit status - which is the whole
+  // basis for what this parser reads. 4.x quotes 'like this' where 3.81 wrote `like
+  // this', so both fixtures are kept rather than one being assumed to stand for both.
+  { file: "make_separator_fail.txt", tool: "make", n: 1, check: (r) => {
+      assert.equal(r.failures[0].file, "Makefile");
+      assert.equal(r.failures[0].line, 2);
+      assert.equal(r.failures[0].message, "missing separator.");
+      assert.equal(r.failures[0].label, "makefile error", "make prints no codes");
+    } },
+  { file: "make_function_fail.txt", tool: "make", n: 1, check: (r) => {
+      assert.equal(r.failures[0].line, 1);
+      assert.match(r.failures[0].message, /unterminated call to function/);
+    } },
+  { file: "make_norule_fail.txt", tool: "make", n: 1, check: (r) => {
+      assert.equal(r.failures[0].subject, "missing.o", "the target it could not build");
+      assert.match(r.failures[0].message, /needed by 'all'/);
+    } },
+  { file: "make_norule_bsdquote_fail.txt", tool: "make", n: 1, check: (r) => {
+      // GNU make 3.81 writes `missing.o' - a backquote opening a straight quote.
+      assert.equal(r.failures[0].subject, "missing.o");
+    } },
+  { file: "make_command_fail.txt", tool: "make", n: 1, check: (r) => {
+      assert.equal(r.failures[0].subject, "this-command-does-not-exist");
+      assert.doesNotMatch(JSON.stringify(r.failures), /Error 127/,
+        "the exit status make relayed is not a second failure");
+    } },
+  { file: "make_include_fail.txt", tool: "make", n: 1, check: (r) => {
+      // make says it twice: once against the line that included the file, then again as
+      // a target it cannot build. The first one knows where the problem is written.
+      assert.equal(r.failures[0].file, "Makefile");
+      assert.equal(r.failures[0].line, 1);
+      assert.equal(r.failures[0].subject, "nope.mk");
+    } },
+  { file: "make_nested_fail.txt", tool: "clang", n: 1, check: (r) => {
+      // gcc's diagnostics share clang's shape, and clang's parser reads them.
+      assert.equal(r.failures[0].file, "bad.c");
+      // Two levels of make each report the failure on the way up. Reading either as a
+      // failure would turn one compiler error into three.
+      assert.doesNotMatch(JSON.stringify(r.failures), /make(\[\d+\])?: \*\*\*|Entering directory/,
+        "make relaying an exit status upward is not a failure");
     } },
   // Captured with pnpm 9 and yarn 1.22. pnpm indents its diagnostics with U+2009 THIN
   // SPACE, not a space - a pattern written [ \t] matches none of it, which is how the
@@ -2718,6 +2762,28 @@ try {
   console.log("  ok   version flag reports the package version");
   pass++;
 } catch (e) { console.log(`  FAIL version flag\n       ${e.message}`); fail++; }
+
+// gcc writes a missing header as `inc.c:1:10: fatal error: nope.h: No such file or
+// directory`, and with -fno-show-column the column goes away - leaving exactly the shape
+// make uses for an include it cannot find. make claimed it, and because make's parse
+// succeeded where clang's did not, make WON: a C compile error reported as a make failure
+// whose subject was "fatal error: nope.h". What tells them apart is that make puts a bare
+// filename where gcc puts a severity word, so the middle has to be matched as a name.
+try {
+  const { EXTRACTORS } = await import("../src/index.js");
+  const gcc = [
+    'inc.c:1: fatal error: nope.h: No such file or directory',
+    '    1 | #include "nope.h"',
+    '      |          ^~~~~~~~',
+    'compilation terminated.',
+  ].join("\n");
+  const make = EXTRACTORS.find((ex) => ex.name === "make");
+  assert.equal(make.detect(gcc), false, "make claimed a compiler's diagnostic");
+  assert.equal(make.extract(gcc), null);
+  assert.notEqual(analyse(gcc).tool, "make");
+  console.log("  ok   a compiler's missing header is not read as make's missing include");
+  pass++;
+} catch (e) { console.log(`  FAIL compiler header vs make include\n       ${e.message}`); fail++; }
 
 const cliResults = await (await import("./cli.js")).runCliTests();
 pass += cliResults.pass;
