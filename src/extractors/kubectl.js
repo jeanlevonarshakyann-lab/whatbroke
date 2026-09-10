@@ -10,8 +10,14 @@
 // it been recognised naively it would have produced five.
 const KLOG_RE = /^[EWF]\d{4}[^\S\n]+[\d:.]+[^\S\n]+\d+[^\S\n]+(\S+?):(\d+)\][^\S\n]*(.*)$/;
 const ERROR_RE = /^(?:error|Error):[^\S\n]+(.+)$/;
+// `error: <anything>` is not kubectl's alone - deno writes "error: Test failed" - so in
+// a log holding more than one tool the line has to say something kubectl would say.
+const KUBE_ISH = /\b(?:yaml|manifest|kubectl|kubeconfig|namespace|cluster|server|resource|apiVersion|openapi|validating|parsing|context|deployment|pod|service)\b/i;
 // The last line of a failed kubectl run is usually the plain-English version.
-const PLAIN_RE = /^(The connection to the server .+|Unable to connect to the server: .+|error: .+)$/;
+// Deliberately not "error: ..." - that is ERROR_RE's job, and it is gated on the line
+// saying something kubectl would say. Repeating it here ungated let deno's
+// "error: Test failed" through the side door.
+const PLAIN_RE = /^(The connection to the server .+|Unable to connect to the server: .+)$/;
 // kubectl appends how to work around the failure; that is not what went wrong.
 const ADVICE_RE = /;[^\S\n]*if you choose to ignore these errors.*$|[^\S\n]*-[^\S\n]did you specify the right host or port\?$/;
 // "error parsing deploy.yaml: ... yaml: line 9: ..." carries a real location inside it.
@@ -47,7 +53,7 @@ export default {
 
     for (const line of s.split("\n")) {
       const err = line.match(ERROR_RE);
-      if (err) {
+      if (err && KUBE_ISH.test(err[1])) {
         const at = line.match(IN_MESSAGE_LOC);
         push({
           file: at?.[1], line: at ? +at[2] : undefined,

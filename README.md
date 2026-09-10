@@ -282,8 +282,14 @@ One honest limit remains: parsers are asked about the whole log rather than the 
 they own, so in a concatenated log a parser can still match a fragment of another tool's
 output. Every combination that actually co-occurs in a CI job is exact; the residue is
 arbitrary pairs — a Rust build log next to a PHPUnit run — where a named second tool may
-show one failure too many. The winning tool's diagnosis is never affected. Closing it
-properly means each parser reporting which lines its findings came from.
+show one failure too many. The winning tool's diagnosis is never affected.
+
+Closing it properly means each parser reporting which lines its findings came from.
+Deriving that from the text instead was tried and measured: 99% of failures can be
+located that way, and it removes about a third of the residue, which is not enough to
+call it solved. What it did find is the residue's real cause — parsers with a loose
+`error:` pattern reaching into another tool's output — and those are worth fixing one at
+a time as they turn up.
 
 CI stamps every line — GitHub Actions prefixes an ISO timestamp, and `gh run view --log`
 puts the job and step in front of that. Every parser here anchors on the start of a line,

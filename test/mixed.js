@@ -209,6 +209,29 @@ test("logs that really do appear together are read exactly", () => {
   }
 });
 
+test("a loose error pattern does not claim another tool's line", () => {
+  // `error:` and `fatal:` at line start belong to half the tools in existence. git used
+  // to report cargo's "error: could not compile ... due to 3 previous errors" - a tally
+  // that cargo itself suppresses - and kubectl used to report deno's "error: Test
+  // failed". Both are the collision the ordering protects the WINNER from, arriving
+  // through the mixed-log path instead.
+  for (const [a, b] of [["cargobuild_fail.txt", "git_conflict_fail.txt"],
+    ["deno_fail.txt", "kubectl_noserver_fail.txt"]]) {
+    const r = analyse(joined([a, b]));
+    assert.equal(recovered(r), alone([a, b]), `${a} + ${b}`);
+  }
+});
+
+test("git leads with what it actually found", () => {
+  // When git has said something structural - a conflict, a rejected push - that is the
+  // failure, and a loose `error:` line elsewhere in the log is not a second one.
+  const r = analyse(joined(["cargobuild_fail.txt", "git_conflict_fail.txt"]));
+  const git = r.others.find((o) => o.tool === "git");
+  assert.equal(git.failures.length, 2, "the two conflicted files, and nothing else");
+  assert.ok(git.failures.every((f) => f.label === "merge conflict"));
+  assert.doesNotMatch(JSON.stringify(git.failures), /could not compile/);
+});
+
 // ------------------------------------------------------------------ output
 
 test("a mixed log shows every tool in the terminal", () => {

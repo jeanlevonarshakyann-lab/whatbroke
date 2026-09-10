@@ -40,6 +40,13 @@ export default {
     const failures = [];
     let conflicts = 0;
     let rejected = false;
+    // `error:` and `fatal:` at line start belong to half the tools in existence, and in
+    // a log holding more than one they are as likely to be somebody else's - cargo's
+    // "error: could not compile ... due to 3 previous errors" is a tally cargo itself
+    // suppresses. When git has said something structural - a conflict, a rejected push,
+    // files that would be overwritten - that IS the failure, and a loose line elsewhere
+    // in the log is not a second one.
+    const bare = [];
 
     for (let i = 0; i < lines.length; i++) {
       const l = lines[i];
@@ -71,11 +78,10 @@ export default {
       }
 
       const d = l.match(DIAGNOSTIC);
-      if (d && !(rejected && RESTATES.test(d[2]))) {
-        failures.push({ title: d[1], label: d[1], severity: "error", message: d[2] });
-      }
+      if (d && !(rejected && RESTATES.test(d[2]))) bare.push({ title: d[1], label: d[1], severity: "error", message: d[2] });
     }
 
+    if (!failures.length) failures.push(...bare);
     if (!failures.length) return null;
     // A summary that just repeats the only failure's message says it twice. Count the
     // conflicted files, which is the one case where a tally adds something.
