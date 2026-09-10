@@ -244,7 +244,7 @@ them.
 | **pnpm** | its error code and message — indented with a thin space, which is why it needed one |
 | **yarn** | the failure without the documentation link that follows it |
 | **pip** | the exception a build backend actually raised, not `subprocess-exited-with-error`; resolution failures once rather than twice, without the package index pasted in |
-| **a log stamped by CI** | GitHub Actions and `gh run view --log`, Jenkins' Timestamper in either form, `docker logs --timestamps`, journald — the stamp comes off before anything reads the log |
+| **a log stamped by CI** | GitHub Actions and `gh run view --log`, Jenkins' Timestamper, Buildkite `--timestamp-lines`, `docker logs --timestamps`, journald — the stamp comes off before anything reads the log |
 | *anything else* | best-effort: lines that look like errors, including plain unix ones like `curl: (7) Failed to connect`, marked as a guess |
 
 Unrecognised output is never silently swallowed — you get a labelled guess, or the raw text back.

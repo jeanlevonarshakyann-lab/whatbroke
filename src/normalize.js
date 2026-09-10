@@ -56,7 +56,7 @@ function literalPrefix(text) {
 // Prefixes whose tail changes on every line, so no literal string is shared. Kept to a
 // minimum: each one is a standing risk of matching something that is not a wrapper, and
 // every shape added here has to be proven against the whole fixture corpus.
-// The CI timestamp is not here - stripCiPrefix in util.js already handles it.
+// Bare ISO CI timestamps are not here - stripCiPrefix in util.js already handles them.
 const SHAPES = [
   // Docker BuildKit: "#12 1.234 " - step number constant, elapsed seconds counting up.
   //
@@ -79,6 +79,11 @@ const SHAPES = [
   // through one of these.
   { name: "jenkins", re: /^\[\d{4}-\d{2}-\d{2}T\d{2}:\d{2}:\d{2}(?:[.,]\d+)?Z?\][^\S\n]/ },
   { name: "jenkins", re: /^\[\d{2}:\d{2}:\d{2}\][^\S\n]/ },
+
+  // buildkite-agent --timestamp-lines brackets a local timestamp, with a space where
+  // ISO 8601 has `T`: "[2026-09-10 07:14:55] ". It therefore misses both the bare-ISO
+  // CI stamp and Jenkins shapes. This exact shape matched zero lines in the corpus.
+  { name: "buildkite", re: /^\[\d{4}-\d{2}-\d{2}[^\S\n]\d{2}:\d{2}:\d{2}\][^\S\n]/ },
 
   // A log collected by journald or syslog rather than read off the terminal:
   // "Sep 10 07:14:55 runner app[123]: ". The host and unit vary per deployment but the
