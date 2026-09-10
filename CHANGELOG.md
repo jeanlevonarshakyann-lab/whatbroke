@@ -4,6 +4,10 @@
 
 ## 0.4.0 — 2026-09-10
 
+- A `cargo run` panic is no longer reported as `cargo test`. A panic is a test failure
+  only when a test run produced it - a tally at the end, or a per-test stdout block above
+  it - and a program that panicked on its own has neither. The fixture that showed this
+  has said `Running target/debug/m2` since the day it was captured.
 - `terraform init` is read rather than guessed at. It draws no box - it writes the error
   flat with the prose under it and no location, because nothing has been parsed yet - and
   it is the first command anyone runs.

@@ -117,7 +117,7 @@
     }
   },
   "cargo_panic_fail.txt": {
-    "winner": "cargo test",
+    "winner": "cargo",
     "parser": "cargo",
     "failures": 1,
     "claimants": [
