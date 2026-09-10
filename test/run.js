@@ -545,6 +545,24 @@ const CASES = [
       // the diagnostic group is the handle you would silence or search for
       assert.doesNotMatch(JSON.stringify(r.failures), /\[#/, "the group tag stayed in the message");
     } },
+  { file: "swiftc_bulk_fail.txt", tool: "swift", n: 9, check: (r) => {
+      // Eight assignments of the same wrong type, and one unrelated error. That is one
+      // cause with eight sites, not nine things to read - but the eight were listed one
+      // by one, four of them behind a "... 4 more".
+      //
+      // The cluster key drops the echoed source line when the failure carries a `code`,
+      // because for a compiler the statement is the INSTANCE. swiftc gives no code for
+      // these, so the key kept "let v1: Int = ..." and every one of them was unique.
+      // The rule is about being a compiler, not about the tool having handed out a code:
+      // clang got the right answer only because it happens to set no stmt at all.
+      const reported = r.clusters.filter((c) => c.reported);
+      assert.equal(reported.length, 1, "eight identical type errors are one cause");
+      assert.equal(reported[0].size, 8);
+      // and the unrelated one is not swept in with them
+      const alone = r.clusters.find((c) => c.size === 1);
+      assert.ok(alone, "the lone 'cannot find in scope' error must stay separate");
+      assert.match(r.failures[alone.exemplar].message, /cannot find 'missingSymbol' in scope/);
+    } },
   { file: "swiftc_driver_fail.txt", tool: "swift", n: 1, check: (r) => {
       // swiftc writes a placeholder location rather than none, and doubles the word:
       // "<unknown>:0: error: error opening input file 'nosuch.swift' (...)"
@@ -1531,6 +1549,7 @@ try {
     "mypy_notes_fail.txt",       // several type errors repeat across modules
     "clang_bulk_fail.txt",       // one signature change, fourteen call sites
     "clippy_fail.txt",           // one lint in several places is one fix
+    "swiftc_bulk_fail.txt",      // eight assignments of the same wrong type, one cause
   ];
   let checked = 0;
   for (const file of readdirSync(join(here, "fixtures"))) {

@@ -1,0 +1,70 @@
+many.swift:3:15: error: cannot convert value of type 'String' to specified type 'Int'
+ 1 | import Foundation
+ 2 | 
+ 3 | let v1: Int = "s1"
+   |               `- error: cannot convert value of type 'String' to specified type 'Int'
+ 4 | let v2: Int = "s2"
+ 5 | let v3: Int = "s3"
+
+many.swift:4:15: error: cannot convert value of type 'String' to specified type 'Int'
+ 2 | 
+ 3 | let v1: Int = "s1"
+ 4 | let v2: Int = "s2"
+   |               `- error: cannot convert value of type 'String' to specified type 'Int'
+ 5 | let v3: Int = "s3"
+ 6 | let v4: Int = "s4"
+
+many.swift:5:15: error: cannot convert value of type 'String' to specified type 'Int'
+ 3 | let v1: Int = "s1"
+ 4 | let v2: Int = "s2"
+ 5 | let v3: Int = "s3"
+   |               `- error: cannot convert value of type 'String' to specified type 'Int'
+ 6 | let v4: Int = "s4"
+ 7 | let v5: Int = "s5"
+
+many.swift:6:15: error: cannot convert value of type 'String' to specified type 'Int'
+ 4 | let v2: Int = "s2"
+ 5 | let v3: Int = "s3"
+ 6 | let v4: Int = "s4"
+   |               `- error: cannot convert value of type 'String' to specified type 'Int'
+ 7 | let v5: Int = "s5"
+ 8 | let v6: Int = "s6"
+
+many.swift:7:15: error: cannot convert value of type 'String' to specified type 'Int'
+ 5 | let v3: Int = "s3"
+ 6 | let v4: Int = "s4"
+ 7 | let v5: Int = "s5"
+   |               `- error: cannot convert value of type 'String' to specified type 'Int'
+ 8 | let v6: Int = "s6"
+ 9 | let v7: Int = "s7"
+
+many.swift:8:15: error: cannot convert value of type 'String' to specified type 'Int'
+ 6 | let v4: Int = "s4"
+ 7 | let v5: Int = "s5"
+ 8 | let v6: Int = "s6"
+   |               `- error: cannot convert value of type 'String' to specified type 'Int'
+ 9 | let v7: Int = "s7"
+10 | let v8: Int = "s8"
+
+many.swift:9:15: error: cannot convert value of type 'String' to specified type 'Int'
+ 7 | let v5: Int = "s5"
+ 8 | let v6: Int = "s6"
+ 9 | let v7: Int = "s7"
+   |               `- error: cannot convert value of type 'String' to specified type 'Int'
+10 | let v8: Int = "s8"
+11 | print(missingSymbol)
+
+many.swift:10:15: error: cannot convert value of type 'String' to specified type 'Int'
+ 8 | let v6: Int = "s6"
+ 9 | let v7: Int = "s7"
+10 | let v8: Int = "s8"
+   |               `- error: cannot convert value of type 'String' to specified type 'Int'
+11 | print(missingSymbol)
+12 | 
+
+many.swift:11:7: error: cannot find 'missingSymbol' in scope
+ 9 | let v7: Int = "s7"
+10 | let v8: Int = "s8"
+11 | print(missingSymbol)
+   |       `- error: cannot find 'missingSymbol' in scope
+12 | 

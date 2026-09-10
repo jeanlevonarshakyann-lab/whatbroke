@@ -90,7 +90,12 @@ export const normTitle = (t) => String(t ?? "").replace(/\[[^\]]*\]\s*$/, "[…]
 const part = (f) => [
   String(f.code ?? f.label ?? ""),
   skeleton(f.message),
-  f.code ? "" : skeleton(f.stmt),
+  // The echoed source line is the INSTANCE for any compiler, whether or not the tool
+  // handed out a diagnostic code to say so. Keying on `code` alone got clang right by
+  // accident - it sets no stmt - and swift wrong: eight identical "cannot convert value
+  // of type 'String'" errors differed only by "let v1 = ..." / "let v2 = ..." and were
+  // listed one by one, four of them behind a "... 4 more".
+  f.code || f.category === "compile" ? "" : skeleton(f.stmt),
 ];
 
 export const keyOf = (f) => JSON.stringify(part(f));

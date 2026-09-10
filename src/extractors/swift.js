@@ -82,7 +82,13 @@ export default {
       failures.push({
         file: m[1], line: +m[2], col: +m[3],
         title: group ? group[1] : "compile error",
+        // A failure has to say what it is or clustering cannot group it: eight identical
+        // "cannot convert value of type 'String'" errors were listed one by one, with
+        // four of them behind a "... 4 more". The group tag is a diagnostic identifier
+        // when swiftc gives one; when it does not, "error" is the constant it prints for
+        // the whole class, which is what `label` is for. The two are alternatives.
         code: group ? group[1] : undefined,
+        label: group ? undefined : "error",
         severity: "error", message, stmt,
       });
     }
