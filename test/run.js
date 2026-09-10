@@ -1630,6 +1630,41 @@ try {
   pass++;
 } catch (e) { console.log(`  FAIL log arrival shapes\n       ${e.message}`); fail++; }
 
+// A parser may compose a message - node's "AssertionError: Expected values to be
+// strictly equal:" reads better than either half alone, and black's log says only
+// "would reformat x.py", which has to be explained rather than quoted. Eight parsers do,
+// each deliberately and each saying so where it does it.
+//
+// A LOCATION is different. It is a fact, not a phrasing: whatbroke tells the reader
+// which file and line to open, and a file it made up sends them nowhere. Every located
+// failure in the corpus must name a file the log actually contains.
+try {
+  const missing = [];
+  let located = 0;
+  for (const name of readdirSync(join(here, "fixtures"))) {
+    const raw = fx(name);
+    const { stripAnsi } = await import("../src/util.js");
+    const text = stripAnsi(raw);
+    let r;
+    try { r = analyse(raw); } catch { continue; }
+    for (const f of [...(r?.failures ?? []), ...(r?.others ?? []).flatMap((o) => o.failures)]) {
+      if (!f.file) continue;
+      located++;
+      const file = String(f.file);
+      // a path may be decoded out of a file:// URL, so the basename is enough to prove
+      // the parser read it rather than invented it
+      const base = file.split(/[/\\]/).pop();
+      if (!text.includes(file) && !text.includes(encodeURI(file)) && !(base && text.includes(base))) {
+        missing.push(`${name} (${r.tool}): ${JSON.stringify(file.slice(0, 50))}`);
+      }
+    }
+  }
+  assert.ok(located > 300, `only ${located} located failures checked`);
+  assert.deepEqual(missing.slice(0, 6), [], "a parser reported a file the log never names");
+  console.log(`  ok   all ${located} located failures name a file the log contains`);
+  pass++;
+} catch (e) { console.log(`  FAIL invented locations\n       ${e.message}`); fail++; }
+
 // A location pattern loose enough to match a sentence will read one as a filename.
 // node's was `^(\S.*?):(\d+)$`, which accepts anything ending in a number - and black
 // writes "error: cannot format cantparse.py: Cannot parse: 1:7" above a source line and
