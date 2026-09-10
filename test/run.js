@@ -1630,6 +1630,45 @@ try {
   pass++;
 } catch (e) { console.log(`  FAIL log arrival shapes\n       ${e.message}`); fail++; }
 
+// A location pattern loose enough to match a sentence will read one as a filename.
+// node's was `^(\S.*?):(\d+)$`, which accepts anything ending in a number - and black
+// writes "error: cannot format cantparse.py: Cannot parse: 1:7" above a source line and
+// a caret, which is node's exact shape. It reported a failure in a file by that name.
+//
+// Colons cannot be what rules it out, because node itself writes "file:///abs/x.mjs:1".
+// Whitespace can: a path has none and a sentence has plenty. This feeds every parser
+// bait shaped like a location and asserts none of them bites.
+try {
+  const BAIT = [
+    "error: cannot format thing.py: Cannot parse: 1:7",
+    "Something went wrong in the build at step 3:12",
+    "note: expected 2 arguments but found 1:5",
+  ];
+  const bitten = [];
+  let checked = 0;
+  for (const name of readdirSync(join(here, "fixtures"))) {
+    const raw = fx(name);
+    for (const bait of BAIT) {
+      // in front of the log, and behind it wearing node's caret shape
+      for (const text of [`${bait}\n${raw}`,
+        `${raw}\n${bait}\n    some source line\n          ^\nError: bad input\n`]) {
+        checked++;
+        let r;
+        try { r = analyse(text); } catch { continue; }
+        for (const f of [...(r?.failures ?? []), ...(r?.others ?? []).flatMap((o) => o.failures)]) {
+          if (/\s/.test(String(f.file ?? ""))) {
+            bitten.push(`${name} (${r.tool}): ${JSON.stringify(String(f.file).slice(0, 50))}`);
+          }
+        }
+      }
+    }
+  }
+  assert.ok(checked > 500, `only ${checked} baited logs exercised`);
+  assert.deepEqual([...new Set(bitten)].slice(0, 6), [], "a parser read a sentence as a filename");
+  console.log(`  ok   ${checked} baited logs, no parser reads a sentence as a filename`);
+  pass++;
+} catch (e) { console.log(`  FAIL sentence as filename\n       ${e.message}`); fail++; }
+
 // crafted output must not be able to make us read files outside the working dir
 try {
   const { render, setColor } = await import("../src/render.js");
