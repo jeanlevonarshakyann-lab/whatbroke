@@ -136,7 +136,16 @@ export function render(result, { max = 5, cwd = true, source = true, cluster = t
     const loc = f.file
       ? `${C.cyan}${cwd ? relPath(f.file) : f.file}${C.reset}${f.line ? `${C.dim}:${f.line}${C.reset}` : ""}`
       : "";
-    const label = family ? normTitle(f.title) : f.title;
+    // `title` is what whatbroke calls the failure; `label` is the constant the tool
+    // printed for its class. A parser can set the second without the first - cargo does
+    // for a manifest that will not parse - and the line then rendered as a bare
+    // "Cargo.toml:1", which reads as though nothing was found there and which the
+    // problem matcher cannot parse, so the annotation never appeared in CI.
+    // Only beside a location. With nothing to point at, the name stands on its own line
+    // and a bare severity word there is not a diagnosis - "npm" or "error" alone above a
+    // message says less than the message does.
+    const shown = f.title || (f.file ? f.label : "");
+    const label = family ? normTitle(shown) : shown;
     const title = label ? `  ${C.bold}${label}${C.reset}` : "";
     const more = unit.reported
       ? `  ${C.yellow}${family ? `(${unit.size} cases)` : `(+${kin.length} more site${kin.length > 1 ? "s" : ""})`}${C.reset}`
