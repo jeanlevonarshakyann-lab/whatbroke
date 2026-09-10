@@ -345,6 +345,33 @@ const CASES = [
       // the pip install step above it succeeded; nothing there is a failure
       assert.equal(r.others, undefined, "the pip install step is not a second tool's failure");
     } },
+  // Captured from Apple Swift 6.x. swiftc writes clang's diagnostic shape and then draws
+  // the source underneath it - a numbered echo, and an annotation hanging off the column
+  // that repeats the message word for word. Only the header is the diagnostic; reading
+  // the annotation too reported four errors for two.
+  { file: "swiftc_fail.txt", tool: "swift", n: 2, check: (r) => {
+      assert.equal(r.failures[0].file, "mixed.swift");
+      assert.equal(r.failures[0].line, 10);
+      assert.equal(r.failures[0].col, 14);
+      assert.match(r.failures[0].message, /cannot convert value of type 'String'/);
+      // the echoed source is the line the diagnostic points at, not the one beside it
+      assert.equal(r.failures[0].stmt, 'let x: Int = "hello"');
+      assert.match(r.failures[1].message, /cannot find 'y' in scope/);
+      // the warning is counted, not reported: it did not fail the build
+      assert.equal(r.summary, "2 errors, 1 warning");
+      assert.doesNotMatch(JSON.stringify(r.failures), /never used/, "a warning was reported as a failure");
+      // the diagnostic group is the handle you would silence or search for
+      assert.doesNotMatch(JSON.stringify(r.failures), /\[#/, "the group tag stayed in the message");
+    } },
+  { file: "swiftc_driver_fail.txt", tool: "swift", n: 1, check: (r) => {
+      // swiftc writes a placeholder location rather than none, and doubles the word:
+      // "<unknown>:0: error: error opening input file 'nosuch.swift' (...)"
+      assert.equal(r.failures[0].file, undefined, "<unknown> is not a file");
+      assert.match(r.failures[0].message, /^error opening input file 'nosuch\.swift'/);
+      // mypy's "file:line: error:" shape matches "<unknown>:0: error:" exactly, and a
+      // mypy run pasted above this claimed it as a type error. mypy reports only Python.
+      assert.doesNotMatch(r.failures[0].message, /^error: /, "the doubled word survived");
+    } },
   // Captured with GNU make 3.81 driving Apple clang. make itself needs no parser: the
   // compiler underneath already has one, and `make: *** [bad.o] Error 1` restates the
   // failure without adding to it.

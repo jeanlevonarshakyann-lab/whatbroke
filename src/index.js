@@ -13,6 +13,7 @@ import ruff from "./extractors/ruff.js";
 import mypy from "./extractors/mypy.js";
 import pyright from "./extractors/pyright.js";
 import clang from "./extractors/clang.js";
+import swift from "./extractors/swift.js";
 import cmake from "./extractors/cmake.js";
 import terraform from "./extractors/terraform.js";
 import rspec from "./extractors/rspec.js";
@@ -34,7 +35,7 @@ import { clusterFailures } from "./cluster.js";
 import { wrapperCandidates } from "./normalize.js";
 
 // order matters: most specific first, generic last
-export const EXTRACTORS = [pytest, nodetest, bun, deno, playwright, jest, vitest, unittest, traceback, eslint, ruff, pyright, mypy, cmake, terraform, clang, rspec, jvm, dotnettest, dotnet, phpunit, cargo, gotest, esbuild, vite, node, tsc, git, kubectl, npm, pnpm, yarn, pip, generic];
+export const EXTRACTORS = [pytest, nodetest, bun, deno, playwright, jest, vitest, unittest, traceback, eslint, ruff, pyright, mypy, cmake, terraform, swift, clang, rspec, jvm, dotnettest, dotnet, phpunit, cargo, gotest, esbuild, vite, node, tsc, git, kubectl, npm, pnpm, yarn, pip, generic];
 
 function dedupeFailures(failures) {
   const seen = new Set();

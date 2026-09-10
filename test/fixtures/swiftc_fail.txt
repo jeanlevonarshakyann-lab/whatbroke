@@ -1,0 +1,22 @@
+mixed.swift:10:14: error: cannot convert value of type 'String' to specified type 'Int'
+ 8 | }
+ 9 | 
+10 | let x: Int = "hello"
+   |              `- error: cannot convert value of type 'String' to specified type 'Int'
+11 | print(total([1, 2]), y)
+12 | 
+
+mixed.swift:11:22: error: cannot find 'y' in scope
+ 9 | 
+10 | let x: Int = "hello"
+11 | print(total([1, 2]), y)
+   |                      `- error: cannot find 'y' in scope
+12 | 
+
+mixed.swift:5:9: warning: initialization of immutable value 'unused' was never used; consider replacing with assignment to '_' or removing it [#no-usage]
+ 3 | func total(_ items: [Int]) -> Int {
+ 4 |     var sum = 0
+ 5 |     let unused = 42
+   |         `- warning: initialization of immutable value 'unused' was never used; consider replacing with assignment to '_' or removing it [#no-usage]
+ 6 |     for i in items { sum += i }
+ 7 |     return sum

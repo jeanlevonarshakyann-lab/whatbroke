@@ -1,0 +1,1 @@
+<unknown>:0: error: error opening input file 'nosuch.swift' (No such file or directory)
