@@ -1497,6 +1497,20 @@
     ],
     "shadow": {}
   },
+  "swc_fail.txt": {
+    "winner": "swc",
+    "parser": "swc",
+    "failures": 1,
+    "claimants": [
+      "swc",
+      "node",
+      "generic"
+    ],
+    "shadow": {
+      "node": 1,
+      "generic": 1
+    }
+  },
   "swiftc_bulk_fail.txt": {
     "winner": "swift",
     "parser": "swift",
