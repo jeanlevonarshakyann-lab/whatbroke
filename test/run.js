@@ -251,6 +251,32 @@ const CASES = [
       assert.match(r.failures[0].message, /^Failed opening required 'nothing-here\.php'$/);
       assert.equal(r.failures[0].code, "Error");
     } },
+  // Captured with stylelint 16. It reports like eslint but marks severity with a glyph
+  // rather than a word, which is why eslint's own parser never saw it.
+  { file: "stylelint_fail.txt", tool: "stylelint", n: 3, check: (r) => {
+      assert.equal(r.failures[0].file, "style.css");
+      assert.equal(r.failures[0].line, 1);
+      assert.equal(r.failures[0].col, 8);
+      // the rule name is what you would disable or search for
+      assert.equal(r.failures[0].code, "property-no-unknown");
+      assert.equal(r.failures[0].message, 'Unknown property "colr"');
+      // the fourth problem is a warning and did not fail the run
+      assert.match(r.summary, /1 warning hidden/);
+      assert.doesNotMatch(JSON.stringify(r.failures), /Duplicate property/);
+    } },
+  // Captured with node-tap 21. TAP 14, which `node --test` also emits - they are told
+  // apart by the YAML: tap writes an `at:` block, node writes `failureType`.
+  { file: "tap_fail.txt", tool: "tap", n: 2, check: (r) => {
+      assert.equal(r.failures[0].subject, "totals an invoice");
+      assert.equal(r.failures[0].line, 2);
+      assert.equal(r.failures[0].col, 3);
+      // tap gives the values as a unified diff rather than as found/wanted fields
+      assert.equal(r.failures[0].message, "-1050\n+1049");
+      // and marks the failing line under `source:` with a --^ pointer
+      assert.match(r.failures[0].stmt, /^t\.equal\(1049, 1050/);
+      // the file-level line is a count of failures, not one of them
+      assert.doesNotMatch(JSON.stringify(r.failures), /time=/);
+    } },
   // Captured with jasmine 5. Another runner that produced no diagnosis at all.
   { file: "jasmine_fail.txt", tool: "jasmine", n: 2, check: (r) => {
       assert.equal(r.summary, "2 of 2 specs failed");

@@ -390,6 +390,7 @@
     "failures": 90,
     "claimants": [
       "eslint",
+      "stylelint",
       "generic"
     ],
     "shadow": {}
@@ -413,6 +414,7 @@
     "failures": 3,
     "claimants": [
       "eslint",
+      "stylelint",
       "generic"
     ],
     "shadow": {}
@@ -1375,6 +1377,17 @@
     ],
     "shadow": {}
   },
+  "stylelint_fail.txt": {
+    "winner": "stylelint",
+    "parser": "stylelint",
+    "failures": 3,
+    "claimants": [
+      "eslint",
+      "stylelint",
+      "generic"
+    ],
+    "shadow": {}
+  },
   "swiftc_bulk_fail.txt": {
     "winner": "swift",
     "parser": "swift",
@@ -1422,6 +1435,16 @@
     "shadow": {
       "generic": 3
     }
+  },
+  "tap_fail.txt": {
+    "winner": "tap",
+    "parser": "tap",
+    "failures": 2,
+    "claimants": [
+      "tap",
+      "generic"
+    ],
+    "shadow": {}
   },
   "tar_format_fail.txt": {
     "winner": "output",

@@ -4,6 +4,11 @@
 
 ## 0.4.0 — 2026-09-10
 
+- Reads stylelint and node-tap. Both produced no diagnosis at all. stylelint reports
+  like eslint but marks severity with a glyph rather than a word, so eslint's own parser
+  did not see it. node-tap emits TAP 14 with an `at:` block where `node --test` writes
+  `failureType` and a flat `location`; each parser now checks that shape per block, so a
+  job that ran both keeps every failure and neither reads the other's.
 - Reads jasmine and markdownlint. Both produced no diagnosis at all. jasmine gathers
   its failures under a "Failures:" heading with a labelled message and stack; its own
   frames name no file, so they cannot be mistaken for yours.

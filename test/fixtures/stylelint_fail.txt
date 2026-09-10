@@ -1,0 +1,10 @@
+
+style.css
+  1:8   ✖  Unknown property "colr"     property-no-unknown
+  2:13  ✖  Invalid hex color "#GGG"    color-no-invalid-hex
+  3:4   ✖  Empty block                 block-no-empty
+  4:6   ⚠  Duplicate property "color"  declaration-block-no-duplicate-properties
+
+✖ 4 problems (3 errors, 1 warning)
+  1 warning potentially fixable with the "--fix" option.
+

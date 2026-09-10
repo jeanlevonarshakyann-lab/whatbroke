@@ -1,0 +1,63 @@
+TAP version 14
+1..1
+# Subtest: taptest/sum.test.cjs
+    not ok 1 - totals an invoice
+      ---
+      compare: ===
+      at:
+        fileName: taptest/sum.test.cjs
+        lineNumber: 2
+        columnNumber: 3
+        typeName: Object
+      stack: |
+        Object.<anonymous> (taptest/sum.test.cjs:2:3)
+      source: |
+        const t = require("tap");
+        t.equal(1049, 1050, "totals an invoice");
+        --^
+        t.ok(undefined, "finds an expiry claim");
+      diff: |
+        --- expected
+        +++ actual
+        @@ -1,1 +1,1 @@
+        -1050
+        +1049
+      ...
+    
+    not ok 2 - finds an expiry claim
+      ---
+      at:
+        fileName: taptest/sum.test.cjs
+        lineNumber: 3
+        columnNumber: 3
+        typeName: Object
+      stack: |
+        Object.<anonymous> (taptest/sum.test.cjs:3:3)
+      source: |
+        const t = require("tap");
+        t.equal(1049, 1050, "totals an invoice");
+        t.ok(undefined, "finds an expiry claim");
+        --^
+      ...
+    
+    1..2
+    # time=10.286ms
+not ok 1 - taptest/sum.test.cjs # time=10.286ms
+  ---
+  stdio: inherit
+  cwd: /home/dev/app
+  externalID: taptest/sum.test.cjs
+  command: /Users/jean-levonarshakyan/.hermes/node/bin/node
+  args:
+    - --import=file:///home/dev/app/node_modules/@tapjs/typescript/dist/esm/import.mjs
+    - --import=file:///home/dev/app/node_modules/@tapjs/mock/dist/esm/import.mjs
+    - --enable-source-maps
+    - --import=file:///home/dev/app/node_modules/@tapjs/processinfo/dist/esm/import.mjs
+    - /home/dev/app/taptest/sum.test.cjs
+  exitCode: 1
+  signal: null
+  ...
+
+# No coverage generated
+# { total: 2, pass: 0, fail: 2 }
+# time=406.987ms
