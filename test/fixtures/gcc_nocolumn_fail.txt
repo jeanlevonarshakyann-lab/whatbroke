@@ -1,0 +1,4 @@
+inc.c:1: fatal error: nope.h: No such file or directory
+    1 | #include "nope.h"
+      |          ^~~~~~~~
+compilation terminated.

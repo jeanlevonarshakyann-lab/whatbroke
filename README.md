@@ -242,7 +242,7 @@ them.
 | **CMake** | the script line and the command that raised it — `add_executable`, `find_package` |
 | **ninja** | no parser of its own: what fails under it is a compiler, which already has one |
 | **kubectl** | the sentence a person wants, not five identical klog lines from inside client-go |
-| **GCC/Clang** | compiler errors with `file:line:column`; driver errors that never got as far as a file; warnings and notes set aside |
+| **GCC/Clang** | compiler errors with `file:line:column`, or `file:line` where gcc printed no column — read only for C-family sources there, since without the column that shape is also javac's and mypy's; driver errors that never got as far as a file; warnings and notes set aside |
 | **Swift** | the diagnostic and the `[#group]` tag as its code — not the annotation swiftc draws underneath, which repeats the message word for word |
 | **make** | make's own failures — a makefile it cannot parse, a target with no rule, a recipe whose command is not installed. Not `make: *** [target] Error 1`: that relays somebody else's exit status, and the compiler underneath already has a parser. make ends a line `Stop.` when it is refusing to continue and `Error N` when it is only passing one on, and that is the line this parser draws |
 | **RSpec** | example name, failure message, and `spec/file:line` location |

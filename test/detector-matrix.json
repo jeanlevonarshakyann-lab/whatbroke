@@ -474,6 +474,30 @@
       "generic": 8
     }
   },
+  "gcc_nocolumn_fail.txt": {
+    "winner": "clang",
+    "parser": "clang",
+    "failures": 1,
+    "claimants": [
+      "clang",
+      "generic"
+    ],
+    "shadow": {
+      "generic": 1
+    }
+  },
+  "gcc_nocolumn_multi_fail.txt": {
+    "winner": "clang",
+    "parser": "clang",
+    "failures": 3,
+    "claimants": [
+      "clang",
+      "generic"
+    ],
+    "shadow": {
+      "generic": 4
+    }
+  },
   "git_conflict_fail.txt": {
     "winner": "git",
     "parser": "git",
