@@ -39,8 +39,17 @@ export default {
       const head = lines[i].match(HEADER_RE);
       if (!head) continue;
 
+      // deno writes "error: <Class>: <message>" on the line straight under the header,
+      // every time. Scanning forward for any line at all meant that when two tools write
+      // into one pipe and the block comes back shredded, whatever landed in between
+      // became this test's assertion - a clang diagnostic read as a deno failure. If the
+      // error line is not there, this is not a block we can read.
+      let at = i + 1;
+      while (at < lines.length && !lines[at].trim()) at++;
+      if (at >= lines.length || !ERROR_RE.test(lines[at].trim())) continue;
+
       const msg = [];
-      for (let j = i + 1; j < lines.length && !HEADER_RE.test(lines[j]); j++) {
+      for (let j = at; j < lines.length && !HEADER_RE.test(lines[j]); j++) {
         const t = lines[j].trim();
         if (!t || msg.length >= MAX_MESSAGE_LINES) continue;
         // the FAILURES roll-call and the final tally end the block

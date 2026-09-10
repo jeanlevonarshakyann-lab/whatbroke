@@ -25,11 +25,18 @@ export default {
       // In the suite form both captures are the file; the failure is the file itself.
       const [, file, title] = suite ? [null, suite[1], suite[1]] : m;
 
+      // vitest writes the assertion on the line straight under the FAIL header - every
+      // one of the blocks in the corpus has a gap of exactly one, separators aside.
+      // Taking the first non-blank line however far away it was meant that when two
+      // tools write into one pipe and the block comes back shredded, whatever landed in
+      // between became this test's assertion.
+      const MESSAGE_GAP = 3;
       let message = "", loc = null;
       const diff = [];
       for (let j = i + 1; j < lines.length; j++) {
         const l = lines[j];
         if (FAIL_RE.test(l)) break;
+        if (!message && j - i > MESSAGE_GAP) break;
         const lm = l.match(LOC_RE);
         if (lm) { loc = { file: lm[1], line: +lm[2], col: +lm[3] }; break; }
         if (!message && l.trim() && !SEP_RE.test(l)) { message = l.trim(); continue; }
