@@ -15,5 +15,5 @@ npm error Fix the upstream dependency conflict, or retry this command with --for
 npm error
 npm error
 npm error For a full report see:
-npm error /Users/jean-levonarshakyan/.npm/_logs/2026-09-10T14_11_14_246Z-eresolve-report.txt
-npm error A complete log of this run can be found in: /Users/jean-levonarshakyan/.npm/_logs/2026-09-10T14_11_14_246Z-debug-0.log
+npm error /home/dev/.npm/_logs/2026-09-10T14_11_14_246Z-eresolve-report.txt
+npm error A complete log of this run can be found in: /home/dev/.npm/_logs/2026-09-10T14_11_14_246Z-debug-0.log

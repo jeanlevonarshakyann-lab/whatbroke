@@ -47,7 +47,7 @@ not ok 1 - taptest/sum.test.cjs # time=10.286ms
   stdio: inherit
   cwd: /home/dev/app
   externalID: taptest/sum.test.cjs
-  command: /Users/jean-levonarshakyan/.hermes/node/bin/node
+  command: /home/dev/.hermes/node/bin/node
   args:
     - --import=file:///home/dev/app/node_modules/@tapjs/typescript/dist/esm/import.mjs
     - --import=file:///home/dev/app/node_modules/@tapjs/mock/dist/esm/import.mjs
