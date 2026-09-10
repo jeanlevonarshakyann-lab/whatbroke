@@ -16,6 +16,7 @@ const here = dirname(fileURLToPath(import.meta.url));
 const root = resolve(here, "..");
 const manifest = JSON.parse(readFileSync(join(root, "package.json"), "utf8"));
 const npm = process.platform === "win32" ? "npm.cmd" : "npm";
+const npmCli = process.env.npm_execpath;
 const temp = mkdtempSync(join(tmpdir(), "whatbroke-package-"));
 const packDir = join(temp, "pack");
 const installDir = join(temp, "install");
@@ -49,6 +50,14 @@ function runShim(name, args, options = {}) {
   });
 }
 
+function runNpm(args, options = {}) {
+  if (npmCli) return run(process.execPath, [npmCli, ...args], options);
+  return run(npm, args, {
+    shell: process.platform === "win32",
+    ...options,
+  });
+}
+
 console.log("\npackage boundary");
 
 try {
@@ -59,7 +68,7 @@ try {
     JSON.stringify({ name: "whatbroke-package-smoke", private: true }),
   );
 
-  const packed = run(npm, [
+  const packed = runNpm([
     "pack",
     "--ignore-scripts",
     "--json",
@@ -80,7 +89,7 @@ try {
 
   const tarball = join(packDir, metadata.filename);
   assert.equal(existsSync(tarball), true, "npm did not create the package tarball");
-  run(npm, [
+  runNpm([
     "install",
     "--ignore-scripts",
     "--no-audit",
