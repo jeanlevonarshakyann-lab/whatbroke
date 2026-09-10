@@ -10,12 +10,13 @@
 4. Add a focused case to `test/run.js` covering the tool name, failure count,
    location, title, message, and summary.
 5. Add the extractor to `src/extractors/` and register it in `src/index.js`.
-   Keep detection specific enough that existing fixtures do not cross-detect.
+   Keep detection specific enough that existing fixtures do not cross-detect, and
+   bound what `extract` reads — see "Bound what a parser reads" below.
 6. Add the tool to the README support table and changelog.
 
 An extractor declares itself: `{ name, category, commands, detect, extract }`, where
 `category` is one of `test`, `lint`, `typecheck`, `compile`, `build`, `runtime`,
-`package`, `vcs` or `unknown`, and `commands` lists the command names that imply it.
+`package`, `vcs`, `deploy` or `unknown` (`unknown` belongs to the fallback alone), and `commands` lists the command names that imply it.
 
 Extractors should return `{ tool, summary, failures }`. A failure may include
 `file`, `line`, `col`, `title`, `message`, and parser-specific context fields.
@@ -28,6 +29,44 @@ grouped across and never enters it. Setting none means the failure clusters on i
 message alone, which is safe but inert.
 Warnings, notes, framework internals, and summary counters should not become
 failures unless they are actionable diagnostics.
+
+## Bound what a parser reads
+
+This is the mistake this codebase makes most often, and detection is not where it
+happens. `detect` decides whether a parser is asked at all; `extract` then reads the
+whole log unless it is told not to. In a log holding two tools — which is the ordinary
+case in CI — that means reading the other tool's output.
+
+The markers are not distinctive. `error:` is written by cargo, deno, git, kubectl,
+sass, terraform and half the rest. `N) name` is written by jasmine, mocha, rspec,
+PHPUnit and Playwright. `not ok` by tap and `node --test`. `file:line:col:` by every
+compiler there is. A parser that scans for one of those across a whole log will find
+somebody else's.
+
+Bound the scan with something the tool itself declares:
+
+- a **count** — mocha says `2 failing`, so it reads two blocks and stops
+- a **section** — jasmine's blocks live between `Failures:` and its tally; PHPUnit's
+  between `There were N failures:` and where its run ends
+- **adjacency** — deno writes `error:` on the line under its header, rustc puts `-->`
+  on the line after, vitest's assertion is one line below `FAIL`
+- **the very next thing it said** — `terraform init` narrates what it is doing, so its
+  error is the first line after the last step, and nothing further down is its
+
+A distance window is usually still too loose: a dozen lines was enough for terraform to
+reach past its own output into sass's. Prefer a structural bound over a numeric one.
+
+Two rules that fall out of the same problem:
+
+- A diagnostic cannot own a stack that another diagnostic stands in front of. Stop a
+  frame search at the next error line, not merely after N lines.
+- A tool's own line prefix is not a wrapper. npm leads every line with `npm `, and
+  stripping it leaves npm's parser matching nothing.
+
+`test/mixed.js` is what catches all of this: it concatenates every ordered pair of
+fixtures and asserts the combination recovers exactly the failures the two recover
+apart. It is at zero and should stay there. A new parser that breaks it has not been
+bounded.
 
 ## Safety and quality
 
