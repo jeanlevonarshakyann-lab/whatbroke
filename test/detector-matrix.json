@@ -912,13 +912,40 @@
     "shadow": {}
   },
   "php_fatal_fail.txt": {
-    "winner": "output",
-    "parser": "generic",
+    "winner": "php",
+    "parser": "php",
     "failures": 1,
     "claimants": [
+      "php",
       "generic"
     ],
-    "shadow": {}
+    "shadow": {
+      "generic": 1
+    }
+  },
+  "php_parse_fail.txt": {
+    "winner": "php",
+    "parser": "php",
+    "failures": 1,
+    "claimants": [
+      "php",
+      "generic"
+    ],
+    "shadow": {
+      "generic": 1
+    }
+  },
+  "php_require_fail.txt": {
+    "winner": "php",
+    "parser": "php",
+    "failures": 1,
+    "claimants": [
+      "php",
+      "generic"
+    ],
+    "shadow": {
+      "generic": 1
+    }
   },
   "phpunit_error_fail.txt": {
     "winner": "phpunit",

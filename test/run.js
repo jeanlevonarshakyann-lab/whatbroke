@@ -193,12 +193,37 @@ const CASES = [
       assert.equal(r.failures[0].file, "/home/dev/app/dcrash.ts");
       assert.equal(r.failures[0].line, 1);
     } },
-  { file: "php_fatal_fail.txt", tool: "output", n: 1, check: (r) => {
-      // PHP writes the fatal twice, to the error log and to stdout, differing by a
-      // "PHP " prefix and a space. Counting both says the run failed twice as badly.
+  // PHP writes the fatal twice, to the error log and to stdout, differing by a "PHP "
+  // prefix and a space. Counting both says the run failed twice as badly - the two copies
+  // produce identical failures, so the pipeline's own de-duplication collapses them.
+  { file: "php_fatal_fail.txt", tool: "php", n: 1, check: (r) => {
       assert.equal(r.failures[0].file, "/home/dev/app/bad.php");
       assert.equal(r.failures[0].line, 2);
       assert.match(r.failures[0].message, /Call to a member function method\(\) on null/);
+      // the class is the searchable handle, and it is not left in the message as well
+      assert.equal(r.failures[0].code, "Error");
+      assert.doesNotMatch(r.failures[0].message, /Fatal error|Uncaught/);
+      // "#1 {main}" is the entry point and carries nothing
+      assert.deepEqual(r.failures[0].trace, ["f() (/home/dev/app/bad.php:3)"]);
+      // the warning PHP printed first is context, not the headline - and it arrives
+      // doubled too, so counting lines said two
+      assert.equal(r.summary, "1 error, 1 warning first");
+    } },
+  // Captured on PHP 8.5. A file that will not parse never runs, so there is no exception
+  // and no stack - and the guess found no location at all for it.
+  { file: "php_parse_fail.txt", tool: "php", n: 1, check: (r) => {
+      assert.equal(r.failures[0].line, 2);
+      assert.match(r.failures[0].file, /p2\.php$/);
+      assert.match(r.failures[0].message, /^syntax error, unexpected token "\{"/);
+      assert.equal(r.failures[0].label, "parse error");
+      assert.equal(r.failures[0].code, undefined);
+    } },
+  { file: "php_require_fail.txt", tool: "php", n: 1, check: (r) => {
+      // The include path is longer than the diagnosis and never varies, while the file
+      // it could not find is the answer.
+      assert.doesNotMatch(r.failures[0].message, /include_path/);
+      assert.match(r.failures[0].message, /^Failed opening required 'nothing-here\.php'$/);
+      assert.equal(r.failures[0].code, "Error");
     } },
   // Captured with go 1.25. `go vet` prefixes the line when the package will not compile
   // at all, and that prefix defeated the anchor - so a vet run that hit a type error came
