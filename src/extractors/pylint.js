@@ -10,7 +10,12 @@
 // The symbolic name is what you would put in a disable comment, and it is what pylint's
 // own documentation is indexed by - more useful than C0114 on its own, so both are kept:
 // the code identifies, the name explains.
-const FINDING_RE = /^(\S+?):(\d+):(\d+):[^\S\n]+([CRWEF]\d{4}):[^\S\n]+(.+?)(?:[^\S\n]+\(([\w-]+)\))?[^\S\n]*$/;
+// The filename is whatever was on the command line, and a directory with a space in it
+// is ordinary on macOS and Windows: pylint prints `my project/mod.py:4:11: E0602: ...`
+// and a pattern written (\S+?) matched none of it, so the whole run came back silent.
+// What bounds the name is not its own shape but the message code that follows it - a
+// letter and four digits is not something a path runs into by accident.
+const FINDING_RE = /^(.+?):(\d+):(\d+):[^\S\n]+([CRWEF]\d{4}):[^\S\n]+(.+?)(?:[^\S\n]+\(([\w-]+)\))?[^\S\n]*$/;
 const MODULE_RE = /^\*{3,}[^\S\n]+Module[^\S\n]+\S+/m;
 const RATING_RE = /^Your code has been rated at/m;
 // C and R are convention and refactor suggestions; W is a warning. E and F stop the run.

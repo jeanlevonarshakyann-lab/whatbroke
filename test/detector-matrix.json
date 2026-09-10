@@ -62,6 +62,26 @@
     ],
     "shadow": {}
   },
+  "biome_format_fail.txt": {
+    "winner": "biome",
+    "parser": "biome",
+    "failures": 1,
+    "claimants": [
+      "biome",
+      "generic"
+    ],
+    "shadow": {}
+  },
+  "biome_spaced_path_fail.txt": {
+    "winner": "biome",
+    "parser": "biome",
+    "failures": 1,
+    "claimants": [
+      "biome",
+      "generic"
+    ],
+    "shadow": {}
+  },
   "black_fail.txt": {
     "winner": "black",
     "parser": "black",
@@ -1559,6 +1579,16 @@
     "shadow": {
       "generic": 4
     }
+  },
+  "pylint_spaced_path_fail.txt": {
+    "winner": "pylint",
+    "parser": "pylint",
+    "failures": 1,
+    "claimants": [
+      "pylint",
+      "generic"
+    ],
+    "shadow": {}
   },
   "pyright_fail.txt": {
     "winner": "pyright",

@@ -397,11 +397,19 @@ const CASES = [
   // on the next line, and then offers advice and a fix diff - neither of which is the
   // diagnosis.
   { file: "biome_fail.txt", tool: "biome", n: 1, check: (r) => {
+      // This log says "Found 2 errors. Found 1 warning." and used to come back as the
+      // one WARNING: only a section headed by a rule path was read, and biome heads a
+      // file it could not parse with `parse` instead. The error is the answer here -
+      // the variable is unused because the statement never parsed.
       assert.equal(r.failures[0].file, "biomebad.js");
       assert.equal(r.failures[0].line, 1);
-      assert.equal(r.failures[0].col, 7);
-      assert.equal(r.failures[0].code, "lint/correctness/noUnusedVariables");
-      assert.equal(r.failures[0].message, "This variable x is unused.");
+      assert.equal(r.failures[0].col, 11);
+      assert.equal(r.failures[0].code, "parse");
+      assert.match(r.failures[0].message, /Expected an expression/);
+      assert.match(r.summary, /1 warning hidden/);
+      // Biome's second error is "Code formatting aborted due to parsing errors", which
+      // is the parse error again wearing a different hat.
+      assert.doesNotMatch(JSON.stringify(r.failures), /formatting aborted/);
       // the "i" lines are advice and the diff under them is the fix
       assert.doesNotMatch(JSON.stringify(r.failures), /often the result of typos|prepend x with/);
     } },
@@ -1336,6 +1344,30 @@ const CASES = [
       // path; those are Go's frames, not yours.
       assert.doesNotMatch(JSON.stringify(r.failures.map((f) => f.file)), /hostedtoolcache/);
     } },
+  // Captured by running pylint and biome against a directory called "my project" -
+  // ordinary on macOS and Windows, and something no fixture here had. Both parsers
+  // described the filename as (\S+?), so both produced nothing at all.
+  { file: "pylint_spaced_path_fail.txt", tool: "pylint", n: 1, check: (r) => {
+      assert.equal(r.failures[0].file, "my project/mod.py");
+      assert.equal(r.failures[0].line, 4);
+      assert.equal(r.failures[0].code, "E0602");
+      // What bounds the name is the message code after it, not the name's own shape.
+      assert.match(r.summary, /4 advisory hidden/);
+    } },
+  { file: "biome_spaced_path_fail.txt", tool: "biome", n: 1, check: (r) => {
+      assert.equal(r.failures[0].file, "my project/src/app.js");
+      assert.equal(r.failures[0].code, "parse");
+    } },
+  { file: "biome_format_fail.txt", tool: "biome", n: 1, check: (r) => {
+      // `biome format` heads its finding with the file and no line at all, so this whole
+      // shape was invisible: the only failure in the run, and the run came back silent.
+      assert.equal(r.failures[0].file, "my project/src/fmt.js");
+      assert.equal(r.failures[0].line, undefined, "biome printed no line; none is invented");
+      assert.equal(r.failures[0].code, "format");
+      assert.match(r.failures[0].message, /Formatter would have printed/);
+      // The closing banner is the command's own name - `format ━━━` - and is not a file.
+      assert.equal(r.failures.length, 1);
+    } },
   { file: "rspec_fail.txt", tool: "rspec", n: 2, check: (r) => {
       assert.equal(r.summary, "3 examples, 2 failures");
       assert.equal(r.failures[0].title, "shop totals an invoice");
@@ -1855,6 +1887,29 @@ try {
     "Something went wrong in the build at step 3:12",
     "note: expected 2 arguments but found 1:5",
   ];
+  // "has a space in it" was this check for a long time, and it was a good proxy while no
+  // parser would accept one. pylint and biome print `my project/mod.py` for a directory
+  // called "my project", which is ordinary on macOS and Windows, so the proxy started
+  // failing real filenames. What actually separates the bait from a path is not the
+  // space: it is that a path has a separator and an extension, and that a label ends
+  // with a colon and a space where a path never does. All three baits above still fail
+  // every one of those, which is what makes this a narrowing of the rule and not of the
+  // guard.
+  const prose = (file) => {
+    if (!file) return false;
+    if (/:[^\S\n]/.test(file)) return true;            // "error: cannot format thing.py"
+    if (!/\s/.test(file)) return false;                 // no space, nothing to argue about
+    return !(/[\\/]/.test(file) && /\.\w{1,10}$/.test(file));
+  };
+  // The rule is the guard, so it is pinned too: loosening it later has to be deliberate.
+  for (const sentence of ["error: cannot format thing.py", "Something went wrong at step 3",
+    "expected 2 arguments but found 1", "note: bad input"]) {
+    assert.equal(prose(sentence), true, `${JSON.stringify(sentence)} is prose, not a path`);
+  }
+  for (const path of ["my project/mod.py", "my project/src/app.js", "main.go",
+    "src/app.ts", "C:\\src\\app.ts", "a b/c d/e.rs"]) {
+    assert.equal(prose(path), false, `${JSON.stringify(path)} is a path a tool really prints`);
+  }
   const bitten = [];
   let checked = 0;
   for (const name of readdirSync(join(here, "fixtures"))) {
@@ -1867,7 +1922,7 @@ try {
         let r;
         try { r = analyse(text); } catch { continue; }
         for (const f of [...(r?.failures ?? []), ...(r?.others ?? []).flatMap((o) => o.failures)]) {
-          if (/\s/.test(String(f.file ?? ""))) {
+          if (prose(String(f.file ?? ""))) {
             bitten.push(`${name} (${r.tool}): ${JSON.stringify(String(f.file).slice(0, 50))}`);
           }
         }
