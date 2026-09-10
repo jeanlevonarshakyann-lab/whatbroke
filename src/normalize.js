@@ -72,11 +72,32 @@ const SHAPES = [
   // Exactly one space goes with the elapsed column: BuildKit writes one, and eating a
   // run of them would take the wrapped tool's own indentation with it.
   { name: "docker", re: /^#\d+[^\S\n]+(?:\d+\.\d+[^\S\n]|(?=\[|DONE\b|CACHED\b|ERROR\b|CANCELED\b|WARN\b|sha256:|building\b|transferring\b|extracting\b|exporting\b|writing\b|naming\b|unpacking\b|preparing\b|resolve\b|pulling\b|load\b|done\b))/ },
+
+  // Jenkins' Timestamper plugin brackets the time, which is why the CI-stamp rule does
+  // not see it: that one wants a bare ISO instant at position zero. It writes either
+  // form depending on how the job is configured. 95 of the fixtures lost their parser
+  // through one of these.
+  { name: "jenkins", re: /^\[\d{4}-\d{2}-\d{2}T\d{2}:\d{2}:\d{2}(?:[.,]\d+)?Z?\][^\S\n]/ },
+  { name: "jenkins", re: /^\[\d{2}:\d{2}:\d{2}\][^\S\n]/ },
+
+  // A log collected by journald or syslog rather than read off the terminal:
+  // "Sep 10 07:14:55 runner app[123]: ". The host and unit vary per deployment but the
+  // month-day-time-host-unit shape does not.
+  { name: "syslog", re: /^[A-Z][a-z]{2}[^\S\n]{1,2}\d{1,2}[^\S\n]\d{2}:\d{2}:\d{2}[^\S\n]\S+[^\S\n]\S+?(?:\[\d+\])?:[^\S\n]/ },
 ];
 
+// No floor on line count. This gate is only ever asked about a SHAPE, and a shape is
+// hand-written and proven against the whole corpus to match nothing that is not a
+// wrapper - it needs no comparison between lines to earn its keep. The floor belongs to
+// the literal search, which infers a prefix by comparing lines and where on one line any
+// leading text looks uniform; that search keeps its own guard, a few lines above.
+//
+// Requiring three here meant a one-line log could never have a wrapper taken off it, and
+// a one-line log is exactly the one whose whole diagnosis is that line: `fatal: not a
+// git repository` under a Jenkins timestamp came back with nothing at all.
 const uniform = (text, re, share = UNIFORM) => {
   const lines = sample(text);
-  return lines.length >= 3 && lines.filter((l) => re.test(l)).length >= Math.ceil(lines.length * share);
+  return lines.length > 0 && lines.filter((l) => re.test(l)).length >= Math.ceil(lines.length * share);
 };
 
 const stripLiteral = (text, p) =>
