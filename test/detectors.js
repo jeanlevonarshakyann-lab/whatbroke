@@ -143,6 +143,28 @@ test("every parser declares what kind of tool it is", () => {
   }
 });
 
+// The README's table is the tool's public claim about what it reads. It went stale
+// silently: six parsers were added over one stretch of work and none of them appeared in
+// it, so the published page under-sold the tool and, worse, could just as easily have
+// over-sold it. A parser is listed under its own name or under one of the commands that
+// implies it - the table says "GCC/Clang" and "javac / Maven / Gradle" where the parsers
+// are called clang and jvm, which is right for a reader and wrong for a substring match.
+test("every parser appears in the README's table", () => {
+  const readme = readFileSync(join(fixtures, "..", "..", "README.md"), "utf8").toLowerCase();
+  const rows = readme.split("\n").filter((l) => l.startsWith("| **"));
+  assert.ok(rows.length > 30, `only ${rows.length} rows found; has the table moved?`);
+  const table = rows.join("\n");
+  const undocumented = [];
+  for (const ex of EXTRACTORS) {
+    if (ex.name === "generic") continue;   // the table's last row, worded as a catch-all
+    const names = [ex.name, ...(ex.commands ?? [])].map((n) => n.toLowerCase());
+    if (!names.some((n) => table.includes(`**${n}`) || table.includes(`${n}**`) || table.includes(`/ ${n} `) || table.includes(`${n} /`))) {
+      undocumented.push(ex.name);
+    }
+  }
+  assert.deepEqual(undocumented, [], "a parser reads a tool the README does not mention");
+});
+
 test("every failure carries a category", () => {
   for (const name of readdirSync(fixtures)) {
     const r = safely(() => analyse(readFileSync(join(fixtures, name), "utf8")), null);
