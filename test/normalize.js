@@ -43,6 +43,11 @@ const wrap = (text, fn) => text.split("\n").map((l, i) => (l.trim() ? fn(l, i) :
 // one physical line. A line-prefixing runner stamps that blob once, and normalising the
 // CRs afterwards yields interior lines with no prefix - too few to clear the uniformity
 // gate. Narrow, understood, and documented in the README rather than papered over.
+//
+// This is now only true of the DISCOVERED literal prefixes wrapped below. A CI stamp is
+// recognised by shape rather than found by comparison, so it is taken off before the CRs
+// are expanded and the problem does not arise there - see the CI-stamp test at the foot
+// of this file, which excludes nothing.
 const usesBareCr = (text) => /\r(?!\n)/.test(text);
 
 // A uniform prefix cannot be established from a single line - there is nothing to
@@ -168,6 +173,39 @@ test("normalisation is not slow on a large or hostile log", () => {
     const took = Date.now() - started;
     assert.ok(took < 3000, `normalisation took ${took}ms`);
   }
+});
+
+// ------------------------------------------------ the way a log leaves CI
+
+// The commonest way a log reaches whatbroke is not a monorepo runner: it is a raw
+// GitHub Actions log, where every line carries an ISO instant, or `gh run view --log`,
+// which puts the job and step in front of that. Unlike the prefixes above these are
+// recognised by shape, so nothing has to be inferred by comparing lines - which means
+// no fixture is excluded here, however short it is or whatever it does with CR.
+const CI_STAMPS = {
+  "GitHub Actions raw log": (l, i) =>
+    `2026-09-10T10:16:${String(54 + (i % 5)).padStart(2, "0")}.1234567Z ${l}`,
+  "gh run view --log": (l, i) =>
+    `build\tRun tests\t2026-09-10T10:16:${String(54 + (i % 5)).padStart(2, "0")}.1234567Z ${l}`,
+};
+
+test("a log that came out of CI reads exactly as it went in", () => {
+  const changed = [];
+  let checked = 0;
+  for (const name of readdirSync(fixtures)) {
+    const base = analyse(fx(name));
+    if (!base?.failures.length) continue;
+    for (const [runner, fn] of Object.entries(CI_STAMPS)) {
+      checked++;
+      const got = analyse(wrap(fx(name), fn));
+      const want = `${base.tool}/${base.failures.length}`;
+      const have = got ? `${got.tool}/${got.failures.length}` : "none";
+      if (want !== have) changed.push(`${name} + ${runner}: ${want} -> ${have}`);
+    }
+  }
+  assert.ok(checked > 200, `only ${checked} stamped logs exercised`);
+  assert.deepEqual(changed.slice(0, 6), [], "a stamped log lost its parser");
+  console.log(`       ${checked} stamped logs, none excluded`);
 });
 
 console.log(`\n  ${pass} passed, ${fail} failed`);

@@ -42,7 +42,17 @@ export function stripCiPrefix(text) {
     if (CI_PREFIX.test(l)) stamped++;
     if (seen > 200) break;
   }
-  if (seen < 3 || stamped / seen < 0.8) return text;
+  // No floor on how many lines a log needs. Requiring three meant a one-line log was
+  // never unstamped - and a one-line log is precisely the one whose whole diagnosis is
+  // that line, so `git: fatal: not a git repository` came back with nothing at all when
+  // it arrived from a GitHub Actions raw log. 11 of the fixtures degraded that way and
+  // two lost their diagnosis entirely.
+  //
+  // The floor was there so a short log that merely mentions a timestamp is not mangled.
+  // The ratio still guards that, and the pattern is narrow: a full ISO-8601 instant with
+  // the Z, at the very start, followed by whitespace. The worst a wrong strip can do is
+  // remove a timestamp and leave the message; not stripping loses the whole diagnosis.
+  if (!seen || stamped / seen < 0.8) return text;
   return lines.map((l) => l.replace(CI_PREFIX, "")).join("\n");
 }
 

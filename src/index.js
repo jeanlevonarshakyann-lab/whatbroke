@@ -292,7 +292,7 @@ export function analyse(raw, { cluster = true, command = null } = {}) {
   // redirects, so a log captured on Windows and piped in later begins with U+FEFF - and
   // every parser anchors on ^, so the first line stops matching. 25 of the fixtures read
   // differently with one in front of them; bun's unresolved import fell to the guess.
-  const base = stripCiPrefix(stripAnsi(raw.replace(/^\uFEFF/, "")).replace(/\r\n?/g, "\n"));
+  const base = stripCiPrefix(stripAnsi(raw.replace(/^\uFEFF/, ""))).replace(/\r\n?/g, "\n");
   const { text: s, hit, wrappers } = unwrap(base, command);
   if (!hit) return null;
   const r = hit.result;
