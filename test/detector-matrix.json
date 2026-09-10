@@ -871,6 +871,18 @@
       "generic": 5
     }
   },
+  "pyright_fail.txt": {
+    "winner": "pyright",
+    "parser": "pyright",
+    "failures": 3,
+    "claimants": [
+      "pyright",
+      "generic"
+    ],
+    "shadow": {
+      "generic": 3
+    }
+  },
   "pytest_collect_fail.txt": {
     "winner": "pytest",
     "parser": "pytest",

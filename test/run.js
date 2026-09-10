@@ -10,6 +10,21 @@ const fx = (n) => readFileSync(join(here, "fixtures", n), "utf8");
 const cli = join(here, "..", "bin", "whatbroke.js");
 
 const CASES = [
+  // Captured with pyright 1.x. It puts the column after the line with a dash between
+  // location and severity, and names the rule in brackets - sometimes at the end of an
+  // indented explanation, sometimes at the end of the message itself.
+  { file: "pyright_fail.txt", tool: "pyright", n: 3, check: (r) => {
+      assert.equal(r.summary, "3 errors");
+      assert.deepEqual(r.failures.map((f) => f.code),
+        ["reportReturnType", "reportArgumentType", "reportUndefinedVariable"]);
+      assert.equal(r.failures[0].line, 2);
+      assert.equal(r.failures[0].col, 12, "the column is not the start of the message");
+      assert.match(r.failures[0].message, /Type "int" is not assignable to return type "str"/);
+      // the indented line under it says why, and was being dropped
+      assert.match(r.failures[0].message, /"int" is not assignable to "str"/);
+      // the rule name belongs in the code, not trailing the message
+      assert.doesNotMatch(JSON.stringify(r.failures), /\(report[A-Za-z]+\)/);
+    } },
   // Build tools fail in ways that have nothing to do with a compiler, and none of these
   // carries a file position for a diagnostic pattern to find.
   { file: "dotnet_noproject_fail.txt", tool: "dotnet", n: 1, check: (r) => {
