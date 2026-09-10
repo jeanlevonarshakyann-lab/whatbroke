@@ -288,7 +288,11 @@ function unwrap(s, command) {
 export function analyse(raw, { cluster = true, command = null } = {}) {
   // Windows tools, and logs pasted out of Windows CI, arrive with CRLF. Every
   // parser anchors on $, so a stray \r makes all of them silently match nothing.
-  const base = stripCiPrefix(stripAnsi(raw).replace(/\r\n?/g, "\n"));
+  // A byte-order mark is not content. PowerShell writes one at the head of anything it
+  // redirects, so a log captured on Windows and piped in later begins with U+FEFF - and
+  // every parser anchors on ^, so the first line stops matching. 25 of the fixtures read
+  // differently with one in front of them; bun's unresolved import fell to the guess.
+  const base = stripCiPrefix(stripAnsi(raw.replace(/^\uFEFF/, "")).replace(/\r\n?/g, "\n"));
   const { text: s, hit, wrappers } = unwrap(base, command);
   if (!hit) return null;
   const r = hit.result;

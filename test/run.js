@@ -1307,6 +1307,43 @@ try {
   pass++;
 } catch (e) { console.log(`  FAIL problem matcher coverage\n       ${e.message}`); fail++; }
 
+// A log does not always arrive the way the tool wrote it. It gets redirected on Windows,
+// captured from a terminal that was drawing a progress bar, pasted into a file. Every
+// parser anchors on ^, so anything in front of the first line is enough to lose it.
+try {
+  const shapes = {
+    // PowerShell writes a byte-order mark at the head of anything it redirects. 25
+    // fixtures read differently with one in front of them; bun's unresolved import fell
+    // all the way to the guess.
+    "a PowerShell byte-order mark": (t) => "\uFEFF" + t,
+    "Windows line endings": (t) => t.replace(/\n/g, "\r\n"),
+    // A progress bar redraws in place with CR and no newline. Each redraw becomes its
+    // own line rather than only the last one surviving: a tool that printed an error and
+    // then redrew over it really did print the error, and losing it would be the one
+    // thing this tool must never do.
+    "a progress bar first": (t) => "\rProgress:  10%\rProgress:  90%\rProgress: 100%\n" + t,
+    "no trailing newline": (t) => t.replace(/\n+$/, ""),
+    "blank lines first": (t) => "\n\n\n" + t,
+  };
+  const changed = [];
+  let checked = 0;
+  for (const name of readdirSync(join(here, "fixtures"))) {
+    const raw = readFileSync(join(here, "fixtures", name), "utf8");
+    if (raw.includes("\r\n")) continue;
+    const read = (t) => { try { const r = analyse(t); return r ? `${r.tool}/${r.failures.length}` : "none"; } catch { return "threw"; } };
+    const plain = read(raw);
+    for (const [what, shape] of Object.entries(shapes)) {
+      checked++;
+      const got = read(shape(raw));
+      if (got !== plain) changed.push(`${name} with ${what}: ${plain} -> ${got}`);
+    }
+  }
+  assert.ok(checked > 500, `only ${checked} shapes exercised`);
+  assert.deepEqual(changed.slice(0, 6), [], "a log that arrived differently read differently");
+  console.log(`  ok   ${checked} logs survive the ways a log actually reaches you`);
+  pass++;
+} catch (e) { console.log(`  FAIL log arrival shapes\n       ${e.message}`); fail++; }
+
 // crafted output must not be able to make us read files outside the working dir
 try {
   const { render, setColor } = await import("../src/render.js");
