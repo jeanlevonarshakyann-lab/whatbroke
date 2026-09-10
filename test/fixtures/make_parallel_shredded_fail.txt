@@ -1,0 +1,13 @@
+cc -c a.c -o a.o
+cc -c b.c -o b.o
+a.c:1:20: error: use of undeclared identifier 'nope'
+b.c:1    1 | :21: error: use of undeclared identifier 'alsonope'
+int main(){ return nope; }
+      |                    ^
+    1 | int main2(){ return alsonope; }
+      |                     ^
+1 error generated.
+1 error generated.
+make: *** [a.o] Error 1
+make: *** Waiting for unfinished jobs....
+make: *** [b.o] Error 1

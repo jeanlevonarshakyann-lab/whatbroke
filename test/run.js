@@ -1407,6 +1407,25 @@ const CASES = [
       assert.equal(others.length, 2, "the two untagged compile errors are still reported");
       assert.equal((r.others ?? [])[0].tool, "go build");
     } },
+  // Captured from `make -j2` with two failing compilations, on macOS. Two compilers
+  // writing into one pipe interleaved mid-line, and b.c's diagnostic came out with a
+  // fragment of a.c's source frame driven through the middle of it:
+  //
+  //   b.c:1    1 | :21: error: use of undeclared identifier 'alsonope'
+  //
+  // That line is not recoverable without guessing which bytes are foreign, and nothing
+  // here tries. The count is the part of the wreckage that survived: clang writes
+  // "1 error generated." once per translation unit, twice here, and every undamaged log
+  // in this corpus agrees with that number exactly.
+  { file: "make_parallel_shredded_fail.txt", tool: "clang", n: 1, check: (r) => {
+      assert.equal(r.failures[0].file, "a.c");
+      assert.equal(r.failures[0].line, 1);
+      assert.match(r.failures[0].message, /undeclared identifier 'nope'/);
+      // The one that matters: the headline does not claim this was the only one.
+      assert.equal(r.summary, "1 of the 2 errors clang reported");
+      // and the shredded line is not half-read into a failure of its own
+      assert.doesNotMatch(JSON.stringify(r.failures), /alsonope/);
+    } },
   { file: "rspec_fail.txt", tool: "rspec", n: 2, check: (r) => {
       assert.equal(r.summary, "3 examples, 2 failures");
       assert.equal(r.failures[0].title, "shop totals an invoice");
@@ -3089,6 +3108,32 @@ try {
   console.log("  ok   a panic beside compile errors is not dropped by either of them");
   pass++;
 } catch (e) { console.log(`  FAIL panic beside compile errors\n       ${e.message}`); fail++; }
+
+// clang's own count is a claim whatbroke can be checked against, so it is. Every log
+// where the two agree must keep agreeing, and any log where they do not must say so in
+// the headline rather than quietly reporting the smaller number. The disagreement only
+// happens on a log something has damaged - `make -j` interleaving two compilers - and
+// that is exactly when a confident count is worst.
+try {
+  let checked = 0;
+  for (const file of readdirSync(join(here, "fixtures"))) {
+    const raw = fx(file);
+    const declared = [...raw.matchAll(/^(\d+) errors? generated\.$/gm)]
+      .reduce((n, m) => n + Number(m[1]), 0);
+    if (!declared) continue;
+    const r = analyse(raw);
+    if (r?.tool !== "clang") continue;
+    checked++;
+    if (r.failures.length === declared) continue;
+    assert.ok(r.failures.length < declared,
+      `${file}: ${r.failures.length} failures over a log clang says had ${declared}`);
+    assert.ok(r.summary.includes(String(declared)),
+      `${file}: read ${r.failures.length} of ${declared} and the headline does not say so`);
+  }
+  assert.ok(checked >= 4, `only ${checked} logs carry a clang count`);
+  console.log(`  ok   clang's own error count is never quietly contradicted (${checked} logs)`);
+  pass++;
+} catch (e) { console.log(`  FAIL clang count\n       ${e.message}`); fail++; }
 
 const cliResults = await (await import("./cli.js")).runCliTests();
 pass += cliResults.pass;

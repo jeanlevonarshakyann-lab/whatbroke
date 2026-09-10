@@ -51,9 +51,25 @@ export default {
       });
     }
     if (!failures.length) return null;
+    // clang ends each translation unit with its own count, and every clean log in the
+    // corpus agrees with it exactly - 14 for 14, 3 for 3. It stops agreeing when the log
+    // has been damaged, and the commonest way that happens is `make -j`: two compilers
+    // writing into one pipe interleave mid-line, and
+    //
+    //   b.c:1    1 | :21: error: use of undeclared identifier 'alsonope'
+    //
+    // is b.c's diagnostic with a fragment of a.c's source frame driven through the
+    // middle of it. That line cannot be recovered without guessing which bytes are
+    // foreign, and this does not try. What it will not do any more is report "1 error"
+    // over a log where clang said there were two - the count is the one part of the
+    // wreckage that survived intact, and saying nothing was the real failure here.
+    const declared = [...s.matchAll(/^(\d+) errors? generated\.$/gm)]
+      .reduce((n, m) => n + Number(m[1]), 0);
+    const n = failures.length;
+    const missed = declared > n ? declared : 0;
     return {
       tool: "clang",
-      summary: `${failures.length} error${failures.length > 1 ? "s" : ""}` +
+      summary: (missed ? `${n} of the ${missed} errors clang reported` : `${n} error${n > 1 ? "s" : ""}`) +
         (warnings ? ` — ${warnings} warning${warnings > 1 ? "s" : ""} hidden` : ""),
       failures,
     };
