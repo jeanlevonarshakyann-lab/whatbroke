@@ -39,7 +39,13 @@ export default {
       let file;
       let line;
       const body = [];
+      // Every line of a numbered example is indented or blank; the block ends at the
+      // first line at column zero. The named terminators below are rspec's own, so in a
+      // log holding another tool they sat far past the end of the block - Playwright
+      // numbers its failures the same way, and its last one ran on into an rspec report
+      // pasted under it and took the "Failure/Error:" line that proves ownership.
       for (let j = i + 1; j < lines.length &&
+        (!lines[j].trim() || /^[^\S\n]/.test(lines[j])) &&
         !/^[^\S\n]+\d+\)[^\S\n]+/.test(lines[j]) &&
         !/^Finished in /.test(lines[j]) &&
         !/^Top \d+ slowest/.test(lines[j]) &&
