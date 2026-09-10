@@ -19,14 +19,30 @@ const SRC_RE = /^[^\S\n]*\d+:[^\S\n]?(.*)$/;
 const CLOSE_RE = /^[^\S\n]*[╵╷][^\S\n]*$/;
 const MAX_MESSAGE = 4;
 
+// `terraform init` does not draw a box. It writes the error flat, with the explanation
+// indented under it and no location at all, because nothing has been parsed yet:
+//
+//   Initializing provider plugins...
+//   Error: Invalid provider registry host
+//   The host "example.com" given in provider source address ... does not offer a
+//   Terraform provider registry.
+//
+// "Error: <anything>" is every tool's shape, so what identifies this one is the banner
+// terraform prints above it. Without this branch a failed `init` - the first command
+// anyone runs, and the one that fails on a bad provider or an unreachable backend -
+// came back as a guess.
+const INIT_BANNER_RE = /^[^\S\n]*Initializing (?:the backend|provider plugins|modules)\b/m;
+const FLAT_HEAD_RE = /^(Error|Warning):[^\S\n]*(.*)$/;
+
 export default {
   name: "terraform",
   category: "build",
   commands: ["terraform", "tofu", "terragrunt"],
 
   detect: (s) =>
-    HEAD_RE.test(s.split("\n").find((l) => HEAD_RE.test(l)) ?? "") &&
-    (/^[^\S\n]*╷[^\S\n]*$/m.test(s) || /[^\S\n]on[^\S\n]+\S+[^\S\n]+line[^\S\n]+\d+/.test(s)),
+    (HEAD_RE.test(s.split("\n").find((l) => HEAD_RE.test(l)) ?? "") &&
+      (/^[^\S\n]*╷[^\S\n]*$/m.test(s) || /[^\S\n]on[^\S\n]+\S+[^\S\n]+line[^\S\n]+\d+/.test(s))) ||
+    (INIT_BANNER_RE.test(s) && s.split("\n").some((l) => FLAT_HEAD_RE.test(l))),
 
   extract(s) {
     const lines = s.split("\n");
@@ -54,6 +70,46 @@ export default {
         // message says it twice. The prose underneath is what it did not say.
         message: (message.length ? message : [h[2]]).join("\n"), stmt,
       });
+    }
+    if (!failures.length && INIT_BANNER_RE.test(s)) {
+      // Bounded to the window after terraform's own banner. init says what it is doing
+      // and then why it stopped, so its errors sit directly under the last "Initializing
+      // ..." or "- Finding ..." line it wrote. Scanning the whole log for "Error: " -
+      // which is every tool's shape - had terraform claiming Go's expected-error strings
+      // out of a test log, fifteen of them.
+      // Not a window - the very next thing it says. init narrates what it is doing and
+      // then why it stopped, so the error is the first non-blank line after the last
+      // step. A window of a dozen lines still reached past terraform's own output into
+      // whatever followed it, and took sass's "Error: Undefined variable." with it.
+      const INIT_STEP_RE = /^[^\S\n]*(?:Initializing |- (?:Finding|Installing|Using|Downloading) )/;
+      let last = -1;
+      for (let i = 0; i < lines.length; i++) if (INIT_STEP_RE.test(lines[i])) last = i;
+      let stop = last;
+      for (let i = last + 1; i < lines.length; i++) {
+        if (!lines[i].trim()) continue;
+        stop = i;   // the first thing said after the narration, whatever it is
+        break;
+      }
+      // The flat form. The prose under the header is the explanation; a blank line or
+      // the next header ends it, and there is no location to find because init runs
+      // before anything has been parsed.
+      for (let i = stop; i <= stop && i >= 0 && i < lines.length; i++) {
+        const h = lines[i].match(FLAT_HEAD_RE);
+        if (!h) continue;
+        // A blank line separates the header from the prose, so it cannot end it - but a
+        // blank AFTER the prose has started does.
+        const prose = [];
+        for (let j = i + 1; j < lines.length && j <= i + 8 && prose.length < MAX_MESSAGE; j++) {
+          if (FLAT_HEAD_RE.test(lines[j])) break;
+          if (!lines[j].trim()) { if (prose.length) break; else continue; }
+          prose.push(lines[j].trim());
+        }
+        if (h[1] === "Warning") { warnings++; continue; }
+        failures.push({
+          title: h[2].trim(), label: h[2].trim(), severity: "error",
+          message: prose.length ? prose.join(" ") : h[2].trim(),
+        });
+      }
     }
     if (!failures.length) return null;
     const n = failures.length;

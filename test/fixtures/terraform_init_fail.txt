@@ -1,0 +1,9 @@
+Initializing the backend...
+
+Initializing provider plugins...
+- Finding example.com/nonexistent/nope versions matching "9.9.9"...
+
+Error: Invalid provider registry host
+
+The host "example.com" given in provider source address
+"example.com/nonexistent/nope" does not offer a Terraform provider registry.

@@ -251,6 +251,17 @@ const CASES = [
       assert.match(r.failures[0].message, /^Failed opening required 'nothing-here\.php'$/);
       assert.equal(r.failures[0].code, "Error");
     } },
+  // `terraform init` does not draw a box - it writes the error flat, with the prose
+  // under it and no location at all, because nothing has been parsed yet. init is the
+  // first command anyone runs and the one that fails on a bad provider or an
+  // unreachable backend, and it was coming back as a guess.
+  { file: "terraform_init_fail.txt", tool: "terraform", n: 1, check: (r) => {
+      assert.equal(r.failures[0].title, "Invalid provider registry host");
+      assert.match(r.failures[0].message, /^The host "example\.com"/);
+      // the prose is separated from the header by a blank line, which cannot end it
+      assert.match(r.failures[0].message, /does not offer a Terraform provider registry/);
+      assert.equal(r.failures[0].file, undefined, "init runs before anything is parsed");
+    } },
   // A file that will not compile never runs, so there is no traceback and no frames -
   // just where the parser gave up. Its location line is a traceback frame's shape
   // WITHOUT the ", in <name>" a frame always carries, which is what separates them.

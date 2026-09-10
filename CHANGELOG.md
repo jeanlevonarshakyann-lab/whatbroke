@@ -4,6 +4,9 @@
 
 ## 0.4.0 — 2026-09-10
 
+- `terraform init` is read rather than guessed at. It draws no box - it writes the error
+  flat with the prose under it and no location, because nothing has been parsed yet - and
+  it is the first command anyone runs.
 - A Python file that will not compile is read rather than guessed at. It produces no
   traceback and no frames, just the location the parser gave up at - a traceback frame's
   shape without the ", in <name>" a frame always carries. It stands beside any tracebacks
