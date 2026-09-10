@@ -39,13 +39,36 @@ function scoreLine(text, numbers, failure, prepared) {
  */
 export function addSourceRanges(text, result) {
   if (!result?.failures?.length) return result;
+
+  // Deferred, because most runs never ask. Ranges exist so that two parsers describing
+  // the same raw region can suppress one another, which only happens in a log holding
+  // more than one tool - and this runs for EVERY parser that claims the text, winner and
+  // losers alike. A single-tool log paid for all of it and read none of it: 90 eslint
+  // problems inside a 100k-line build log cost 4.5s against 0.56s with the work skipped.
+  //
+  // The thunk computes every failure's range in one pass when the first one is asked
+  // for, so the shared tie-breaking between them is exactly what it was.
+  let ranges = null;
+  const compute = () => (ranges ??= locate(text, result.failures));
+  const failures = result.failures.map((failure, i) =>
+    failure[SOURCE_RANGE] ? failure : lazySourceRange(failure, () => compute()[i]));
+  return { ...result, failures };
+}
+
+function lazySourceRange(failure, get) {
+  const copy = { ...failure };
+  Object.defineProperty(copy, SOURCE_RANGE, { get, enumerable: false, configurable: true });
+  return copy;
+}
+
+function locate(text, all) {
   const lines = text.split("\n");
   const cleaned = lines.map(clean);
   const numbers = cleaned.map((line) => new Set(line.match(/\d+/g) ?? []));
   const used = new Set();
   const known = new Map();
-  const failures = result.failures.map((failure) => {
-    if (failure[SOURCE_RANGE]) return failure;
+  return all.map((failure) => {
+    if (failure[SOURCE_RANGE]) return failure[SOURCE_RANGE];
     // Repeated diagnostics are collapsed immediately after parsing. Locate identical
     // copies once rather than rescanning a large log for every repetition (a repeated
     // 90-error eslint block otherwise made this quadratic on Node 18).
@@ -54,7 +77,7 @@ export function addSourceRanges(text, result) {
       failure.title ?? "", failure.code ?? null, failure.subject ?? null,
       failure.label ?? null, failure.message ?? "", failure.stmt ?? null,
     ]);
-    if (known.has(identity)) return withSourceRange(failure, known.get(identity));
+    if (known.has(identity)) return known.get(identity);
     const prepared = {
       messageLines: String(failure.message ?? "").split("\n").map(clean).filter((s) => s.length >= 4),
       stmt: clean(failure.stmt),
@@ -68,7 +91,7 @@ export function addSourceRanges(text, result) {
     if (!scored.length) {
       const range = { start: 0, end: lines.length };
       known.set(identity, range);
-      return withSourceRange(failure, range);
+      return range;
     }
 
     // Identical assertion text is common across tool runs. Prefer the occurrence close
@@ -88,20 +111,16 @@ export function addSourceRanges(text, result) {
     for (let i = start; i < end; i++) used.add(i);
     const range = { start, end };
     known.set(identity, range);
-    return withSourceRange(failure, range);
+    return range;
   });
-  return { ...result, failures };
 }
 
-function withSourceRange(failure, range) {
-  const copy = { ...failure };
-  Object.defineProperty(copy, SOURCE_RANGE, { value: range, enumerable: false });
-  return copy;
-}
 
 export function preserveSourceRange(from, to) {
-  const range = sourceRange(from);
-  if (range) Object.defineProperty(to, SOURCE_RANGE, { value: range, enumerable: false });
+  // Carry the accessor across rather than its value, so a copy made on the way to the
+  // reader does not force a computation nothing has asked for.
+  const own = from && Object.getOwnPropertyDescriptor(from, SOURCE_RANGE);
+  if (own) Object.defineProperty(to, SOURCE_RANGE, { ...own, enumerable: false });
   return to;
 }
 

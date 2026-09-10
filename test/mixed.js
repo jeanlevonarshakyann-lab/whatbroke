@@ -110,6 +110,31 @@ test("one diagnosis is never reported under two tools", () => {
   assert.equal(r.others, undefined, "the traceback reading of the same failures leaked through");
 });
 
+// Ownership exists so two parsers describing the same raw region can suppress one
+// another, which only happens in a log holding more than one tool - but it is computed
+// for EVERY parser that claims the text. A single-tool log paid for all of it and read
+// none of it: 90 eslint problems inside a 100k-line build log cost 4.5s, against 0.56s
+// with the work skipped. The ranges are the same either way; what changed is when.
+test("a log with one tool in it never pays for source ownership", () => {
+  const noise = Array(60000).fill("  vite:build transforming src/components/Widget.tsx +2ms").join("\n");
+  const log = `${noise}\n${fx("eslint_bulk_fail.txt")}`;
+
+  const started = Date.now();
+  const r = analyse(log);
+  const took = Date.now() - started;
+
+  assert.equal(r.tool, "eslint");
+  assert.equal(r.failures.length, 90);
+  assert.equal(r.others, undefined, "this log holds one tool, so nothing needs a range");
+  // Eagerly locating 90 failures in 60k lines is seconds of work. The bound is loose
+  // enough to survive a slow CI runner and tight enough that doing it would fail.
+  assert.ok(took < 2000, `${took}ms - source ranges look like they are being computed eagerly`);
+
+  // and asking for one still answers, with the same range it always gave
+  const range = sourceRange(r.failures[0]);
+  assert.ok(range && range.end > range.start, "a range is still available on request");
+});
+
 test("source ownership is attached internally without changing JSON v1", () => {
   const r = analyse(fx("py_traceback.txt"));
   const range = sourceRange(r.failures[0]);
