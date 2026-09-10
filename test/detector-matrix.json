@@ -41,6 +41,17 @@
     ],
     "shadow": {}
   },
+  "babel_fail.txt": {
+    "winner": "babel",
+    "parser": "babel",
+    "failures": 1,
+    "claimants": [
+      "babel",
+      "node",
+      "generic"
+    ],
+    "shadow": {}
+  },
   "bun_fail.txt": {
     "winner": "bun test",
     "parser": "bun test",
@@ -716,6 +727,16 @@
     "shadow": {
       "generic": 1
     }
+  },
+  "less_fail.txt": {
+    "winner": "less",
+    "parser": "less",
+    "failures": 1,
+    "claimants": [
+      "less",
+      "generic"
+    ],
+    "shadow": {}
   },
   "make_compile_fail.txt": {
     "winner": "clang",

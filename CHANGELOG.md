@@ -4,6 +4,10 @@
 
 ## 0.4.0 — 2026-09-10
 
+- Reads less and babel. Both produced no diagnosis at all. lessc puts the class, the
+  message and the location on a single line with the position as prose at the end; babel
+  embeds the file in the middle of its message and follows the code frame with twenty
+  frames of its own parser, which is the bulk of the log.
 - A `cargo run` panic is no longer reported as `cargo test`. A panic is a test failure
   only when a test run produced it - a tally at the end, or a per-test stdout block above
   it - and a program that panicked on its own has neither. The fixture that showed this

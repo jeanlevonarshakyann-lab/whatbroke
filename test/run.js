@@ -285,6 +285,28 @@ const CASES = [
       assert.match(r.failures[0].message, /unable to resolve dependency tree/);
       assert.equal(r.wrappers, undefined, "npm's own prefix is not a wrapper");
     } },
+  // Captured with lessc 4. It puts the class, the message, the file, the line and the
+  // column all on the header line, with the position as prose at the end.
+  { file: "less_fail.txt", tool: "less", n: 1, check: (r) => {
+      assert.match(r.failures[0].file, /bad\.less$/);
+      assert.equal(r.failures[0].line, 1);
+      assert.equal(r.failures[0].col, 13);
+      assert.equal(r.failures[0].code, "NameError");
+      assert.equal(r.failures[0].message, "variable @undefined-var is undefined");
+      // the location is prose inside the header and must not be left in the message
+      assert.doesNotMatch(r.failures[0].message, /on line|column/);
+    } },
+  // Captured with @babel/cli 7. Babel names the file inside its message and follows the
+  // code frame with its own parser's stack - twenty frames of @babel/parser.
+  { file: "babel_fail.txt", tool: "babel", n: 1, check: (r) => {
+      assert.match(r.failures[0].file, /bad\.jsx$/);
+      assert.equal(r.failures[0].line, 1);
+      assert.equal(r.failures[0].col, 10);
+      assert.equal(r.failures[0].message, "Unexpected token");
+      assert.equal(r.failures[0].stmt, "const x = ;");
+      // none of babel's own frames reach the reader
+      assert.doesNotMatch(JSON.stringify(r.failures), /@babel\/parser|node_modules/);
+    } },
   // Captured with dart-sass 1.9x. sass puts its message at the head of a drawn box and
   // the location at the foot, so reading the first line found the problem and never
   // where it was.
