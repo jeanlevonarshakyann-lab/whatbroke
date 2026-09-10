@@ -460,6 +460,30 @@
       "generic": 4
     }
   },
+  "govet_compile_fail.txt": {
+    "winner": "go vet",
+    "parser": "go",
+    "failures": 1,
+    "claimants": [
+      "go",
+      "generic"
+    ],
+    "shadow": {
+      "generic": 1
+    }
+  },
+  "govet_printf_fail.txt": {
+    "winner": "go build",
+    "parser": "go",
+    "failures": 2,
+    "claimants": [
+      "go",
+      "generic"
+    ],
+    "shadow": {
+      "generic": 2
+    }
+  },
   "gradle_dependency_fail.txt": {
     "winner": "gradle",
     "parser": "jvm",

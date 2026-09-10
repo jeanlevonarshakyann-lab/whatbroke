@@ -200,6 +200,25 @@ const CASES = [
       assert.equal(r.failures[0].line, 2);
       assert.match(r.failures[0].message, /Call to a member function method\(\) on null/);
     } },
+  // Captured with go 1.25. `go vet` prefixes the line when the package will not compile
+  // at all, and that prefix defeated the anchor - so a vet run that hit a type error came
+  // back as a guess with no location, with the file and line sitting in plain sight
+  // inside the message.
+  { file: "govet_compile_fail.txt", tool: "go vet", n: 1, check: (r) => {
+      assert.equal(r.failures[0].file, "main.go");
+      assert.equal(r.failures[0].line, 6);
+      assert.equal(r.failures[0].col, 17);
+      assert.match(r.failures[0].message, /^cannot use 42 \(untyped int constant\)/);
+      assert.doesNotMatch(r.failures[0].message, /^vet: /, "the prefix is not part of the message");
+    } },
+  { file: "govet_printf_fail.txt", tool: "go build", n: 2, check: (r) => {
+      // Vet's own findings are written exactly like a compile error and carry no prefix,
+      // so a piped log gives no way to tell them apart. Reported as the compiler's is
+      // the honest reading of the text; the prefix above is the one time it does say.
+      assert.equal(r.failures[0].line, 9);
+      assert.match(r.failures[0].message, /fmt\.Printf call needs 1 arg but has 2 args/);
+      assert.match(r.failures[1].message, /format %s has arg 42 of wrong type int/);
+    } },
   // Captured on the system perl, 5.34. Perl puts the location at the end of the message,
   // in prose, so nothing recognised it and a failing perl script produced no diagnosis.
   { file: "perl_die_fail.txt", tool: "perl", n: 1, check: (r) => {
