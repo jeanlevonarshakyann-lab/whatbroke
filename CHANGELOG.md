@@ -2,6 +2,11 @@
 
 ## Unreleased
 
+- Added a Terraform parser. Its diagnostics are drawn in a box, and the vertical bar down
+  the left is part of the drawing rather than the message — so a validation failure came
+  back as the headline alone, with the file, the line and the sentence explaining it all
+  left inside the box.
+
 - Added CMake and kubectl parsers. A CMake configure failure — a missing source, a parse
   error in the script — produced no diagnosis at all; nor did `kubectl get` against an
   unreachable cluster, which prints five identical klog lines and then the sentence a

@@ -10,6 +10,20 @@ const fx = (n) => readFileSync(join(here, "fixtures", n), "utf8");
 const cli = join(here, "..", "bin", "whatbroke.js");
 
 const CASES = [
+  // Captured with Terraform 1.16. Terraform draws each diagnostic in a box, and the
+  // vertical bar down the left is part of the drawing rather than the message.
+  { file: "terraform_validate_fail.txt", tool: "terraform", n: 1, check: (r) => {
+      assert.equal(r.failures[0].file, "main.tf");
+      assert.equal(r.failures[0].line, 1);
+      assert.equal(r.failures[0].title, "Missing required argument");
+      assert.match(r.failures[0].subject, /resource "local_file" "demo"/);
+      // the sentence at the bottom of the box is the one that says what to do
+      assert.match(r.failures[0].message, /The argument "filename" is required/);
+      // the box is not part of anything
+      assert.doesNotMatch(JSON.stringify(r.failures), /[│╷╵]/);
+      // and the headline is not repeated inside its own message
+      assert.doesNotMatch(r.failures[0].message, /^Missing required argument$/m);
+    } },
   // Captured with CMake 4.4 and ninja 1.13. ninja gets no parser on purpose: what fails
   // under it is a compiler, which already has one, and its own "FAILED: [code=1]" line
   // restates the failure without adding to it - exactly as make's does.

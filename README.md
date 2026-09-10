@@ -217,6 +217,7 @@ them.
 | **ruff** | rule code, `file:line`, the message and ruff's own fix hint |
 | **pyright** | the rule name as the code, the column, and the indented line that says *why* — not the column pasted into the message |
 | **mypy** | error code, `file:line`, the type-checking message; notes and warnings set aside |
+| **Terraform** | the file, the line, the block, and the sentence at the bottom of the box that says what to do |
 | **CMake** | the script line and the command that raised it — `add_executable`, `find_package` |
 | **ninja** | no parser of its own: what fails under it is a compiler, which already has one |
 | **kubectl** | the sentence a person wants, not five identical klog lines from inside client-go |
