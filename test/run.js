@@ -545,6 +545,15 @@ const CASES = [
       // the diagnostic group is the handle you would silence or search for
       assert.doesNotMatch(JSON.stringify(r.failures), /\[#/, "the group tag stayed in the message");
     } },
+  // A conformance error is the case that produces the most notes, and swiftc 6 draws all
+  // of them inside the gutter annotation rather than as standalone "file:line: note:"
+  // headers. Three notes here, and none of them is a failure.
+  { file: "swiftc_conformance_fail.txt", tool: "swift", n: 1, check: (r) => {
+      assert.match(r.failures[0].message, /^type 'Invoice' does not conform to protocol 'Payable'$/);
+      assert.equal(r.failures[0].line, 5);
+      assert.doesNotMatch(JSON.stringify(r.failures), /note:/, "an annotation note was read as a failure");
+      assert.doesNotMatch(JSON.stringify(r.failures), /add stubs for conformance/);
+    } },
   { file: "swiftc_bulk_fail.txt", tool: "swift", n: 9, check: (r) => {
       // Eight assignments of the same wrong type, and one unrelated error. That is one
       // cause with eight sites, not nine things to read - but the eight were listed one
@@ -1267,6 +1276,36 @@ try {
   console.log(`  FAIL every fixture renders without leaking a raw value\n       ${e.message}`);
   fail++;
 }
+
+// The problem matcher is how a `--quiet` CI job turns terminal output into annotations,
+// and it is a regex living in a JSON file that nothing connected to the renderer. It
+// needs something after the location to use as the message, so a failure with no name
+// rendered as a bare "broken.go:4" and CI silently annotated nothing for go, go vet and
+// a cargo manifest. Neither side knew.
+try {
+  const { render, setColor } = await import("../src/render.js");
+  setColor(false);
+  const matcher = JSON.parse(readFileSync(join(here, "..", ".github", "whatbroke.problem-matcher.json"), "utf8"));
+  const re = new RegExp(matcher.problemMatcher[0].pattern[0].regexp);
+  // what the renderer emits for a located failure: two spaces, "file:line[:col]", a name
+  const LOCATION_LINE = /^  (\S.*?):(\d+)(?::(\d+))?(?:  (.*))?$/;
+  const unreadable = [];
+  let seen = 0;
+  for (const name of readdirSync(join(here, "fixtures"))) {
+    let r;
+    try { r = analyse(fx(name)); } catch { continue; }
+    if (!r?.failures.length) continue;
+    for (const line of render(r, { source: false }).split("\n")) {
+      if (!LOCATION_LINE.test(line)) continue;
+      seen++;
+      if (!re.test(line)) unreadable.push(`${name} (${r.tool}): ${JSON.stringify(line)}`);
+    }
+  }
+  assert.ok(seen > 80, `only ${seen} location lines exercised`);
+  assert.deepEqual(unreadable, [], "CI would annotate nothing for these");
+  console.log(`  ok   the problem matcher reads all ${seen} rendered location lines`);
+  pass++;
+} catch (e) { console.log(`  FAIL problem matcher coverage\n       ${e.message}`); fail++; }
 
 // crafted output must not be able to make us read files outside the working dir
 try {

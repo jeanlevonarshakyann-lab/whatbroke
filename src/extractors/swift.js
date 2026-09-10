@@ -58,6 +58,12 @@ export default {
       const m = line.match(DIAGNOSTIC_RE);
       if (!m) continue;
       const severity = m[4];
+      // The pattern admits "note" because it is clang's diagnostic shape, and clang does
+      // write standalone notes. swiftc 6 does not: it draws them inside the gutter
+      // annotation, where GUTTER_RE has already skipped them. The guard stays because
+      // the pattern would otherwise report one as a failure - it is not reached by any
+      // capture on this compiler, and a conformance error, which is the case that
+      // produces the most notes, is in the corpus to show they do not leak in.
       if (severity === "note") continue;
       if (severity === "warning") { warnings++; continue; }
 

@@ -1,0 +1,13 @@
+note2.swift:5:8: error: type 'Invoice' does not conform to protocol 'Payable'
+1 | protocol Payable {
+2 |     func total() -> Int
+  |          `- note: protocol requires function 'total()' with type '() -> Int'
+3 | }
+4 | 
+5 | struct Invoice: Payable {
+  |        |- error: type 'Invoice' does not conform to protocol 'Payable'
+  |        `- note: add stubs for conformance
+6 |     func total() -> String { "x" }
+  |          `- note: candidate has non-matching type '() -> String'
+7 | }
+8 | 
