@@ -1282,6 +1282,18 @@
       "generic": 9
     }
   },
+  "swiftc_conformance_fail.txt": {
+    "winner": "swift",
+    "parser": "swift",
+    "failures": 1,
+    "claimants": [
+      "swift",
+      "generic"
+    ],
+    "shadow": {
+      "generic": 1
+    }
+  },
   "swiftc_driver_fail.txt": {
     "winner": "swift",
     "parser": "swift",

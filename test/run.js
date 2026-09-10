@@ -545,6 +545,15 @@ const CASES = [
       // the diagnostic group is the handle you would silence or search for
       assert.doesNotMatch(JSON.stringify(r.failures), /\[#/, "the group tag stayed in the message");
     } },
+  // A conformance error is the case that produces the most notes, and swiftc 6 draws all
+  // of them inside the gutter annotation rather than as standalone "file:line: note:"
+  // headers. Three notes here, and none of them is a failure.
+  { file: "swiftc_conformance_fail.txt", tool: "swift", n: 1, check: (r) => {
+      assert.match(r.failures[0].message, /^type 'Invoice' does not conform to protocol 'Payable'$/);
+      assert.equal(r.failures[0].line, 5);
+      assert.doesNotMatch(JSON.stringify(r.failures), /note:/, "an annotation note was read as a failure");
+      assert.doesNotMatch(JSON.stringify(r.failures), /add stubs for conformance/);
+    } },
   { file: "swiftc_bulk_fail.txt", tool: "swift", n: 9, check: (r) => {
       // Eight assignments of the same wrong type, and one unrelated error. That is one
       // cause with eight sites, not nine things to read - but the eight were listed one
