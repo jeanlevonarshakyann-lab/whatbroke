@@ -45,3 +45,30 @@ export function stripCiPrefix(text) {
   if (seen < 3 || stamped / seen < 0.8) return text;
   return lines.map((l) => l.replace(CI_PREFIX, "")).join("\n");
 }
+
+// A Go test with twenty-four subtests fails twenty-four times with the same assertion,
+// and the parser gathers all of them into one message: "Unexpected response." printed
+// twenty-four times, 503 characters saying one thing. No diagnosis is improved by
+// repeating a sentence, so a run of identical lines becomes the line and a count.
+//
+// Only consecutive runs, so the shape of a diagnostic that alternates - "expected: X /
+// got: Y / expected: Z / got: W" - is left alone. Three is the threshold: saying
+// something twice is usually the tool making a point, and annotating it would be noisier
+// than the repeat.
+const MIN_RUN = 3;
+
+/** Collapse runs of identical lines in a message into one line and a count. */
+export function collapseRepeats(message) {
+  if (typeof message !== "string" || !message.includes("\n")) return message;
+  const lines = message.split("\n");
+  const out = [];
+  for (let i = 0; i < lines.length; ) {
+    let j = i;
+    while (j < lines.length && lines[j] === lines[i]) j++;
+    const run = j - i;
+    out.push(run >= MIN_RUN && lines[i].trim() ? `${lines[i]} (x${run})` : lines[i]);
+    if (run >= MIN_RUN && lines[i].trim()) i = j;
+    else { out.push(...lines.slice(i + 1, j)); i = j; }
+  }
+  return out.join("\n");
+}

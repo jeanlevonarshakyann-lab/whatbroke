@@ -32,7 +32,7 @@ import npm from "./extractors/npm.js";
 import { pnpm, yarn } from "./extractors/pkgmanager.js";
 import pip from "./extractors/pip.js";
 import generic from "./extractors/generic.js";
-import { stripAnsi, stripCiPrefix, isNoise } from "./util.js";
+import { stripAnsi, stripCiPrefix, isNoise, collapseRepeats } from "./util.js";
 import { clusterFailures } from "./cluster.js";
 import { wrapperCandidates } from "./normalize.js";
 
@@ -41,7 +41,11 @@ export const EXTRACTORS = [pytest, nodetest, bun, deno, playwright, jest, vitest
 
 function dedupeFailures(failures) {
   const seen = new Set();
-  return failures.filter((failure) => {
+  // Collapsing here rather than in each parser puts it on every failure that reaches the
+  // reader, from every parser, and it happens before the key is built - so two failures
+  // that differ only in how many times they repeated themselves also dedupe.
+  return failures.map((f) => (f.message ? { ...f, message: collapseRepeats(f.message) } : f))
+    .filter((failure) => {
     const key = JSON.stringify([
       failure.file ?? null, failure.line ?? null, failure.col ?? null,
       failure.title ?? "", failure.message ?? "", failure.stmt ?? "",

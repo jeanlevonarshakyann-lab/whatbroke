@@ -112,6 +112,18 @@ export function render(result, { max = 5, cwd = true, source = true, cluster = t
   }
   out.push("");
 
+  // A headline that IS the only failure has already said everything. Four parsers -
+  // yarn, pnpm, kubectl - print "Command failed with exit code 3." as both, and the
+  // block underneath added a bare "error" label and the same sentence again. Only when
+  // the block would carry nothing else: no location to open, no source, no unwind, and
+  // a title that is a severity word rather than a name like ELIFECYCLE or KeyError.
+  const GENERIC_TITLE = /^(?:error|fatal|failure|failed|warning)?$/i;
+  const saidItAll = !secondary && fails.length === 1 && result.summary
+    && String(fails[0].message ?? "") === result.summary
+    && !fails[0].file && !fails[0].stmt && !fails[0].trace?.length
+    && GENERIC_TITLE.test(String(fails[0].title ?? "").trim());
+  if (saidItAll && !result.others?.length) return out.join("\n").replace(/\n+$/, "") + "\n";
+
   for (const unit of units.slice(0, max)) {
     const f = fails[unit.exemplar];
     const kin = unit.members.filter((i) => i !== unit.exemplar);
@@ -133,7 +145,11 @@ export function render(result, { max = 5, cwd = true, source = true, cluster = t
       ? `  ${C.bold}${C.yellow}new${C.reset}` : "";
     if (loc || title) out.push(`  ${loc}${title}${more}${isNew}`);
 
-    for (const m of String(f.message ?? "").split("\n")) {
+    // The headline already said this. When the block is here for something else - a code
+    // like ERR_PNPM_NO_SCRIPT, a location, an unwind - keep the block and drop the line.
+    const echoesHeadline = fails.length === 1 && result.summary
+      && String(f.message ?? "") === result.summary;
+    for (const m of echoesHeadline ? [] : String(f.message ?? "").split("\n")) {
       if (!m.trim()) continue;
       // Some tools pad a failure with a very long boilerplate line - pytest lists
       // every available fixture, rustc lists every trait impl. Keep the head of it.
