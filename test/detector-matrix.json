@@ -198,6 +198,19 @@
     ],
     "shadow": {}
   },
+  "deno_check_fail.txt": {
+    "winner": "deno check",
+    "parser": "deno",
+    "failures": 1,
+    "claimants": [
+      "deno",
+      "node",
+      "generic"
+    ],
+    "shadow": {
+      "generic": 1
+    }
+  },
   "deno_fail.txt": {
     "winner": "deno test",
     "parser": "deno test",
@@ -211,15 +224,44 @@
       "generic": 4
     }
   },
-  "denorun_crash_fail.txt": {
-    "winner": "output",
-    "parser": "generic",
+  "deno_import_fail.txt": {
+    "winner": "deno",
+    "parser": "deno",
     "failures": 1,
     "claimants": [
+      "deno",
       "node",
       "generic"
     ],
-    "shadow": {}
+    "shadow": {
+      "generic": 1
+    }
+  },
+  "deno_syntax_fail.txt": {
+    "winner": "deno",
+    "parser": "deno",
+    "failures": 1,
+    "claimants": [
+      "deno",
+      "node",
+      "generic"
+    ],
+    "shadow": {
+      "generic": 1
+    }
+  },
+  "denorun_crash_fail.txt": {
+    "winner": "deno",
+    "parser": "deno",
+    "failures": 1,
+    "claimants": [
+      "deno",
+      "node",
+      "generic"
+    ],
+    "shadow": {
+      "generic": 1
+    }
   },
   "docker_buildkit_npm_fail.txt": {
     "winner": "npm",

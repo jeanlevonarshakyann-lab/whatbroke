@@ -188,7 +188,10 @@ const CASES = [
       assert.equal(r.failures[0].file, undefined);
       assert.match(r.failures[0].message, /Cannot find module '\.\/nothing-here'/);
     } },
-  { file: "denorun_crash_fail.txt", tool: "output", n: 1, check: (r) => {
+  // deno writes the word in lower case and puts its frames on file:// URLs, where node
+  // writes the class capitalised at column zero - so the two do not collide. This was a
+  // guess: it found the file and the line but kept "error: " inside the message.
+  { file: "denorun_crash_fail.txt", tool: "deno", n: 1, check: (r) => {
       // deno prints the source line and a caret between the message and the frames.
       assert.equal(r.failures[0].file, "/home/dev/app/dcrash.ts");
       assert.equal(r.failures[0].line, 1);
@@ -208,6 +211,29 @@ const CASES = [
       // the warning PHP printed first is context, not the headline - and it arrives
       // doubled too, so counting lines said two
       assert.equal(r.summary, "1 error, 1 warning first");
+    } },
+  // Captured on Deno 2.x.
+  { file: "deno_syntax_fail.txt", tool: "deno", n: 1, check: (r) => {
+      assert.equal(r.failures[0].code, "SyntaxError");
+      assert.equal(r.failures[0].line, 1);
+      assert.doesNotMatch(r.failures[0].message, /^error: /, "the word is not part of the message");
+    } },
+  { file: "deno_import_fail.txt", tool: "deno", n: 1, check: (r) => {
+      // The module it could not resolve is named as a URL inside the message; the reader
+      // wants the path, and the location is the line that asked for it.
+      assert.equal(r.failures[0].line, 1);
+      assert.doesNotMatch(r.failures[0].message, /file:\/\//, "the URL scheme is not part of the path");
+      assert.match(r.failures[0].message, /Module not found ".*nothing-here\.ts"/);
+    } },
+  { file: "deno_check_fail.txt", tool: "deno check", n: 1, check: (r) => {
+      // `deno check` ends with "error: Type checking failed." - a tally, not a diagnosis.
+      // Reading that instead of the TS line above it lost the whole thing: the code, the
+      // explanation and the location were all there and none of them was reported.
+      assert.equal(r.failures[0].code, "TS2322");
+      assert.equal(r.failures[0].line, 1);
+      assert.equal(r.failures[0].col, 7);
+      assert.match(r.failures[0].message, /^Type 'string' is not assignable to type 'number'\.$/);
+      assert.doesNotMatch(JSON.stringify(r.failures), /Type checking failed/);
     } },
   // Captured on PHP 8.5. A file that will not parse never runs, so there is no exception
   // and no stack - and the guess found no location at all for it.
