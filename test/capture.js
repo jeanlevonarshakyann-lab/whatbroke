@@ -2,7 +2,7 @@
 // log that says why the command failed has to survive. That part is at the END almost
 // every time - pytest's summary, cargo's error, the stack trace - so these tests care
 // most about what happens when the budget runs out long before the output does.
-import { readFileSync, writeFileSync, mkdtempSync, rmSync } from "node:fs";
+import { readFileSync, readdirSync, writeFileSync, mkdtempSync, rmSync } from "node:fs";
 import { tmpdir } from "node:os";
 import { join, dirname } from "node:path";
 import { fileURLToPath } from "node:url";
@@ -168,6 +168,55 @@ test("the marker can never be reported as a failure", () => {
   const r = analyse(real.slice(0, 200) + m + real.slice(200));
   assert.equal(r.tool, "pytest");
   assert.equal(r.failures.filter((f) => JSON.stringify(f).includes("elided")).length, 0);
+});
+
+// ------------------------------------------- the failure has to survive the cap
+
+// The whole point of keeping windows in the middle is that a real failure cannot vanish
+// because cleanup output followed it. Burying each captured fixture in three megabytes
+// of build chatter and capping the result lost the diagnosis in 25 of 124 - six of them
+// completely, to no diagnosis at all - and the cap size made no difference, because what
+// decides is which lines the scan calls probable, not how much room there is.
+//
+// Three kinds of narrowness did it, and they are worth naming because the temptation is
+// to widen by feel: a leading \b cannot match "KeyError" or "SyntaxError"; "panic" with
+// a trailing \b does not match "panicked"; and some tools write no failure word at all,
+// so a location's shape has to stand in for one. Colour codes hid the rest - deno writes
+// "\x1b[31merror\x1b[0m:", where the "m" ending the escape sits against the "e".
+test("a buried failure survives the cap, whatever tool wrote it", () => {
+  const fixtures = join(dirname(fileURLToPath(import.meta.url)), "fixtures");
+
+  const line = "  vite:build transforming src/components/Widget.tsx +2ms\n";
+  const noise = (bytes) => line.repeat(Math.ceil(bytes / line.length));
+  const head = noise(1_500_000), tail = noise(1_500_000);
+
+  const lost = [];
+  let checked = 0;
+  for (const name of readdirSync(fixtures)) {
+    const raw = readFileSync(join(fixtures, name), "utf8");
+    let plain;
+    try { plain = analyse(raw); } catch { continue; }
+    if (!plain?.failures.length) continue;
+    checked++;
+
+    const c = createCapture(120_000);
+    c.push(Buffer.from(head, "utf8"));
+    c.push(Buffer.from(`${raw}\n`, "utf8"));
+    c.push(Buffer.from(tail, "utf8"));
+    const kept = c.finish();
+    const text = typeof kept === "string" ? kept : kept.text;
+
+    let got = null;
+    try { got = analyse(text); } catch { got = null; }
+    // The tool must still be the tool. How many of its failures survive is a budget
+    // question; losing the diagnosis entirely, or handing it to the guess, is not.
+    if (got?.tool !== plain.tool) {
+      lost.push(`${name}: ${plain.tool}/${plain.failures.length} -> ${got?.tool ?? "none"}/${got?.failures.length ?? 0}`);
+    }
+  }
+  assert.ok(checked > 100, `only ${checked} fixtures buried`);
+  assert.deepEqual(lost.slice(0, 8), [], "a real failure disappeared under cleanup output");
+  console.log(`       ${checked} fixtures buried in 3MB of chatter and capped to 120KB`);
 });
 
 console.log(`\n  ${pass} passed, ${fail} failed`);
