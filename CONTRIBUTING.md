@@ -83,6 +83,11 @@ bounded.
 - Never add network calls or runtime dependencies for a parser.
 - Add malformed-input coverage when a parser has ambiguous or multiline syntax.
 - Do not include secrets or private source code in fixtures.
+- Rewrite the capturing machine's paths to `/home/dev` before committing a fixture. A temp
+  or scratch directory, or a home directory with a username in it, is not tool output -
+  and because a path never changes what a log reads as, nothing else in the suite will
+  notice one left behind. `test/detectors.js` checks for it. Change the paths and
+  nothing else.
 
 ## Requesting a parser
 

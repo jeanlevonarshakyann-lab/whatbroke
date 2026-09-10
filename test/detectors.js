@@ -203,6 +203,29 @@ test("no README row denies a parser that exists", () => {
   assert.deepEqual(denied, [], "the README says a tool has no parser, and it has one");
 });
 
+// Fixtures are captured on a real machine and then given the corpus's neutral paths,
+// /home/dev. That rewrite was done once for seven fixtures (#71) with nothing to keep it
+// done, and nine more drifted in afterwards: a scratch directory naming the session that
+// recorded it, and a home directory with the capturing user's name in it. A path is not
+// a diagnostic, so rewriting one never changes what a log reads as - which is exactly
+// why nothing else in the suite ever noticed.
+const LEAKED_PATH = /\/private\/tmp\/|\/scratchpad\/|(?:^|[\s'"(=])\/Users\/[^/\s]+\//m;
+test("no fixture carries the path of the machine it was captured on", () => {
+  // The rule is the guard, so it is pinned too: loosening it later has to be deliberate.
+  for (const leak of ["at /private/tmp/tmp.X1b2/app/y.js:1", "see /Users/jean/.npm/_logs/a.log",
+    "command: /Users/x/.hermes/node/bin/node", "loadSuiteClassFile('/private/tmp/cl...')"]) {
+    assert.ok(LEAKED_PATH.test(leak), `${JSON.stringify(leak)} names the capturing machine`);
+  }
+  // ...and the paths CI runners really print are not leaks. Windows writes C:\Users with
+  // backslashes, and a runner's workspace is D:/a/<repo>.
+  for (const fine of ["/home/dev/app/a.js:1:2", "C:\\Users\\runneradmin\\x.go:3",
+    "D:/a/whatbroke/t/shop_test.go:13", "C:/hostedtoolcache/windows/go/src/testing/testing.go:1631"]) {
+    assert.ok(!LEAKED_PATH.test(fine), `${JSON.stringify(fine)} is a path a tool really prints`);
+  }
+  const leaked = readdirSync(fixtures).filter((name) => LEAKED_PATH.test(readFileSync(join(fixtures, name), "utf8")));
+  assert.deepEqual(leaked, [], "a fixture still names the machine it was captured on");
+});
+
 test("every failure carries a category", () => {
   for (const name of readdirSync(fixtures)) {
     const r = safely(() => analyse(readFileSync(join(fixtures, name), "utf8")), null);
