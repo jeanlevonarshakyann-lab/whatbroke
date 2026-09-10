@@ -1,0 +1,11 @@
+Inspecting 1 file
+F
+
+Offenses:
+
+syntax.rb:2:8: F: Lint/Syntax: unexpected token $end
+(Using Ruby 2.7 parser; configure using TargetRubyVersion parameter, under AllCops)
+  x = 1 ...
+       
+
+1 file inspected, 1 offense detected

@@ -1,0 +1,22 @@
+main.go:10:15: Error return value of `f.Close` is not checked (errcheck)
+	defer f.Close()
+	             ^
+main.go:11:2: ineffectual assignment to x (ineffassign)
+	x := 1
+	^
+main.go:1:1: package-comments: should have a package comment (revive)
+package main
+^
+sub/helper.go:1:1: package-comments: should have a package comment (revive)
+package sub
+^
+sub/helper.go:5:1: exported: exported function Helper should have comment or be unexported (revive)
+func Helper() error {
+^
+sub/helper.go:13:1: exported: exported function Unused should have comment or be unexported (revive)
+func Unused() {}
+^
+6 issues:
+* errcheck: 1
+* ineffassign: 1
+* revive: 4
