@@ -81,6 +81,11 @@ export const unittest = {
     for (let i = 0; i < lines.length; i++) {
       const h = lines[i].match(/^(FAIL|ERROR): (\S+)/);
       if (!h) continue;
+      // "ERROR: <something>" at line start belongs to half the tools in existence -
+      // pip writes "ERROR: Invalid requirement: ...". unittest's header sits inside a
+      // frame: a row of "=" above it and a row of "-" below, every time. Without that
+      // the parser read pip's line as a test named "Invalid".
+      if (!/^={10,}$/.test(lines[i - 1] ?? "") || !/^-{10,}$/.test(lines[i + 1] ?? "")) continue;
       const body = [];
       for (let j = i + 2; j < lines.length && !/^={10,}$/.test(lines[j]) && !/^-{10,}$/.test(lines[j]); j++)
         body.push(lines[j]);

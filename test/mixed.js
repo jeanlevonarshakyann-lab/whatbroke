@@ -355,7 +355,7 @@ test("a single-tool log gains nothing and loses nothing", () => {
 // line start ("error:", "Error:", "FAIL", "file:line:col:"), matched with nothing behind
 // it to say whose it was.
 //
-// These six are the exact pairs that were wrong, each named by the parser that was
+// These are the exact pairs that were wrong, each named by the parser that was
 // over-claiming and the line it took. They are listed individually rather than left to
 // the sweep below so a regression says which parser broke.
 const OVERCLAIMS = [
@@ -377,6 +377,19 @@ const OVERCLAIMS = [
   // python's traceback ran to the end of the log, so the exception line came from
   // whatever printed next - deno's "error: Test failed" is shaped like one.
   ["python", "py_traceback.txt",         "deno_fail.txt"],
+  // "  1) name" is not rspec's alone: Playwright numbers its failures the same way, and
+  // rspec's terminators sat far below the block in a log holding both.
+  ["rspec",  "playwright_fail.txt",      "rspec_fail.txt"],
+  ["rspec",  "playwright_fail.txt",      "rspec_load_fail.txt"],
+  // pip writes "ERROR: Invalid requirement: ...", which unittest read as a test named
+  // "Invalid" - its own header always sits inside a frame of "=" and "-" rules.
+  ["unittest", "pip_badreq_fail.txt",    "py_unittest.txt"],
+  // yarn scanned from the top of the log, so vite's "error during build:" above the
+  // yarn banner was read as yarn's own.
+  ["yarn",   "vite_resolve_fail.txt",    "yarn_fail.txt"],
+  // Two BuildKit builds in one job: only the first failure block was lifted out, and the
+  // step prefix fell below the uniformity gate, so neither inner tool was read at all.
+  ["docker", "docker_buildkit_pytest_fail.txt", "docker_buildkit_npm_fail.txt"],
 ];
 
 test("a pair of logs never yields more failures than the two apart", () => {
@@ -390,13 +403,15 @@ test("a pair of logs never yields more failures than the two apart", () => {
 });
 
 // The named cases above are the ones already understood. This sweep is how the next one
-// gets found: every ordered pair of fixtures, counted the same way. It is a ratchet -
-// the number may fall, and lowering the ceiling with it is part of the fix. It may not
-// rise. Raising it means a change made whatbroke claim more than it can see, and the
-// right response is to explain the new pairs, not to edit this number.
-const CEILING = 13;
+// gets found: every ordered pair of fixtures, counted the same way.
+//
+// It began as a ratchet at 136 and came down one parser at a time. It is now a plain
+// assertion, because zero is the only number that means what the tool claims: whatbroke
+// never reports a failure it cannot point at. A pair that over-claims is a parser
+// reading another tool's line, and the fix is that parser - not this number.
+const CEILING = 0;
 
-test("no more pairs over-claim than the last time this was measured", () => {
+test("no pair of logs ever yields more failures than the two apart", () => {
   const names = readdirSync(join(here, "fixtures"));
   const solo = new Map();
   for (const n of names) {
@@ -423,7 +438,7 @@ test("no more pairs over-claim than the last time this was measured", () => {
   }
   assert.ok(over.length <= CEILING,
     `${over.length} pairs over-claim, ceiling is ${CEILING}:\n       ` + over.slice(0, 6).join("\n       "));
-  if (over.length < CEILING) console.log(`       ${over.length} of ${names.length * (names.length - 1)} pairs over-claim (ceiling ${CEILING} - lower it)`);
+  console.log(`       ${names.length * (names.length - 1)} ordered pairs swept, ${over.length} over-claiming`);
 });
 
 console.log(`\n  ${pass} passed, ${fail} failed`);

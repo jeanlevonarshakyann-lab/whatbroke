@@ -59,7 +59,19 @@ function literalPrefix(text) {
 // The CI timestamp is not here - stripCiPrefix in util.js already handles it.
 const SHAPES = [
   // Docker BuildKit: "#12 1.234 " - step number constant, elapsed seconds counting up.
-  { name: "docker", re: /^#\d+\s+\d+\.\d+\s/ },
+  //
+  // Requiring the elapsed column undercounted, because BuildKit's other lines - the
+  // step header, "#12 DONE 0.3s", "#12 CACHED", the export lines - do not carry one.
+  // In a log holding two builds that pushed the shape below the uniformity threshold,
+  // so it lost to the region fallback, which keeps only what Docker reprints after the
+  // rule; pytest's FAILURES section is outside that, and the run said nothing useful.
+  //
+  // Making the column merely optional is too loose the other way: "#0 /path/f.php(98):"
+  // is a PHP stack frame, and PHPUnit's own fixture matched it on every line. So what
+  // follows "#12 " has to be something BuildKit writes, listed here rather than guessed.
+  // Exactly one space goes with the elapsed column: BuildKit writes one, and eating a
+  // run of them would take the wrapped tool's own indentation with it.
+  { name: "docker", re: /^#\d+[^\S\n]+(?:\d+\.\d+[^\S\n]|(?=\[|DONE\b|CACHED\b|ERROR\b|CANCELED\b|WARN\b|sha256:|building\b|transferring\b|extracting\b|exporting\b|writing\b|naming\b|unpacking\b|preparing\b|resolve\b|pulling\b|load\b|done\b))/ },
 ];
 
 const uniform = (text, re, share = UNIFORM) => {
@@ -97,6 +109,11 @@ function buildkitBlock(text) {
   // alone, or `failed to build: failed to solve`. Anchor on the part that does not move.
   if (!/^ERROR: (?:[\w .]+: )?failed to solve:/m.test(text)) return null;
   const lines = text.split("\n");
+  // Every failing step, not just the first. A CI job that builds two images writes two
+  // of these blocks, and keeping only one meant the whole text lost to Docker's own
+  // "failed to solve" line - so a two-image job reported that both builds failed and
+  // nothing about why either did.
+  const blocks = [];
   for (let i = 0; i < lines.length; i++) {
     if (!BUILDKIT_RULE.test(lines[i]) || !BUILDKIT_STEP.test(lines[i + 1] ?? "")) continue;
     const body = [];
@@ -104,9 +121,9 @@ function buildkitBlock(text) {
       // each line keeps the seconds-since-step-start column; the tool never wrote it
       body.push(lines[j].replace(BUILDKIT_ELAPSED, ""));
     }
-    if (body.some((l) => l.trim())) return body.join("\n");
+    if (body.some((l) => l.trim())) blocks.push(body.join("\n"));
   }
-  return null;
+  return blocks.length ? blocks.join("\n") : null;
 }
 
 /** Every normalisation worth trying on this text. Proposals only - the caller decides.

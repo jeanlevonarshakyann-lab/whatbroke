@@ -61,7 +61,13 @@ export const yarn = {
 
   extract(s) {
     const failures = [];
-    for (const l of s.split("\n")) {
+    const lines = s.split("\n");
+    // yarn's output is a block: the banner opens it, the advice line closes it. Scanning
+    // from the top of the log instead meant anything above the banner was read as yarn's,
+    // and vite opens a failed build with "error during build:" - which is exactly the
+    // shape. When there is no banner the whole log is the block, as before.
+    const banner = lines.findIndex((l) => /^yarn run v\d/.test(l));
+    for (const l of lines.slice(banner < 0 ? 0 : banner)) {
       if (YARN_ADVICE.test(l)) break;
       const m = l.match(YARN_LINE);
       if (!m || m[1] !== "error") continue;
