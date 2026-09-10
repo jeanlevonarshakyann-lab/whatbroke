@@ -346,6 +346,28 @@ const CASES = [
       // the last [warn] line is prettier's advice, not another file
       assert.doesNotMatch(JSON.stringify(r.failures), /--write/);
     } },
+  // Captured with Biome 2. It heads each finding with the rule path, says what is wrong
+  // on the next line, and then offers advice and a fix diff - neither of which is the
+  // diagnosis.
+  { file: "biome_fail.txt", tool: "biome", n: 1, check: (r) => {
+      assert.equal(r.failures[0].file, "biomebad.js");
+      assert.equal(r.failures[0].line, 1);
+      assert.equal(r.failures[0].col, 7);
+      assert.equal(r.failures[0].code, "lint/correctness/noUnusedVariables");
+      assert.equal(r.failures[0].message, "This variable x is unused.");
+      // the "i" lines are advice and the diff under them is the fix
+      assert.doesNotMatch(JSON.stringify(r.failures), /often the result of typos|prepend x with/);
+    } },
+  // Captured with oxlint 1. The whole finding is one line, with the fix suggestion
+  // appended to the message rather than kept apart from it.
+  { file: "oxlint_fail.txt", tool: "oxlint", n: 1, check: (r) => {
+      assert.equal(r.failures[0].file, "lintme.js");
+      assert.equal(r.failures[0].col, 5);
+      // the rule is what you would disable; the plugin qualifier is not part of its name
+      assert.equal(r.failures[0].code, "no-unused-vars");
+      assert.match(r.failures[0].message, /^Variable 'unused' is declared but never used/);
+      assert.doesNotMatch(r.failures[0].message, /help:/);
+    } },
   // Captured with stylelint 16. It reports like eslint but marks severity with a glyph
   // rather than a word, which is why eslint's own parser never saw it.
   { file: "stylelint_fail.txt", tool: "stylelint", n: 3, check: (r) => {
