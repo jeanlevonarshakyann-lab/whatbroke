@@ -1426,6 +1426,25 @@ const CASES = [
       // and the shredded line is not half-read into a failure of its own
       assert.doesNotMatch(JSON.stringify(r.failures), /alsonope/);
     } },
+  // The same failing crate captured twice: once as cargo prints it, and once under
+  // `--message-format=json`, which nothing here could read a word of. Every diagnostic
+  // record in that stream carries the human text rustc would otherwise have printed,
+  // verbatim, under message.rendered - so the JSON needs no parser of its own, only to
+  // be handed to the one that already reads cargo. The pair is what proves it: both
+  // must reach the same three failures, or the JSON path is inventing something.
+  { file: "cargo_plain_same_fail.txt", tool: "cargo", n: 3, check: (r) => {
+      assert.deepEqual(r.failures.map((f) => [f.line, f.code]), [[2, "E0308"], [3, "E0425"], [4, "E0308"]]);
+    } },
+  { file: "cargo_json_fail.txt", tool: "cargo", n: 3, check: (r) => {
+      assert.deepEqual(r.failures.map((f) => [f.line, f.code]), [[2, "E0308"], [3, "E0425"], [4, "E0308"]]);
+      assert.equal(r.failures[0].file, "src/main.rs");
+      assert.equal(r.failures[0].col, 18, "the primary span is the place rustc wants you to look");
+      // The span carries the offending line, so what is quoted is rustc's own text.
+      assert.equal(r.failures[0].stmt, '    let x: i32 = "no";');
+      // Records that are not diagnostics - compiler-artifact, build-finished - and the
+      // failure-notes rustc ends with are not failures and are not scraped for words.
+      assert.doesNotMatch(JSON.stringify(r.failures), /compiler-artifact|"reason"|detailed explanations/);
+    } },
   { file: "rspec_fail.txt", tool: "rspec", n: 2, check: (r) => {
       assert.equal(r.summary, "3 examples, 2 failures");
       assert.equal(r.failures[0].title, "shop totals an invoice");
@@ -3134,6 +3153,29 @@ try {
   console.log(`  ok   clang's own error count is never quietly contradicted (${checked} logs)`);
   pass++;
 } catch (e) { console.log(`  FAIL clang count\n       ${e.message}`); fail++; }
+
+// A machine format is only worth reading if it says the same thing as the human one.
+// These two fixtures are one `cargo build` captured both ways, and the failures they
+// produce have to match field for field - otherwise the JSON path is not reading cargo,
+// it is guessing at it.
+try {
+  const plain = analyse(fx("cargo_plain_same_fail.txt"));
+  const json = analyse(fx("cargo_json_fail.txt"));
+  // The facts have to be identical. The rendering does not: the text format draws a run
+  // of carets under the primary span, and that is a picture of the columns rather than
+  // anything the JSON says, so this does not synthesise one from them.
+  const facts = (r) => r.failures.map((f) => [f.file, f.line, f.col, f.code, f.severity, f.stmt]);
+  assert.equal(plain.tool, json.tool);
+  assert.deepEqual(facts(json), facts(plain),
+    "the JSON stream and the text cargo printed disagree about what failed");
+  for (const [i, f] of json.failures.entries()) {
+    const label = f.message.split("\n").slice(1).join("\n");
+    assert.ok(label && plain.failures[i].message.endsWith(label),
+      `failure ${i}: the label differs between the two formats`);
+  }
+  console.log("  ok   --message-format=json says what the text cargo printed says");
+  pass++;
+} catch (e) { console.log(`  FAIL cargo json vs text\n       ${e.message}`); fail++; }
 
 const cliResults = await (await import("./cli.js")).runCliTests();
 pass += cliResults.pass;

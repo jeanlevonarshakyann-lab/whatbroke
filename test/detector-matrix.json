@@ -167,6 +167,18 @@
       "generic": 1
     }
   },
+  "cargo_json_fail.txt": {
+    "winner": "cargo",
+    "parser": "cargo --message-format=json",
+    "failures": 3,
+    "claimants": [
+      "cargo --message-format=json",
+      "generic"
+    ],
+    "shadow": {
+      "generic": 2
+    }
+  },
   "cargo_manifest_fail.txt": {
     "winner": "cargo",
     "parser": "cargo",
@@ -188,6 +200,18 @@
       "generic"
     ],
     "shadow": {}
+  },
+  "cargo_plain_same_fail.txt": {
+    "winner": "cargo",
+    "parser": "cargo",
+    "failures": 3,
+    "claimants": [
+      "cargo",
+      "generic"
+    ],
+    "shadow": {
+      "generic": 4
+    }
   },
   "cargo_resolve_fail.txt": {
     "winner": "cargo",

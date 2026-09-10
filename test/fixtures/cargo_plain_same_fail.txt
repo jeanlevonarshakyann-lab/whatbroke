@@ -1,0 +1,29 @@
+   Compiling cj v0.1.0 (/private/tmp/claude-501/-Users-jean-levonarshakyan-Documents-claude/6785c633-7fde-4a4d-a2b9-a97bfe2b2de6/scratchpad/probe/cj)
+error[E0308]: mismatched types
+ --> src/main.rs:2:18
+  |
+2 |     let x: i32 = "no";
+  |            ---   ^^^^ expected `i32`, found `&str`
+  |            |
+  |            expected due to this
+
+error[E0425]: cannot find function `undefined_fn` in this scope
+ --> src/main.rs:3:13
+  |
+3 |     let y = undefined_fn();
+  |             ^^^^^^^^^^^^ not found in this scope
+
+error[E0308]: mismatched types
+ --> src/main.rs:4:23
+  |
+4 |     let z: Vec<i32> = 5;
+  |            --------   ^ expected `Vec<i32>`, found integer
+  |            |
+  |            expected due to this
+  |
+  = note: expected struct `Vec<i32>`
+               found type `{integer}`
+
+Some errors have detailed explanations: E0308, E0425.
+For more information about an error, try `rustc --explain E0308`.
+error: could not compile `cj` (bin "cj") due to 3 previous errors
