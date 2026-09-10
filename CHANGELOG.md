@@ -4,6 +4,11 @@
 
 ## 0.4.0 — 2026-09-10
 
+- Reads ava. Like mocha, a failing run produced no diagnosis at all. ava lists what
+  failed and then details each one under a rule, so the roll-call carries the names and
+  the detail blocks carry the locations. A comparison reports its diff, an assertion that
+  is not one reports its prose and the value under it, and a throw is located from its
+  stack rather than from ava's own pointer.
 - Reads mocha. A failing `mocha` run produced no diagnosis at all: not a worse answer,
   nothing. It numbers its failures under a tally and splits each over two lines, the
   suite on the numbered line and the test indented under it - a shape rspec and

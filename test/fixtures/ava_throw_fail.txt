@@ -1,0 +1,27 @@
+
+  ✘ [fail]: charges a card Error thrown in test
+  ─
+
+  charges a card
+
+  Error thrown in test:
+
+  Error {
+    message: 'payment gateway unreachable',
+  }
+
+  Error: payment gateway unreachable
+      at Gateway.charge (file:///home/dev/app/av/throw.test.js:2:34)
+      at file:///home/dev/app/av/throw.test.js:3:47
+      at Test.callFn (file:///home/dev/app/node_modules/ava/lib/test.js:532:26)
+      at Test.run (file:///home/dev/app/node_modules/ava/lib/test.js:541:33)
+      at Runner.runSingle (file:///home/dev/app/node_modules/ava/lib/runner.js:280:33)
+      at Runner.runTest (file:///home/dev/app/node_modules/ava/lib/runner.js:362:30)
+      at process.processTicksAndRejections (node:internal/process/task_queues:103:5)
+      at async Promise.all (index 0)
+      at async file:///home/dev/app/node_modules/ava/lib/runner.js:515:21
+      at async Runner.start (file:///home/dev/app/node_modules/ava/lib/runner.js:523:15)
+
+  ─
+
+  1 test failed

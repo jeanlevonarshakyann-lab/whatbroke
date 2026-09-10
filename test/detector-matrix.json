@@ -1,4 +1,37 @@
 {
+  "ava_fail.txt": {
+    "winner": "ava",
+    "parser": "ava",
+    "failures": 2,
+    "claimants": [
+      "ava",
+      "generic"
+    ],
+    "shadow": {}
+  },
+  "ava_load_fail.txt": {
+    "winner": "ava",
+    "parser": "ava",
+    "failures": 1,
+    "claimants": [
+      "ava",
+      "generic"
+    ],
+    "shadow": {}
+  },
+  "ava_throw_fail.txt": {
+    "winner": "ava",
+    "parser": "ava",
+    "failures": 1,
+    "claimants": [
+      "ava",
+      "node",
+      "generic"
+    ],
+    "shadow": {
+      "generic": 3
+    }
+  },
   "awk_syntax_fail.txt": {
     "winner": "output",
     "parser": "generic",
