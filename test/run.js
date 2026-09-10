@@ -178,12 +178,46 @@ const CASES = [
       assert.equal(r.failures[0].line, 2);
       assert.match(r.failures[0].message, /Call to a member function method\(\) on null/);
     } },
-  { file: "ruby_error_fail.txt", tool: "output", n: 1, check: (r) => {
-      // Ruby names the method between the location and the message, so there is no
-      // space after the line number and nothing recognised it at all.
+  // Ruby names the method between the location and the message, so there is no space
+  // after the line number and nothing recognised it at all. It was read as a guess for a
+  // while, which found the file and the line; a parser also gets the exception class,
+  // which is the handle you would search for, and keeps the unwind.
+  { file: "ruby_error_fail.txt", tool: "ruby", n: 1, check: (r) => {
       assert.equal(r.failures[0].file, "bad.rb");
       assert.equal(r.failures[0].line, 2);
       assert.match(r.failures[0].message, /undefined method .no_such_method./);
+      assert.equal(r.failures[0].code, "NoMethodError");
+      assert.doesNotMatch(r.failures[0].message, /NoMethodError/, "the class was left in the message too");
+      assert.equal(r.failures[0].trace.length, 1);
+    } },
+  // Captured on the system ruby, 2.6.10.
+  { file: "ruby_keyerror_fail.txt", tool: "ruby", n: 1, check: (r) => {
+      assert.equal(r.failures[0].file, "deep.rb");
+      assert.equal(r.failures[0].line, 3);
+      assert.equal(r.failures[0].code, "KeyError");
+      assert.equal(r.failures[0].message, "key not found: :price");
+      assert.equal(r.failures[0].trace.length, 4, "the unwind through map and total is the story");
+    } },
+  { file: "ruby_nomethod_fail.txt", tool: "ruby", n: 1, check: (r) => {
+      // Ruby offers a correction under a NameError, and it is the answer often enough
+      // to be worth keeping beside the message.
+      assert.match(r.failures[0].message, /Did you mean\? case/);
+    } },
+  { file: "ruby_syntax_fail.txt", tool: "ruby", n: 1, check: (r) => {
+      // A file that will not parse never runs, so there is no exception and no unwind.
+      assert.equal(r.failures[0].file, "syn.rb");
+      assert.equal(r.failures[0].line, 3);
+      assert.equal(r.failures[0].code, undefined);
+      assert.match(r.failures[0].message, /^syntax error/);
+    } },
+  { file: "ruby_require_fail.txt", tool: "ruby", n: 1, check: (r) => {
+      // A failing `require` is raised inside rubygems, so the deepest frame is the
+      // stdlib. Reporting kernel_require.rb:54 is true and useless; the line that
+      // asked for the gem is the one to open.
+      assert.equal(r.failures[0].file, "ld.rb");
+      assert.equal(r.failures[0].line, 1);
+      assert.equal(r.failures[0].code, "LoadError");
+      assert.match(r.failures[0].message, /cannot load such file -- definitely_not_a_gem_xyz/);
     } },
   { file: "ruff_syntax_fail.txt", tool: "ruff", n: 1, check: (r) => {
       // A file ruff cannot parse is reported without a rule code, so requiring one

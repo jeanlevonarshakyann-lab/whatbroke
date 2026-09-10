@@ -1011,13 +1011,64 @@
     }
   },
   "ruby_error_fail.txt": {
-    "winner": "output",
-    "parser": "generic",
+    "winner": "ruby",
+    "parser": "ruby",
     "failures": 1,
     "claimants": [
+      "ruby",
       "generic"
     ],
-    "shadow": {}
+    "shadow": {
+      "generic": 1
+    }
+  },
+  "ruby_keyerror_fail.txt": {
+    "winner": "ruby",
+    "parser": "ruby",
+    "failures": 1,
+    "claimants": [
+      "ruby",
+      "generic"
+    ],
+    "shadow": {
+      "generic": 1
+    }
+  },
+  "ruby_nomethod_fail.txt": {
+    "winner": "ruby",
+    "parser": "ruby",
+    "failures": 1,
+    "claimants": [
+      "ruby",
+      "generic"
+    ],
+    "shadow": {
+      "generic": 1
+    }
+  },
+  "ruby_require_fail.txt": {
+    "winner": "ruby",
+    "parser": "ruby",
+    "failures": 1,
+    "claimants": [
+      "ruby",
+      "generic"
+    ],
+    "shadow": {
+      "generic": 1
+    }
+  },
+  "ruby_syntax_fail.txt": {
+    "winner": "ruby",
+    "parser": "ruby",
+    "failures": 1,
+    "claimants": [
+      "ruby",
+      "generic"
+    ],
+    "shadow": {
+      "generic": 1
+    }
   },
   "ruff_fail.txt": {
     "winner": "ruff",
