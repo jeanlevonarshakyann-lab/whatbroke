@@ -660,6 +660,33 @@
       "generic": 3
     }
   },
+  "golangci_fail.txt": {
+    "winner": "golangci-lint",
+    "parser": "golangci-lint",
+    "failures": 6,
+    "claimants": [
+      "golangci-lint",
+      "go",
+      "generic"
+    ],
+    "shadow": {
+      "generic": 6
+    }
+  },
+  "golangci_typecheck_fail.txt": {
+    "winner": "golangci-lint",
+    "parser": "golangci-lint",
+    "failures": 1,
+    "claimants": [
+      "golangci-lint",
+      "go",
+      "generic"
+    ],
+    "shadow": {
+      "go": 2,
+      "generic": 4
+    }
+  },
   "gopanic_fail.txt": {
     "winner": "go",
     "parser": "go",
@@ -1656,6 +1683,30 @@
     "failures": 1,
     "claimants": [
       "rspec",
+      "generic"
+    ],
+    "shadow": {
+      "generic": 1
+    }
+  },
+  "rubocop_fail.txt": {
+    "winner": "rubocop",
+    "parser": "rubocop",
+    "failures": 13,
+    "claimants": [
+      "rubocop",
+      "generic"
+    ],
+    "shadow": {
+      "generic": 12
+    }
+  },
+  "rubocop_syntax_fail.txt": {
+    "winner": "rubocop",
+    "parser": "rubocop",
+    "failures": 1,
+    "claimants": [
+      "rubocop",
       "generic"
     ],
     "shadow": {

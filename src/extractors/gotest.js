@@ -14,8 +14,32 @@ const LOC_RE = /^[^\S\n]+([\w./\\-]+\.go):(\d+):[^\S\n]*(.*)$/;
 // windows-latest rather than assumed; go_windows_build_fail is that output.
 const BUILD_RE = /^(vet(?:\.exe)?: )?(?:\.[\\/])?([\w./\\-]+\.go):(\d+):(\d+): (.+)$/;
 const BUILD_ANY = /^(?:vet(?:\.exe)?: )?(?:\.[\\/])?[\w./\\-]+\.go:\d+:\d+: /m;   // same, but scans a whole blob
+// golangci-lint prints its findings in exactly go's shape and names the linter in
+// brackets at the end. Go writes no such tag - its messages end "in variable
+// declaration", never "(errcheck)" - so a line carrying one belongs to golangci-lint and
+// reading it here reported a lint run as `go build`, and attached golangci's findings to
+// a tool nobody ran. The untagged lines in a golangci typecheck report ARE go's own,
+// verbatim, and are still read.
+const LINTER_TAG = /[^\S\n]\([a-z][\w-]*\)[^\S\n]*$/;
 // Go's own runtime/testing frames are never your bug
 const STDLIB = /\/(libexec\/)?src\/(runtime|testing|internal)\//;
+
+/** A panic with no test around it: the goroutine dump carries the location, and the
+ *  first frame that is not the runtime is the one in your code. */
+function standalonePanic(lines) {
+  for (let i = 0; i < lines.length; i++) {
+    const pm = lines[i].match(/^panic: (.+?)(?:[^\S\n]\[recovered.*\])?$/);
+    if (!pm) continue;
+    let file, line;
+    for (let k = i + 1; k < lines.length; k++) {
+      const fm = lines[k].match(/^\t(.+?):(\d+)(?:[^\S\n]|$)/);
+      if (fm && !STDLIB.test(fm[1])) { file = fm[1]; line = +fm[2]; break; }
+    }
+    return { file, line, title: "panic", label: "panic", category: "runtime",
+      severity: "error", message: pm[1] };
+  }
+  return null;
+}
 
 export default {
   name: "go",
@@ -36,7 +60,7 @@ export default {
     let vetted = false;
     for (const l of lines) {
       const m = l.match(BUILD_RE);
-      if (m && !/^\s/.test(l)) {
+      if (m && !/^\s/.test(l) && !LINTER_TAG.test(l)) {
         if (m[1]) vetted = true;
         // Go writes no severity word at all, so there is no constant of its own to put
         // in `label` - but the line still needs a name, or it renders as a bare
@@ -47,11 +71,18 @@ export default {
     }
     if (failures.length) {
       const n = failures.length;
+      // One log can hold both: `go build ./... ; ./prog` puts compile errors and then a
+      // panic in the same stream, and golangci-lint prints go's own diagnostics above
+      // its tally. Returning here dropped the panic without a word - it is the later and
+      // usually the more interesting of the two, so it is kept rather than lost.
+      const panic = standalonePanic(lines);
+      if (panic) failures.push(panic);
+      const andPanic = panic ? " and a panic" : "";
       // Vet's own findings are written exactly like a compile error, so a piped log gives
       // no way to tell them apart. The prefix is the one time it does say.
       return vetted
-        ? { tool: "go vet", summary: `${n} error${n > 1 ? "s" : ""}`, failures }
-        : { tool: "go build", summary: `${n} compile error${n > 1 ? "s" : ""}`, failures };
+        ? { tool: "go vet", summary: `${n} error${n > 1 ? "s" : ""}${andPanic}`, failures }
+        : { tool: "go build", summary: `${n} compile error${n > 1 ? "s" : ""}${andPanic}`, failures };
     }
 
     // --- data races ---
@@ -99,22 +130,9 @@ export default {
       failures.push({ file, line, title: name, subject: name, category: "test", severity: "error", message: msg.join("\n") });
     }
 
-    // A panic with no test around it: the goroutine dump carries the location, and the
-    // first frame that is not the runtime is the one in your code.
     if (!failures.length) {
-      for (let i = 0; i < lines.length; i++) {
-        const pm = lines[i].match(/^panic: (.+?)(?:[^\S\n]\[recovered.*\])?$/);
-        if (!pm) continue;
-        let file, line;
-        for (let k = i + 1; k < lines.length; k++) {
-          const fm = lines[k].match(/^\t(.+?):(\d+)(?:[^\S\n]|$)/);
-          if (fm && !STDLIB.test(fm[1])) { file = fm[1]; line = +fm[2]; break; }
-        }
-        failures.push({ file, line, title: "panic", label: "panic", category: "runtime",
-          severity: "error", message: pm[1] });
-        break;
-      }
-      if (failures.length) return { tool: "go", summary: "panic", failures };
+      const panic = standalonePanic(lines);
+      if (panic) return { tool: "go", summary: "panic", failures: [panic] };
     }
 
     // count what we actually report: a parent of subtests prints its own

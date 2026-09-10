@@ -1,0 +1,7 @@
+main.go:1: : # probe
+./main.go:6:6: declared and not used: x
+./main.go:6:14: cannot use "nope" (untyped string constant) as int value in variable declaration
+./main.go:7:14: undefined: y (typecheck)
+package main
+1 issues:
+* typecheck: 1

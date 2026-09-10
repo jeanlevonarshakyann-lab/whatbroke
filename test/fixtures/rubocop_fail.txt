@@ -1,0 +1,46 @@
+Inspecting 2 files
+WC
+
+Offenses:
+
+app.rb:1:1: C: [Correctable] Style/FrozenStringLiteralComment: Missing frozen string literal comment.
+def calculate( x )
+^
+app.rb:1:15: C: [Correctable] Layout/SpaceInsideParens: Space inside parentheses detected.
+def calculate( x )
+              ^
+app.rb:1:16: C: Naming/MethodParameterName: Method parameter must be at least 3 characters long.
+def calculate( x )
+               ^
+app.rb:1:17: C: [Correctable] Layout/SpaceInsideParens: Space inside parentheses detected.
+def calculate( x )
+                ^
+app.rb:2:3: W: [Correctable] Lint/UselessAssignment: Useless assignment to variable - unused.
+  unused = 42
+  ^^^^^^
+app.rb:3:13: C: [Correctable] Layout/SpaceAroundOperators: Surrounding space missing for operator +.
+  result = x+1
+            ^
+app.rb:4:3: C: [Correctable] Style/IfUnlessModifier: Favor modifier if usage when having a single-line body. Another good alternative is the usage of control flow &&/||.
+  if result == nil then
+  ^^
+app.rb:4:13: C: [Correctable] Style/NilComparison: Prefer the use of the nil? predicate.
+  if result == nil then
+            ^^
+app.rb:4:20: C: [Correctable] Style/MultilineIfThen: Do not use then for multi-line if.
+  if result == nil then
+                   ^^^^
+app.rb:6:3: C: [Correctable] Layout/EmptyLineAfterGuardClause: Add empty line after guard clause.
+  end
+  ^^^
+other.rb:1:1: C: Style/Documentation: Missing top-level documentation comment for class Thing.
+class Thing
+^^^^^^^^^^^
+other.rb:1:1: C: [Correctable] Style/FrozenStringLiteralComment: Missing frozen string literal comment.
+class Thing
+^
+other.rb:2:18: C: Naming/MethodParameterName: Method parameter must be at least 3 characters long.
+  def initialize(n)
+                 ^
+
+2 files inspected, 13 offenses detected, 10 offenses autocorrectable

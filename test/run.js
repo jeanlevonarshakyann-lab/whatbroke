@@ -1368,6 +1368,45 @@ const CASES = [
       // The closing banner is the command's own name - `format ━━━` - and is not a file.
       assert.equal(r.failures.length, 1);
     } },
+  // Captured with rubocop 1.91 and golangci-lint on Debian - the two linters a Ruby and
+  // a Go CI job most often fail on. rubocop had no parser at all; golangci-lint was
+  // being read by go's, which called its findings "compile errors" from `go build`.
+  { file: "rubocop_fail.txt", tool: "rubocop", n: 13, check: (r) => {
+      assert.equal(r.failures[0].file, "app.rb");
+      assert.equal(r.failures[0].col, 1, "the fallback dropped the column");
+      assert.equal(r.failures[0].code, "Style/FrozenStringLiteralComment");
+      // "[Correctable]" is rubocop saying -a would fix it, not part of what is wrong.
+      assert.doesNotMatch(JSON.stringify(r.failures), /Correctable/);
+      assert.equal(r.failures[0].stmt, "def calculate( x )");
+      // rubocop's own tally for this run is "13 offenses detected".
+      assert.equal(r.summary, "13 problems");
+    } },
+  { file: "rubocop_syntax_fail.txt", tool: "rubocop", n: 1, check: (r) => {
+      assert.equal(r.failures[0].code, "Lint/Syntax");
+      assert.equal(r.failures[0].line, 2);
+      // The line under this offence is a note about the parser version, not the source.
+      // Only a caret line says the line above it is source, and there is none here.
+      assert.equal(r.failures[0].stmt, undefined, "a note about the parser is not the offending line");
+    } },
+  { file: "golangci_fail.txt", tool: "golangci-lint", n: 6, check: (r) => {
+      // The linter's name is what you would disable, so it is the code rather than
+      // being left inside the message where nothing can group on it.
+      assert.deepEqual(r.failures.map((f) => f.code),
+        ["errcheck", "ineffassign", "revive", "revive", "revive", "revive"]);
+      assert.equal(r.failures[0].col, 15);
+      assert.doesNotMatch(r.failures[0].message, /\(errcheck\)/);
+      assert.equal(r.failures[0].stmt, "defer f.Close()");
+    } },
+  { file: "golangci_typecheck_fail.txt", tool: "golangci-lint", n: 1, check: (r) => {
+      // When the package will not compile, golangci-lint prints go's own diagnostics and
+      // tags only the LAST of them "(typecheck)". The other two are go's line for line,
+      // so go's parser reads them and they arrive attributed rather than lost.
+      assert.equal(r.failures[0].code, "typecheck");
+      assert.equal(r.failures[0].line, 7);
+      const others = (r.others ?? []).flatMap((o) => o.failures);
+      assert.equal(others.length, 2, "the two untagged compile errors are still reported");
+      assert.equal((r.others ?? [])[0].tool, "go build");
+    } },
   { file: "rspec_fail.txt", tool: "rspec", n: 2, check: (r) => {
       assert.equal(r.summary, "3 examples, 2 failures");
       assert.equal(r.failures[0].title, "shop totals an invoice");
@@ -2500,6 +2539,14 @@ try {
     // node reads as its own. Both parsers match by design; swc is listed first and
     // reports the diagnostic miette drew above that line rather than the tally itself.
     "swc_fail.txt": ["swc", "node"],
+    // golangci-lint's findings and `go build`'s diagnostics are the same shape, which is
+    // why go's parser was reading a lint run as six compile errors. A pure lint log is no
+    // longer contested at all: go skips the lines that name a linter in brackets, because
+    // it never writes one itself. This fixture is here because go really did produce two
+    // of its lines - when the package will not compile, golangci-lint prints go's
+    // diagnostics verbatim and tags only the last of them "(typecheck)". Both parsers are
+    // right about their own half.
+    "golangci_typecheck_fail.txt": ["golangci-lint", "go"],
   };
   const found = {};
   for (const file of readdirSync(join(here, "fixtures"))) {
@@ -3021,6 +3068,27 @@ try {
   console.log(`  ok   colour changes nothing about what was read (${checked} fixtures, 3 ways)`);
   pass++;
 } catch (e) { console.log(`  FAIL ANSI\n       ${e.message}`); fail++; }
+
+// go's parser found compile errors and returned, so a stream holding both compile errors
+// and a panic reported only the compile errors and dropped the panic without a word.
+// `go build ./... ; ./prog` produces exactly that, and so does golangci-lint when the
+// package will not compile. Neither of the two sweeps caught it: the cross-parser one
+// skips pairs read by one parser, and the same-tool one groups by the tool STRING, where
+// these two logs are "go build" and "go".
+try {
+  const build = fx("gobuild_fail.txt"), panic = fx("gopanic_fail.txt");
+  const alone = [analyse(build), analyse(panic)];
+  assert.deepEqual(alone.map((r) => r.failures.length), [3, 1]);
+  for (const joined of [`${build}\n${panic}`, `${panic}\n${build}`]) {
+    const r = analyse(joined);
+    assert.equal(r.failures.length, 4, "the panic went missing beside the compile errors");
+    assert.equal(r.failures.filter((f) => f.label === "panic").length, 1);
+    // and the headline counts it, rather than saying 3 over four failures
+    assert.match(r.summary, /and a panic/);
+  }
+  console.log("  ok   a panic beside compile errors is not dropped by either of them");
+  pass++;
+} catch (e) { console.log(`  FAIL panic beside compile errors\n       ${e.message}`); fail++; }
 
 const cliResults = await (await import("./cli.js")).runCliTests();
 pass += cliResults.pass;
