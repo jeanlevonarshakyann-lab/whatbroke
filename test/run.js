@@ -178,6 +178,39 @@ const CASES = [
       assert.equal(r.failures[0].line, 2);
       assert.match(r.failures[0].message, /Call to a member function method\(\) on null/);
     } },
+  // Captured on the system perl, 5.34. Perl puts the location at the end of the message,
+  // in prose, so nothing recognised it and a failing perl script produced no diagnosis.
+  { file: "perl_die_fail.txt", tool: "perl", n: 1, check: (r) => {
+      assert.equal(r.failures[0].file, "p_die.pl");
+      assert.equal(r.failures[0].line, 2);
+      assert.equal(r.failures[0].message, "no price for item");
+      assert.equal(r.summary, undefined, "a summary that repeats the only failure says it twice");
+    } },
+  { file: "perl_syn_fail.txt", tool: "perl", n: 1, check: (r) => {
+      // "near \"= ;\"" is what the parser choked on - the useful half of a syntax error.
+      assert.match(r.failures[0].message, /^syntax error \(near "= ;"\)$/);
+      // "Execution of ... aborted due to compilation errors." restates it and is dropped
+      assert.equal(r.failures.length, 1);
+    } },
+  { file: "perl_inc_fail.txt", tool: "perl", n: 1, check: (r) => {
+      // The module search path is longer than the diagnosis and never varies.
+      assert.doesNotMatch(r.failures[0].message, /@INC contains/);
+      assert.match(r.failures[0].message, /Can't locate NoSuch\/Module\/Xyz\.pm/);
+      assert.match(r.failures[0].message, /you may need to install the NoSuch::Module::Xyz module/);
+      assert.equal(r.failures[0].line, 2, "BEGIN failed--compilation aborted is not a second failure");
+    } },
+  { file: "perl_undef_fail.txt", tool: "perl", n: 1, check: (r) => {
+      assert.match(r.failures[0].message, /^Can't call method "render" on an undefined value$/);
+    } },
+  { file: "perl_warn_fail.txt", tool: "perl", n: 1, check: (r) => {
+      // Perl marks nothing: a warning and a fatal die are written in exactly the same
+      // shape. The only thing separating them is what the message says, so the warning
+      // is matched by phrase - and the die, which is the failure, is what gets reported.
+      assert.equal(r.failures[0].line, 7);
+      assert.equal(r.failures[0].message, "cannot reach the billing service");
+      assert.equal(r.summary, "1 error, 1 warning");
+      assert.doesNotMatch(JSON.stringify(r.failures), /uninitialized/, "a warning was reported as a failure");
+    } },
   // Two real captures of everyday unix failures, both of which produced no diagnosis at
   // all. The guess vocabulary was written around verbs - failed, cannot, refused - and
   // missed the nouns. Both tools name themselves and then say plainly that something

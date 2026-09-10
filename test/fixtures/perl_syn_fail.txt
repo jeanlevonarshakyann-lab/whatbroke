@@ -1,0 +1,2 @@
+syntax error at p_syn.pl line 2, near "= ;"
+Execution of p_syn.pl aborted due to compilation errors.
