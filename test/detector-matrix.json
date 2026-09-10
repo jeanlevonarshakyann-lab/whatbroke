@@ -1270,6 +1270,18 @@
     ],
     "shadow": {}
   },
+  "swiftc_bulk_fail.txt": {
+    "winner": "swift",
+    "parser": "swift",
+    "failures": 9,
+    "claimants": [
+      "swift",
+      "generic"
+    ],
+    "shadow": {
+      "generic": 9
+    }
+  },
   "swiftc_driver_fail.txt": {
     "winner": "swift",
     "parser": "swift",

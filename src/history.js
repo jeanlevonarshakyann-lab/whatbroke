@@ -10,7 +10,10 @@ import { fingerprint, causeId } from "./cluster.js";
 // differ in any part of it simply never meet.
 // 3: records now include every tool's causes, qualified by tool. Earlier records
 // omitted secondary tools, so comparing them would invent new failures on upgrade.
-const IDENTITY_VERSION = 3;
+// 4: a compile failure's echoed source line no longer enters its cause key - it is the
+// instance, not the identity - so every such cause is fingerprinted differently. A
+// record written before this would compare as all-new.
+const IDENTITY_VERSION = 4;
 
 /** Identical words from different tools are separate causes in a mixed run. */
 export const trackedCauseId = (failure, tool = failure.tool) =>
