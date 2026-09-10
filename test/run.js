@@ -1289,6 +1289,19 @@ const CASES = [
       assert.match(r.failures[0].message, /pull access denied/);
       assert.doesNotMatch(r.failures[0].message, /failed to solve/);
     } },
+  { file: "docker_run_silent_fail.txt", tool: "docker", n: 1, check: (r) => {
+      // `RUN exit 3` prints nothing, so docker relaying its exit status is the only
+      // account of the failure there is. BuildKit tags a step's own output with that
+      // step's number and elapsed time, and this step has no such line - which is how
+      // this case is told apart from docker_buildkit_pytest_fail, where the step
+      // printed plenty and pytest owns the log.
+      assert.equal(r.failures[0].file, "Dockerfile.run");
+      assert.equal(r.failures[0].line, 2);
+      assert.equal(r.failures[0].stmt, "RUN exit 3");
+      assert.match(r.failures[0].message, /did not complete successfully: exit code: 3/);
+      // The fallback scraped the step's ERROR and the one restating it at the end.
+      assert.equal(r.failures.length, 1, "one failure, not docker saying it twice");
+    } },
   { file: "docker_copy_fail.txt", tool: "docker", n: 1, check: (r) => {
       assert.equal(r.failures[0].line, 2);
       assert.equal(r.failures[0].stmt, "COPY missing-file.txt /tmp/");

@@ -393,6 +393,18 @@
       "generic": 2
     }
   },
+  "docker_run_silent_fail.txt": {
+    "winner": "docker",
+    "parser": "docker",
+    "failures": 1,
+    "claimants": [
+      "docker",
+      "generic"
+    ],
+    "shadow": {
+      "generic": 2
+    }
+  },
   "dotnet_fail.txt": {
     "winner": "dotnet",
     "parser": "dotnet",
