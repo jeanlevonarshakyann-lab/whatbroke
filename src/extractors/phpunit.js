@@ -33,7 +33,16 @@ export default {
         };
       }
     }
-    for (let i = 0; i < lines.length; i++) {
+    // PHPUnit's numbered blocks live under "There were N failures:" and nowhere else.
+    // "N) name" belongs to jasmine, mocha, rspec and Playwright too, and jasmine writes
+    // its own at column zero exactly as PHPUnit does - so scanning the whole log claimed
+    // jasmine's failures as PHPUnit's whenever both were in it.
+    const announced = lines.findIndex((l) => TALLY_RE.test(l));
+    // ...and they end where PHPUnit's run does. Without that bound a log with PHPUnit
+    // first read whatever numbered blocks came after it as more of its own. The inner
+    // loop already stopped there; the outer one did not.
+    const END_RE = /^[^\S\n]*(?:Tests:|OK\b|FAILURES!|ERRORS!|WARNINGS!)/;
+    for (let i = announced + 1; i < lines.length && !END_RE.test(lines[i]); i++) {
       const header = lines[i].match(/^\d+\)[^\S\n]+(.+)$/);
       if (!header) continue;
       const message = [];

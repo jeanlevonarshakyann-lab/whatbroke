@@ -210,6 +210,7 @@ them.
 | **Node stack traces** | the error, the caret, your frames; `node:internal` hidden |
 | **Playwright** | the test name, the line that actually threw, and the offending expression — not the paths to its artifact files |
 | **jest** | test name, `file:line`, the matcher, expected vs received |
+| **jasmine** | spec name, the assertion, and the frame in your spec — its own frames name no file at all, so they cannot be mistaken for yours |
 | **ava** | test name, the assertion and the value it is about — the diff for a comparison, the prose for anything else; a thrown class names the failure without pretending to be its identity |
 | **mocha** | suite and test name, the assertion, and the frame in your test — not the ten `node:internal` ones under it; a timeout reports no location rather than a line inside node's timers |
 | **vitest** | same, with the real source line — not vitest's truncated `…` version |
@@ -220,6 +221,7 @@ them.
 | **cargo test** | test name, `file:line`, the assertion and its left/right values |
 | **cargo build** | error code and the inline annotation — not the 25 lines of trait impls |
 | **cargo clippy** | the lint name as the title, so you know what to fix or allow |
+| **markdownlint** | the rule code, `file:line:col`, and what the rule wanted — `[Expected: 1; Actual: 2]` is the whole answer for a spacing rule |
 | **ruff** | rule code, `file:line`, the message and ruff's own fix hint |
 | **pyright** | the rule name as the code, the column, and the indented line that says *why* — not the column pasted into the message |
 | **mypy** | error code, `file:line`, the type-checking message; notes and warnings set aside |

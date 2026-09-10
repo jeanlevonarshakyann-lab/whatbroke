@@ -251,6 +251,27 @@ const CASES = [
       assert.match(r.failures[0].message, /^Failed opening required 'nothing-here\.php'$/);
       assert.equal(r.failures[0].code, "Error");
     } },
+  // Captured with jasmine 5. Another runner that produced no diagnosis at all.
+  { file: "jasmine_fail.txt", tool: "jasmine", n: 2, check: (r) => {
+      assert.equal(r.summary, "2 of 2 specs failed");
+      assert.equal(r.failures[0].subject, "invoice finds an expiry claim");
+      assert.equal(r.failures[0].message, "Expected undefined to be defined.");
+      assert.match(r.failures[0].file, /sum\.spec\.js$/);
+      assert.equal(r.failures[0].line, 3);
+      // jasmine's own frames read "at <Jasmine>" and name no file, so the frame that
+      // survives is always one of yours
+      assert.doesNotMatch(JSON.stringify(r.failures), /<Jasmine>/);
+    } },
+  // Captured with markdownlint-cli 0.4x. One line per violation and nothing else.
+  { file: "markdownlint_fail.txt", tool: "markdownlint", n: 2, check: (r) => {
+      assert.equal(r.failures[0].file, "doc.md");
+      assert.equal(r.failures[0].line, 3);
+      assert.equal(r.failures[0].code, "MD018");
+      assert.equal(r.failures[0].message, "No space after hash on atx style heading");
+      // the bracketed context is the rule quoting your file back at you
+      assert.doesNotMatch(JSON.stringify(r.failures), /\[Context:/);
+      assert.equal(r.failures[1].code, "MD030");
+    } },
   // Captured with ava 6. Like mocha, a failing run produced no diagnosis at all.
   { file: "ava_fail.txt", tool: "ava", n: 2, check: (r) => {
       assert.equal(r.summary, "2 tests failed");
