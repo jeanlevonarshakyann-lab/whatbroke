@@ -1571,6 +1571,7 @@ try {
 // things. Declaring two would mean the parser has not decided which it produced.
 try {
   const tools = new Set();
+  const unclassifiedBy = new Set();
   let classified = 0, total = 0;
   for (const file of readdirSync(join(here, "fixtures"))) {
     const r = analyse(fx(file));
@@ -1581,13 +1582,25 @@ try {
       const declared = ["code", "subject", "label"].filter((k) => f[k]);
       assert.ok(declared.length <= 1,
         `${r.tool} declares ${declared.join(" and ")} on one failure; they are alternatives`);
-      if (declared.length) classified++;
+      if (declared.length) classified++; else unclassifiedBy.add(r.tool);
       assert.ok(f.severity, `${r.tool} emitted a failure with no severity`);
       assert.notEqual(f.severity, "warning", `${r.tool} reported a warning as a failure`);
     }
   }
-  // Almost everything should be classified; the exceptions are tools that genuinely
-  // print no identifier of any kind, such as a bare Go build error.
+  // A ratio let a new parser quietly spend the budget: swift declared nothing for a
+  // whole release and stayed inside 95%, and the cost was that eight identical errors
+  // could not be grouped. The exceptions are named instead, and they are the tools that
+  // genuinely print no identifier of any kind:
+  //
+  //   generic   a guess, by definition unidentified
+  //   go        writes "./main.go:6:18: cannot use ..." with no severity word at all,
+  //             so calling it "error" would be inventing one
+  //
+  // Anything else reaching here is a parser that has not said what it produced.
+  const MAY_BE_UNCLASSIFIED = new Set(["output", "go build", "go vet", "go test"]);
+  const undeclared = [...unclassifiedBy].filter((t) => !MAY_BE_UNCLASSIFIED.has(t));
+  assert.deepEqual(undeclared, [],
+    "a parser emitted a failure declaring neither code, subject nor label");
   assert.ok(classified / total > 0.95, `only ${classified} of ${total} failures are classified`);
   console.log(`  ok   ${classified} of ${total} failures across ${tools.size} tools declare what they are`);
   pass++;

@@ -115,7 +115,13 @@ export default {
       if (!loc && !m[1] && !lint && !CARGO_OWN.test(m[2])) continue;
       failures.push({
         file: loc?.file, line: loc?.line, col: loc?.col,
-        title: m[1] ?? lint ?? "", code: m[1] ?? (lint || undefined), severity: "error", message: [m[2], note].filter(Boolean).join("\n"), stmt,
+        // rustc's E-code, or clippy's lint name, is the identity. Where there is
+        // neither - a manifest that will not parse - "error" is the constant cargo
+        // prints for the class, which is what `label` is for. Without one of the three
+        // a failure says nothing about itself and clustering cannot group it.
+        title: m[1] ?? lint ?? "", code: m[1] ?? (lint || undefined),
+        label: m[1] || lint ? undefined : "error",
+        severity: "error", message: [m[2], note].filter(Boolean).join("\n"), stmt,
       });
     }
 
