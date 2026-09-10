@@ -222,6 +222,7 @@ them.
 | **cargo test** | test name, `file:line`, the assertion and its left/right values |
 | **cargo build** | error code and the inline annotation — not the 25 lines of trait impls |
 | **cargo clippy** | the lint name as the title, so you know what to fix or allow |
+| **cargo `--message-format=json`** | the same failures, read from the schema rather than the rendered text — `rustc --error-format=json` too. The primary span is the location, and the source line it carries is what gets quoted |
 | **less** | the class, message, `file:line:col` and the offending line — lessc puts all of it on one line, with the location as prose at the end |
 | **swc** | the message and location miette drew, not the `Failed to compile 1 file with swc.` tally underneath them |
 | **babel** | the file out of the middle of the message and the marked line of its code frame — not the twenty `@babel/parser` frames underneath |

@@ -503,6 +503,13 @@ test("a pair of logs never yields more failures than the two apart", () => {
 // Logs whose owner is not go, but whose content is partly go's own output.
 const GO_UNDER_ANOTHER_OWNER = new Set(["golangci_typecheck_fail.txt"]);
 
+// These two are one `cargo build` captured twice, once as text and once as JSON, and
+// they exist to be compared against each other. Concatenating them is not two runs, it
+// is one run said twice - so the union is not 3 + 3. One of the three deduplicates
+// (rustc draws no carets under that span, so both encodings word it identically) and the
+// other two do not, which is the de-duplication working rather than failing.
+const SAME_RUN_TWO_ENCODINGS = new Set(["cargo_json_fail.txt", "cargo_plain_same_fail.txt"]);
+
 const identity = (f) => JSON.stringify([
   f.tool ?? null, f.category ?? null, f.file ?? null, f.line ?? null, f.col ?? null,
   f.title ?? "", f.code ?? null, f.subject ?? null, f.label ?? null,
@@ -538,6 +545,7 @@ test("every ordered pair recovers exactly the failures in its parts", () => {
       // an unprefixed line came from. That is the ambiguity above, not a loss.
       if ((GO_UNDER_ANOTHER_OWNER.has(a) && parserOf(solo.get(b))?.name === "go") ||
           (GO_UNDER_ANOTHER_OWNER.has(b) && parserOf(solo.get(a))?.name === "go")) continue;
+      if (SAME_RUN_TWO_ENCODINGS.has(a) && SAME_RUN_TWO_ENCODINGS.has(b)) continue;
       pairs++;
       const apart = identities([...allFailures(solo.get(a)), ...allFailures(solo.get(b))]);
       let r;
@@ -653,7 +661,11 @@ test("one tool's log twice keeps both runs", () => {
       pairs++;
       let r;
       try { r = analyse(`${a.text.replace(/\n*$/, "\n")}\n${b.text}`); } catch { continue; }
-      const got = r?.failures.length ?? 0;
+      // Everything the reader is shown counts, not just the failures of whichever
+      // parser owns the log: a second run read by a sibling parser arrives attributed
+      // under `others` and is not missing. Counting only the primaries called that a
+      // loss and would have had me "fix" a tool that was already right.
+      const got = allFailures(r).length;
       if (got >= Math.max(a.n, b.n)) continue;
       const admits = /hidden|advisory|elsewhere|suppress|not shown/i.test(r?.summary ?? "");
       if (!admits) {
