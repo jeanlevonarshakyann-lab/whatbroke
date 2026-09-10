@@ -1271,6 +1271,29 @@ const CASES = [
         ["key-duplicates", "line-length", "trailing-spaces", "syntax"]);
       assert.equal(r.failures[1].message, "line too long (106 > 80 characters)");
     } },
+  // Captured with Docker 28 / BuildKit. Docker prints the offending Dockerfile line
+  // inside a fenced excerpt and marks it with ">>>", and repeats each error once per
+  // step and again at the end - so the fallback reported one failure twice and used
+  // neither the file nor the line sitting directly above it.
+  { file: "docker_dockerfile_fail.txt", tool: "docker", n: 1, check: (r) => {
+      assert.equal(r.failures[0].file, "Dockerfile.syntax");
+      assert.equal(r.failures[0].line, 2);
+      assert.equal(r.failures[0].stmt, "RUNN echo hi");
+      assert.match(r.failures[0].message, /unknown instruction: RUNN/);
+    } },
+  { file: "docker_pull_fail.txt", tool: "docker", n: 1, check: (r) => {
+      // The step error names the cause; the line at the end restates it wrapped in
+      // "failed to build: failed to solve:" and is not a second failure.
+      assert.equal(r.failures[0].line, 1);
+      assert.equal(r.failures[0].stmt, "FROM this-image-does-not-exist-xyz:9.9");
+      assert.match(r.failures[0].message, /pull access denied/);
+      assert.doesNotMatch(r.failures[0].message, /failed to solve/);
+    } },
+  { file: "docker_copy_fail.txt", tool: "docker", n: 1, check: (r) => {
+      assert.equal(r.failures[0].line, 2);
+      assert.equal(r.failures[0].stmt, "COPY missing-file.txt /tmp/");
+      assert.match(r.failures[0].message, /"\/missing-file\.txt": not found/);
+    } },
   { file: "rspec_fail.txt", tool: "rspec", n: 2, check: (r) => {
       assert.equal(r.summary, "3 examples, 2 failures");
       assert.equal(r.failures[0].title, "shop totals an invoice");
