@@ -1307,6 +1307,35 @@ const CASES = [
       assert.equal(r.failures[0].stmt, "COPY missing-file.txt /tmp/");
       assert.match(r.failures[0].message, /"\/missing-file\.txt": not found/);
     } },
+  // Captured on a windows-latest runner with Go 1.22, by running the failures there and
+  // taking what Go printed - the runner's own timestamps and ##[error] tags are the log
+  // viewer's, not Go's, and are not part of these files. Every other fixture in this
+  // suite has unix paths, so nothing exercised the separator Go actually uses on the
+  // platform the test matrix has been running on all along.
+  { file: "go_windows_build_fail.txt", tool: "go build", n: 4, check: (r) => {
+      // `pkg\helper.go` and `.\main.go` - a class written [\w./-] matches neither, so
+      // this whole log used to fall through to the generic fallback.
+      assert.equal(r.failures[0].file, "pkg\\helper.go");
+      assert.equal(r.failures[0].line, 4);
+      // `.\` is the same "this directory" prefix as `./` and is dropped the same way.
+      assert.equal(r.failures[1].file, "main.go");
+      assert.deepEqual(r.failures.map((f) => f.line), [4, 6, 6, 7]);
+    } },
+  { file: "go_windows_vet_fail.txt", tool: "go vet", n: 2, check: (r) => {
+      // Windows spells the prefix `vet.exe: `. Without it both locations were lost and
+      // the run came back as one unlocated guess.
+      assert.deepEqual(r.failures.map((f) => f.file), ["pkg\\helper.go", "main.go"]);
+      assert.doesNotMatch(JSON.stringify(r.failures), /vet\.exe/);
+    } },
+  { file: "go_windows_test_fail.txt", tool: "go test", n: 2, check: (r) => {
+      // go test needed no fixing, and this pins why: the testing package prints a bare
+      // basename, and the runtime writes its frames with forward slashes even here.
+      assert.equal(r.failures[0].file, "shop_test.go");
+      assert.match(r.failures[1].file, /^D:\/a\/.*shop_test\.go$/);
+      // The panic unwinds through testing.go and panic.go under a Windows toolchain
+      // path; those are Go's frames, not yours.
+      assert.doesNotMatch(JSON.stringify(r.failures.map((f) => f.file)), /hostedtoolcache/);
+    } },
   { file: "rspec_fail.txt", tool: "rspec", n: 2, check: (r) => {
       assert.equal(r.summary, "3 examples, 2 failures");
       assert.equal(r.failures[0].title, "shop totals an invoice");
@@ -2887,6 +2916,56 @@ try {
   console.log("  ok   a compiler's missing header is not read as make's missing include");
   pass++;
 } catch (e) { console.log(`  FAIL compiler header vs make include\n       ${e.message}`); fail++; }
+
+// The same log arrives dressed differently depending on where it ran. Every fixture in
+// this suite was captured on a unix terminal with colour off, and the two things that
+// change on the way to a CI log - carriage returns and SGR escapes - change no byte that
+// carries meaning. Both checks are cheap and both failure modes are silent, which is the
+// case for pinning them rather than assuming.
+try {
+  const files = readdirSync(join(here, "fixtures"));
+  const shape = (r) => (r ? JSON.stringify({ tool: r.tool, n: r.failures.length,
+    at: r.failures.map((f) => [f.file, f.line, f.col]) }) : "null");
+  const differ = [];
+  for (const file of files) {
+    const lf = fx(file);
+    if (lf.includes("\r")) continue;
+    const crlf = lf.replace(/\n/g, "\r\n");
+    if (shape(analyse(lf)) !== shape(analyse(crlf))) differ.push(file);
+  }
+  assert.deepEqual(differ, [], "a windows line ending changed what was read");
+  console.log(`  ok   a carriage return before every newline changes nothing (${files.length} fixtures)`);
+  pass++;
+} catch (e) { console.log(`  FAIL CRLF\n       ${e.message}`); fail++; }
+
+try {
+  const ESC = String.fromCharCode(27);
+  // Three shapes real tools emit: the whole line coloured, the severity word coloured,
+  // and the location coloured - the last is the one that would hide a `file:line:` from
+  // a pattern anchored on ^.
+  const dressed = {
+    whole: (l) => (l.trim() ? `${ESC}[31m${l}${ESC}[0m` : l),
+    word: (l) => l.replace(/\b(error|warning|FAIL|failed|note)\b/gi, (m) => `${ESC}[1;31m${m}${ESC}[0m`),
+    location: (l) => l.replace(/^(\S+:\d+(?::\d+)?:)/, (m) => `${ESC}[36m${m}${ESC}[0m`),
+  };
+  const shape = (r) => (r ? JSON.stringify({ tool: r.tool, n: r.failures.length,
+    at: r.failures.map((f) => [f.file, f.line, f.col]) }) : "null");
+  const differ = [];
+  let checked = 0;
+  for (const file of readdirSync(join(here, "fixtures"))) {
+    const plain = fx(file);
+    if (plain.includes(ESC)) continue;
+    checked++;
+    const base = shape(analyse(plain));
+    for (const [name, dress] of Object.entries(dressed)) {
+      const coloured = plain.split("\n").map(dress).join("\n");
+      if (shape(analyse(coloured)) !== base) differ.push(`${file} (${name})`);
+    }
+  }
+  assert.deepEqual(differ, [], "colour changed what was read");
+  console.log(`  ok   colour changes nothing about what was read (${checked} fixtures, 3 ways)`);
+  pass++;
+} catch (e) { console.log(`  FAIL ANSI\n       ${e.message}`); fail++; }
 
 const cliResults = await (await import("./cli.js")).runCliTests();
 pass += cliResults.pass;

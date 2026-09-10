@@ -1,0 +1,5 @@
+# probe/pkg
+vet.exe: pkg\helper.go:4:9: undefined: undefinedThing
+# probe
+# [probe]
+vet.exe: .\main.go:6:14: cannot use "not an int" (untyped string constant) as int value in variable declaration

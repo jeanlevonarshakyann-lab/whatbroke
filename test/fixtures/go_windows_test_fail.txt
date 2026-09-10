@@ -1,0 +1,22 @@
+--- FAIL: TestTotal (0.00s)
+    shop_test.go:7: got 3 want 4
+--- FAIL: TestPanic (0.00s)
+panic: runtime error: invalid memory address or nil pointer dereference [recovered]
+	panic: runtime error: invalid memory address or nil pointer dereference
+[signal 0xc0000005 code=0x0 addr=0x0 pc=0x34e5c2]
+
+goroutine 7 [running]:
+testing.tRunner.func1.2({0x3649a0, 0x489a50})
+	C:/hostedtoolcache/windows/go/1.22.12/x64/src/testing/testing.go:1631 +0x24a
+testing.tRunner.func1()
+	C:/hostedtoolcache/windows/go/1.22.12/x64/src/testing/testing.go:1634 +0x377
+panic({0x3649a0?, 0x489a50?})
+	C:/hostedtoolcache/windows/go/1.22.12/x64/src/runtime/panic.go:770 +0x132
+t.TestPanic(0xc000114680?)
+	D:/a/whatbroke/whatbroke/t/shop_test.go:13 +0x2
+testing.tRunner(0xc000114680, 0x393648)
+	C:/hostedtoolcache/windows/go/1.22.12/x64/src/testing/testing.go:1689 +0xfb
+created by testing.(*T).Run in goroutine 1
+	C:/hostedtoolcache/windows/go/1.22.12/x64/src/testing/testing.go:1742 +0x390
+FAIL	t	0.025s
+FAIL

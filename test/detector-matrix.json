@@ -592,6 +592,42 @@
       "generic": 1
     }
   },
+  "go_windows_build_fail.txt": {
+    "winner": "go build",
+    "parser": "go",
+    "failures": 4,
+    "claimants": [
+      "go",
+      "generic"
+    ],
+    "shadow": {
+      "generic": 4
+    }
+  },
+  "go_windows_test_fail.txt": {
+    "winner": "go test",
+    "parser": "go",
+    "failures": 2,
+    "claimants": [
+      "go",
+      "generic"
+    ],
+    "shadow": {
+      "generic": 5
+    }
+  },
+  "go_windows_vet_fail.txt": {
+    "winner": "go vet",
+    "parser": "go",
+    "failures": 2,
+    "claimants": [
+      "go",
+      "generic"
+    ],
+    "shadow": {
+      "generic": 1
+    }
+  },
   "gobuild_fail.txt": {
     "winner": "go build",
     "parser": "go",
