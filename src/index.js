@@ -83,11 +83,16 @@ function sameLocatedDiagnostic(a, b) {
  * private source range is the tie-breaker: only diagnostics grounded in the same raw
  * region and carrying the same message may suppress one another. */
 function sameSourceDiagnostic(a, b) {
-  if (!rangesOverlap(a, b)) return false;
+  // Both conditions have to hold, so the cheap one goes first. Asking for a range is
+  // what forces every range in the result to be located, a scan of the whole log per
+  // failure; comparing two strings is free. Two parsers that describe different things
+  // are the overwhelming majority of pairs, and they can be rejected without locating
+  // anything at all.
   const x = String(a.message ?? "").trim();
   const y = String(b.message ?? "").trim();
   if (!x || !y) return false;
-  return x === y || (Math.min(x.length, y.length) >= 4 && (x.includes(y) || y.includes(x)));
+  const sameText = x === y || (Math.min(x.length, y.length) >= 4 && (x.includes(y) || y.includes(x)));
+  return sameText && rangesOverlap(a, b);
 }
 
 /** A CI log often holds a lint run, a typecheck and a test run one after another.
