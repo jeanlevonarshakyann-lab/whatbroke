@@ -73,6 +73,13 @@ export default {
         if (KEY_RE.test(lines[j])) continue;
       }
 
+      // A block with none of node's own YAML keys is not node's. `tap` writes TAP 14
+      // with the same "not ok N - name" line and an `at:` block instead of node's
+      // `failureType` and `location`, so a log holding both had node reading tap's
+      // failures - and tap's file-level roll-up with them, which is a count of failures
+      // rather than one of its own.
+      if (!failureType && file === undefined && !errName && !msg.length) continue;
+
       // "AssertionError: Expected values to be strictly equal:" reads better than
       // either half alone, and matches how every other parser here labels a failure
       const message = errName && msg.length && !msg[0].startsWith(errName)

@@ -45,6 +45,8 @@ const PROBABLE_DIAGNOSTIC = new RegExp([
   // a location is a diagnostic by shape, whatever words follow it
   "^\\s*\\.?[\\w./\\\\-]+\\.\\w+:\\d+(?::\\d+)?:",
   "\\bat [\\w./\\\\-]+\\.\\w+ line \\d+",
+  // TAP says it with two words that are not otherwise failure vocabulary at all
+  "^[^\\S\\n]*not ok\\b",
   // Go's tally and the bullets test runners draw carry no word at all
   "^\\s*(?:---\\s*FAIL|FAIL\\b|\\u25cf|\\u2717|\\u2716|\\u00d7)",
 ].join("|"), "im");
