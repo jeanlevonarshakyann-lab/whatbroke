@@ -185,9 +185,9 @@ test("normalisation is not slow on a large or hostile log", () => {
 // nothing is excluded here, however short a log is.
 //
 // Every one of these cost the corpus its parsers. 11 fixtures through an Actions log,
-// 95 through Jenkins or journald, before the shapes existed and the line-count floors
-// came off. The one fixture that uses a bare CR is the exception noted above, and is
-// excluded for the reason given there.
+// 95 through Jenkins or journald, and 94 through Buildkite --timestamp-lines before
+// the shapes existed and the line-count floors came off. The one fixture that uses a
+// bare CR is the exception noted above, and is excluded for the reason given there.
 const CI_STAMPS = {
   "GitHub Actions raw log": (l, i) =>
     `2026-09-10T10:16:${String(54 + (i % 5)).padStart(2, "0")}.1234567Z ${l}`,
@@ -201,6 +201,9 @@ const CI_STAMPS = {
     `[2026-09-10T10:16:${String(54 + (i % 5)).padStart(2, "0")}.123Z] ${l}`,
   "Jenkins Timestamper (clock)": (l, i) =>
     `[10:16:${String(54 + (i % 5)).padStart(2, "0")}] ${l}`,
+  // buildkite-agent --timestamp-lines uses a space between the date and time
+  "Buildkite --timestamp-lines": (l, i) =>
+    `[2026-09-10 10:16:${String(54 + (i % 5)).padStart(2, "0")}] ${l}`,
   // a log collected by journald rather than read off the terminal
   "journald / syslog": (l, i) =>
     `Sep 10 10:16:${String(54 + (i % 5)).padStart(2, "0")} runner app[123]: ${l}`,

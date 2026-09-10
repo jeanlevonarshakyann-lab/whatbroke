@@ -2,6 +2,9 @@
 
 ## Unreleased
 
+- Fixed: Buildkite's `--timestamp-lines` prefix prevented most captured logs from
+  reaching their parser; its bracketed local timestamp is now removed before analysis.
+
 - Fixed mixed-log echo filtering: rebuild clusters after removing duplicates so retained failures keep valid indices and terminal output cannot crash.
 - Fixed distinct diagnostics disappearing when they share a location with the primary tool, or when neither has a location. Tightened Ruff, Cargo and Yarn matches exposed by retaining those diagnostics.
 - Fixed `--since-last` overlooking secondary tools. History now tracks causes from every reported tool and marks new secondary failures; older history records start a fresh baseline.
