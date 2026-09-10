@@ -244,6 +244,8 @@ them.
 | **kubectl** | the sentence a person wants, not five identical klog lines from inside client-go |
 | **GCC/Clang** | compiler errors with `file:line:column`, or `file:line` where gcc printed no column — read only for C-family sources there, since without the column that shape is also javac's and mypy's; driver errors that never got as far as a file; warnings and notes set aside |
 | **Swift** | the diagnostic and the `[#group]` tag as its code — not the annotation swiftc draws underneath, which repeats the message word for word |
+| **ShellCheck** | the `SCxxxx` code, the source line, and the column the carets are drawn under — from the block format it prints by default as well as `-f gcc`. A run that fails on nothing worse than style still says so, because shellcheck exits non-zero on those too |
+| **yamllint** | the rule, matched as the last parenthesised word so a message like `line too long (106 > 80 characters)` keeps its own brackets. Warnings are set aside: yamllint exits zero on a run that found only those |
 | **make** | make's own failures — a makefile it cannot parse, a target with no rule, a recipe whose command is not installed. Not `make: *** [target] Error 1`: that relays somebody else's exit status, and the compiler underneath already has a parser. make ends a line `Stop.` when it is refusing to continue and `Error N` when it is only passing one on, and that is the line this parser draws |
 | **RSpec** | example name, failure message, and `spec/file:line` location |
 | **Ruby** | the exception class, the line that raised, and the unwind — for a missing gem, the line that asked for it rather than `kernel_require.rb` |

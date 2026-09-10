@@ -1,0 +1,7 @@
+deploy.sh:3:8: warning: Use "${var:?}" to ensure this never expands to /* . [SC2115]
+deploy.sh:4:10: error: Iterating over ls output is fragile. Use globs. [SC2045]
+deploy.sh:4:15: note: Use ./*glob* or -- *glob* so names with dashes won't become options. [SC2035]
+deploy.sh:5:22: note: Double quote to prevent globbing and word splitting. [SC2086]
+lib.sh:2:8: note: Use $(...) notation instead of legacy backticks `...`. [SC2006]
+lib.sh:2:8: note: Useless echo? Instead of 'cmd $(echo foo)', just use 'cmd foo'. [SC2116]
+lib.sh:3:6: note: Double quote to prevent globbing and word splitting. [SC2086]
