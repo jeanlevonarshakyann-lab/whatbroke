@@ -814,6 +814,30 @@
       "generic": 4
     }
   },
+  "gotest_verbose_fail.txt": {
+    "winner": "go test",
+    "parser": "go",
+    "failures": 4,
+    "claimants": [
+      "go",
+      "generic"
+    ],
+    "shadow": {
+      "generic": 6
+    }
+  },
+  "gotest_verbose_plain_fail.txt": {
+    "winner": "go test",
+    "parser": "go",
+    "failures": 4,
+    "claimants": [
+      "go",
+      "generic"
+    ],
+    "shadow": {
+      "generic": 6
+    }
+  },
   "govet_compile_fail.txt": {
     "winner": "go vet",
     "parser": "go",

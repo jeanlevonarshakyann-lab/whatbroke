@@ -21,6 +21,64 @@ const BUILD_ANY = /^(?:vet(?:\.exe)?: )?(?:\.[\\/])?[\w./\\-]+\.go:\d+:\d+: /m; 
 // a tool nobody ran. The untagged lines in a golangci typecheck report ARE go's own,
 // verbatim, and are still read.
 const LINTER_TAG = /[^\S\n]\([a-z][\w-]*\)[^\S\n]*$/;
+// `go test -v` - and every `go test -json` stream, which runs verbose underneath - frames
+// each test's output with a line naming the test it belongs to. The output comes BEFORE
+// the test's "--- FAIL" line, not after it, and parallel tests interleave, switching with
+// "=== NAME". Reading forward from "--- FAIL" found nothing for a test that had failed
+// and then read on into the next test's frame, so every failure in a verbose log was
+// pinned to the NEXT test's output: TestAdd reported with TestTable/zero's error, and
+// TestTable/zero with TestParallelA's, a passing test's log included. This is how Go's
+// own test2json attributes a line - to the test named in the most recent frame.
+const FRAME_RE = /^=== (?:RUN|PAUSE|CONT|NAME)[^\S\n]+(\S+)[^\S\n]*$/;
+const RESULT_RE = /^[^\S\n]*--- (PASS|FAIL|SKIP): (\S+)/;
+// A package's closing lines end attribution, so a TestAdd in one package is never read
+// as the same test as a TestAdd in the next.
+const TRAILER_RE = /^(?:(?:FAIL|ok)[^\S\n]+\S+[^\S\n]+(?:[\d.]+s|\(cached\))|FAIL|PASS)[^\S\n]*$/;
+
+/** What one test printed: its location, its messages, and a panic's own frame. */
+function details(block) {
+  let file, line;
+  const msg = [];
+  for (let j = 0; j < block.length; j++) {
+    const lm = block[j].match(LOC_RE);
+    if (lm) { file ??= lm[1]; line ??= +lm[2]; if (lm[3]) msg.push(lm[3]); continue; }
+    const pm = block[j].match(/^panic: (.+?)(?:\s\[recovered.*\])?$/);
+    if (pm) {
+      msg.push(`panic: ${pm[1]}`);
+      // first goroutine frame that is not runtime/testing
+      for (let k = j + 1; k < block.length; k++) {
+        const fm = block[k].match(/^\t(.+?):(\d+)(?:\s|$)/);
+        if (fm && !STDLIB.test(fm[1])) { file = fm[1]; line = +fm[2]; break; }
+      }
+    }
+  }
+  return { file, line, msg };
+}
+
+/** In a verbose log, the lines each failing test printed, keyed by the index of its
+ *  "--- FAIL" line. Resolved only once the package is read: a panic's dump comes after
+ *  the test's result line, and still belongs to it. A plain log has no frames, and gets
+ *  an empty map. */
+function verboseBlocks(lines) {
+  const out = new Map();
+  if (!lines.some((l) => FRAME_RE.test(l))) return out;
+  let seg = new Map(), current = null;
+  const pending = [];
+  for (let i = 0; i < lines.length; i++) {
+    const l = lines[i];
+    const f = l.match(FRAME_RE);
+    if (f) { current = f[1]; continue; }
+    const r = l.match(RESULT_RE);
+    if (r) { if (r[1] === "FAIL") pending.push([i, r[2], seg]); continue; }
+    if (TRAILER_RE.test(l)) { current = null; seg = new Map(); continue; }
+    if (current == null) continue;
+    if (!seg.has(current)) seg.set(current, []);
+    seg.get(current).push(l);
+  }
+  for (const [i, name, s] of pending) out.set(i, s.get(name) ?? []);
+  return out;
+}
+
 // Go's own runtime/testing frames are never your bug
 const STDLIB = /\/(libexec\/)?src\/(runtime|testing|internal)\//;
 
@@ -107,25 +165,23 @@ export default {
     }
 
     // --- test failures ---
+    const attributed = verboseBlocks(lines);
     for (let i = 0; i < lines.length; i++) {
       const m = lines[i].match(FAIL_RE);
       if (!m || m[1] !== "FAIL") continue;
       const name = m[2];
 
-      let file, line, msg = [];
-      for (let j = i + 1; j < lines.length && !FAIL_RE.test(lines[j]); j++) {
-        const lm = lines[j].match(LOC_RE);
-        if (lm) { file ??= lm[1]; line ??= +lm[2]; if (lm[3]) msg.push(lm[3]); continue; }
-        const pm = lines[j].match(/^panic: (.+?)(?:\s\[recovered.*\])?$/);
-        if (pm) {
-          msg.push(`panic: ${pm[1]}`);
-          // first goroutine frame that is not runtime/testing
-          for (let k = j + 1; k < lines.length; k++) {
-            const fm = lines[k].match(/^\t(.+?):(\d+)(?:\s|$)/);
-            if (fm && !STDLIB.test(fm[1])) { file = fm[1]; line = +fm[2]; break; }
-          }
-        }
+      // A verbose log says which lines are this test's; use them. Otherwise - and for a
+      // test that printed nothing of its own - read on from the result line as a plain
+      // log is laid out, but never into the next test's frame.
+      const own = attributed.get(i);
+      let found = own ? details(own) : { msg: [] };
+      if (!found.msg.length && !found.file) {
+        const ahead = [];
+        for (let j = i + 1; j < lines.length && !FAIL_RE.test(lines[j]) && !FRAME_RE.test(lines[j]); j++) ahead.push(lines[j]);
+        found = details(ahead);
       }
+      const { file, line, msg } = found;
       if (!msg.length && !file) continue;
       failures.push({ file, line, title: name, subject: name, category: "test", severity: "error", message: msg.join("\n") });
     }

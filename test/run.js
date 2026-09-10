@@ -1472,6 +1472,25 @@ const CASES = [
       assert.equal(r.failures[0].label, "parse error");
       assert.match(r.failures[0].message, /Parsing error: Unexpected token/);
     } },
+  // One run of a Go project, captured plainly and with -v. Verbose output puts a test's
+  // lines ABOVE its "--- FAIL" line, frames parallel tests with PAUSE/CONT and switches
+  // between them with "=== NAME" - and every failure in a verbose log used to be pinned
+  // to the NEXT test's output: TestAdd reported with TestTable/zero's error, and
+  // TestTable/zero with TestParallelA's, a passing test's log included.
+  { file: "gotest_verbose_fail.txt", tool: "go test", n: 4, check: (r) => {
+      assert.deepEqual(r.failures.map((f) => [f.title, f.line]),
+        [["TestAdd", 7], ["TestTable/zero", 22], ["TestParallelA", 30], ["TestNilMap", 7]]);
+      // TestParallelB passed. Its log line sits between A's two and must not join them.
+      assert.doesNotMatch(JSON.stringify(r.failures), /B says hello/);
+      // TestTable's own "--- FAIL" carries nothing of its own; the failure is its subtest's.
+      assert.ok(!r.failures.some((f) => f.title === "TestTable"));
+      // A panic's dump comes after its test's result line, and still belongs to it.
+      assert.match(r.failures[3].message, /nil map/);
+    } },
+  { file: "gotest_verbose_plain_fail.txt", tool: "go test", n: 4, check: (r) => {
+      assert.deepEqual(r.failures.map((f) => [f.title, f.line]),
+        [["TestAdd", 7], ["TestTable/zero", 22], ["TestParallelA", 30], ["TestNilMap", 7]]);
+    } },
   { file: "rspec_fail.txt", tool: "rspec", n: 2, check: (r) => {
       assert.equal(r.summary, "3 examples, 2 failures");
       assert.equal(r.failures[0].title, "shop totals an invoice");
@@ -3224,6 +3243,19 @@ try {
   console.log("  ok   eslint -f json says what the table eslint printed says");
   pass++;
 } catch (e) { console.log(`  FAIL eslint json vs table\n       ${e.message}`); fail++; }
+
+// The same Go run captured plainly and with -v has to say the same thing - file, line,
+// test and message for every failure. Verbose mode is where a test's output sits above
+// its result line, and it is also what every `go test -json` stream runs underneath, so
+// this is the check that attribution in that layout is right rather than just different.
+try {
+  const plain = analyse(fx("gotest_verbose_plain_fail.txt"));
+  const verbose = analyse(fx("gotest_verbose_fail.txt"));
+  const facts = (r) => r.failures.map((f) => [f.file, f.line, f.title, f.message]);
+  assert.deepEqual(facts(verbose), facts(plain), "-v reads a different set of failures from the same run");
+  console.log("  ok   go test -v says what plain go test says");
+  pass++;
+} catch (e) { console.log(`  FAIL go -v vs plain\n       ${e.message}`); fail++; }
 
 const cliResults = await (await import("./cli.js")).runCliTests();
 pass += cliResults.pass;
