@@ -1039,6 +1039,18 @@
     ],
     "shadow": {}
   },
+  "terraform_validate_fail.txt": {
+    "winner": "terraform",
+    "parser": "terraform",
+    "failures": 1,
+    "claimants": [
+      "terraform",
+      "generic"
+    ],
+    "shadow": {
+      "generic": 1
+    }
+  },
   "tsc_chain_fail.txt": {
     "winner": "tsc",
     "parser": "tsc",

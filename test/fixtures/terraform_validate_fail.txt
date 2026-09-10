@@ -1,0 +1,8 @@
+[31m╷[0m[0m
+[31m│[0m [0m[1m[31mError: [0m[0m[1mMissing required argument[0m
+[31m│[0m [0m
+[31m│[0m [0m[0m  on main.tf line 1, in resource "local_file" "demo":
+[31m│[0m [0m   1: resource "local_file" "demo" [4m{[0m[0m
+[31m│[0m [0m
+[31m│[0m [0mThe argument "filename" is required, but no definition was found.
+[31m╵[0m[0m
