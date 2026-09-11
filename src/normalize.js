@@ -24,6 +24,18 @@ const SHAPE_UNIFORM = 0.4;
 const MIN_PREFIX = 2;
 const MAX_PREFIX = 200;
 const MAX_LITERAL_CANDIDATES = 4;   // bound the parses a single log can cost
+// Turborepo prefixes each relayed line with `<package>:<task>: `. Unlike the
+// uniform wrappers above, a monorepo job can put several packages in one stream:
+// `api:test: ` for pytest and `web:lint: ` for ESLint. A nested runner can repeat
+// the form on one line too. Keep this deliberately narrower than a location: the
+// first script token begins with a lowercase letter, so `file.js:12:3:` cannot
+// match even though package names and later script tokens may contain digits.
+// Exactly one separator byte is consumed, preserving the wrapped tool's indentation.
+// Script names may themselves contain colons (`web:test:unit: `), so a single
+// relay label is two or more colon-terminated tokens.
+const TASK_LABEL = String.raw`[a-z0-9_@./-]+:(?:[a-z][a-z0-9_.-]*:)+`;
+const TASK_PREFIX = new RegExp(`^(?:${TASK_LABEL}[^\\S\\n])+`);
+const ONE_TASK_PREFIX = new RegExp(TASK_LABEL + `(?=[^\\S\\n])`, "g");
 // These are tool syntax, not relay syntax. In a mixed log, stripping one can make a
 // different parser win and therefore look like an improvement even though it erased a
 // complete Maven or npm invocation.
@@ -145,6 +157,37 @@ const stripLiteral = (text, p) =>
 
 const stripShape = (text, re) => text.split("\n").map((l) => l.replace(re, "")).join("\n");
 
+/** A candidate for a stream containing output from several monorepo tasks.
+ *
+ * A single task is handled by the stricter uniform-prefix inference. This fallback
+ * is proposed only when at least two distinct task prefixes appear in the stream;
+ * src/index.js still accepts it only when parsing proves a structural improvement.
+ * Consecutive nested task prefixes are removed together, so this spends the same one
+ * inferred-literal budget as an ordinary shared prefix. */
+function mixedTaskPrefixes(text) {
+  const found = new Set();
+  let matches = 0;
+  // Do not reuse the head-only parser sample here. Sequential CI output commonly
+  // contains hundreds of lint lines before the next package starts, and the point of
+  // this candidate is precisely to notice that later package. Stop as soon as two
+  // distinct labels prove the stream is heterogeneous.
+  for (const line of text.split("\n")) {
+    const match = line.match(TASK_PREFIX);
+    if (!match) continue;
+    matches++;
+    for (const prefix of match[0].matchAll(ONE_TASK_PREFIX)) {
+      found.add(prefix[0]);
+    }
+    if (matches >= 2 && found.size >= 2) break;
+  }
+  if (matches < 2 || found.size < 2) return null;
+  return {
+    kind: "literal",
+    wrapper: [...found].sort().join(" | "),
+    text: text.split("\n").map((line) => line.replace(TASK_PREFIX, "")).join("\n"),
+  };
+}
+
 /** A progress renderer uses bare carriage returns inside physical lines. A CI collector
  * stamps each physical line, not every redraw that will later become a logical line.
  * Remove a uniform vetted shape from all physical lines before CR normalisation expands
@@ -216,6 +259,8 @@ export function wrapperCandidates(text) {
   // A region candidate throws away everything outside the block, so it is only ever
   // taken when nothing real parsed from the whole text - see `better` in index.js.
   if (block) out.push({ kind: "region", wrapper: "docker buildkit", text: block });
+  const tasks = mixedTaskPrefixes(text);
+  if (tasks) out.push(tasks);
   for (const literal of literalCandidates(literalPrefix(text))) {
     if (NATIVE_PREFIX.test(literal)) continue;
     out.push({ kind: "literal", wrapper: literal, text: stripLiteral(text, literal) });

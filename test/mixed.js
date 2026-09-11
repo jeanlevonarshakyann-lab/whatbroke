@@ -531,6 +531,27 @@ const identity = (f) => JSON.stringify([
 ]);
 const identities = (failures) => failures.map(identity).sort();
 
+test("different monorepo task prefixes preserve every tool region", () => {
+  // These are existing real captures. Only the relay layer is synthesized: one task
+  // runs pytest, another runs ESLint, and a nested task relays a second pytest run.
+  const prefixed = (name, prefix) => fx(name).split("\n")
+    .map((line) => line.trim() ? `${prefix}${line}` : line).join("\n");
+  const names = ["pytest_fail.txt", "eslint_fail.txt", "pytest_collect_fail.txt"];
+  const raw = [
+    prefixed(names[0], "api:test: "),
+    // Put the next task past the normalizer's ordinary 200-line parser sample. Task
+    // regions in real CI are sequential and the first linter can be much longer.
+    Array.from({ length: 220 }, (_, i) => `api:test: worker progress ${i}`).join("\n"),
+    // Script names may contain colons in package.json.
+    prefixed(names[1], "web:lint:strict: "),
+    prefixed(names[2], "api:test: api:test: "),
+  ].join("\n");
+  const expected = identities(names.flatMap((name) => allFailures(analyse(fx(name)))));
+  const reading = analyse(raw);
+  assert.deepEqual(identities(allFailures(reading)), expected);
+  assert.deepEqual(reading.wrappers, ["api:test: | web:lint:strict:"]);
+});
+
 test("every ordered pair recovers exactly the failures in its parts", () => {
   const fixtureNames = readdirSync(join(here, "fixtures"));
   const solo = new Map();
