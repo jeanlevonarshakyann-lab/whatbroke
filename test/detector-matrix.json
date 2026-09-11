@@ -383,6 +383,19 @@
       "generic": 1
     }
   },
+  "denotest_reporter_junit_fail.txt": {
+    "winner": "deno test",
+    "parser": "deno test",
+    "failures": 1,
+    "claimants": [
+      "deno test",
+      "deno",
+      "generic"
+    ],
+    "shadow": {
+      "generic": 2
+    }
+  },
   "denotest_reporter_plain_fail.txt": {
     "winner": "deno test",
     "parser": "deno test",

@@ -1910,6 +1910,15 @@ const CASES = [
       assert.match(r.failures[0].message, /Error: expected three/);
       assert.doesNotMatch(JSON.stringify(r.failures), /file:\/\/\/|"severity":"fail"/);
     } },
+  { file: "denotest_reporter_junit_fail.txt", tool: "deno test", n: 1, check: (r) => {
+      assert.equal(r.summary, "1 failed, 0 passed");
+      assert.equal(r.failures[0].title, "adds");
+      assert.equal(r.failures[0].file, "./reporter_test.ts");
+      assert.equal(r.failures[0].line, 1);
+      assert.equal(r.failures[0].col, 6);
+      assert.match(r.failures[0].message, /Error: expected three/);
+      assert.doesNotMatch(JSON.stringify(r.failures), /<failure|&quot;|file:\/\/\//);
+    } },
   { file: "gorace_fail.txt", tool: "go test", n: 3, check: (r) => {
       // real `go test -race`. The detector names the exact line of the racing
       // access - the bug - while the assertion below it only reports a wrong total.
@@ -3361,19 +3370,23 @@ try {
 } catch (e) { console.log(`  FAIL clang count\n       ${e.message}`); fail++; }
 
 // A machine format is only worth reading if it says the same thing as the human one.
-// Deno's TAP reporter carries the same test location and message as its pretty report,
-// but serializes the diagnostic as JSON inside a YAML block.
+// Deno's machine reporters carry the same test location and message as its pretty
+// report: TAP wraps JSON in YAML, while JUnit serializes the facts as XML.
 try {
   const tap = analyse(fx("denotest_reporter_tap_fail.txt"));
+  const junit = analyse(fx("denotest_reporter_junit_fail.txt"));
   const text = analyse(fx("denotest_reporter_plain_fail.txt"));
   const facts = (r) => r.failures.map((f) =>
     [f.file, f.line, f.title, f.subject, f.severity, f.message]);
   assert.equal(tap.tool, text.tool);
   assert.equal(tap.summary, text.summary);
   assert.deepEqual(facts(tap), facts(text), "Deno TAP and pretty reports disagree");
-  console.log("  ok   deno --reporter=tap says what the pretty report says");
+  assert.equal(junit.tool, text.tool);
+  assert.equal(junit.summary, text.summary);
+  assert.deepEqual(facts(junit), facts(text), "Deno JUnit and pretty reports disagree");
+  console.log("  ok   deno TAP and JUnit reporters say what the pretty report says");
   pass++;
-} catch (e) { console.log(`  FAIL deno tap vs pretty\n       ${e.message}`); fail++; }
+} catch (e) { console.log(`  FAIL deno machine reporters vs pretty\n       ${e.message}`); fail++; }
 
 // Current Terraform removes its diagnostic box under `-no-color`, while `-json`
 // returns the same facts with an exact column. Both are real captures of one invalid

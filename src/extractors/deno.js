@@ -81,6 +81,34 @@ const TAP_VERSION_RE = /^TAP version \d+[^\S\n]*$/m;
 const TAP_NOT_OK_RE = /^[^\S\n]*not ok[^\S\n]+\d+[^\S\n]*-?[^\S\n]*(.*?)[^\S\n]*$/;
 const TAP_END_RE = /^[^\S\n]*\.\.\.[^\S\n]*$/;
 
+function xmlText(value) {
+  return String(value).replace(/&(?:#(\d+)|#x([\da-f]+)|quot|apos|lt|gt|amp);/gi, (entity, dec, hex) => {
+    if (dec || hex) {
+      const point = dec ? Number(dec) : parseInt(hex, 16);
+      return Number.isInteger(point) && point <= 0x10ffff && !(point >= 0xd800 && point <= 0xdfff)
+        ? String.fromCodePoint(point)
+        : entity;
+    }
+    return { "&quot;": '"', "&apos;": "'", "&lt;": "<", "&gt;": ">", "&amp;": "&" }[entity.toLowerCase()];
+  });
+}
+
+function xmlAttributes(tag) {
+  const attributes = {};
+  for (const match of tag.matchAll(/([\w:.-]+)="([^"]*)"/g)) {
+    attributes[match[1]] = xmlText(match[2]);
+  }
+  return attributes;
+}
+
+function usefulMessage(value) {
+  const messageLines = value.split("\n");
+  const first = messageLines[0]?.trim();
+  const caret = messageLines.findIndex((line) => /^\s*\^+\s*$/.test(line));
+  const stmt = caret > 0 ? messageLines[caret - 1].trim() : undefined;
+  return [first, stmt].filter(Boolean).join("\n");
+}
+
 /** Deno's TAP reporter puts one JSON diagnostic inside each TAP YAML block. */
 function denoTapFailures(text) {
   if (!TAP_VERSION_RE.test(text) || !/^error:[^\S\n]+Test failed[^\S\n]*$/m.test(text)) return [];
@@ -98,14 +126,10 @@ function denoTapFailures(text) {
       try { value = JSON.parse(candidate); } catch { continue; }
       if (value?.severity !== "fail" || typeof value?.message !== "string" ||
           typeof value?.at?.file !== "string" || !Number.isInteger(value?.at?.line)) continue;
-      const messageLines = value.message.split("\n");
-      const first = messageLines[0]?.trim();
-      const caret = messageLines.findIndex((line) => /^\s*\^+\s*$/.test(line));
-      const stmt = caret > 0 ? messageLines[caret - 1].trim() : undefined;
       const failure = {
         file: value.at.file, line: value.at.line,
         title: head[1] || "test", subject: head[1] || "test", severity: "error",
-        message: [first, stmt].filter(Boolean).join("\n"),
+        message: usefulMessage(value.message),
       };
       Object.defineProperty(failure, SOURCE_RANGE, {
         value: { start: i, end: j + 1 }, enumerable: false,
@@ -117,25 +141,63 @@ function denoTapFailures(text) {
   return failures;
 }
 
+/** Deno's JUnit reporter, bounded by its own `testsuites name="deno test"` root. */
+function denoJunit(text) {
+  const lines = text.split("\n");
+  const rootAt = lines.findIndex((line) => /<testsuites\b[^>]*\bname="deno test"/.test(line));
+  if (rootAt < 0) return { failures: [], passed: 0 };
+  const root = xmlAttributes(lines[rootAt]);
+  const failures = [];
+  for (let i = rootAt + 1; i < lines.length && !/<\/testsuites>/.test(lines[i]); i++) {
+    if (!/<testcase\b/.test(lines[i])) continue;
+    const test = xmlAttributes(lines[i]);
+    for (let j = i + 1; j < lines.length && !/<\/testcase>/.test(lines[j]); j++) {
+      const open = lines[j].match(/<failure\b[^>]*>(.*)$/);
+      if (!open) continue;
+      const body = [open[1]];
+      let end = j;
+      while (end < lines.length && !/<\/failure>/.test(body.at(-1))) body.push(lines[++end] ?? "");
+      const decoded = xmlText(body.join("\n").replace(/<\/failure>[\s\S]*$/, ""));
+      const failure = {
+        file: test.classname, line: /^\d+$/.test(test.line) ? +test.line : undefined,
+        col: /^\d+$/.test(test.col) ? +test.col : undefined,
+        title: test.name || "test", subject: test.name || "test", severity: "error",
+        message: usefulMessage(decoded),
+      };
+      Object.defineProperty(failure, SOURCE_RANGE, {
+        value: { start: i, end: end + 1 }, enumerable: false,
+      });
+      failures.push(failure);
+      i = end;
+      break;
+    }
+  }
+  const tests = /^\d+$/.test(root.tests) ? +root.tests : failures.length;
+  const failed = (/^\d+$/.test(root.failures) ? +root.failures : failures.length) +
+    (/^\d+$/.test(root.errors) ? +root.errors : 0);
+  return { failures, passed: Math.max(0, tests - failed) };
+}
+
 export default {
   ...denoPretty,
 
   detect(text) {
-    return denoTapFailures(text).length > 0 || denoPretty.detect(text);
+    return denoTapFailures(text).length > 0 || denoJunit(text).failures.length > 0 || denoPretty.detect(text);
   },
 
   extract(text) {
-    const failures = denoTapFailures(text);
-    if (!failures.length) return denoPretty.extract(text);
+    const tap = denoTapFailures(text);
+    const junit = denoJunit(text);
+    if (!tap.length && !junit.failures.length) return denoPretty.extract(text);
     const pretty = denoPretty.extract(text);
-    if (pretty?.failures?.length) failures.unshift(...pretty.failures);
+    const failures = [...(pretty?.failures ?? []), ...tap, ...junit.failures];
     const tapPassed = text.split("\n")
       .filter((line) => /^[^\S\n]*ok[^\S\n]+\d+\b/.test(line)).length;
     const prettyPassed = [...text.matchAll(/^(?:FAILED|ok)[^\S\n]*\|[^\S\n]*(\d+)[^\S\n]+passed[^\S\n]*\|[^\S\n]*\d+[^\S\n]+failed/gm)]
       .reduce((sum, match) => sum + Number(match[1]), 0);
     return {
       tool: "deno test",
-      summary: `${failures.length} failed, ${tapPassed + prettyPassed} passed`,
+      summary: `${failures.length} failed, ${tapPassed + prettyPassed + junit.passed} passed`,
       failures,
     };
   },
