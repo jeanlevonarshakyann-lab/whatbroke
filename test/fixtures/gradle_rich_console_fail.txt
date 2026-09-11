@@ -1,0 +1,44 @@
+To honour the JVM settings for this build a single-use Daemon process will be forked. For more on this, please refer to https://docs.gradle.org/9.7.1/userguide/gradle_daemon.html#sec:disabling_the_daemon in the Gradle documentation.
+
+
+[2A[1B[1m> Starting Daemon[m[17D[1B[2ADaemon will be stopped at the end of the build 
+[1B[0K
+[2A[0K[1B> IDLE[6D[1B[2A[1m│[0;1m···············[0;1m│ 0% INITIALIZING [74ms][m[40D[2B[2A[1m│[0;1m···············[0;1m│ 0% INITIALIZING [175ms][m[41D[2B[2A[1m│[0;1m···············[0;1m│ 0% INITIALIZING [278ms][m[41D[1B[1m> Evaluating settings[m[21D[1B[2A[1m│[0;1m···············[0;1m│ 0% INITIALIZING [376ms][m[41D[2B[2A[1m│[0;1m···············[0;1m│ 0% INITIALIZING [478ms][m[41D[2B[2A[1m│[0;1m···············[0;1m│ 0% CONFIGURING [576ms][m[0K[40D[1B[1m> Loading projects[m[0K[18D[1B[2A[1m│[0;1m···············[0;1m│ 0% CONFIGURING [678ms][m[40D[1B[1m> root project[m[0K[14D[1B[2A[1m│[0;1m···············[0;1m│ 0% CONFIGURING [778ms][m[40D[2B[2A[1m│[0;1m███████████████[0;1m│ 100% CONFIGURING [878ms][m[42D[1B[1m> Building task graph of root build[m[35D[1B[2A[1m│[0;1m···············[0;1m│ 0% EXECUTING [978ms][m[0K[38D[1B[1m> :compileJava[m[0K[14D[1B[2A[1m│[0;1m···············[0;1m│ 0% EXECUTING [1s][m[0K[35D[2BCaught exception: Could not start the FSEvents stream: /home/dev/gradle-rich
+/home/dev/gradle-rich/src/main/java/dev/sample/Invoice.java:5: error: incompatible types: String cannot be converted to int
+    int subtotal = "wrong";
+                   ^
+/home/dev/gradle-rich/src/main/java/dev/sample/Invoice.java:6: error: cannot find symbol
+    return subtotal + missingTax;
+                      ^
+  symbol:   variable missingTax
+  location: class Invoice
+2 errors
+
+FAILURE: Build failed with an exception.
+
+* What went wrong:
+Execution failed for task ':compileJava' (registered by plugin class 'org.gradle.api.plugins.JavaBasePlugin').
+> Compilation failed; see the compiler output below.
+  /home/dev/gradle-rich/src/main/java/dev/sample/Invoice.java:5: error: incompatible types: String cannot be converted to int
+      int subtotal = "wrong";
+                     ^
+  /home/dev/gradle-rich/src/main/java/dev/sample/I[2A[0K
+[1m> Task :compileJava[m FAILED[0K
+
+[Incubating] Problems report is available at: file:///home/dev/gradle-rich/build/reports/problems/problems-report.html
+1 actionable task: 1 executed
+[0K
+[0K
+[2A[1m│[0;1m···············[0;1m│ 0% WAITING[m[28D[1B> IDLE[6D[1Bnvoice.java:6: error: cannot find symbol
+      return subtotal + missingTax;
+                        ^
+    symbol:   variable missingTax
+    location: class Invoice
+  2 errors
+
+* Try:
+> Check your code and dependencies to fix the compilation error(s)
+> Run with [1m--scan[m to get full insights from a Build Scan (powered by Develocity).
+
+[1mBUILD FAILED[m in 1s
+[2A[2K[1B[2K[1B[2K[2A

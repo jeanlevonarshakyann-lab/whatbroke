@@ -1045,6 +1045,18 @@
       "generic": 5
     }
   },
+  "gradle_rich_console_fail.txt": {
+    "winner": "gradle",
+    "parser": "jvm",
+    "failures": 2,
+    "claimants": [
+      "jvm",
+      "generic"
+    ],
+    "shadow": {
+      "generic": 4
+    }
+  },
   "gradle_script_fail.txt": {
     "winner": "gradle",
     "parser": "jvm",

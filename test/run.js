@@ -1621,6 +1621,19 @@ const CASES = [
       assert.equal(r.failures[0].col, undefined);
       assert.match(r.failures[1].message, /cannot find symbol/);
     } },
+  { file: "gradle_rich_console_fail.txt", tool: "gradle", n: 2, check: (r) => {
+      // Real Gradle 9 rich-console output captured through a pipe. Its two-row progress
+      // display interrupts the repeated second diagnostic in the middle of "Invoice".
+      // Deleting only the escape codes glued the progress text to the filename and
+      // invented a third compile error at a file that never existed.
+      assert.match(fx("gradle_rich_console_fail.txt"), /\x1b\[2A/,
+        "the captured cursor redraw that caused this regression disappeared");
+      assert.equal(r.summary, "build failed");
+      assert.deepEqual(r.failures.map((f) => [f.file, f.line]), [
+        ["/home/dev/gradle-rich/src/main/java/dev/sample/Invoice.java", 5],
+        ["/home/dev/gradle-rich/src/main/java/dev/sample/Invoice.java", 6],
+      ]);
+    } },
   { file: "dotnet_fail.txt", tool: "dotnet", n: 2, check: (r) => {
       // dotnet prints each error twice; summary and list must agree
       assert.equal(r.summary, "2 errors");

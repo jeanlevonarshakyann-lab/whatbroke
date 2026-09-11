@@ -3,7 +3,23 @@
 // encodings. Keeping this local avoids a runtime dependency while handling the control
 // families emitted by modern terminals and clickable CI log viewers.
 export const ANSI = /(?:\x1b\[|\x9b)[0-?]*[ -/]*[@-~]|(?:\x1b\]|\x9d)[^\x07\x1b\x9c]*(?:\x07|\x1b\\|\x9c)/g;
-export const stripAnsi = (s) => s.replace(ANSI, "");
+// Cursor-up/down commands are not decoration. A rich progress renderer can interrupt
+// a diagnostic halfway through its filename, redraw two status lines, then resume the
+// filename where the terminal cursor returned. Simply deleting the controls glues all
+// of that into one plausible-looking diagnostic. A physical line that moves between
+// terminal rows is transient screen state, so it cannot safely support a diagnosis.
+const VERTICAL_REDRAW = /(?:\x1b\[|\x9b)[0-?]*[ -/]*[ABEF]/;
+export const stripAnsi = (s) => {
+  if (!VERTICAL_REDRAW.test(s)) return s.replace(ANSI, "");
+  // Keep the separators byte-for-byte. In a collected redraw blob, bare CR separates
+  // logical rows but the outer CI prefix exists only once, at the physical line's head;
+  // normalising CR here would make that vetted prefix look non-uniform before the
+  // dedicated pre-redraw stripping pass can see it.
+  return s.split(/(\r\n|\r|\n)/)
+    .map((part, index) => index % 2 === 0 && VERTICAL_REDRAW.test(part) ? "" : part)
+    .join("")
+    .replace(ANSI, "");
+};
 
 /** Keep the first copy of each public diagnostic. Extractors that build a numerical
  * headline use this before counting so a retried/concatenated log cannot say more
