@@ -13,6 +13,9 @@
 //
 // Everything worth showing is in there; the trick is that `error: |-` is a YAML
 // block scalar, so its content is the following lines indented one level deeper.
+import { isNoise } from "../util.js";
+import { SOURCE_RANGE } from "../ownership.js";
+
 const NOT_OK_RE = /^([^\S\n]*)not ok[^\S\n]+\d+[^\S\n]+-[^\S\n]+(.+?)[^\S\n]*$/;
 const SUBTEST_RE = /^([^\S\n]*)# Subtest:\s/;
 const FAILURE_TYPE_RE = /^[^\S\n]*failureType:[^\S\n]*'(.+?)'[^\S\n]*$/;
@@ -22,14 +25,164 @@ const ERROR_RE = /^([^\S\n]*)error:[^\S\n]*\|-?[^\S\n]*$/;
 const ERROR_INLINE_RE = /^[^\S\n]*error:[^\S\n]*'?(.+?)'?[^\S\n]*$/;
 const KEY_RE = /^[^\S\n]*[a-zA-Z_]+:\s/;
 const MAX_MESSAGE_LINES = 4;
+const ALT_FAILURE_RE = /^✖[^\S\n]+(.+?)(?:[^\S\n]+\([\d.]+ms\))?[^\S\n]*$/;
+const ALT_LOCATION_RE = /^(?:test|suite)[^\S\n]+at[^\S\n]+(.+?):(\d+):(\d+)[^\S\n]*$/;
+
+const unfile = (path) => path?.startsWith("file://")
+  ? decodeURIComponent(path.slice(7))
+  : path;
+
+function xmlText(value) {
+  return String(value).replace(/&(?:quot|apos|lt|gt|amp);/g,
+    (entity) => ({ "&quot;": '"', "&apos;": "'", "&lt;": "<", "&gt;": ">", "&amp;": "&" })[entity]);
+}
+
+function xmlAttributes(tag) {
+  const attributes = {};
+  for (const match of tag.matchAll(/([\w:.-]+)="([^"]*)"/g)) attributes[match[1]] = xmlText(match[2]);
+  return attributes;
+}
+
+function userFrame(lines, start, end) {
+  const frames = [];
+  for (let i = start; i < end; i++) {
+    const decoded = xmlText(lines[i]);
+    const frame = decoded.match(/(?:\(|[^\S\n])((?:file:\/\/)?[^()\s]+?):(\d+):(\d+)\)?[^\S\n]*$/);
+    if (!frame) continue;
+    const location = { file: unfile(frame[1]), line: +frame[2], col: +frame[3] };
+    frames.push(location);
+  }
+  return frames.find((frame) => !isNoise(frame.file)) ?? frames[0];
+}
+
+function alternateMessage(lines, start, end) {
+  for (let i = start; i < end; i++) {
+    const text = xmlText(lines[i]).trim();
+    const error = text.match(/^(?:cause:[^\S\n]*)?((?:[A-Z]\w*)?(?:Error|Exception))(?:[^\S\n]+\[[\w_]+\])?:[^\S\n]*(.*)$/);
+    if (!error) continue;
+    const message = [`${error[1]}: ${error[2]}`.trimEnd()];
+    for (let j = i + 1; j < end && message.length < MAX_MESSAGE_LINES; j++) {
+      const detail = xmlText(lines[j]).trim();
+      if (!detail) continue;
+      if (/^at[^\S\n]/.test(detail) || /^\][^\S\n]*\{$/.test(detail) || /^\}$/.test(detail)) break;
+      if (/^(?:generatedMessage|code|actual|expected|operator|diff|failureType):/.test(detail)) continue;
+      message.push(detail);
+    }
+    return message.join("\n");
+  }
+  return "test failed";
+}
+
+function rangedFailure(failure, start, end) {
+  Object.defineProperty(failure, SOURCE_RANGE, { value: { start, end }, enumerable: false });
+  return failure;
+}
+
+function nodeSpec(text) {
+  if (!/^✖[^\S\n]+failing tests:[^\S\n]*$/m.test(text) || !/^ℹ[^\S\n]+fail[^\S\n]+\d+[^\S\n]*$/m.test(text)) {
+    return { failures: [], failed: 0, passed: 0 };
+  }
+  const lines = text.split("\n");
+  const section = lines.findIndex((line) => /^✖[^\S\n]+failing tests:[^\S\n]*$/.test(line));
+  const failures = [];
+  for (let i = section + 1; i < lines.length; i++) {
+    const location = lines[i].match(ALT_LOCATION_RE);
+    if (!location) continue;
+    let at = i + 1;
+    while (at < lines.length && !lines[at].trim()) at++;
+    const heading = lines[at]?.match(ALT_FAILURE_RE);
+    if (!heading) continue;
+    let end = at + 1;
+    while (end < lines.length && !ALT_LOCATION_RE.test(lines[end])) end++;
+    failures.push(rangedFailure({
+      file: location[1], line: +location[2], col: +location[3],
+      title: heading[1], subject: heading[1], severity: "error",
+      message: alternateMessage(lines, at + 1, end),
+    }, i, end));
+    i = end - 1;
+  }
+  const count = (kind) => [...text.matchAll(new RegExp(String.raw`^ℹ[^\S\n]+${kind}[^\S\n]+(\d+)[^\S\n]*$`, "gm"))]
+    .reduce((total, match) => total + Number(match[1]), 0);
+  return { failures, failed: count("fail"), passed: count("pass") };
+}
+
+function nodeDot(text) {
+  if (!/^Failed tests:[^\S\n]*$/m.test(text)) return { failures: [], failed: 0, passed: 0 };
+  const lines = text.split("\n");
+  const section = lines.findIndex((line) => /^Failed tests:[^\S\n]*$/.test(line));
+  const failures = [];
+  for (let i = section + 1; i < lines.length; i++) {
+    const heading = lines[i].match(ALT_FAILURE_RE);
+    if (!heading) continue;
+    let end = i + 1;
+    while (end < lines.length && !ALT_FAILURE_RE.test(lines[end])) end++;
+    const location = userFrame(lines, i + 1, end);
+    const message = alternateMessage(lines, i + 1, end);
+    // Other tools use the same cross for their final tally. A Node dot failure always
+    // carries its exception and stack beneath the heading; the tally does not.
+    if (!location || message === "test failed") { i = end - 1; continue; }
+    failures.push(rangedFailure({
+      file: location?.file, line: location?.line, col: location?.col,
+      title: heading[1], subject: heading[1], severity: "error",
+      message,
+    }, i, end));
+    i = end - 1;
+  }
+  return { failures, failed: failures.length, passed: 0 };
+}
+
+function nodeJunit(text) {
+  const lines = text.split("\n");
+  const failures = [];
+  let failed = 0, passed = 0;
+  for (let rootAt = 0; rootAt < lines.length; rootAt++) {
+    if (!/<testsuites>/.test(lines[rootAt])) continue;
+    let rootEnd = rootAt + 1;
+    while (rootEnd < lines.length && !/<\/testsuites>/.test(lines[rootEnd])) rootEnd++;
+    const document = lines.slice(rootAt, rootEnd + 1).join("\n");
+    if (!/<failure[^>]+type="testCodeFailure"/.test(document) ||
+        !/<!--[^\n]*\bfail[^\S\n]+\d+[^\S\n]*-->/.test(document)) {
+      rootAt = rootEnd;
+      continue;
+    }
+    for (let i = rootAt + 1; i < rootEnd; i++) {
+      if (!/<testcase\b/.test(lines[i])) continue;
+      if (/\/>[^\S\n]*$/.test(lines[i])) continue;
+      const test = xmlAttributes(lines[i]);
+      let testcaseEnd = i + 1;
+      while (testcaseEnd < rootEnd && !/<\/testcase>/.test(lines[testcaseEnd])) testcaseEnd++;
+      const failureAt = lines.findIndex((line, index) => index > i && index < testcaseEnd && /<failure\b/.test(line));
+      if (failureAt < 0) { i = testcaseEnd; continue; }
+      let failureEnd = failureAt + 1;
+      while (failureEnd < testcaseEnd && !/<\/failure>/.test(lines[failureEnd])) failureEnd++;
+      const location = userFrame(lines, failureAt + 1, failureEnd);
+      failures.push(rangedFailure({
+        file: location?.file, line: location?.line, col: location?.col,
+        title: test.name || "test", subject: test.name || "test", severity: "error",
+        message: alternateMessage(lines, failureAt + 1, failureEnd),
+      }, i, Math.min(testcaseEnd + 1, lines.length)));
+      i = testcaseEnd;
+    }
+    const count = (kind) => [...document.matchAll(new RegExp(String.raw`<!--[^\n]*\b${kind}[^\S\n]+(\d+)[^\S\n]*-->`, "g"))]
+      .reduce((total, match) => total + Number(match[1]), 0);
+    failed += count("fail");
+    passed += count("pass");
+    rootAt = rootEnd;
+  }
+  return { failures, failed, passed };
+}
 
 export default {
   name: "node --test",
   category: "test",
   commands: ["node"],
-  detect: (s) => /^#[^\S\n]+fail[^\S\n]+\d+[^\S\n]*$/m.test(s) && /^[^\S\n]*not ok[^\S\n]+\d+[^\S\n]+-[^\S\n]+/m.test(s),
+  detect: (s) =>
+    (/^#[^\S\n]+fail[^\S\n]+\d+[^\S\n]*$/m.test(s) && /^[^\S\n]*not ok[^\S\n]+\d+[^\S\n]+-[^\S\n]+/m.test(s)) ||
+    nodeSpec(s).failures.length > 0 || nodeJunit(s).failures.length > 0 || nodeDot(s).failures.length > 0,
 
   extract(s) {
+    const alternateReports = [nodeSpec(s), nodeJunit(s), nodeDot(s)];
+    const alternateFailures = alternateReports.flatMap((report) => report.failures);
     const lines = s.split("\n");
     const failures = [];
     // TAP prints a suite result after its children. Remember how many failures
@@ -104,17 +257,25 @@ export default {
       failures.push({ file, line, col, title: head[2], subject: head[2], severity: "error", message: detail });
     }
 
-    if (!failures.length) return null;
+    if (!failures.length && !alternateFailures.length) return null;
 
     const count = (k) => {
-      const m = s.match(new RegExp(String.raw`^#[^\S\n]+${k}[^\S\n]+(\d+)[^\S\n]*$`, "m"));
-      return m ? +m[1] : null;
+      const matches = [...s.matchAll(new RegExp(String.raw`^#[^\S\n]+${k}[^\S\n]+(\d+)[^\S\n]*$`, "gm"))];
+      return matches.length ? matches.reduce((total, match) => total + Number(match[1]), 0) : null;
     };
     const [failed, passed] = [count("fail"), count("pass")];
+    const alternateFailed = alternateReports
+      .reduce((total, report) => total + Math.max(report.failed, report.failures.length), 0);
+    const alternatePassed = alternateReports.reduce((total, report) => total + report.passed, 0);
+    const totalFailed = (failed ?? failures.length) + alternateFailed;
+    const totalPassed = (passed ?? 0) + alternatePassed;
     const bits = [];
-    if (failed) bits.push(`${failed} failed`);
-    if (passed) bits.push(`${passed} passed`);
+    if (totalFailed) bits.push(`${totalFailed} failed`);
+    if (totalPassed) bits.push(`${totalPassed} passed`);
 
-    return { tool: "node --test", summary: bits.length ? bits.join(", ") : undefined, failures };
+    return {
+      tool: "node --test", summary: bits.length ? bits.join(", ") : undefined,
+      failures: [...failures, ...alternateFailures],
+    };
   },
 };

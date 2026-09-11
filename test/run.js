@@ -1751,6 +1751,43 @@ const CASES = [
         "YAML plumbing must not survive into the message");
       assert.equal(r.failures[1].title, "rate-limit events fire only once per transition");
     } },
+  { file: "nodetest_reporter_tap_fail.txt", tool: "node --test", n: 1, check: (r) => {
+      assert.equal(r.summary, "1 failed, 1 passed");
+      assert.equal(r.failures[0].title, "fails");
+      assert.equal(r.failures[0].file, "/home/dev/reporter.test.js");
+      assert.equal(r.failures[0].line, 6);
+      assert.equal(r.failures[0].col, 1);
+    } },
+  { file: "nodetest_reporter_spec_fail.txt", tool: "node --test", n: 1, check: (r) => {
+      assert.equal(r.summary, "1 failed, 1 passed");
+      assert.equal(r.failures[0].title, "fails");
+      assert.equal(r.failures[0].file, "reporter.test.js");
+      assert.equal(r.failures[0].line, 6);
+      assert.equal(r.failures[0].col, 1);
+    } },
+  { file: "nodetest_reporter_junit_fail.txt", tool: "node --test", n: 1, check: (r) => {
+      assert.equal(r.summary, "1 failed, 1 passed");
+      assert.equal(r.failures[0].title, "fails");
+      assert.equal(r.failures[0].file, "/home/dev/reporter.test.js");
+      assert.equal(r.failures[0].line, 7);
+      assert.equal(r.failures[0].col, 10);
+      assert.doesNotMatch(JSON.stringify(r.failures), /<failure|&lt;|ERR_TEST_FAILURE/);
+    } },
+  { file: "nodetest_reporter_junit_no_skip_fail.txt", tool: "node --test", n: 1, check: (r) => {
+      assert.equal(r.summary, "1 failed, 1 passed");
+      assert.equal(r.failures[0].title, "fails second");
+      assert.equal(r.failures[0].file, "/home/dev/no_skip.test.js");
+      assert.equal(r.failures[0].line, 6);
+      assert.equal(r.failures[0].col, 10);
+      assert.match(r.failures[0].message, /actual - expected/);
+    } },
+  { file: "nodetest_reporter_dot_fail.txt", tool: "node --test", n: 1, check: (r) => {
+      assert.equal(r.summary, "1 failed");
+      assert.equal(r.failures[0].title, "fails");
+      assert.equal(r.failures[0].file, "/home/dev/reporter.test.js");
+      assert.equal(r.failures[0].line, 7);
+      assert.equal(r.failures[0].col, 10);
+    } },
   { file: "gradle_script_fail.txt", tool: "gradle", n: 1, check: (r) => {
       // real `gradle test` on stleary/JSON-java under Gradle 9, which removed the
       // sourceCompatibility property. The build script fails to evaluate - a very
@@ -2650,6 +2687,30 @@ try {
   console.log("  ok   Node parent summaries are removed only when child failures are captured");
   pass++;
 } catch (e) { console.log(`  FAIL Node parent summaries\n       ${e.message}`); fail++; }
+
+// Node's reporters expose the same failure at different levels of detail. TAP and spec
+// name the test declaration; JUnit and dot only expose the throwing frame. They must
+// still agree on the test, message, tool, and counts the format actually carries.
+try {
+  const reports = Object.fromEntries(["tap", "spec", "junit", "dot"].map((name) =>
+    [name, analyse(fx(`nodetest_reporter_${name}_fail.txt`))]));
+  for (const [name, report] of Object.entries(reports)) {
+    assert.equal(report.tool, "node --test", `${name} lost the Node test identity`);
+    assert.equal(report.failures[0].title, reports.tap.failures[0].title);
+    assert.equal(report.failures[0].message, reports.tap.failures[0].message,
+      `${name} changed the diagnostic`);
+  }
+  assert.equal(reports.tap.summary, "1 failed, 1 passed");
+  assert.equal(reports.spec.summary, reports.tap.summary);
+  assert.equal(reports.junit.summary, reports.tap.summary);
+  assert.equal(reports.dot.summary, "1 failed", "dot cannot distinguish passes from skips");
+  assert.equal(reports.spec.failures[0].line, reports.tap.failures[0].line,
+    "spec and TAP disagree on the test declaration");
+  assert.equal(reports.junit.failures[0].line, 7);
+  assert.equal(reports.dot.failures[0].line, 7);
+  console.log("  ok   Node TAP, spec, JUnit, and dot reporters preserve the facts they expose");
+  pass++;
+} catch (e) { console.log(`  FAIL Node reporters\n       ${e.message}`); fail++; }
 
 // Rendering a real cluster: header, one exemplar, distinct sites only.
 try {

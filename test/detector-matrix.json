@@ -1583,6 +1583,63 @@
       "generic": 5
     }
   },
+  "nodetest_reporter_dot_fail.txt": {
+    "winner": "node --test",
+    "parser": "node --test",
+    "failures": 1,
+    "claimants": [
+      "node --test",
+      "node",
+      "generic"
+    ],
+    "shadow": {}
+  },
+  "nodetest_reporter_junit_fail.txt": {
+    "winner": "node --test",
+    "parser": "node --test",
+    "failures": 1,
+    "claimants": [
+      "node --test",
+      "node",
+      "generic"
+    ],
+    "shadow": {}
+  },
+  "nodetest_reporter_junit_no_skip_fail.txt": {
+    "winner": "node --test",
+    "parser": "node --test",
+    "failures": 1,
+    "claimants": [
+      "node --test",
+      "node",
+      "generic"
+    ],
+    "shadow": {}
+  },
+  "nodetest_reporter_spec_fail.txt": {
+    "winner": "node --test",
+    "parser": "node --test",
+    "failures": 1,
+    "claimants": [
+      "node --test",
+      "node",
+      "generic"
+    ],
+    "shadow": {}
+  },
+  "nodetest_reporter_tap_fail.txt": {
+    "winner": "node --test",
+    "parser": "node --test",
+    "failures": 1,
+    "claimants": [
+      "node --test",
+      "go",
+      "generic"
+    ],
+    "shadow": {
+      "generic": 1
+    }
+  },
   "npm_eresolve_fail.txt": {
     "winner": "npm",
     "parser": "npm",
