@@ -296,10 +296,19 @@ test("naming the wrong tool cannot damage a clear log", () => {
 // nothing. This is the correctness half of the fix that stopped parsers backtracking
 // across newlines: [^\S\n] is equally immune - it cannot cross a line either - and
 // unlike [ \t] it still matches every kind of space a tool might print.
+// Structured machine formats are the exception: replacing JSON's grammar whitespace,
+// or changing bytes behind Swift's declared byte count, corrupts the serialization
+// rather than re-indenting a diagnostic. Their decoded human output is exercised by
+// the same mutation through the paired text fixtures.
+const SERIALIZED_FIXTURES = new Set([
+  "swiftc_parseable_fail.txt", "terraform_validate_json_fail.txt",
+]);
+
 test("parsers match whitespace that is not an ASCII space", () => {
   const thin = (t) => t.split("\n").map((l) => l.replace(/^ +/, (m) => "\u2009".repeat(m.length))).join("\n");
   const broken = [];
   for (const name of readdirSync(fixtures)) {
+    if (SERIALIZED_FIXTURES.has(name)) continue;
     const raw = readFileSync(join(fixtures, name), "utf8");
     const plain = safely(() => analyse(raw), null);
     if (!plain) continue;
@@ -341,7 +350,7 @@ test("interleaved output never invents a failure", () => {
     const n = r?.failures.length ?? 0;
     if (r && r.tool === base.tool && n > base.failures.length) {
       gained.push(`${name}: ${base.failures.length} -> ${n}`);
-    } else if (n < base.failures.length) {
+    } else if (n < base.failures.length && !SERIALIZED_FIXTURES.has(name)) {
       lost.push(`${name}: ${base.failures.length} -> ${n}`);
     }
   }

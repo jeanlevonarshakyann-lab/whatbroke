@@ -2133,6 +2133,30 @@
       "generic": 3
     }
   },
+  "swiftc_parseable_fail.txt": {
+    "winner": "swift",
+    "parser": "swift",
+    "failures": 2,
+    "claimants": [
+      "swift",
+      "generic"
+    ],
+    "shadow": {
+      "generic": 1
+    }
+  },
+  "swiftc_parseable_plain_fail.txt": {
+    "winner": "swift",
+    "parser": "swift",
+    "failures": 2,
+    "claimants": [
+      "swift",
+      "generic"
+    ],
+    "shadow": {
+      "generic": 2
+    }
+  },
   "tap_fail.txt": {
     "winner": "tap",
     "parser": "tap",
@@ -2165,6 +2189,28 @@
     }
   },
   "terraform_validate_fail.txt": {
+    "winner": "terraform",
+    "parser": "terraform",
+    "failures": 1,
+    "claimants": [
+      "terraform",
+      "generic"
+    ],
+    "shadow": {
+      "generic": 1
+    }
+  },
+  "terraform_validate_json_fail.txt": {
+    "winner": "terraform",
+    "parser": "terraform",
+    "failures": 1,
+    "claimants": [
+      "terraform",
+      "generic"
+    ],
+    "shadow": {}
+  },
+  "terraform_validate_nocolor_fail.txt": {
     "winner": "terraform",
     "parser": "terraform",
     "failures": 1,

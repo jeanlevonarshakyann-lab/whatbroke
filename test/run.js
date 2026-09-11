@@ -24,6 +24,23 @@ const CASES = [
       // and the headline is not repeated inside its own message
       assert.doesNotMatch(r.failures[0].message, /^Missing required argument$/m);
     } },
+  // The same syntax failure captured from current Terraform in its two no-colour
+  // encodings. `validate -json` used to fall back to raw output, and `-no-color`
+  // removes the box entirely on this release, which made the text form disappear too.
+  { file: "terraform_validate_json_fail.txt", tool: "terraform", n: 1, check: (r) => {
+      assert.equal(r.failures[0].file, "main.tf");
+      assert.equal(r.failures[0].line, 2);
+      assert.equal(r.failures[0].col, 10);
+      assert.equal(r.failures[0].title, "Invalid expression");
+      assert.equal(r.failures[0].stmt, "input =");
+      assert.match(r.failures[0].message, /Expected the start of an expression/);
+    } },
+  { file: "terraform_validate_nocolor_fail.txt", tool: "terraform", n: 1, check: (r) => {
+      assert.equal(r.failures[0].file, "main.tf");
+      assert.equal(r.failures[0].line, 2);
+      assert.equal(r.failures[0].title, "Invalid expression");
+      assert.equal(r.failures[0].stmt, "input =");
+    } },
   // Captured with CMake 4.4 and ninja 1.13. ninja gets no parser on purpose: what fails
   // under it is a compiler, which already has one, and its own "FAILED: [code=1]" line
   // restates the failure without adding to it - exactly as make's exit line does. make
@@ -875,6 +892,21 @@ const CASES = [
       // mypy's "file:line: error:" shape matches "<unknown>:0: error:" exactly, and a
       // mypy run pasted above this claimed it as a type error. mypy reports only Python.
       assert.doesNotMatch(r.failures[0].message, /^error: /, "the doubled word survived");
+    } },
+  // `swiftc -parseable-output` wraps the ordinary diagnostics in byte-length-framed
+  // JSON records. Scanning the escaped text found one fake location inside `"output"`
+  // and swallowed the second error into its message.
+  { file: "swiftc_parseable_fail.txt", tool: "swift", n: 2, check: (r) => {
+      assert.equal(r.summary, "2 errors");
+      assert.deepEqual(r.failures.map((f) => [f.file, f.line, f.col]),
+        [["bad.swift", 1, 18], ["bad.swift", 2, 1]]);
+      assert.deepEqual(r.failures.map((f) => f.stmt),
+        ['let count: Int = "wrong"', "missingSymbol()"]);
+      assert.doesNotMatch(JSON.stringify(r.failures), /"output"|exit-status|real_pid/);
+    } },
+  { file: "swiftc_parseable_plain_fail.txt", tool: "swift", n: 2, check: (r) => {
+      assert.deepEqual(r.failures.map((f) => [f.file, f.line, f.col]),
+        [["bad.swift", 1, 18], ["bad.swift", 2, 1]]);
     } },
   // Captured with GNU make 3.81 driving Apple clang. What fails under make is a
   // compiler, which already has a parser, and `make: *** [bad.o] Error 1` restates that
@@ -3303,6 +3335,41 @@ try {
 } catch (e) { console.log(`  FAIL clang count\n       ${e.message}`); fail++; }
 
 // A machine format is only worth reading if it says the same thing as the human one.
+// Current Terraform removes its diagnostic box under `-no-color`, while `-json`
+// returns the same facts with an exact column. Both are real captures of one invalid
+// expression and must agree on everything the text form actually carries.
+try {
+  const json = analyse(fx("terraform_validate_json_fail.txt"));
+  const text = analyse(fx("terraform_validate_nocolor_fail.txt"));
+  const facts = (r) => r.failures.map((f) =>
+    [f.file, f.line, f.title, f.subject, f.severity, f.message, f.stmt]);
+  assert.equal(json.tool, text.tool);
+  assert.equal(json.summary, text.summary);
+  assert.deepEqual(facts(json), facts(text),
+    "validate -json and -no-color disagree about the invalid expression");
+  assert.equal(json.failures[0].col, 10, "the machine range's column was discarded");
+  assert.notEqual(analyse('{"format_version":"1.0","valid":false,"error_count":0,"warning_count":0,"diagnostics":[]}')?.tool,
+    "terraform", "an empty lookalike report produced a Terraform failure");
+  console.log("  ok   terraform validate -json says what its text report says");
+  pass++;
+} catch (e) { console.log(`  FAIL terraform json vs text\n       ${e.message}`); fail++; }
+
+// Swift's parseable mode is a byte-length-framed event stream whose finished record
+// contains the normal compiler report. Unicode makes character-count framing wrong,
+// and parsing the escaped JSON as ordinary text corrupts both location and message.
+try {
+  const machine = analyse(fx("swiftc_parseable_fail.txt"));
+  const text = analyse(fx("swiftc_parseable_plain_fail.txt"));
+  const facts = (r) => r.failures.map((f) =>
+    [f.file, f.line, f.col, f.title, f.label, f.severity, f.message, f.stmt]);
+  assert.equal(machine.tool, text.tool);
+  assert.equal(machine.summary, text.summary);
+  assert.deepEqual(facts(machine), facts(text),
+    "-parseable-output and the human Swift diagnostics disagree");
+  console.log("  ok   swiftc -parseable-output says what its text report says");
+  pass++;
+} catch (e) { console.log(`  FAIL swift parseable vs text\n       ${e.message}`); fail++; }
+
 // These two fixtures are one `cargo build` captured both ways, and the failures they
 // produce have to match field for field - otherwise the JSON path is not reading cargo,
 // it is guessing at it.

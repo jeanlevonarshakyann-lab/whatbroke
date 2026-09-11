@@ -6,6 +6,8 @@
 //    9 |
 //   10 | let x: Int = "hello"
 //      |              `- error: cannot convert value of type 'String' to specified type 'Int'
+import { SOURCE_RANGE } from "../ownership.js";
+
 const DIAGNOSTIC_RE = /^(.+?):(\d+):(\d+):[^\S\n]+(error|warning|note):[^\S\n]+(.+)$/;
 // Newer swiftc tags a diagnostic with the group it belongs to, which is what you would
 // silence or search for: "... was never used ... [#no-usage]".
@@ -17,7 +19,7 @@ const DRIVER_RE = /^<unknown>:0:[^\S\n]+(error|fatal error):[^\S\n]+(.+)$/;
 const GUTTER_RE = /^[^\S\n]*\d*[^\S\n]*\|/;
 const SOURCE_RE = /^[^\S\n]*(\d+)[^\S\n]*\|[^\S\n]?(.*)$/;
 
-export default {
+const swiftText = {
   name: "swift",
   category: "compile",
   commands: ["swift", "swiftc", "xcrun"],
@@ -106,5 +108,74 @@ export default {
     const n = failures.length;
     const summary = `${n} error${n === 1 ? "" : "s"}${warnings ? `, ${warnings} warning${warnings === 1 ? "" : "s"}` : ""}`;
     return { tool: "swift", summary, failures };
+  },
+};
+
+/** Records from swiftc's length-prefixed `-parseable-output` stream.
+ *
+ * The decimal length is bytes, not JavaScript characters. Reading through Buffer is
+ * therefore required for a diagnostic containing a non-ASCII source line. Ordinary
+ * chatter can sit between records in a combined CI log and is skipped line by line. */
+function parseableRecords(text) {
+  const bytes = Buffer.from(text, "utf8");
+  const records = [];
+  let offset = 0;
+  let line = 0;
+  while (offset < bytes.length) {
+    const newline = bytes.indexOf(10, offset);
+    if (newline < 0) break;
+    const header = bytes.subarray(offset, newline).toString("utf8").trim();
+    if (!/^\d+$/.test(header)) { offset = newline + 1; line++; continue; }
+    const length = Number(header);
+    const bodyStart = newline + 1;
+    const bodyEnd = bodyStart + length;
+    if (!Number.isSafeInteger(length) || length <= 0 || bodyEnd > bytes.length) {
+      offset = newline + 1; line++;
+      continue;
+    }
+    let value;
+    try { value = JSON.parse(bytes.subarray(bodyStart, bodyEnd).toString("utf8")); }
+    catch { offset = newline + 1; line++; continue; }
+    if (value && typeof value === "object" && typeof value.kind === "string" &&
+        typeof value.name === "string") {
+      const newlines = bytes.subarray(offset, bodyEnd).reduce((n, byte) => n + (byte === 10), 0);
+      records.push({ value, start: line, end: line + newlines + 1 });
+      line += newlines;
+      offset = bodyEnd;
+    } else {
+      offset = newline + 1; line++;
+    }
+  }
+  return records;
+}
+
+const swiftMachineRecords = (text) => parseableRecords(text).filter(({ value }) =>
+  value.name === "compile" && typeof value.output === "string" &&
+  /^.+\.swift:\d+:\d+:[^\S\n]+(?:error|warning|note):/m.test(value.output));
+
+export default {
+  ...swiftText,
+
+  detect: (text) => swiftMachineRecords(text).length > 0 || swiftText.detect(text),
+
+  extract(text) {
+    const records = swiftMachineRecords(text);
+    if (!records.length) return swiftText.extract(text);
+    // The output field is the exact human diagnostic swiftc would otherwise print.
+    // Reusing that parser keeps source gutters, warning policy, codes and de-duplication
+    // identical across the two modes.
+    const result = swiftText.extract(records.map(({ value }) => value.output).join("\n"));
+    if (!result?.failures?.length) return null;
+    const failures = result.failures.map((failure) => {
+      const location = failure.file && failure.line && failure.col
+        ? `${failure.file}:${failure.line}:${failure.col}:` : null;
+      const owner = records.find(({ value }) => !location || value.output.includes(location));
+      const copy = { ...failure };
+      if (owner) Object.defineProperty(copy, SOURCE_RANGE, {
+        value: { start: owner.start, end: owner.end }, enumerable: false,
+      });
+      return copy;
+    });
+    return { ...result, failures };
   },
 };

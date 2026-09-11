@@ -1,0 +1,11 @@
+bad.swift:1:18: error: cannot convert value of type 'String' to specified type 'Int'
+1 | let count: Int = "wrong"
+  |                  `- error: cannot convert value of type 'String' to specified type 'Int'
+2 | missingSymbol()
+3 | 
+
+bad.swift:2:1: error: cannot find 'missingSymbol' in scope
+1 | let count: Int = "wrong"
+2 | missingSymbol()
+  | `- error: cannot find 'missingSymbol' in scope
+3 | 

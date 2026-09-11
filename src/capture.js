@@ -13,6 +13,12 @@ import { stripAnsi } from "./util.js";
 const HEAD_SHARE = 0.25;   // the beginning is worth keeping, but the end is worth more
 const DIAGNOSTIC_SHARE = 0.25;
 const CONTEXT_LINES = 8;
+// Pretty-printed machine reports put the useful fields after an envelope marker. Eight
+// lines is enough context for human diagnostics, but it cut Terraform's JSON halfway
+// through its first range and made the otherwise valid report unreadable. Keep a
+// bounded larger window after a structured diagnostic array begins; later `severity`
+// lines refresh the window for reports with more than one diagnostic.
+const STRUCTURED_CONTEXT_LINES = 64;
 // What to KEEP when the log is too big to keep all of it. The asymmetry matters: too
 // broad costs budget, too narrow loses a failure outright - the opposite of the
 // vocabularies the parsers use to decide ownership, where a false claim is the danger.
@@ -169,7 +175,8 @@ export function createCapture(maxBytes) {
     if (interesting) {
       saveDiagnostic(record);                 // the diagnostic itself outranks context
       for (let i = recent.length - 1; i >= 0; i--) saveDiagnostic(recent[i]);
-      after = CONTEXT_LINES;
+      const structured = /^\s*"(?:diagnostics|severity)"\s*:/i.test(raw);
+      after = Math.max(after, structured ? STRUCTURED_CONTEXT_LINES : CONTEXT_LINES);
     } else if (after > 0) {
       saveDiagnostic(record);
       after--;
