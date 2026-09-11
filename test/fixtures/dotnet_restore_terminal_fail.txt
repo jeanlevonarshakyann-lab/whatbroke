@@ -1,0 +1,3 @@
+    /home/dev/dotnet-restore/[1mapp.csproj[m : [31;1merror[m [31;1m]8;;https://go.microsoft.com/fwlink/?LinkId=NU1101\NU1101]8;;\[m: Unable to find package ThisPackageDoesNotExist.Xyz. No packages exist with this id in source(s): /usr/share/dotnet/library-packs, nuget.org
+
+Restore [31;1mfailed with 1 error(s)[m in 0.4s
