@@ -13,7 +13,7 @@ const PANIC_ANYWHERE = new RegExp(PANIC_RE.source, "m");
 const BUILD_SCRIPT = /^error: failed to run custom build command/m;
 // What says a panic came out of a test run rather than out of the program itself: the
 // tally cargo prints at the end, or the per-test stdout block it prints above one.
-const RAN_TESTS = /^test result:|^----[^\S\n]+\S.*[^\S\n]+stdout[^\S\n]+----|^running \d+ tests?\b/m;
+const RAN_TESTS = /^test result:|^----[^\S\n]+\S.*[^\S\n]+stdout[^\S\n]+----/m;
 // A dependency that cannot be resolved never reaches the compiler, so there is no
 // E-code and no --> line for detection to key on.
 // Cargo's own toplevel complaints - the ones that name no source file because none is

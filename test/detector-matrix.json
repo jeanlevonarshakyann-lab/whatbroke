@@ -383,6 +383,31 @@
       "generic": 1
     }
   },
+  "denotest_reporter_plain_fail.txt": {
+    "winner": "deno test",
+    "parser": "deno test",
+    "failures": 1,
+    "claimants": [
+      "deno test",
+      "node",
+      "generic"
+    ],
+    "shadow": {
+      "generic": 3
+    }
+  },
+  "denotest_reporter_tap_fail.txt": {
+    "winner": "deno test",
+    "parser": "deno test",
+    "failures": 1,
+    "claimants": [
+      "deno test",
+      "generic"
+    ],
+    "shadow": {
+      "generic": 2
+    }
+  },
   "docker_buildkit_npm_fail.txt": {
     "winner": "npm",
     "parser": "generic",

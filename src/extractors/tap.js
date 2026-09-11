@@ -57,11 +57,18 @@ export default {
       // node --test's own blocks sit in the same log when a job ran both. They carry
       // `failureType`, which tap never writes, and node's parser reads them.
       let nodes = false;
+      let deno = false;
       for (let j = i + 1; j < lines.length && j <= i + 40; j++) {
         if (NOT_OK_RE.test(lines[j]) || END_RE.test(lines[j])) break;
         if (/^[^\S\n]*failureType:/.test(lines[j])) { nodes = true; break; }
+        // Deno's TAP reporter serializes its failure as JSON inside the YAML block.
+        // Deno's parser decodes it; treating the `not ok` line as an ordinary tap
+        // failure reports the same test twice whenever both reporters share a log.
+        if (/^[^\S\n]*\{.*"severity"\s*:\s*"fail".*\}[^\S\n]*$/.test(lines[j])) {
+          deno = true; break;
+        }
       }
-      if (nodes) continue;
+      if (nodes || deno) continue;
 
       const field = {};
       const diff = [];

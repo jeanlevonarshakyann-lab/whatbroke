@@ -1894,6 +1894,22 @@ const CASES = [
       // the frames are inside the assert library, not the user's code
       assert.ok(!/jsr\.io/.test(f.message));
     } },
+  { file: "denotest_reporter_plain_fail.txt", tool: "deno test", n: 1, check: (r) => {
+      assert.equal(r.failures[0].title, "adds");
+      assert.equal(r.failures[0].file, "./reporter_test.ts");
+      assert.equal(r.failures[0].line, 1);
+      assert.equal(r.failures[0].col, 6);
+    } },
+  // Deno's TAP reporter embeds its diagnostic as JSON inside the YAML block. It used
+  // to become two generic failures: the JSON plumbing and Deno's final verdict.
+  { file: "denotest_reporter_tap_fail.txt", tool: "deno test", n: 1, check: (r) => {
+      assert.equal(r.summary, "1 failed, 0 passed");
+      assert.equal(r.failures[0].title, "adds");
+      assert.equal(r.failures[0].file, "./reporter_test.ts");
+      assert.equal(r.failures[0].line, 1);
+      assert.match(r.failures[0].message, /Error: expected three/);
+      assert.doesNotMatch(JSON.stringify(r.failures), /file:\/\/\/|"severity":"fail"/);
+    } },
   { file: "gorace_fail.txt", tool: "go test", n: 3, check: (r) => {
       // real `go test -race`. The detector names the exact line of the racing
       // access - the bug - while the assertion below it only reports a wrong total.
@@ -3345,6 +3361,20 @@ try {
 } catch (e) { console.log(`  FAIL clang count\n       ${e.message}`); fail++; }
 
 // A machine format is only worth reading if it says the same thing as the human one.
+// Deno's TAP reporter carries the same test location and message as its pretty report,
+// but serializes the diagnostic as JSON inside a YAML block.
+try {
+  const tap = analyse(fx("denotest_reporter_tap_fail.txt"));
+  const text = analyse(fx("denotest_reporter_plain_fail.txt"));
+  const facts = (r) => r.failures.map((f) =>
+    [f.file, f.line, f.title, f.subject, f.severity, f.message]);
+  assert.equal(tap.tool, text.tool);
+  assert.equal(tap.summary, text.summary);
+  assert.deepEqual(facts(tap), facts(text), "Deno TAP and pretty reports disagree");
+  console.log("  ok   deno --reporter=tap says what the pretty report says");
+  pass++;
+} catch (e) { console.log(`  FAIL deno tap vs pretty\n       ${e.message}`); fail++; }
+
 // Current Terraform removes its diagnostic box under `-no-color`, while `-json`
 // returns the same facts with an exact column. Both are real captures of one invalid
 // expression and must agree on everything the text form actually carries.
