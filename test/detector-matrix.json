@@ -1583,6 +1583,16 @@
       "generic": 5
     }
   },
+  "nodetest_reporter_dot_crash_fail.txt": {
+    "winner": "node --test",
+    "parser": "node --test",
+    "failures": 1,
+    "claimants": [
+      "node --test",
+      "generic"
+    ],
+    "shadow": {}
+  },
   "nodetest_reporter_dot_fail.txt": {
     "winner": "node --test",
     "parser": "node --test",
@@ -1593,6 +1603,18 @@
       "generic"
     ],
     "shadow": {}
+  },
+  "nodetest_reporter_junit_crash_fail.txt": {
+    "winner": "node --test",
+    "parser": "node --test",
+    "failures": 1,
+    "claimants": [
+      "node --test",
+      "generic"
+    ],
+    "shadow": {
+      "generic": 1
+    }
   },
   "nodetest_reporter_junit_fail.txt": {
     "winner": "node --test",
@@ -1616,6 +1638,20 @@
     ],
     "shadow": {}
   },
+  "nodetest_reporter_spec_crash_fail.txt": {
+    "winner": "node --test",
+    "parser": "node --test",
+    "failures": 1,
+    "claimants": [
+      "node --test",
+      "node",
+      "generic"
+    ],
+    "shadow": {
+      "node": 1,
+      "generic": 1
+    }
+  },
   "nodetest_reporter_spec_fail.txt": {
     "winner": "node --test",
     "parser": "node --test",
@@ -1626,6 +1662,19 @@
       "generic"
     ],
     "shadow": {}
+  },
+  "nodetest_reporter_spec_syntax_fail.txt": {
+    "winner": "node --test",
+    "parser": "node --test",
+    "failures": 1,
+    "claimants": [
+      "node --test",
+      "node",
+      "generic"
+    ],
+    "shadow": {
+      "node": 1
+    }
   },
   "nodetest_reporter_tap_fail.txt": {
     "winner": "node --test",

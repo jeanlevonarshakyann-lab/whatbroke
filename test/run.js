@@ -1788,6 +1788,34 @@ const CASES = [
       assert.equal(r.failures[0].line, 7);
       assert.equal(r.failures[0].col, 10);
     } },
+  { file: "nodetest_reporter_spec_crash_fail.txt", tool: "node --test", n: 1, check: (r) => {
+      assert.equal(r.summary, "1 failed");
+      assert.equal(r.failures[0].file, "/home/dev/crash.test.js");
+      assert.equal(r.failures[0].line, 1);
+      assert.equal(r.failures[0].col, 7);
+      assert.equal(r.failures[0].stmt, "throw new Error(\"module exploded before tests\");");
+      assert.match(r.failures[0].message, /Error: module exploded before tests/);
+      assert.equal(r.others, undefined, "the runtime preamble is not a second failure");
+    } },
+  { file: "nodetest_reporter_spec_syntax_fail.txt", tool: "node --test", n: 1, check: (r) => {
+      assert.equal(r.failures[0].file, "/home/dev/syntax.test.js");
+      assert.equal(r.failures[0].line, 1);
+      assert.equal(r.failures[0].stmt, "const broken = ;");
+      assert.match(r.failures[0].message, /SyntaxError: Unexpected token/);
+      assert.equal(r.others, undefined, "the syntax preamble is not a second failure");
+    } },
+  { file: "nodetest_reporter_junit_crash_fail.txt", tool: "node --test", n: 1, check: (r) => {
+      assert.equal(r.summary, "1 failed");
+      assert.equal(r.failures[0].file, "crash.test.js");
+      assert.equal(r.failures[0].title, "crash.test.js");
+      assert.equal(r.failures[0].message, "test failed");
+    } },
+  { file: "nodetest_reporter_dot_crash_fail.txt", tool: "node --test", n: 1, check: (r) => {
+      assert.equal(r.summary, "1 failed");
+      assert.equal(r.failures[0].file, "crash.test.js");
+      assert.equal(r.failures[0].title, "crash.test.js");
+      assert.equal(r.failures[0].message, "test failed");
+    } },
   { file: "gradle_script_fail.txt", tool: "gradle", n: 1, check: (r) => {
       // real `gradle test` on stleary/JSON-java under Gradle 9, which removed the
       // sourceCompatibility property. The build script fails to evaluate - a very
@@ -2844,6 +2872,11 @@ try {
     // over a Node stack. Both parsers match by design; mocha is listed first and reports
     // the file that would not load rather than a frame inside the module loader.
     "mocha_load_fail.txt": ["mocha", "node"],
+    // Node's spec reporter prints a crashed test file's raw runtime exception before
+    // its own roll-up. Both parsers see real output; node --test owns the shared source
+    // range so the exception is presented once under the command that was run.
+    "nodetest_reporter_spec_crash_fail.txt": ["node --test", "node"],
+    "nodetest_reporter_spec_syntax_fail.txt": ["node --test", "node"],
     // swc ends a failed compile with "Error: Failed to compile 1 file with swc.", which
     // node reads as its own. Both parsers match by design; swc is listed first and
     // reports the diagnostic miette drew above that line rather than the tally itself.

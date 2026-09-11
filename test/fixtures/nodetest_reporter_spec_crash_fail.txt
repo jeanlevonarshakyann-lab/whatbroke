@@ -1,0 +1,30 @@
+/home/dev/crash.test.js:1
+throw new Error("module exploded before tests");
+^
+
+Error: module exploded before tests
+    at Object.<anonymous> (/home/dev/crash.test.js:1:7)
+    at Module._compile (node:internal/modules/cjs/loader:1781:14)
+    at Object..js (node:internal/modules/cjs/loader:1913:10)
+    at Module.load (node:internal/modules/cjs/loader:1505:32)
+    at Function._load (node:internal/modules/cjs/loader:1309:12)
+    at wrapModuleLoad (node:internal/modules/cjs/loader:254:19)
+    at Function.executeUserEntryPoint [as runMain] (node:internal/modules/run_main:171:5)
+    at node:internal/main/run_main_module:36:49
+
+Node.js v22.23.2
+✖ crash.test.js (25.237167ms)
+ℹ tests 1
+ℹ suites 0
+ℹ pass 0
+ℹ fail 1
+ℹ cancelled 0
+ℹ skipped 0
+ℹ todo 0
+ℹ duration_ms 28.412542
+
+✖ failing tests:
+
+test at crash.test.js:1:1
+✖ crash.test.js (25.237167ms)
+  'test failed'

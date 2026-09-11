@@ -1,0 +1,6 @@
+X
+
+Failed tests:
+
+✖ crash.test.js (26.135084ms)
+  'test failed'

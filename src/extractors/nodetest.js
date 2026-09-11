@@ -78,6 +78,43 @@ function rangedFailure(failure, start, end) {
   return failure;
 }
 
+const FILE_TITLE_RE = /\.(?:[cm]?[jt]sx?)$/i;
+
+function sameFile(left, right) {
+  const clean = (value) => unfile(String(value ?? "")).replace(/\\/g, "/");
+  const a = clean(left), b = clean(right);
+  return a === b || a.endsWith(`/${b}`) || b.endsWith(`/${a}`);
+}
+
+/** Spec keeps a crashed file's real exception above its terse `test failed` roll-up. */
+function runtimeCause(lines, target, before) {
+  const errorRe = /^(?:Uncaught[^\S\n]+)?((?:[A-Z]\w*)?(?:Error|Exception)(?:[^\S\n]+\[[\w_]+\])?):[^\S\n]*(.*)$/;
+  for (let i = before - 1; i >= 0; i--) {
+    const error = lines[i].match(errorRe);
+    if (!error) continue;
+    const frame = userFrame(lines, i + 1, Math.min(before, i + 14));
+    let location = frame && !isNoise(frame.file) ? frame : null;
+    let stmt, start = i;
+    for (let j = i - 1; j >= 0 && j >= i - 5; j--) {
+      if (!/^[^\S\n]*\^+[^\S\n]*$/.test(lines[j])) continue;
+      const header = lines[j - 2]?.match(/^(\S+):(\d+)$/);
+      if (!header || !sameFile(header[1], target)) continue;
+      if (!location || !sameFile(location.file, target)) {
+        location = { file: unfile(header[1]), line: +header[2] };
+      }
+      stmt = lines[j - 1]?.trim();
+      start = j - 2;
+      break;
+    }
+    if (!location || !sameFile(location.file, target)) continue;
+    return {
+      ...location, stmt, message: `${error[1]}: ${error[2]}`.trimEnd(),
+      start, end: Math.min(before, i + 2),
+    };
+  }
+  return null;
+}
+
 function nodeSpec(text) {
   if (!/^✖[^\S\n]+failing tests:[^\S\n]*$/m.test(text) || !/^ℹ[^\S\n]+fail[^\S\n]+\d+[^\S\n]*$/m.test(text)) {
     return { failures: [], failed: 0, passed: 0 };
@@ -92,12 +129,26 @@ function nodeSpec(text) {
     while (at < lines.length && !lines[at].trim()) at++;
     const heading = lines[at]?.match(ALT_FAILURE_RE);
     if (!heading) continue;
+    let first = at + 1;
+    while (first < lines.length && !lines[first].trim()) first++;
+    if (/^['"]test failed['"]$/.test(lines[first]?.trim())) {
+      const cause = runtimeCause(lines, location[1], section);
+      failures.push(rangedFailure({
+        file: cause?.file ?? location[1], line: cause?.line ?? +location[2],
+        col: cause?.col ?? +location[3], ...(cause?.stmt ? { stmt: cause.stmt } : {}),
+        title: heading[1], subject: heading[1], severity: "error",
+        message: cause?.message ?? "test failed",
+      }, cause?.start ?? i, cause?.end ?? Math.min(first + 1, lines.length)));
+      i = first;
+      continue;
+    }
     let end = at + 1;
     while (end < lines.length && !ALT_LOCATION_RE.test(lines[end])) end++;
+    const terse = alternateMessage(lines, at + 1, end);
     failures.push(rangedFailure({
       file: location[1], line: +location[2], col: +location[3],
       title: heading[1], subject: heading[1], severity: "error",
-      message: alternateMessage(lines, at + 1, end),
+      message: terse,
     }, i, end));
     i = end - 1;
   }
@@ -114,6 +165,22 @@ function nodeDot(text) {
   for (let i = section + 1; i < lines.length; i++) {
     const heading = lines[i].match(ALT_FAILURE_RE);
     if (!heading) continue;
+    let first = i + 1;
+    while (first < lines.length && !lines[first].trim()) first++;
+    const opaqueFile = FILE_TITLE_RE.test(heading[1]) && /^['"]test failed['"]$/.test(lines[first]?.trim())
+      ? heading[1]
+      : null;
+    // A file that crashes before registering tests is all dot preserves: its path and
+    // this one opaque line. Bound it immediately. Looking for a stack beyond that line
+    // lets the next tool in a combined CI log change or erase this diagnosis.
+    if (opaqueFile) {
+      failures.push(rangedFailure({
+        file: opaqueFile, title: heading[1], subject: heading[1], severity: "error",
+        message: "test failed",
+      }, i, Math.min(first + 1, lines.length)));
+      i = first;
+      continue;
+    }
     let end = i + 1;
     while (end < lines.length && !ALT_FAILURE_RE.test(lines[end])) end++;
     const location = userFrame(lines, i + 1, end);
@@ -122,7 +189,7 @@ function nodeDot(text) {
     // carries its exception and stack beneath the heading; the tally does not.
     if (!location || message === "test failed") { i = end - 1; continue; }
     failures.push(rangedFailure({
-      file: location?.file, line: location?.line, col: location?.col,
+      file: location.file, line: location.line, col: location.col,
       title: heading[1], subject: heading[1], severity: "error",
       message,
     }, i, end));
@@ -156,8 +223,9 @@ function nodeJunit(text) {
       let failureEnd = failureAt + 1;
       while (failureEnd < testcaseEnd && !/<\/failure>/.test(lines[failureEnd])) failureEnd++;
       const location = userFrame(lines, failureAt + 1, failureEnd);
+      const opaqueFile = !location && FILE_TITLE_RE.test(test.name ?? "") ? test.name : undefined;
       failures.push(rangedFailure({
-        file: location?.file, line: location?.line, col: location?.col,
+        file: location?.file ?? opaqueFile, line: location?.line, col: location?.col,
         title: test.name || "test", subject: test.name || "test", severity: "error",
         message: alternateMessage(lines, failureAt + 1, failureEnd),
       }, i, Math.min(testcaseEnd + 1, lines.length)));
