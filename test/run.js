@@ -3034,14 +3034,21 @@ try {
   // CI systems retry and concatenate a failed step. The visible diagnostics are
   // de-duplicated, so the headline must describe that same visible set rather than the
   // number of times the runner happened to print it.
-  for (const name of ["gotest_build_and_tests_fail.txt", "clang_fail.txt", "eslint_fail.txt"]) {
+  let checked = 0;
+  for (const name of readdirSync(join(here, "fixtures"))) {
     const raw = fx(name);
     const once = analyse(raw);
-    const retried = analyse(raw + "\n" + raw);
-    assert.deepEqual(retried.failures, once.failures, `${name}: retry changed the visible failures`);
-    assert.equal(retried.summary, once.summary, `${name}: retry inflated the headline`);
+    if (!once?.failures.length) continue;
+    const retried = analyse(raw.replace(/\n*$/, "\n") + "\n" + raw);
+    assert.equal(JSON.stringify(retried), JSON.stringify(once),
+      `${name}: a byte-identical retry changed the public reading`);
+    checked++;
   }
-  console.log("  ok   retry duplication cannot inflate a de-duplicated headline");
+  assert.ok(checked >= 200, `only ${checked} retry pairs exercised`);
+  const raw = fx("eslint_fail.txt").replace(/\n*$/, "");
+  assert.equal(JSON.stringify(analyse([raw, raw, raw, raw].join("\n\n"))),
+    JSON.stringify(analyse(raw)), "four identical attempts did not collapse recursively");
+  console.log(`  ok   retry duplication changes none of ${checked} public readings`);
   pass++;
 } catch (e) { console.log(`  FAIL duplicate headline counts\n       ${e.message}`); fail++; }
 

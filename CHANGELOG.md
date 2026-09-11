@@ -2,6 +2,10 @@
 
 ## Unreleased
 
+- Byte-identical CI retry blocks are collapsed before parsing. De-duplication already
+  showed each diagnostic once, but 67 of 200 duplicated fixtures still changed their
+  headline or another public field because parser-specific tallies counted both copies.
+  A corpus-wide invariant now requires the entire public reading to remain identical.
 - Launcher command hints no longer promote npm, pnpm, Yarn, Poetry, or uv above the
   actionable failure from the child they ran. Direct leaf-tool hints respect argument
   order and Windows' case-insensitive executable names, while the launcher's own

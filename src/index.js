@@ -366,6 +366,36 @@ function unwrap(s, command) {
   return { text, hit, wrappers };
 }
 
+/** CI systems commonly append a byte-identical failed retry to the first attempt.
+ * Parsers then see every tally twice, while the reader's public de-duplication keeps
+ * each diagnostic once. Collapse only an exact whole-stream repetition: unlike trying
+ * to reinterpret thirty parser-specific headlines, this also keeps hidden counts,
+ * passing counts, secondary tools and wrapper provenance consistent with what is shown.
+ *
+ * The midpoint check is constant-work for ordinary logs. Four identical attempts
+ * collapse recursively; non-identical retries remain separate and are not guessed at. */
+function collapseExactRetries(text) {
+  let current = text;
+  while (true) {
+    let end = current.length;
+    while (end > 0 && current[end - 1] === "\n") end--;
+    const body = current.slice(0, end);
+    let collapsed = null;
+    for (const separator of ["\n\n", "\n"]) {
+      const contentLength = body.length - separator.length;
+      if (contentLength <= 0 || contentLength % 2) continue;
+      const middle = contentLength / 2;
+      if (body.slice(middle, middle + separator.length) !== separator) continue;
+      if (body.slice(0, middle) === body.slice(middle + separator.length)) {
+        collapsed = body.slice(0, middle) + (end < current.length ? "\n" : "");
+        break;
+      }
+    }
+    if (collapsed === null) return current;
+    current = collapsed;
+  }
+}
+
 function analyseWhole(raw, { cluster = true, command = null } = {}) {
   // Windows tools, and logs pasted out of Windows CI, arrive with CRLF. Every
   // parser anchors on $, so a stray \r makes all of them silently match nothing.
@@ -373,8 +403,9 @@ function analyseWhole(raw, { cluster = true, command = null } = {}) {
   // redirects, so a log captured on Windows and piped in later begins with U+FEFF - and
   // every parser anchors on ^, so the first line stops matching. 25 of the fixtures read
   // differently with one in front of them; bun's unresolved import fell to the guess.
-  const base = stripRedrawnCiPrefix(stripCiPrefix(stripAnsi(raw.replace(/^\uFEFF/, ""))))
-    .replace(/\r\n?/g, "\n");
+  const base = collapseExactRetries(
+    stripRedrawnCiPrefix(stripCiPrefix(stripAnsi(raw.replace(/^\uFEFF/, ""))))
+      .replace(/\r\n?/g, "\n"));
   const { text: s, hit, wrappers } = unwrap(base, command);
   if (!hit) return null;
   const r = hit.result;
