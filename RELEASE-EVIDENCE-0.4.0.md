@@ -1,7 +1,8 @@
 # 0.4.0 release evidence
 
-Status: release gate passed. Publication still requires npm authentication and registry
-verification; update the bundled Action pin only afterward in its own green PR.
+Status: unpublished release candidate. The fresh-command minimum and current automated
+gates pass, but the reliability audit remains open. Do not publish, tag, create a GitHub
+release, or update the bundled Action pin until the audit is deliberately closed.
 
 ## Fresh command gate
 
@@ -37,6 +38,28 @@ Temporary paths and the deliberately invalid package name are local test data.
 Result: 22 failing commands across 11 tool families passed, exceeding the 20-command,
 10-family minimum.
 
+## Follow-up dogfooding
+
+Run on 2026-09-11 on the same macOS host. This pass targeted machine-readable modes
+and current command shapes that were not represented by the original gate.
+
+| Family and version | Failing command shape | Expected parser | Extracted | Outcome |
+|---|---|---|---:|---|
+| Terraform 1.16.1 | `terraform validate -json` | terraform | 1 | miss fixed in `3859ff7` |
+| Terraform 1.16.1 | `terraform validate -no-color` | terraform | 1 | miss fixed in `3859ff7` |
+| Swift 6.2.3 | `swiftc -parseable-output -typecheck bad.swift` | swift | 2 | corrupt result fixed in `3859ff7` |
+| Cargo 1.98.0 | `cargo check --message-format=json` | cargo | 1 | pass |
+| .NET SDK 10.0.400 | `dotnet build --no-restore` | dotnet | 2 | pass |
+| Go 1.27.1 | `go test ./...` | go test | 1 | pass |
+| Go 1.27.1 | `go test -json ./...` | go test | 1 | pass |
+
+The Terraform and Swift fixes use paired real captures and assert field-for-field parity
+with their human-readable forms. Before the fix, Terraform JSON was unrecognized,
+boxless Terraform text was lost, and Swift returned one corrupted failure instead of
+two. The full capture gate then exposed a fourth regression: pretty JSON buried in a
+large log was cut mid-document. Structured diagnostic windows now preserve it under
+the same 120 KB cap used for every corpus fixture.
+
 ## Misses and dispositions
 
 - `npm run boom`, whose script only called `process.exit(7)`, emitted two npm notice
@@ -57,14 +80,20 @@ Result: 22 failing commands across 11 tool families passed, exceeding the 20-com
 ## Automated gates
 
 - Ten local suites: pass.
-- Detector matrix: 124 fixtures, no ownership changes.
-- Ordered mixed-log sweep: 13,414 applicable cross-parser pairs, exact recovery.
-- Interleaving sweep: 7,626 streams, no crash or duplicate diagnosis.
-- Fuzz: 59,520 parser calls, no crash, stall, or warning promoted to failure.
+- Detector matrix: 204 fixtures, no ownership changes; the four additions are the
+  paired Terraform and Swift captures above.
+- Ordered mixed-log sweep: 38,126 cross-parser pairs, exact recovery.
+- Interleaving sweep: 20,706 streams, no crash or duplicate diagnosis; 678 same-tool
+  ordered pairs retain both runs.
+- Capture sweep: all 204 fixtures survive burial in 3 MB of chatter and a 120 KB cap.
+- Normalization sweep: 2,648 logs across nine CI stamps and four literal prefixes;
+  1,836 stamped bare-carriage-return redraw blobs.
+- Fuzz: 164,016 parser calls, no crash, stall, or warning promoted to failure.
 - Packed-install smoke test: pass; the offline tarball install and both command shims
   parsed a real captured fixture.
-- CI: pass on Linux, macOS, and Windows with Node 18, 20, 22, and 24 (12 jobs).
+- CI run 34575352400: pass on Linux, macOS, and Windows with Node 18, 20, 22, and 24
+  (12 jobs) for commit `3859ff7`.
 
-The changelog date and README `0.4.0` Action example were finalized only after every
-local and CI gate above passed. The bundled Action itself remains pinned to published
-`0.1.1` until registry verification succeeds.
+The changelog remains Unreleased, and the README Action example stays on the published
+`0.1.1`. The bundled Action also remains pinned to `0.1.1`. Finalizing those values is
+release work, not reliability-audit work.
