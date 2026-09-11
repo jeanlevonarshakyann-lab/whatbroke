@@ -2188,6 +2188,18 @@
       "generic": 1
     }
   },
+  "terraform_plan_json_fail.txt": {
+    "winner": "terraform",
+    "parser": "terraform",
+    "failures": 1,
+    "claimants": [
+      "terraform",
+      "generic"
+    ],
+    "shadow": {
+      "generic": 1
+    }
+  },
   "terraform_validate_fail.txt": {
     "winner": "terraform",
     "parser": "terraform",

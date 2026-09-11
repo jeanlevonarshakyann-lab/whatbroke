@@ -41,6 +41,16 @@ const CASES = [
       assert.equal(r.failures[0].title, "Invalid expression");
       assert.equal(r.failures[0].stmt, "input =");
     } },
+  // `plan -json` is not the document returned by `validate -json`; it is a stream of
+  // one JSON UI event per line. Treating that line as prose lost every structured fact.
+  { file: "terraform_plan_json_fail.txt", tool: "terraform", n: 1, check: (r) => {
+      assert.equal(r.failures[0].file, "main.tf");
+      assert.equal(r.failures[0].line, 2);
+      assert.equal(r.failures[0].col, 10);
+      assert.equal(r.failures[0].title, "Invalid expression");
+      assert.equal(r.failures[0].stmt, "input =");
+      assert.doesNotMatch(JSON.stringify(r.failures), /@timestamp|terraform\.ui/);
+    } },
   // Captured with CMake 4.4 and ninja 1.13. ninja gets no parser on purpose: what fails
   // under it is a compiler, which already has one, and its own "FAILED: [code=1]" line
   // restates the failure without adding to it - exactly as make's exit line does. make
@@ -3348,6 +3358,12 @@ try {
   assert.deepEqual(facts(json), facts(text),
     "validate -json and -no-color disagree about the invalid expression");
   assert.equal(json.failures[0].col, 10, "the machine range's column was discarded");
+  const stream = analyse(fx("terraform_plan_json_fail.txt"));
+  assert.equal(stream.tool, json.tool);
+  assert.equal(stream.summary, json.summary);
+  assert.deepEqual(facts(stream), facts(text),
+    "plan -json and validate -no-color disagree about the invalid expression");
+  assert.equal(stream.failures[0].col, 10, "the streamed machine range's column was discarded");
   assert.notEqual(analyse('{"format_version":"1.0","valid":false,"error_count":0,"warning_count":0,"diagnostics":[]}')?.tool,
     "terraform", "an empty lookalike report produced a Terraform failure");
   console.log("  ok   terraform validate -json says what its text report says");

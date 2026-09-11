@@ -74,10 +74,32 @@ function jsonReports(text) {
   return reports;
 }
 
+/** Diagnostic events from Terraform's newline-delimited `plan -json` UI stream. */
+function jsonEvents(text) {
+  const events = [];
+  const lines = text.split("\n");
+  for (let i = 0; i < lines.length; i++) {
+    const line = lines[i].trim();
+    // Parse only Terraform diagnostic candidates. A mixed machine log may contain
+    // thousands of JSON events from other tools, and none should become ours merely
+    // because it has a `diagnostic` property.
+    if (!line.startsWith("{") || !line.endsWith("}") ||
+        !/"@module"\s*:\s*"terraform\.ui"/.test(line) ||
+        !/"type"\s*:\s*"diagnostic"/.test(line)) continue;
+    let value;
+    try { value = JSON.parse(line); } catch { continue; }
+    const diagnostic = value?.diagnostic;
+    if (value?.["@module"] !== "terraform.ui" || value?.type !== "diagnostic" ||
+        !diagnostic || typeof diagnostic !== "object") continue;
+    events.push({ value: { diagnostics: [diagnostic] }, start: i, end: i + 1 });
+  }
+  return events;
+}
+
 function jsonDiagnostics(text) {
   const failures = [];
   let warnings = 0;
-  for (const report of jsonReports(text)) {
+  for (const report of [...jsonReports(text), ...jsonEvents(text)]) {
     for (const diagnostic of report.value.diagnostics) {
       if (!diagnostic || typeof diagnostic.summary !== "string") continue;
       if (diagnostic.severity === "warning") { warnings++; continue; }
@@ -148,7 +170,7 @@ export default {
   commands: ["terraform", "tofu", "terragrunt"],
 
   detect: (s) =>
-    jsonReports(s).length > 0 ||
+    jsonReports(s).length > 0 || jsonEvents(s).length > 0 ||
     (HEAD_RE.test(s.split("\n").find((l) => HEAD_RE.test(l)) ?? "") &&
       (/^[^\S\n]*╷[^\S\n]*$/m.test(s) || /[^\S\n]on[^\S\n]+\S+[^\S\n]+line[^\S\n]+\d+/.test(s))) ||
     flatValidateDiagnostics(s).failures.length > 0 ||
