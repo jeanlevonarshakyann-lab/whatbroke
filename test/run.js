@@ -1930,6 +1930,12 @@ const CASES = [
       assert.equal(r.failures[0].line, 9);
       assert.equal(r.failures[0].col, 6);
     } },
+  { file: "denotest_reporter_skipped_tap_fail.txt", tool: "deno test", n: 1, check: (r) => {
+      assert.equal(r.summary, "1 failed, 1 passed");
+      assert.equal(r.failures[0].title, "fails");
+      assert.equal(r.failures[0].file, "./reporter_test.ts");
+      assert.equal(r.failures[0].line, 9);
+    } },
   { file: "gorace_fail.txt", tool: "go test", n: 3, check: (r) => {
       // real `go test -race`. The detector names the exact line of the racing
       // access - the bug - while the assertion below it only reports a wrong total.
@@ -3396,11 +3402,16 @@ try {
   assert.equal(junit.summary, text.summary);
   assert.deepEqual(facts(junit), facts(text), "Deno JUnit and pretty reports disagree");
   const skippedJunit = analyse(fx("denotest_reporter_skipped_junit_fail.txt"));
+  const skippedTap = analyse(fx("denotest_reporter_skipped_tap_fail.txt"));
   const skippedText = analyse(fx("denotest_reporter_skipped_plain_fail.txt"));
   assert.equal(skippedJunit.summary, skippedText.summary,
     "Deno JUnit counts an ignored test as passed");
+  assert.equal(skippedTap.summary, skippedText.summary,
+    "Deno TAP counts an ignored test as passed");
   assert.deepEqual(facts(skippedJunit), facts(skippedText),
     "Deno JUnit with a skipped test and its pretty report disagree");
+  assert.deepEqual(facts(skippedTap), facts(skippedText),
+    "Deno TAP with a skipped test and its pretty report disagree");
   console.log("  ok   deno TAP and JUnit reporters say what the pretty report says");
   pass++;
 } catch (e) { console.log(`  FAIL deno machine reporters vs pretty\n       ${e.message}`); fail++; }

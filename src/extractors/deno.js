@@ -202,7 +202,8 @@ export default {
     const pretty = denoPretty.extract(text);
     const failures = [...(pretty?.failures ?? []), ...tap, ...junit.failures];
     const tapPassed = text.split("\n")
-      .filter((line) => /^[^\S\n]*ok[^\S\n]+\d+\b/.test(line)).length;
+      .filter((line) => /^[^\S\n]*ok[^\S\n]+\d+\b/.test(line) &&
+        !/#[^\S\n]*(?:SKIP|TODO)\b/i.test(line)).length;
     const prettyPassed = [...text.matchAll(/^(?:FAILED|ok)[^\S\n]*\|[^\S\n]*(\d+)[^\S\n]+passed[^\S\n]*\|[^\S\n]*\d+[^\S\n]+failed/gm)]
       .reduce((sum, match) => sum + Number(match[1]), 0);
     return {

@@ -435,6 +435,19 @@
       "generic": 3
     }
   },
+  "denotest_reporter_skipped_tap_fail.txt": {
+    "winner": "deno test",
+    "parser": "deno test",
+    "failures": 1,
+    "claimants": [
+      "deno test",
+      "go",
+      "generic"
+    ],
+    "shadow": {
+      "generic": 2
+    }
+  },
   "denotest_reporter_tap_fail.txt": {
     "winner": "deno test",
     "parser": "deno test",
