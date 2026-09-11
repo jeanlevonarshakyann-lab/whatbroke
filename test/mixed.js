@@ -626,6 +626,33 @@ test("every ordered pair recovers exactly the failures in its parts", () => {
 // would mean the reader cannot trust a count.
 const BLOCK = 4;   // lines one tool gets to write before the other cuts in
 
+test("interleaved Node reporters keep one rich copy of a diagnosis", () => {
+  // This exact real-log weave was first reached on Windows after an unrelated fixture
+  // changed directory iteration order. JUnit and spec both preserve the crash, but only
+  // spec keeps its source statement. That optional display detail cannot make two bugs.
+  let seed = 1;
+  const rnd = () => (seed = (seed * 1103515245 + 12345) & 0x7fffffff) / 0x7fffffff;
+  const a = fx("nodetest_reporter_junit_crash_fail.txt").split("\n");
+  const b = fx("nodetest_reporter_spec_crash_fail.txt").split("\n");
+  const out = [];
+  let i = 0, j = 0;
+  while (i < a.length || j < b.length) {
+    const run = 1 + Math.floor(rnd() * BLOCK);
+    if (j >= b.length || (i < a.length && rnd() < 0.5)) {
+      for (let k = 0; k < run && i < a.length; k++) out.push(a[i++]);
+    } else {
+      for (let k = 0; k < run && j < b.length; k++) out.push(b[j++]);
+    }
+  }
+  const failures = allFailures(analyse(out.join("\n")))
+    .filter((f) => f.file === "/home/dev/crash.test.js" && f.line === 1 &&
+      f.title === "crash.test.js" && f.message === "Error: module exploded before tests");
+  assert.equal(failures.length, 1,
+    "the same diagnosis was counted twice because only one reporter preserved its source statement");
+  assert.equal(failures[0].stmt, "throw new Error(\"module exploded before tests\");",
+    "de-duplication kept the poorer reporter copy");
+});
+
 test("two tools writing into one pipe never crash it or double a diagnosis", () => {
   let seed = 20260910;
   const rnd = () => (seed = (seed * 1103515245 + 12345) & 0x7fffffff) / 0x7fffffff;
@@ -643,7 +670,10 @@ test("two tools writing into one pipe never crash it or double a diagnosis", () 
     return out.join("\n");
   };
 
-  const names = readdirSync(join(here, "fixtures"));
+  // Filesystem enumeration order is platform-dependent. Sort so the PRNG reaches the
+  // same weave on Linux, macOS, and Windows; named regressions above preserve any weave
+  // that once exposed a bug instead of relying on accidental directory order.
+  const names = readdirSync(join(here, "fixtures")).sort();
   const solo = new Map();
   for (const n of names) { try { solo.set(n, analyse(fx(n))); } catch { solo.set(n, null); } }
 

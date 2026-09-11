@@ -70,22 +70,32 @@ import { addSourceRanges, preserveSourceRange, rangesOverlap, setParser } from "
 export const EXTRACTORS = [pytest, nodetest, bun, bunRuntime, deno, denoRuntime, playwright, jestjson, jest, mocha, ava, jasmine, tap, vitest, unittest, traceback, eslintjson, eslint, ruff, pylint, flake8, rubocop, golangci, markdownlint, stylelint, shellcheck, yamllint, biome, oxlint, black, prettier, sass, less, webpack, babel, swc, pyright, mypy, cmake, terraform, swift, clang, ruby, perl, php, rspec, jvm, dotnettest, dotnet, phpunit, cargojson, cargo, gojson, gotest, esbuild, vite, node, tsc, git, kubectl, docker, make, npm, pnpm, yarn, pip, generic];
 
 function dedupeFailures(failures) {
-  const seen = new Set();
   // Collapsing here rather than in each parser puts it on every failure that reaches the
   // reader, from every parser, and it happens before the key is built - so two failures
   // that differ only in how many times they repeated themselves also dedupe.
-  return failures.map((f) => (f.message
+  const normalized = failures.map((f) => (f.message
     ? preserveSourceRange(f, { ...f, message: collapseRepeats(f.message) })
-    : f))
-    .filter((failure) => {
+    : f));
+  const seen = new Map();
+  const unique = [];
+  for (const failure of normalized) {
+    // `stmt` is optional context for rendering, not part of a diagnosis's identity.
+    // Two reporters can preserve the same failure while only one keeps the offending
+    // source line. Counting those as separate made one crash appear twice in a shredded
+    // JUnit/spec stream. Keep one copy, preferring the one that can show the source.
     const key = JSON.stringify([
       failure.file ?? null, failure.line ?? null, failure.col ?? null,
-      failure.title ?? "", failure.message ?? "", failure.stmt ?? "",
+      failure.title ?? "", failure.message ?? "",
     ]);
-    if (seen.has(key)) return false;
-    seen.add(key);
-    return true;
-  });
+    const index = seen.get(key);
+    if (index === undefined) {
+      seen.set(key, unique.length);
+      unique.push(failure);
+    } else if (!unique[index].stmt && failure.stmt) {
+      unique[index] = failure;
+    }
+  }
+  return unique;
 }
 
 /** Two parsers may label the same diagnostic differently. Require both a real
