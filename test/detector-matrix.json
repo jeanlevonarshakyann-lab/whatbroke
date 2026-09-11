@@ -409,6 +409,32 @@
       "generic": 3
     }
   },
+  "denotest_reporter_skipped_junit_fail.txt": {
+    "winner": "deno test",
+    "parser": "deno test",
+    "failures": 1,
+    "claimants": [
+      "deno test",
+      "deno",
+      "generic"
+    ],
+    "shadow": {
+      "generic": 2
+    }
+  },
+  "denotest_reporter_skipped_plain_fail.txt": {
+    "winner": "deno test",
+    "parser": "deno test",
+    "failures": 1,
+    "claimants": [
+      "deno test",
+      "node",
+      "generic"
+    ],
+    "shadow": {
+      "generic": 3
+    }
+  },
   "denotest_reporter_tap_fail.txt": {
     "winner": "deno test",
     "parser": "deno test",

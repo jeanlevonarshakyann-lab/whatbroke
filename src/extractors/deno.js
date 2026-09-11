@@ -105,7 +105,8 @@ function usefulMessage(value) {
   const messageLines = value.split("\n");
   const first = messageLines[0]?.trim();
   const caret = messageLines.findIndex((line) => /^\s*\^+\s*$/.test(line));
-  const stmt = caret > 0 ? messageLines[caret - 1].trim() : undefined;
+  const candidate = caret > 0 ? messageLines[caret - 1].trim() : undefined;
+  const stmt = candidate && !/^throw new /.test(candidate) ? candidate : undefined;
   return [first, stmt].filter(Boolean).join("\n");
 }
 
@@ -144,38 +145,47 @@ function denoTapFailures(text) {
 /** Deno's JUnit reporter, bounded by its own `testsuites name="deno test"` root. */
 function denoJunit(text) {
   const lines = text.split("\n");
-  const rootAt = lines.findIndex((line) => /<testsuites\b[^>]*\bname="deno test"/.test(line));
-  if (rootAt < 0) return { failures: [], passed: 0 };
-  const root = xmlAttributes(lines[rootAt]);
   const failures = [];
-  for (let i = rootAt + 1; i < lines.length && !/<\/testsuites>/.test(lines[i]); i++) {
-    if (!/<testcase\b/.test(lines[i])) continue;
-    const test = xmlAttributes(lines[i]);
-    for (let j = i + 1; j < lines.length && !/<\/testcase>/.test(lines[j]); j++) {
-      const open = lines[j].match(/<failure\b[^>]*>(.*)$/);
-      if (!open) continue;
-      const body = [open[1]];
-      let end = j;
-      while (end < lines.length && !/<\/failure>/.test(body.at(-1))) body.push(lines[++end] ?? "");
-      const decoded = xmlText(body.join("\n").replace(/<\/failure>[\s\S]*$/, ""));
-      const failure = {
-        file: test.classname, line: /^\d+$/.test(test.line) ? +test.line : undefined,
-        col: /^\d+$/.test(test.col) ? +test.col : undefined,
-        title: test.name || "test", subject: test.name || "test", severity: "error",
-        message: usefulMessage(decoded),
-      };
-      Object.defineProperty(failure, SOURCE_RANGE, {
-        value: { start: i, end: end + 1 }, enumerable: false,
-      });
-      failures.push(failure);
-      i = end;
-      break;
+  let passed = 0;
+  for (let rootAt = 0; rootAt < lines.length; rootAt++) {
+    if (!/<testsuites\b[^>]*\bname="deno test"/.test(lines[rootAt])) continue;
+    const root = xmlAttributes(lines[rootAt]);
+    let rootEnd = rootAt + 1;
+    while (rootEnd < lines.length && !/<\/testsuites>/.test(lines[rootEnd])) rootEnd++;
+    for (let i = rootAt + 1; i < rootEnd; i++) {
+      if (!/<testcase\b/.test(lines[i])) continue;
+      const test = xmlAttributes(lines[i]);
+      for (let j = i + 1; j < rootEnd && !/<\/testcase>/.test(lines[j]); j++) {
+        const open = lines[j].match(/<(failure|error)\b[^>]*>(.*)$/);
+        if (!open) continue;
+        const close = new RegExp(`</${open[1]}>`);
+        const body = [open[2]];
+        let end = j;
+        while (end < rootEnd && !close.test(body.at(-1))) body.push(lines[++end] ?? "");
+        const decoded = xmlText(body.join("\n").replace(new RegExp(`</${open[1]}>[\\s\\S]*$`), ""));
+        const failure = {
+          file: test.classname, line: /^\d+$/.test(test.line) ? +test.line : undefined,
+          col: /^\d+$/.test(test.col) ? +test.col : undefined,
+          title: test.name || "test", subject: test.name || "test", severity: "error",
+          message: usefulMessage(decoded),
+        };
+        Object.defineProperty(failure, SOURCE_RANGE, {
+          value: { start: i, end: end + 1 }, enumerable: false,
+        });
+        failures.push(failure);
+        i = end;
+        break;
+      }
     }
+    const tests = /^\d+$/.test(root.tests) ? +root.tests : 0;
+    const failed = (/^\d+$/.test(root.failures) ? +root.failures : 0) +
+      (/^\d+$/.test(root.errors) ? +root.errors : 0);
+    const skipped = lines.slice(rootAt + 1, rootEnd)
+      .filter((line) => /<skipped\b/.test(line)).length;
+    passed += Math.max(0, tests - failed - skipped);
+    rootAt = rootEnd;
   }
-  const tests = /^\d+$/.test(root.tests) ? +root.tests : failures.length;
-  const failed = (/^\d+$/.test(root.failures) ? +root.failures : failures.length) +
-    (/^\d+$/.test(root.errors) ? +root.errors : 0);
-  return { failures, passed: Math.max(0, tests - failed) };
+  return { failures, passed };
 }
 
 export default {

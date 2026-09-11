@@ -1,0 +1,18 @@
+Check reporter_test.ts
+<?xml version="1.0" encoding="UTF-8"?>
+<testsuites name="deno test" tests="3" failures="1" errors="0" time="0.007">
+    <testsuite name="./reporter_test.ts" tests="3" disabled="1" errors="0" failures="1">
+        <testcase name="passes" classname="./reporter_test.ts" time="0.000" line="1" col="6">
+        </testcase>
+        <testcase name="ignored" classname="./reporter_test.ts" time="0.000" line="3" col="6">
+            <skipped/>
+        </testcase>
+        <testcase name="fails" classname="./reporter_test.ts" time="0.001" line="9" col="6">
+            <failure message="Uncaught Error: expected failure">Error: expected failure
+  throw new Error(&quot;expected failure&quot;);
+        ^
+    at file:///home/dev/reporter_test.ts:10:9</failure>
+        </testcase>
+    </testsuite>
+</testsuites>
+error: Test failed

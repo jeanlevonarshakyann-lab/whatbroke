@@ -1,0 +1,21 @@
+Check reporter_test.ts
+running 3 tests from ./reporter_test.ts
+passes ... ok (416µs)
+ignored ... ignored (0ms)
+fails ... FAILED (553µs)
+
+ ERRORS 
+
+fails => ./reporter_test.ts:9:6
+error: Error: expected failure
+  throw new Error("expected failure");
+        ^
+    at file:///home/dev/reporter_test.ts:10:9
+
+ FAILURES 
+
+fails => ./reporter_test.ts:9:6
+
+FAILED | 1 passed | 1 failed | 1 ignored (3ms)
+
+error: Test failed
