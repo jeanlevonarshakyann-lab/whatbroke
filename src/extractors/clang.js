@@ -19,18 +19,68 @@ const CODE_RE = /[^\S\n]+\[(-W[\w-]+)\]$/;
 // them and a `make` run that could not even start compiling fell through to a guess.
 const DRIVER_RE = /^(clang(?:\+\+)?|gcc|g\+\+|cc|ld|cc1(?:plus)?):[^\S\n]+(error|fatal error):[^\S\n]+(.+)$/;
 
+/** Clang's `-fdiagnostics-format=sarif` emits one SARIF 2.1 document between its
+ * ordinary warning and tally lines. Keep this Clang-specific: SARIF is a container
+ * used by many tools, and claiming an arbitrary producer here would misattribute it. */
+function clangSarif(text) {
+  const failures = [];
+  let warnings = 0;
+  for (const line of text.split("\n")) {
+    const encoded = line.trim();
+    if (!encoded.startsWith("{") || !encoded.endsWith("}") || !encoded.includes('"runs"')) continue;
+    let report;
+    try { report = JSON.parse(encoded); } catch { continue; }
+    if (report?.version !== "2.1.0" || !Array.isArray(report.runs)) continue;
+    for (const run of report.runs) {
+      const driver = String(run?.tool?.driver?.name ?? "");
+      if (!/^clang(?:\+\+)?$/i.test(driver) || !Array.isArray(run?.results)) continue;
+      const artifacts = Array.isArray(run?.artifacts) ? run.artifacts : [];
+      for (const result of run.results) {
+        if (result?.level === "warning") { warnings++; continue; }
+        if (result?.level !== "error" || typeof result?.message?.text !== "string") continue;
+        const locations = Array.isArray(result?.locations) ? result.locations : [];
+        const physical = locations.find((location) => location?.physicalLocation)?.physicalLocation;
+        const artifact = physical?.artifactLocation;
+        const indexed = Number.isInteger(artifact?.index) ? artifacts[artifact.index]?.location : null;
+        const uri = artifact?.uri ?? indexed?.uri;
+        let file;
+        if (typeof uri === "string") {
+          if (uri.startsWith("file://")) {
+            try { file = decodeURIComponent(uri.slice(7)); } catch { file = uri.slice(7); }
+            // Windows SARIF uses file:///C:/path; keep the drive path platform-neutral
+            // when a Windows capture is analysed on Linux or macOS.
+            if (/^\/[A-Za-z]:\//.test(file)) file = file.slice(1);
+          } else {
+            try { file = decodeURIComponent(uri); } catch { file = uri; }
+          }
+        }
+        const region = physical?.region;
+        failures.push({
+          ...(file ? { file } : {}),
+          ...(Number.isInteger(region?.startLine) ? { line: region.startLine } : {}),
+          ...(Number.isInteger(region?.startColumn) ? { col: region.startColumn } : {}),
+          title: "error", label: "error", severity: "error", message: result.message.text,
+        });
+      }
+    }
+  }
+  return { failures, warnings };
+}
+
 export default {
   name: "clang",
   category: "compile",
   commands: ["clang", "clang++", "gcc", "g++", "cc", "make"],
   detect: (s) =>
+    clangSarif(s).failures.length > 0 ||
     (/^\S.+:\d+(?::\d+)?:[^\S\n]+(?:error|fatal error|warning|note):[^\S\n]+/m.test(s) &&
      /(?:clang|gcc|g\+\+|cc1|ld:|[\w.-]+\.(?:c|cc|cpp|cxx|h|hpp|m|mm):)/i.test(s)) ||
     // A driver error names the driver, which is as specific as the pattern above.
     DRIVER_RE.test(s.split("\n").find((l) => DRIVER_RE.test(l)) ?? ""),
 
   extract(s) {
-    const failures = [];
+    const sarif = clangSarif(s);
+    const failures = [...sarif.failures];
     const warningLines = new Set();
     for (const line of s.split("\n")) {
       const driver = line.match(DRIVER_RE);
@@ -55,7 +105,7 @@ export default {
     if (!failures.length) return null;
     const rawFailures = failures.length;
     const distinct = uniqueFailures(failures);
-    const warnings = warningLines.size;
+    const warnings = warningLines.size + sarif.warnings;
     // clang ends each translation unit with its own count, and every clean log in the
     // corpus agrees with it exactly - 14 for 14, 3 for 3. It stops agreeing when the log
     // has been damaged, and the commonest way that happens is `make -j`: two compilers

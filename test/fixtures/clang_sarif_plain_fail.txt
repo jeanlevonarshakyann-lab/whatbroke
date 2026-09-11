@@ -1,0 +1,10 @@
+/home/dev/clang-sarif/broken.c:1:2: warning: audit warning [-W#warnings]
+    1 | #warning audit warning
+      |  ^
+/home/dev/clang-sarif/broken.c:4:15: error: use of undeclared identifier 'missing_one'
+    4 |   int first = missing_one;
+      |               ^
+/home/dev/clang-sarif/broken.c:5:16: error: use of undeclared identifier 'missing_two'
+    5 |   int second = missing_two;
+      |                ^
+1 warning and 2 errors generated.

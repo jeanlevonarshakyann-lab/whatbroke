@@ -286,6 +286,28 @@
       "generic": 2
     }
   },
+  "clang_sarif_fail.txt": {
+    "winner": "clang",
+    "parser": "clang",
+    "failures": 2,
+    "claimants": [
+      "clang",
+      "generic"
+    ],
+    "shadow": {}
+  },
+  "clang_sarif_plain_fail.txt": {
+    "winner": "clang",
+    "parser": "clang",
+    "failures": 2,
+    "claimants": [
+      "clang",
+      "generic"
+    ],
+    "shadow": {
+      "generic": 3
+    }
+  },
   "clippy_fail.txt": {
     "winner": "cargo",
     "parser": "cargo",

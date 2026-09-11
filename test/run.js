@@ -1287,6 +1287,22 @@ const CASES = [
       assert.match(r.failures[1].message, /use of undeclared identifier 'y'/);
       assert.equal(r.tool, "clang", "clang output must not be claimed by the mypy parser");
     } },
+  { file: "clang_sarif_plain_fail.txt", tool: "clang", n: 2, check: (r) => {
+      assert.equal(r.summary, "2 errors — 1 warning hidden");
+      assert.deepEqual(r.failures.map((f) => [f.file, f.line, f.col]), [
+        ["/home/dev/clang-sarif/broken.c", 4, 15],
+        ["/home/dev/clang-sarif/broken.c", 5, 16],
+      ]);
+    } },
+  { file: "clang_sarif_fail.txt", tool: "clang", n: 2, check: (r) => {
+      assert.equal(r.summary, "2 errors — 1 warning hidden");
+      assert.deepEqual(r.failures.map((f) => [f.file, f.line, f.col]), [
+        ["/home/dev/clang-sarif/broken.c", 4, 15],
+        ["/home/dev/clang-sarif/broken.c", 5, 16],
+      ]);
+      assert.doesNotMatch(JSON.stringify(r.failures), /sarif-format-unstable/,
+        "Clang's reporter warning is not a compile failure");
+    } },
   // Captured with gcc 14 under -fno-show-column, which older gcc did by default. Without
   // the column, `file:line: error: message` is also javac's shape and mypy's - so the
   // filename is what has to identify the compiler, and only C-family sources qualify.
@@ -3600,6 +3616,30 @@ try {
   console.log("  ok   swiftc -parseable-output says what its text report says");
   pass++;
 } catch (e) { console.log(`  FAIL swift parseable vs text\n       ${e.message}`); fail++; }
+
+// Clang's SARIF mode is a different encoding of the same compile. Its driver warning
+// and the SARIF container are presentation; file, position, and message must agree with
+// the ordinary diagnostics exactly.
+try {
+  const plain = analyse(fx("clang_sarif_plain_fail.txt"));
+  const sarif = analyse(fx("clang_sarif_fail.txt"));
+  const facts = (r) => r.failures.map((f) =>
+    [f.file, f.line, f.col, f.title, f.label, f.severity, f.message]);
+  assert.equal(sarif.tool, plain.tool);
+  assert.equal(sarif.summary, plain.summary);
+  assert.deepEqual(facts(sarif), facts(plain),
+    "-fdiagnostics-format=sarif and ordinary Clang diagnostics disagree");
+  assert.equal(analyse('{"version":"2.1.0","runs":[]}'), null,
+    "an empty SARIF lookalike produced a Clang failure");
+  const foreign = JSON.stringify({ version: "2.1.0", runs: [{
+    tool: { driver: { name: "another-tool" } },
+    results: [{ level: "error", message: { text: "not Clang's diagnosis" } }],
+  }] });
+  assert.notEqual(analyse(foreign)?.tool, "clang",
+    "Clang claimed a SARIF report produced by another tool");
+  console.log("  ok   Clang SARIF says what its text report says");
+  pass++;
+} catch (e) { console.log(`  FAIL Clang SARIF vs text\n       ${e.message}`); fail++; }
 
 // These two fixtures are one `cargo build` captured both ways, and the failures they
 // produce have to match field for field - otherwise the JSON path is not reading cargo,
