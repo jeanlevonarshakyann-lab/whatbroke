@@ -1,0 +1,25 @@
+  sample.Tests -> /home/dev/sample.Tests/bin/Debug/net10.0/sample.Tests.dll
+Test run for /home/dev/sample.Tests/bin/Debug/net10.0/sample.Tests.dll (.NETCoreApp,Version=v10.0)
+A total of 1 test files matched the specified pattern.
+[xUnit.net 00:00:00.07]     Sample.Tests.InvoiceTests.Skipped [SKIP]
+[xUnit.net 00:00:00.08]     Sample.Tests.InvoiceTests.MissingCustomer [FAIL]
+[xUnit.net 00:00:00.08]     Sample.Tests.InvoiceTests.AddsTax [FAIL]
+  Skipped Sample.Tests.InvoiceTests.Skipped [1 ms]
+  Failed Sample.Tests.InvoiceTests.MissingCustomer [< 1 ms]
+  Error Message:
+   System.InvalidOperationException : customer record missing
+  Stack Trace:
+     at Sample.Tests.InvoiceTests.MissingCustomer() in /home/dev/sample.Tests/UnitTest1.cs:line 12
+   at System.Reflection.MethodBaseInvoker.InterpretedInvoke_Method(Object obj, IntPtr* args)
+   at System.Reflection.MethodBaseInvoker.InvokeWithNoArgs(Object obj, BindingFlags invokeAttr)
+  Failed Sample.Tests.InvoiceTests.AddsTax [2 ms]
+  Error Message:
+   Assert.Equal() Failure: Values differ
+Expected: 1050
+Actual:   1049
+  Stack Trace:
+     at Sample.Tests.InvoiceTests.AddsTax() in /home/dev/sample.Tests/UnitTest1.cs:line 8
+   at System.Reflection.MethodBaseInvoker.InterpretedInvoke_Method(Object obj, IntPtr* args)
+   at System.Reflection.MethodBaseInvoker.InvokeWithNoArgs(Object obj, BindingFlags invokeAttr)
+
+Failed!  - Failed:     2, Passed:     1, Skipped:     1, Total:     4, Duration: 13 ms - sample.Tests.dll (net10.0)

@@ -1,0 +1,53 @@
+  sample.Tests -> /home/dev/sample.Tests/bin/Debug/net10.0/sample.Tests.dll
+Test run for /home/dev/sample.Tests/bin/Debug/net10.0/sample.Tests.dll (.NETCoreApp,Version=v10.0)
+A total of 1 test files matched the specified pattern.
+/home/dev/sample.Tests/bin/Debug/net10.0/sample.Tests.dll
+[xUnit.net 00:00:00.00] xUnit.net VSTest Adapter v3.1.4+50e68bbb8b (64-bit .NET 10.0.11)
+[xUnit.net 00:00:00.03]   Discovering: sample.Tests
+[xUnit.net 00:00:00.05]   Discovered:  sample.Tests
+[xUnit.net 00:00:00.06]   Starting:    sample.Tests
+[xUnit.net 00:00:00.07]     Sample.Tests.InvoiceTests.Skipped [SKIP]
+[xUnit.net 00:00:00.07]       not supported on this host
+[xUnit.net 00:00:00.08]     Sample.Tests.InvoiceTests.MissingCustomer [FAIL]
+[xUnit.net 00:00:00.08]       System.InvalidOperationException : customer record missing
+[xUnit.net 00:00:00.08]       Stack Trace:
+[xUnit.net 00:00:00.08]         /home/dev/sample.Tests/UnitTest1.cs(12,0): at Sample.Tests.InvoiceTests.MissingCustomer()
+[xUnit.net 00:00:00.08]            at System.Reflection.MethodBaseInvoker.InterpretedInvoke_Method(Object obj, IntPtr* args)
+[xUnit.net 00:00:00.08]            at System.Reflection.MethodBaseInvoker.InvokeWithNoArgs(Object obj, BindingFlags invokeAttr)
+[xUnit.net 00:00:00.08]     Sample.Tests.InvoiceTests.AddsTax [FAIL]
+[xUnit.net 00:00:00.08]       Assert.Equal() Failure: Values differ
+[xUnit.net 00:00:00.08]       Expected: 1050
+[xUnit.net 00:00:00.08]       Actual:   1049
+[xUnit.net 00:00:00.08]       Stack Trace:
+[xUnit.net 00:00:00.08]         /home/dev/sample.Tests/UnitTest1.cs(8,0): at Sample.Tests.InvoiceTests.AddsTax()
+[xUnit.net 00:00:00.08]            at System.Reflection.MethodBaseInvoker.InterpretedInvoke_Method(Object obj, IntPtr* args)
+[xUnit.net 00:00:00.08]            at System.Reflection.MethodBaseInvoker.InvokeWithNoArgs(Object obj, BindingFlags invokeAttr)
+[xUnit.net 00:00:00.09]   Finished:    sample.Tests
+  Skipped Sample.Tests.InvoiceTests.Skipped [1 ms]
+  Error Message:
+   not supported on this host
+
+  Failed Sample.Tests.InvoiceTests.MissingCustomer [< 1 ms]
+  Error Message:
+   System.InvalidOperationException : customer record missing
+  Stack Trace:
+     at Sample.Tests.InvoiceTests.MissingCustomer() in /home/dev/sample.Tests/UnitTest1.cs:line 12
+   at System.Reflection.MethodBaseInvoker.InterpretedInvoke_Method(Object obj, IntPtr* args)
+   at System.Reflection.MethodBaseInvoker.InvokeWithNoArgs(Object obj, BindingFlags invokeAttr)
+  Passed Sample.Tests.InvoiceTests.Passes [< 1 ms]
+  Failed Sample.Tests.InvoiceTests.AddsTax [2 ms]
+  Error Message:
+   Assert.Equal() Failure: Values differ
+Expected: 1050
+Actual:   1049
+  Stack Trace:
+     at Sample.Tests.InvoiceTests.AddsTax() in /home/dev/sample.Tests/UnitTest1.cs:line 8
+   at System.Reflection.MethodBaseInvoker.InterpretedInvoke_Method(Object obj, IntPtr* args)
+   at System.Reflection.MethodBaseInvoker.InvokeWithNoArgs(Object obj, BindingFlags invokeAttr)
+
+Test Run Failed.
+Total tests: 4
+     Passed: 1
+     Failed: 2
+    Skipped: 1
+ Total time: 0.3918 Seconds

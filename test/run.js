@@ -1709,6 +1709,23 @@ const CASES = [
       assert.ok(r.failures.every((g) => !/System\.Reflection/.test(g.file ?? "")));
       assert.equal(r.failures[2].line, 152);
     } },
+  { file: "dotnettest_vstest_fail.txt", tool: "dotnet test", n: 2, check: (r) => {
+      // Real default `dotnet test` output through the VSTest xUnit adapter. It used
+      // to become one generic failure whose entire diagnosis was "Error Message:".
+      assert.equal(r.summary, "2 failed, 1 passed, 1 skipped (4)");
+      assert.equal(r.failures[0].title, "InvoiceTests.MissingCustomer");
+      assert.equal(r.failures[0].file, "/home/dev/sample.Tests/UnitTest1.cs");
+      assert.equal(r.failures[0].line, 12);
+      assert.match(r.failures[0].message, /InvalidOperationException : customer record missing/);
+      assert.equal(r.failures[1].title, "InvoiceTests.AddsTax");
+      assert.equal(r.failures[1].line, 8);
+      assert.match(r.failures[1].message, /Expected: 1050\nActual:[^\S\n]+1049/);
+    } },
+  { file: "dotnettest_vstest_detailed_fail.txt", tool: "dotnet test", n: 2, check: (r) => {
+      assert.equal(r.summary, "2 failed, 1 passed, 1 skipped (4)");
+      assert.ok(r.failures.every((f) => f.title !== "InvoiceTests.Skipped"),
+        "detailed verbosity's skipped reason became a failure");
+    } },
   { file: "jest_snapshot_fail.txt", tool: "jest", n: 1, check: (r) => {
       // real jest run of testing-library/jest-dom after inverting one matcher.
       assert.equal(r.summary, "94 failed, 538 passed, 632 total");
@@ -3479,6 +3496,26 @@ try {
   console.log(`  ok   clang's own error count is never quietly contradicted (${checked} logs)`);
   pass++;
 } catch (e) { console.log(`  FAIL clang count\n       ${e.message}`); fail++; }
+
+// VSTest's default/minimal and detailed console modes print the same failures around
+// different amounts of adapter chatter. The extra skipped-test message in detailed
+// mode must not change either the diagnosis or the summary.
+try {
+  const compact = analyse(fx("dotnettest_vstest_fail.txt"));
+  const detailed = analyse(fx("dotnettest_vstest_detailed_fail.txt"));
+  const facts = (r) => r.failures.map((f) =>
+    [f.file, f.line, f.title, f.subject, f.severity, f.message]);
+  assert.equal(detailed.tool, compact.tool);
+  assert.equal(detailed.summary, compact.summary);
+  assert.deepEqual(facts(detailed), facts(compact),
+    "VSTest verbosity changed the failures that were read");
+  const retries = analyse(fx("dotnettest_vstest_fail.txt") + "\n" +
+    fx("dotnettest_vstest_detailed_fail.txt"));
+  assert.equal(retries.summary, undefined,
+    "separate VSTest run tallies were presented as one run's headline");
+  console.log("  ok   dotnet test verbosity changes no extracted facts");
+  pass++;
+} catch (e) { console.log(`  FAIL dotnet test verbosity\n       ${e.message}`); fail++; }
 
 // A machine format is only worth reading if it says the same thing as the human one.
 // Deno's machine reporters carry the same test location and message as its pretty

@@ -568,6 +568,30 @@
       "generic": 8
     }
   },
+  "dotnettest_vstest_detailed_fail.txt": {
+    "winner": "dotnet test",
+    "parser": "dotnet test",
+    "failures": 2,
+    "claimants": [
+      "dotnet test",
+      "generic"
+    ],
+    "shadow": {
+      "generic": 3
+    }
+  },
+  "dotnettest_vstest_fail.txt": {
+    "winner": "dotnet test",
+    "parser": "dotnet test",
+    "failures": 2,
+    "claimants": [
+      "dotnet test",
+      "generic"
+    ],
+    "shadow": {
+      "generic": 2
+    }
+  },
   "esbuild_resolve_fail.txt": {
     "winner": "esbuild",
     "parser": "esbuild",
