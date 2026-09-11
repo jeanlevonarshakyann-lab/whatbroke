@@ -503,7 +503,8 @@ test("a pair of logs never yields more failures than the two apart", () => {
 // Logs whose owner is not go, but whose content is partly go's own output.
 // gotest_json_fail is the same: go test -json is rebuilt into go's verbose log and read
 // by go's own parser, so pairing it with a go log is two go invocations in one stream.
-const GO_UNDER_ANOTHER_OWNER = new Set(["golangci_typecheck_fail.txt", "gotest_json_fail.txt"]);
+const GO_UNDER_ANOTHER_OWNER = new Set(["golangci_typecheck_fail.txt", "gotest_json_fail.txt",
+  "gotest_build_and_tests_json_fail.txt"]);
 
 // Each group is ONE run captured more than once - as text and as JSON - so the fixtures
 // can be compared against each other. Concatenating two from a group is not two runs, it

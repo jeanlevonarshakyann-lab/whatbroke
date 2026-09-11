@@ -25,7 +25,11 @@ function rebuild(s) {
     try { e = JSON.parse(line); } catch { return line; }
     if (typeof e?.Action !== "string") return line;
     events++;
-    return e.Action === "output" && typeof e.Output === "string" ? e.Output.replace(/\r?\n$/, "") : "";
+    // A package that will not compile reports its errors as "build-output", not "output"
+    // - and keeping only "output" lost a compile error without a word, so a stream with a
+    // package that never built read as though every package had.
+    return (e.Action === "output" || e.Action === "build-output") && typeof e.Output === "string"
+      ? e.Output.replace(/\r?\n$/, "") : "";
   });
   return events ? out.join("\n") : null;
 }

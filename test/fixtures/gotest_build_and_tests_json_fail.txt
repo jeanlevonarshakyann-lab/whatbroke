@@ -1,0 +1,51 @@
+{"ImportPath":"gtb/p3 [gtb/p3.test]","Action":"build-output","Output":"# gtb/p3 [gtb/p3.test]\n"}
+{"ImportPath":"gtb/p3 [gtb/p3.test]","Action":"build-output","Output":"p3/x.go:3:23: undefined: undefinedThing\n"}
+{"ImportPath":"gtb/p3 [gtb/p3.test]","Action":"build-fail"}
+{"Time":"2026-09-11T10:05:29.67187+10:00","Action":"start","Package":"gtb/p1"}
+{"Time":"2026-09-11T10:05:29.671983+10:00","Action":"start","Package":"gtb/p3"}
+{"Time":"2026-09-11T10:05:29.672004+10:00","Action":"output","Package":"gtb/p3","Output":"FAIL\tgtb/p3 [build failed]\n","OutputType":"frame"}
+{"Time":"2026-09-11T10:05:29.67202+10:00","Action":"fail","Package":"gtb/p3","Elapsed":0,"FailedBuild":"gtb/p3 [gtb/p3.test]"}
+{"Time":"2026-09-11T10:05:29.835719+10:00","Action":"run","Package":"gtb/p1","Test":"TestAdd"}
+{"Time":"2026-09-11T10:05:29.83603+10:00","Action":"output","Package":"gtb/p1","Test":"TestAdd","Output":"=== RUN   TestAdd\n","OutputType":"frame"}
+{"Time":"2026-09-11T10:05:29.836066+10:00","Action":"output","Package":"gtb/p1","Test":"TestAdd","Output":"    p1_test.go:7: Add(2, 2) = 5, want 4\n","OutputType":"error"}
+{"Time":"2026-09-11T10:05:29.836083+10:00","Action":"output","Package":"gtb/p1","Test":"TestAdd","Output":"--- FAIL: TestAdd (0.00s)\n","OutputType":"frame"}
+{"Time":"2026-09-11T10:05:29.836088+10:00","Action":"fail","Package":"gtb/p1","Test":"TestAdd","Elapsed":0}
+{"Time":"2026-09-11T10:05:29.836095+10:00","Action":"run","Package":"gtb/p1","Test":"TestTable"}
+{"Time":"2026-09-11T10:05:29.836108+10:00","Action":"output","Package":"gtb/p1","Test":"TestTable","Output":"=== RUN   TestTable\n","OutputType":"frame"}
+{"Time":"2026-09-11T10:05:29.836137+10:00","Action":"run","Package":"gtb/p1","Test":"TestTable/zero"}
+{"Time":"2026-09-11T10:05:29.836149+10:00","Action":"output","Package":"gtb/p1","Test":"TestTable/zero","Output":"=== RUN   TestTable/zero\n","OutputType":"frame"}
+{"Time":"2026-09-11T10:05:29.836155+10:00","Action":"output","Package":"gtb/p1","Test":"TestTable/zero","Output":"    p1_test.go:22: Add(0, 0) = 1, want 0\n","OutputType":"error"}
+{"Time":"2026-09-11T10:05:29.836161+10:00","Action":"output","Package":"gtb/p1","Test":"TestTable/zero","Output":"--- FAIL: TestTable/zero (0.00s)\n","OutputType":"frame"}
+{"Time":"2026-09-11T10:05:29.836166+10:00","Action":"fail","Package":"gtb/p1","Test":"TestTable/zero","Elapsed":0}
+{"Time":"2026-09-11T10:05:29.83617+10:00","Action":"run","Package":"gtb/p1","Test":"TestTable/ones"}
+{"Time":"2026-09-11T10:05:29.836173+10:00","Action":"output","Package":"gtb/p1","Test":"TestTable/ones","Output":"=== RUN   TestTable/ones\n","OutputType":"frame"}
+{"Time":"2026-09-11T10:05:29.836177+10:00","Action":"output","Package":"gtb/p1","Test":"TestTable/ones","Output":"--- PASS: TestTable/ones (0.00s)\n","OutputType":"frame"}
+{"Time":"2026-09-11T10:05:29.836181+10:00","Action":"pass","Package":"gtb/p1","Test":"TestTable/ones","Elapsed":0}
+{"Time":"2026-09-11T10:05:29.836184+10:00","Action":"output","Package":"gtb/p1","Test":"TestTable","Output":"--- FAIL: TestTable (0.00s)\n","OutputType":"frame"}
+{"Time":"2026-09-11T10:05:29.836187+10:00","Action":"fail","Package":"gtb/p1","Test":"TestTable","Elapsed":0}
+{"Time":"2026-09-11T10:05:29.83619+10:00","Action":"run","Package":"gtb/p1","Test":"TestParallelA"}
+{"Time":"2026-09-11T10:05:29.836193+10:00","Action":"output","Package":"gtb/p1","Test":"TestParallelA","Output":"=== RUN   TestParallelA\n","OutputType":"frame"}
+{"Time":"2026-09-11T10:05:29.836195+10:00","Action":"output","Package":"gtb/p1","Test":"TestParallelA","Output":"=== PAUSE TestParallelA\n","OutputType":"frame"}
+{"Time":"2026-09-11T10:05:29.836198+10:00","Action":"pause","Package":"gtb/p1","Test":"TestParallelA"}
+{"Time":"2026-09-11T10:05:29.836201+10:00","Action":"run","Package":"gtb/p1","Test":"TestParallelB"}
+{"Time":"2026-09-11T10:05:29.836203+10:00","Action":"output","Package":"gtb/p1","Test":"TestParallelB","Output":"=== RUN   TestParallelB\n","OutputType":"frame"}
+{"Time":"2026-09-11T10:05:29.836206+10:00","Action":"output","Package":"gtb/p1","Test":"TestParallelB","Output":"=== PAUSE TestParallelB\n","OutputType":"frame"}
+{"Time":"2026-09-11T10:05:29.836232+10:00","Action":"pause","Package":"gtb/p1","Test":"TestParallelB"}
+{"Time":"2026-09-11T10:05:29.836235+10:00","Action":"run","Package":"gtb/p1","Test":"TestOK"}
+{"Time":"2026-09-11T10:05:29.836237+10:00","Action":"output","Package":"gtb/p1","Test":"TestOK","Output":"=== RUN   TestOK\n","OutputType":"frame"}
+{"Time":"2026-09-11T10:05:29.836239+10:00","Action":"output","Package":"gtb/p1","Test":"TestOK","Output":"--- PASS: TestOK (0.00s)\n","OutputType":"frame"}
+{"Time":"2026-09-11T10:05:29.836242+10:00","Action":"pass","Package":"gtb/p1","Test":"TestOK","Elapsed":0}
+{"Time":"2026-09-11T10:05:29.836244+10:00","Action":"cont","Package":"gtb/p1","Test":"TestParallelA"}
+{"Time":"2026-09-11T10:05:29.836249+10:00","Action":"output","Package":"gtb/p1","Test":"TestParallelA","Output":"=== CONT  TestParallelA\n","OutputType":"frame"}
+{"Time":"2026-09-11T10:05:29.836252+10:00","Action":"output","Package":"gtb/p1","Test":"TestParallelA","Output":"    p1_test.go:30: A says hello\n"}
+{"Time":"2026-09-11T10:05:29.836254+10:00","Action":"output","Package":"gtb/p1","Test":"TestParallelA","Output":"    p1_test.go:32: Add(1, 0) should be 1\n","OutputType":"error"}
+{"Time":"2026-09-11T10:05:29.836257+10:00","Action":"output","Package":"gtb/p1","Test":"TestParallelA","Output":"--- FAIL: TestParallelA (0.00s)\n","OutputType":"frame"}
+{"Time":"2026-09-11T10:05:29.836259+10:00","Action":"fail","Package":"gtb/p1","Test":"TestParallelA","Elapsed":0}
+{"Time":"2026-09-11T10:05:29.836261+10:00","Action":"cont","Package":"gtb/p1","Test":"TestParallelB"}
+{"Time":"2026-09-11T10:05:29.836263+10:00","Action":"output","Package":"gtb/p1","Test":"TestParallelB","Output":"=== CONT  TestParallelB\n","OutputType":"frame"}
+{"Time":"2026-09-11T10:05:29.836265+10:00","Action":"output","Package":"gtb/p1","Test":"TestParallelB","Output":"    p1_test.go:38: B says hello\n"}
+{"Time":"2026-09-11T10:05:29.836268+10:00","Action":"output","Package":"gtb/p1","Test":"TestParallelB","Output":"--- PASS: TestParallelB (0.00s)\n","OutputType":"frame"}
+{"Time":"2026-09-11T10:05:29.83627+10:00","Action":"pass","Package":"gtb/p1","Test":"TestParallelB","Elapsed":0}
+{"Time":"2026-09-11T10:05:29.836281+10:00","Action":"output","Package":"gtb/p1","Output":"FAIL\n","OutputType":"frame"}
+{"Time":"2026-09-11T10:05:29.836421+10:00","Action":"output","Package":"gtb/p1","Output":"FAIL\tgtb/p1\t0.163s\n","OutputType":"frame"}
+{"Time":"2026-09-11T10:05:29.836429+10:00","Action":"fail","Package":"gtb/p1","Elapsed":0.165}

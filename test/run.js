@@ -1498,6 +1498,21 @@ const CASES = [
         [["TestAdd", 7], ["TestTable/zero", 22], ["TestParallelA", 30], ["TestNilMap", 7]]);
       assert.doesNotMatch(JSON.stringify(r.failures), /"Action"|B says hello/);
     } },
+  // One `go test ./...` over a package that will not compile and another whose tests
+  // fail - an ordinary invocation, not two glued together - captured plainly, with -v and
+  // with -json. Plain and -v reported the compile error and dropped all three tests; -json
+  // did the opposite, because go reports a build as "build-output" events.
+  { file: "gotest_build_and_tests_fail.txt", tool: "go test", n: 4, check: (r) => {
+      assert.deepEqual(r.failures.map((f) => [f.title, f.line]).sort(), [["compile error", 3], ["TestAdd", 7], ["TestTable/zero", 22], ["TestParallelA", 30]].sort());
+      assert.equal(r.summary, "1 compile error, 3 tests failed");
+    } },
+  { file: "gotest_build_and_tests_verbose_fail.txt", tool: "go test", n: 4, check: (r) => {
+      assert.deepEqual(r.failures.map((f) => [f.title, f.line]).sort(), [["compile error", 3], ["TestAdd", 7], ["TestTable/zero", 22], ["TestParallelA", 30]].sort());
+    } },
+  { file: "gotest_build_and_tests_json_fail.txt", tool: "go test", n: 4, check: (r) => {
+      assert.deepEqual(r.failures.map((f) => [f.title, f.line]).sort(), [["compile error", 3], ["TestAdd", 7], ["TestTable/zero", 22], ["TestParallelA", 30]].sort());
+      assert.equal(r.summary, "1 compile error, 3 tests failed");
+    } },
   { file: "rspec_fail.txt", tool: "rspec", n: 2, check: (r) => {
       assert.equal(r.summary, "3 examples, 2 failures");
       assert.equal(r.failures[0].title, "shop totals an invoice");
@@ -3275,6 +3290,19 @@ try {
   console.log("  ok   go test -json says what plain go test says");
   pass++;
 } catch (e) { console.log(`  FAIL go -json vs plain\n       ${e.message}`); fail++; }
+
+// The same build-and-test run in three encodings has to report the same failures. The
+// comparison is of the SET: `go test ./...` runs packages in parallel, so the order their
+// output arrives in is not something one run promises another.
+try {
+  const facts = (r) => r.failures.map((f) => JSON.stringify([f.file, f.line, f.title, f.message])).sort();
+  const plain = facts(analyse(fx("gotest_build_and_tests_fail.txt")));
+  for (const other of ["gotest_build_and_tests_verbose_fail.txt", "gotest_build_and_tests_json_fail.txt"]) {
+    assert.deepEqual(facts(analyse(fx(other))), plain, `${other} reads a different set of failures`);
+  }
+  console.log("  ok   a package that will not build does not hide the tests that failed, in any encoding");
+  pass++;
+} catch (e) { console.log(`  FAIL build and tests\n       ${e.message}`); fail++; }
 
 const cliResults = await (await import("./cli.js")).runCliTests();
 pass += cliResults.pass;

@@ -790,6 +790,40 @@
       "generic": 3
     }
   },
+  "gotest_build_and_tests_fail.txt": {
+    "winner": "go test",
+    "parser": "go",
+    "failures": 4,
+    "claimants": [
+      "go",
+      "generic"
+    ],
+    "shadow": {
+      "generic": 5
+    }
+  },
+  "gotest_build_and_tests_json_fail.txt": {
+    "winner": "go test",
+    "parser": "go test -json",
+    "failures": 4,
+    "claimants": [
+      "go test -json",
+      "generic"
+    ],
+    "shadow": {}
+  },
+  "gotest_build_and_tests_verbose_fail.txt": {
+    "winner": "go test",
+    "parser": "go",
+    "failures": 4,
+    "claimants": [
+      "go",
+      "generic"
+    ],
+    "shadow": {
+      "generic": 5
+    }
+  },
   "gotest_cluster_fail.txt": {
     "winner": "go test",
     "parser": "go",

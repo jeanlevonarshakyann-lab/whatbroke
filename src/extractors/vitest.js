@@ -4,6 +4,15 @@ const FAIL_RE = /^[^\S\n]*FAIL[^\S\n]+(.+?)[^\S\n]+>[^\S\n]+(.+?)[^\S\n]*$/;
 // name after a chevron. Reading only the chevron form meant a file that will not even
 // import - one of the commonest ways a suite fails - fell through to the guess.
 const SUITE_RE = /^[^\S\n]*FAIL[^\S\n]+(.+?)[^\S\n]+\[[^\S\n]*(.+?)[^\S\n]*\][^\S\n]*$/;
+// vitest heads a file that failed to load with the file again in brackets:
+// "FAIL  t/crash.test.js [ t/crash.test.js ]". go writes "FAIL <pkg> [build failed]" for
+// a package that would not compile, and the same shape read that as a vitest suite named
+// after a Go package - one failure more than the log holds whenever the two shared a log.
+// vitest's bracket holds a file; go's holds a phrase.
+function suiteOf(line) {
+  const m = line.match(SUITE_RE);
+  return m && /^\S+\.\w+$/.test(m[2].trim()) ? m : null;
+}
 const LOC_RE = /^[^\S\n]*[❯>][^\S\n]+(.+?):(\d+):(\d+)[^\S\n]*$/;
 const SEP_RE = /^[⎯─-╿\s]*(?:\[\d+\/\d+\])?[⎯─-╿\s]*$/;
 
@@ -12,14 +21,14 @@ export default {
   category: "test",
   commands: ["vitest"],
   detect: (s) => /^[^\S\n]*RUN[^\S\n]+v\d/m.test(s) || /Failed (?:Tests|Suites) \d+/.test(s) ||
-    FAIL_RE.test(s) || SUITE_RE.test(s),
+    FAIL_RE.test(s) || s.split("\n").some((l) => suiteOf(l) !== null),
 
   extract(s) {
     const lines = s.split("\n");
     const failures = [];
 
     for (let i = 0; i < lines.length; i++) {
-      const suite = lines[i].match(SUITE_RE);
+      const suite = suiteOf(lines[i]);
       const m = lines[i].match(FAIL_RE) ?? suite;
       if (!m) continue;
       // In the suite form both captures are the file; the failure is the file itself.

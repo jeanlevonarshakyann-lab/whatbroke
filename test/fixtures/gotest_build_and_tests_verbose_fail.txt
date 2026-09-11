@@ -1,0 +1,29 @@
+# gtb/p3 [gtb/p3.test]
+p3/x.go:3:23: undefined: undefinedThing
+=== RUN   TestAdd
+    p1_test.go:7: Add(2, 2) = 5, want 4
+--- FAIL: TestAdd (0.00s)
+=== RUN   TestTable
+=== RUN   TestTable/zero
+    p1_test.go:22: Add(0, 0) = 1, want 0
+=== RUN   TestTable/ones
+--- FAIL: TestTable (0.00s)
+    --- FAIL: TestTable/zero (0.00s)
+    --- PASS: TestTable/ones (0.00s)
+=== RUN   TestParallelA
+=== PAUSE TestParallelA
+=== RUN   TestParallelB
+=== PAUSE TestParallelB
+=== RUN   TestOK
+--- PASS: TestOK (0.00s)
+=== CONT  TestParallelA
+    p1_test.go:30: A says hello
+    p1_test.go:32: Add(1, 0) should be 1
+--- FAIL: TestParallelA (0.00s)
+=== CONT  TestParallelB
+    p1_test.go:38: B says hello
+--- PASS: TestParallelB (0.00s)
+FAIL
+FAIL	gtb/p1	0.240s
+FAIL	gtb/p3 [build failed]
+FAIL

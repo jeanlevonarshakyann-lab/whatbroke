@@ -127,21 +127,11 @@ export default {
         failures.push({ file: m[2], line: +m[3], col: +m[4], title: "compile error", severity: "error", message: m[5] });
       }
     }
-    if (failures.length) {
-      const n = failures.length;
-      // One log can hold both: `go build ./... ; ./prog` puts compile errors and then a
-      // panic in the same stream, and golangci-lint prints go's own diagnostics above
-      // its tally. Returning here dropped the panic without a word - it is the later and
-      // usually the more interesting of the two, so it is kept rather than lost.
-      const panic = standalonePanic(lines);
-      if (panic) failures.push(panic);
-      const andPanic = panic ? " and a panic" : "";
-      // Vet's own findings are written exactly like a compile error, so a piped log gives
-      // no way to tell them apart. The prefix is the one time it does say.
-      return vetted
-        ? { tool: "go vet", summary: `${n} error${n > 1 ? "s" : ""}${andPanic}`, failures }
-        : { tool: "go build", summary: `${n} compile error${n > 1 ? "s" : ""}${andPanic}`, failures };
-    }
+    // Compile errors used to end the read here. `go test ./...` over a package that will
+    // not compile and another whose tests fail writes both into one stream - that is one
+    // ordinary invocation, not two glued together - and returning here reported "1
+    // compile error" and dropped every test that failed in the packages that did build.
+    const builds = failures.length;
 
     // --- data races ---
     // The detector names the exact line where the racing access happened, which is
@@ -194,8 +184,24 @@ export default {
     // count what we actually report: a parent of subtests prints its own
     // "--- FAIL" line but carries no failure of its own
     const races = failures.filter((f) => f.title === "DATA RACE").length;
-    const tests = failures.length - races;
+    const tests = failures.length - races - builds;
+    if (builds && !tests && !races) {
+      const n = builds;
+      // One log can hold both: `go build ./... ; ./prog` puts compile errors and then a
+      // panic in the same stream, and golangci-lint prints go's own diagnostics above
+      // its tally. Returning early dropped the panic without a word - it is the later and
+      // usually the more interesting of the two, so it is kept rather than lost.
+      const panic = standalonePanic(lines);
+      if (panic) failures.push(panic);
+      const andPanic = panic ? " and a panic" : "";
+      // Vet's own findings are written exactly like a compile error, so a piped log gives
+      // no way to tell them apart. The prefix is the one time it does say.
+      return vetted
+        ? { tool: "go vet", summary: `${n} error${n > 1 ? "s" : ""}${andPanic}`, failures }
+        : { tool: "go build", summary: `${n} compile error${n > 1 ? "s" : ""}${andPanic}`, failures };
+    }
     const bits = [];
+    if (builds) bits.push(`${builds} ${vetted ? "vet" : "compile"} error${builds > 1 ? "s" : ""}`);
     if (tests) bits.push(`${tests} test${tests > 1 ? "s" : ""} failed`);
     if (races) bits.push(`${races} data race${races > 1 ? "s" : ""}`);
     const summary = bits.length ? bits.join(", ") : undefined;

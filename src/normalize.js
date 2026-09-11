@@ -27,7 +27,11 @@ const MAX_LITERAL_CANDIDATES = 4;   // bound the parses a single log can cost
 // These are tool syntax, not relay syntax. In a mixed log, stripping one can make a
 // different parser win and therefore look like an improvement even though it erased a
 // complete Maven or npm invocation.
-const NATIVE_PREFIX = /^(?:\[ERROR\][^\S\n]+|npm (?:error|ERR!)[^\S\n]?)$/;
+// A line that opens a JSON object is a record, and the opening every record shares -
+// `{"Time":"2026-09-11T` in a `go test -json` stream - is its own first key, not a
+// runner's prefix. Stripping it broke every event but the three that carry no
+// timestamp, and seven test failures went with them.
+const NATIVE_PREFIX = /^(?:\{".*|\[ERROR\][^\S\n]+|npm (?:error|ERR!)[^\S\n]?)$/;
 
 const sample = (text) => text.split("\n").filter((l) => l.trim()).slice(0, SAMPLE_LINES);
 

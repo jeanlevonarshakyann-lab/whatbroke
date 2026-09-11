@@ -1,0 +1,14 @@
+# gtb/p3 [gtb/p3.test]
+p3/x.go:3:23: undefined: undefinedThing
+--- FAIL: TestAdd (0.00s)
+    p1_test.go:7: Add(2, 2) = 5, want 4
+--- FAIL: TestTable (0.00s)
+    --- FAIL: TestTable/zero (0.00s)
+        p1_test.go:22: Add(0, 0) = 1, want 0
+--- FAIL: TestParallelA (0.00s)
+    p1_test.go:30: A says hello
+    p1_test.go:32: Add(1, 0) should be 1
+FAIL
+FAIL	gtb/p1	0.432s
+FAIL	gtb/p3 [build failed]
+FAIL
