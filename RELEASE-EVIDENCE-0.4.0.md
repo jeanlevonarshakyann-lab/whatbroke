@@ -40,25 +40,46 @@ Result: 22 failing commands across 11 tool families passed, exceeding the 20-com
 
 ## Follow-up dogfooding
 
-Run on 2026-09-11 on the same macOS host. This pass targeted machine-readable modes
-and current command shapes that were not represented by the original gate.
+Run on 2026-09-11 and continued on 2026-09-12 on the same macOS host. These passes
+targeted machine-readable reporters, alternate console modes, and file-load failures
+that were not represented by the original gate.
 
 | Family and version | Failing command shape | Expected parser | Extracted | Outcome |
 |---|---|---|---:|---|
 | Terraform 1.16.1 | `terraform validate -json` | terraform | 1 | miss fixed in `3859ff7` |
 | Terraform 1.16.1 | `terraform validate -no-color` | terraform | 1 | miss fixed in `3859ff7` |
+| Terraform 1.16.1 | `terraform plan -json` | terraform | 1 | streamed event miss fixed in `307ffab` |
 | Swift 6.2.3 | `swiftc -parseable-output -typecheck bad.swift` | swift | 2 | corrupt result fixed in `3859ff7` |
 | Cargo 1.98.0 | `cargo check --message-format=json` | cargo | 1 | pass |
 | .NET SDK 10.0.400 | `dotnet build --no-restore` | dotnet | 2 | pass |
 | Go 1.27.1 | `go test ./...` | go test | 1 | pass |
 | Go 1.27.1 | `go test -json ./...` | go test | 1 | pass |
+| Deno 2.9.5 | `deno test --reporter=tap` | deno test | 1 | encoded diagnostic fixed in `b2fa7b8` |
+| Deno 2.9.5 | `deno test --reporter=junit` | deno test | 1 | miss fixed in `fb214f6` |
+| Deno 2.9.5 | TAP and JUnit with one ignored test | deno test | 1 | passed counts fixed in `8d72df0`, `98281ce` |
+| Node 22.23.2 | `node --test --test-reporter=tap` | node --test | 1 | pass |
+| Node 22.23.2 | `node --test --test-reporter=spec` | node --test | 1 | miss fixed in `13d9668` |
+| Node 22.23.2 | `node --test --test-reporter=junit` | node --test | 1 | miss fixed in `13d9668` |
+| Node 22.23.2 | `node --test --test-reporter=dot` | node --test | 1 | miss fixed in `13d9668` |
+| Node 22.23.2 | spec reporter, top-level runtime throw | node --test | 1 | exception detail and duplicate fixed in `7a26b40` |
+| Node 22.23.2 | spec reporter, syntax error before tests | node --test | 1 | source diagnosis fixed in `7a26b40` |
+| Node 22.23.2 | JUnit reporter, top-level runtime throw | node --test | 1 | missing file fixed in `7a26b40` |
+| Node 22.23.2 | dot reporter, top-level runtime throw | node --test | 1 | miss fixed in `7a26b40` |
+| .NET SDK 10.0.400 / VSTest 17.14.1 | `dotnet test --no-restore` | dotnet test | 2 | generic fallback fixed in `d6604b6` |
+| .NET SDK 10.0.400 / VSTest 17.14.1 | console verbosity `detailed` | dotnet test | 2 | pass after `d6604b6`; skipped reason ignored |
+| Maven 3.9.16 / Surefire 3.5.5 | `mvn test` and `mvn -q test` | maven | 2 | pass in both console modes |
+| Gradle 9.7.1 | `gradle --no-daemon --console=plain compileJava` | gradle | 2 | pass |
+| Gradle 9.7.1 | `gradle --no-daemon --console=rich compileJava` through a pipe | gradle | 2 | phantom redraw diagnosis fixed in `8af9cf6` |
 
-The Terraform and Swift fixes use paired real captures and assert field-for-field parity
-with their human-readable forms. Before the fix, Terraform JSON was unrecognized,
-boxless Terraform text was lost, and Swift returned one corrupted failure instead of
-two. The full capture gate then exposed a fourth regression: pretty JSON buried in a
-large log was cut mid-document. Structured diagnostic windows now preserve it under
-the same 120 KB cap used for every corpus fixture.
+The Terraform, Swift, Deno, Node, .NET, and Gradle fixes use real sanitized captures. Paired
+formats assert field-for-field parity where the reporters expose the same facts. Before
+these fixes, structured Terraform output could be lost, Swift returned one corrupted
+failure instead of two, Deno's machine reporters lost or miscounted tests, Node's
+alternate reporters were missed or lost file-load causes, and VSTest collapsed two
+named failures into one generic `Error Message:` line. Gradle's cursor-controlled rich
+console could also splice a transient progress row into a filename and invent a third
+compile error. The pair sweep caught both Node reporter blocks and .NET runner formats
+reading across an adjacent tool or retry; those boundaries are now exact.
 
 ## Misses and dispositions
 
@@ -80,19 +101,23 @@ the same 120 KB cap used for every corpus fixture.
 ## Automated gates
 
 - Ten local suites: pass.
-- Detector matrix: 204 fixtures, no ownership changes; the four additions are the
-  paired Terraform and Swift captures above.
-- Ordered mixed-log sweep: 38,126 cross-parser pairs, exact recovery.
-- Interleaving sweep: 20,706 streams, no crash or duplicate diagnosis; 678 same-tool
+- Detector matrix: 223 fixtures, no existing ownership changes; all 19 additions since
+  the prior checkpoint are the real Terraform, Deno, Node, .NET, and Gradle captures above.
+- Ordered mixed-log sweep: 45,792 cross-parser pairs, exact recovery.
+- Interleaving sweep: 24,753 streams, no crash or duplicate diagnosis; 870 same-tool
   ordered pairs retain both runs.
-- Capture sweep: all 204 fixtures survive burial in 3 MB of chatter and a 120 KB cap.
-- Normalization sweep: 2,648 logs across nine CI stamps and four literal prefixes;
-  1,836 stamped bare-carriage-return redraw blobs.
-- Fuzz: 164,016 parser calls, no crash, stall, or warning promoted to failure.
+- Capture sweep: all 223 fixtures survive burial in 3 MB of chatter and a 120 KB cap.
+- Normalization sweep: 2,895 logs across nine CI stamps and four literal prefixes;
+  2,007 stamped bare-carriage-return redraw blobs.
+- Fuzz: 179,292 parser calls, no crash, stall, or warning promoted to failure.
 - Packed-install smoke test: pass; the offline tarball install and both command shims
   parsed a real captured fixture.
-- CI run 34575352400: pass on Linux, macOS, and Windows with Node 18, 20, 22, and 24
-  (12 jobs) for commit `3859ff7`.
+- CI run 34654462577 exposed one pre-existing duplicate only in the Windows
+  interleaving schedule after the VSTest fixtures changed enumeration order. The exact
+  JUnit/spec weave now has a named regression in `ebf4fa6`, and the randomized sweep is
+  sorted so all platforms exercise the same streams.
+- CI run 34655769281: pass on Linux, macOS, and Windows with Node 18, 20, 22, and 24
+  (12 jobs) for commit `8af9cf6`.
 
 The changelog remains Unreleased, and the README Action example stays on the published
 `0.1.1`. The bundled Action also remains pinned to `0.1.1`. Finalizing those values is
