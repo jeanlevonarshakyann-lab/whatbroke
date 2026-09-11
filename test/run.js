@@ -1994,6 +1994,23 @@ try {
     // then redrew over it really did print the error, and losing it would be the one
     // thing this tool must never do.
     "a progress bar first": (t) => "\rProgress:  10%\rProgress:  90%\rProgress: 100%\n" + t,
+    "CSI colour and erase controls": (t) => t.split("\n").map((line) => line
+      ? `\x1b[2K\x1b[31m${line}\x1b[0m`
+      : line).join("\n"),
+    "8-bit CSI colour controls": (t) => t.split("\n").map((line) => line
+      ? `\x9b31m${line}\x9b0m`
+      : line).join("\n"),
+    // Modern terminals make locations clickable with OSC 8. Those controls can wrap
+    // any parser-significant line, and unlike colour they do not use CSI `...m`.
+    "OSC 8 terminal hyperlinks": (t) => t.split("\n").map((line) => line
+      ? `\x1b]8;;https://example.invalid/source\x1b\\${line}\x1b]8;;\x1b\\`
+      : line).join("\n"),
+    "BEL-terminated OSC 8 hyperlinks": (t) => t.split("\n").map((line) => line
+      ? `\x1b]8;;file:///tmp/source\x07${line}\x1b]8;;\x07`
+      : line).join("\n"),
+    "8-bit OSC hyperlinks": (t) => t.split("\n").map((line) => line
+      ? `\x9d8;;file:///tmp/source\x9c${line}\x9d8;;\x9c`
+      : line).join("\n"),
     "no trailing newline": (t) => t.replace(/\n+$/, ""),
     "blank lines first": (t) => "\n\n\n" + t,
   };
@@ -2002,7 +2019,15 @@ try {
   for (const name of readdirSync(join(here, "fixtures"))) {
     const raw = readFileSync(join(here, "fixtures", name), "utf8");
     if (raw.includes("\r\n")) continue;
-    const read = (t) => { try { const r = analyse(t); return r ? `${r.tool}/${r.failures.length}` : "none"; } catch { return "threw"; } };
+    // JSON intentionally omits private source ranges, whose raw offsets may move when
+    // blank/progress lines are added. Every diagnostic field must remain exact, not
+    // merely the parser name and failure count. Wrapper provenance is arrival metadata,
+    // so adding another outer arrival layer may legitimately change it.
+    const read = (t) => { try {
+      const r = analyse(t);
+      return r ? JSON.stringify({ tool: r.tool, summary: r.summary, failures: r.failures,
+        clusters: r.clusters, others: r.others }) : "none";
+    } catch { return "threw"; } };
     const plain = read(raw);
     for (const [what, shape] of Object.entries(shapes)) {
       checked++;

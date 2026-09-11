@@ -196,9 +196,12 @@ test("normalisation is not slow on a large or hostile log", () => {
 //
 // Every one of these cost the corpus its parsers. 11 fixtures through an Actions log,
 // 95 through Jenkins or journald, and 94 through Buildkite --timestamp-lines before
-// the shapes existed and the line-count floors came off. The one fixture that uses a
-// bare CR is the exception noted above, and is excluded for the reason given there.
+// the shapes existed and the line-count floors came off. The Maven fixture with mixed
+// LF and bare-CR progress redraws belongs in this same sweep: collectors stamp its
+// physical lines before the redraws are expanded.
 const CI_STAMPS = {
+  "Azure Pipelines debug": (l) => `##[debug]${l}`,
+  "kubectl logs --prefix": (l) => `[pod/api-7d9/api] ${l}`,
   "GitHub Actions raw log": (l, i) =>
     `2026-09-10T10:16:${String(54 + (i % 5)).padStart(2, "0")}.1234567Z ${l}`,
   "gh run view --log": (l, i) =>
@@ -244,15 +247,23 @@ test("a log that came out of CI reads exactly as it went in", () => {
   const changed = [];
   let checked = 0;
   for (const name of readdirSync(fixtures)) {
-    if (usesBareCr(fx(name))) continue;
     const base = analyse(fx(name));
     if (!base?.failures.length) continue;
     for (const [runner, fn] of Object.entries({ ...CI_STAMPS, ...LITERAL_PREFIXES })) {
+      // A discovered literal still cannot be inferred from redraw fragments inside a
+      // physical line; vetted CI shapes are the case fixed here and cover this fixture.
+      if (usesBareCr(fx(name)) && runner in LITERAL_PREFIXES) continue;
       checked++;
       const got = analyse(wrap(fx(name), fn));
-      const want = `${base.tool}/${base.failures.length}`;
-      const have = got ? `${got.tool}/${got.failures.length}` : "none";
-      if (want !== have) changed.push(`${name} + ${runner}: ${want} -> ${have}`);
+      // Vetted CI shapes must preserve every public fact. An inferred literal prefix
+      // cannot always be distinguished from data (a repeated source directory is the
+      // canonical counterexample), so it retains the older no-loss count guarantee.
+      const sameFailures = runner in CI_STAMPS
+        ? JSON.stringify(got?.failures) === JSON.stringify(base.failures)
+        : got?.failures.length === base.failures.length;
+      if (got?.tool !== base.tool || !sameFailures) {
+        changed.push(`${name} + ${runner}: ${base.tool}/${base.failures.length} -> ${got?.tool ?? "none"}/${got?.failures.length ?? 0}`);
+      }
     }
   }
   assert.ok(checked > 200, `only ${checked} stamped logs exercised`);

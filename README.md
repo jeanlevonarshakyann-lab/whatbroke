@@ -187,7 +187,7 @@ Repositories can use the bundled composite action:
 - uses: jeanlevonarshakyann-lab/whatbroke/.github/actions/whatbroke@main
   with:
     command: npm test
-    version: 0.4.0
+    version: 0.1.1
 ```
 
 Pin `version` to a known npm release for reproducible CI. The action preserves
@@ -319,11 +319,13 @@ requires exact recovery of both logs' standalone failures across all 13,414 appl
 cross-parser fixture pairs, rather than merely checking that the combined count did not
 grow.
 
-CI stamps every line — GitHub Actions prefixes an ISO timestamp, and `gh run view --log`
-puts the job and step in front of that. Every parser here anchors on the start of a line,
-so a stamped log would match nothing at all. whatbroke strips a uniform prefix before
-parsing, and only when nearly every line carries one, so a log that merely mentions a
-timestamp is left exactly as it is. Paste a CI log straight in.
+CI and log viewers stamp every line — GitHub Actions prefixes an ISO timestamp, Azure
+Pipelines uses `##[debug]`, and `kubectl logs --prefix` identifies the source as
+`[pod/name/container]`. Every parser here anchors on the start of a line, so a stamped
+log would match nothing at all. whatbroke strips vetted shapes before parsing; inferred
+prefixes are removed only when nearly every line carries one and parsing improves, so a
+log that merely mentions a timestamp is left exactly as it is. Paste a CI log straight
+in.
 
 Repeated identical diagnostics are shown once. Distinct tests or diagnostics
 that happen to share a file and line are preserved.

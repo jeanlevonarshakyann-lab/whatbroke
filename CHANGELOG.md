@@ -2,6 +2,16 @@
 
 ## Unreleased
 
+- Seven- and eight-bit terminal CSI and OSC controls are stripped, including cursor
+  controls and OSC 8 hyperlinks. Wrapping fixture lines in those controls previously
+  changed every corpus result and made 104 of 200 fixtures lose their recognized parser.
+- Azure Pipelines `##[debug]` and the exact `[pod/name/container]` prefix emitted by
+  `kubectl logs --prefix` are now vetted wrapper shapes. The shapes matched zero lines
+  in the existing corpus before being added, and stamped logs now preserve every public
+  diagnostic field across the corpus.
+- CI stamps are removed from every physical line before bare-carriage-return redraws
+  become logical lines. A Maven log mixing LF-delimited output with progress redraws
+  otherwise fell back to one generic guess under Buildkite timestamps.
 - Reads `jest --json`. Jest sends its human report to stderr and its JSON document to
   stdout, so logs that retained only stdout fell through to one generic guess. Assertion
   failures, skipped/todo/pass tallies and a suite that fails before running tests now
@@ -9,8 +19,6 @@
   keep every run instead of stopping after the first.
 - Retry-duplicated Go, clang and ESLint output no longer inflates the headline after
   identical diagnostics have been collapsed; hidden warnings are counted uniquely too.
-
-## 0.4.0 — 2026-09-10
 
 - Reads flake8, pylint and black. flake8 and pylint were reaching the guess and black
   said nothing at all. pylint reports conventions and refactor suggestions alongside real

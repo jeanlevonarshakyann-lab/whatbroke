@@ -84,6 +84,15 @@ function literalPrefix(text) {
 // every shape added here has to be proven against the whole fixture corpus.
 // Bare ISO CI timestamps are not here - stripCiPrefix in util.js already handles them.
 const SHAPES = [
+  // Azure Pipelines prefixes debug output with a workflow command rather than a
+  // timestamp. It is adjacent to the relayed text: "##[debug]Error: ...".
+  { name: "azure pipelines", re: /^##\[debug\]/ },
+
+  // `kubectl logs --prefix` uses the source pod and container in a bracketed prefix:
+  // "[pod/api-7d9/api] ". The two slash-delimited components and closing bracket keep
+  // this narrower than a guessed bare pod-name prefix.
+  { name: "kubectl logs", re: /^\[pod\/[^/\]\n]+\/[^/\]\n]+\][^\S\n]/ },
+
   // Docker BuildKit: "#12 1.234 " - step number constant, elapsed seconds counting up.
   //
   // Requiring the elapsed column undercounted, because BuildKit's other lines - the
@@ -136,15 +145,15 @@ const stripLiteral = (text, p) =>
 
 const stripShape = (text, re) => text.split("\n").map((l) => l.replace(re, "")).join("\n");
 
-/** A progress renderer uses bare carriage returns inside one physical line. A CI
- * collector consequently stamps the whole blob once, rather than stamping each
- * logical line. Remove that one vetted stamp before CR normalisation expands the blob
- * and makes the prefix appear non-uniform. Literal prefixes remain too ambiguous to
- * infer from a single physical line. */
+/** A progress renderer uses bare carriage returns inside physical lines. A CI collector
+ * stamps each physical line, not every redraw that will later become a logical line.
+ * Remove a uniform vetted shape from all physical lines before CR normalisation expands
+ * the redraws and makes the prefix appear non-uniform. Literal prefixes remain too
+ * ambiguous to infer here. */
 export function stripRedrawnCiPrefix(text) {
   if (!/\r(?!\n)/.test(text)) return text;
   for (const { re } of SHAPES) {
-    if (re.test(text)) return text.replace(re, "");
+    if (uniform(text, re, SHAPE_UNIFORM)) return stripShape(text, re);
   }
   return text;
 }

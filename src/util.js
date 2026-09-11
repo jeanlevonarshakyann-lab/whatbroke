@@ -1,4 +1,8 @@
-export const ANSI = new RegExp("\\x1b\\[[0-9;]*[a-zA-Z]", "g");
+// CSI covers colours plus cursor/erase controls; OSC covers terminal hyperlinks and
+// window-title commands, terminated by BEL or ST. Both have seven- and eight-bit
+// encodings. Keeping this local avoids a runtime dependency while handling the control
+// families emitted by modern terminals and clickable CI log viewers.
+export const ANSI = /(?:\x1b\[|\x9b)[0-?]*[ -/]*[@-~]|(?:\x1b\]|\x9d)[^\x07\x1b\x9c]*(?:\x07|\x1b\\|\x9c)/g;
 export const stripAnsi = (s) => s.replace(ANSI, "");
 
 /** Keep the first copy of each public diagnostic. Extractors that build a numerical
