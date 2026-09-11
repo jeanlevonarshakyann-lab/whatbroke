@@ -1,0 +1,115 @@
+npm notice run jt3@1.0.0 npx
+npm notice run 'jest'
+FAIL ./t.test.js
+  ● Test suite failed to run
+
+    Jest encountered an unexpected token
+
+    Jest failed to parse a file. This happens e.g. when your code or its dependencies use non-standard JavaScript syntax, or when Jest is not configured to support such syntax.
+
+    Out of the box Jest supports Babel, which will be used to transform your files into valid JS based on your Babel configuration.
+
+    By default "node_modules" folder is ignored by transformers.
+
+    Here's what you can do:
+     • If you are trying to use ECMAScript Modules, see https://jestjs.io/docs/ecmascript-modules for how to enable it.
+     • If you are trying to use TypeScript, see https://jestjs.io/docs/getting-started#using-typescript
+     • To have some of your "node_modules" files transformed, you can specify a custom "transformIgnorePatterns" in your config.
+     • If you need a custom transformation specify a "transform" option in your config.
+     • If you simply want to mock your non-JS modules (e.g. binary assets) you can stub them out with the "moduleNameMapper" config option.
+
+    You'll find more details and examples of these config options in the docs:
+    https://jestjs.io/docs/configuration
+    For information about custom transformations, see:
+    https://jestjs.io/docs/code-transformation
+
+    Details:
+
+    SyntaxError: /home/dev/app/t.test.js: Unexpected token (2:0)
+
+      1 | test('x', () => { expect(1).toBe(1) ;
+    > 2 |
+        | ^
+
+      at constructor (/home/dev/.npm/_npx/fe7db2aa255ae4ba/node_modules/@babel/parser/src/parse-error.ts:96:45)
+      at Parser.toParseError [as raise] (/home/dev/.npm/_npx/fe7db2aa255ae4ba/node_modules/@babel/parser/src/tokenizer/index.ts:1504:19)
+      at Parser.raise [as unexpected] (/home/dev/.npm/_npx/fe7db2aa255ae4ba/node_modules/@babel/parser/src/tokenizer/index.ts:1544:16)
+      at Parser.unexpected [as parseExprAtom] (/home/dev/.npm/_npx/fe7db2aa255ae4ba/node_modules/@babel/parser/src/parser/expression.ts:1385:22)
+      at Parser.parseExprAtom [as parseExprSubscripts] (/home/dev/.npm/_npx/fe7db2aa255ae4ba/node_modules/@babel/parser/src/parser/expression.ts:742:23)
+      at Parser.parseExprSubscripts [as parseUpdate] (/home/dev/.npm/_npx/fe7db2aa255ae4ba/node_modules/@babel/parser/src/parser/expression.ts:721:21)
+      at Parser.parseUpdate [as parseMaybeUnary] (/home/dev/.npm/_npx/fe7db2aa255ae4ba/node_modules/@babel/parser/src/parser/expression.ts:683:23)
+      at Parser.parseMaybeUnary [as parseMaybeUnaryOrPrivate] (/home/dev/.npm/_npx/fe7db2aa255ae4ba/node_modules/@babel/parser/src/parser/expression.ts:417:14)
+      at Parser.parseMaybeUnaryOrPrivate [as parseExprOps] (/home/dev/.npm/_npx/fe7db2aa255ae4ba/node_modules/@babel/parser/src/parser/expression.ts:429:23)
+      at Parser.parseExprOps [as parseMaybeConditional] (/home/dev/.npm/_npx/fe7db2aa255ae4ba/node_modules/@babel/parser/src/parser/expression.ts:384:23)
+      at Parser.parseMaybeConditional [as parseMaybeAssign] (/home/dev/.npm/_npx/fe7db2aa255ae4ba/node_modules/@babel/parser/src/parser/expression.ts:301:21)
+      at Parser.parseMaybeAssign [as parseExpressionBase] (/home/dev/.npm/_npx/fe7db2aa255ae4ba/node_modules/@babel/parser/src/parser/expression.ts:226:23)
+      at parseExpressionBase (/home/dev/.npm/_npx/fe7db2aa255ae4ba/node_modules/@babel/parser/src/parser/expression.ts:217:39)
+      at Parser.callback [as allowInAnd] (/home/dev/.npm/_npx/fe7db2aa255ae4ba/node_modules/@babel/parser/src/parser/expression.ts:3222:16)
+      at Parser.allowInAnd [as parseExpression] (/home/dev/.npm/_npx/fe7db2aa255ae4ba/node_modules/@babel/parser/src/parser/expression.ts:217:17)
+      at Parser.parseExpression [as parseStatementContent] (/home/dev/.npm/_npx/fe7db2aa255ae4ba/node_modules/@babel/parser/src/parser/statement.ts:688:23)
+      at Parser.parseStatementContent [as parseStatementLike] (/home/dev/.npm/_npx/fe7db2aa255ae4ba/node_modules/@babel/parser/src/parser/statement.ts:482:17)
+      at Parser.parseStatementLike [as parseStatementListItem] (/home/dev/.npm/_npx/fe7db2aa255ae4ba/node_modules/@babel/parser/src/parser/statement.ts:431:17)
+      at Parser.parseStatementListItem [as parseBlockOrModuleBlockBody] (/home/dev/.npm/_npx/fe7db2aa255ae4ba/node_modules/@babel/parser/src/parser/statement.ts:1444:16)
+      at Parser.parseBlockOrModuleBlockBody [as parseBlockBody] (/home/dev/.npm/_npx/fe7db2aa255ae4ba/node_modules/@babel/parser/src/parser/statement.ts:1417:10)
+      at Parser.parseBlockBody [as parseBlock] (/home/dev/.npm/_npx/fe7db2aa255ae4ba/node_modules/@babel/parser/src/parser/statement.ts:1385:10)
+      at Parser.parseBlock [as parseFunctionBody] (/home/dev/.npm/_npx/fe7db2aa255ae4ba/node_modules/@babel/parser/src/parser/expression.ts:2651:24)
+      at Parser.parseFunctionBody [as parseArrowExpression] (/home/dev/.npm/_npx/fe7db2aa255ae4ba/node_modules/@babel/parser/src/parser/expression.ts:2592:10)
+      at Parser.parseArrowExpression [as parseParenAndDistinguishExpression] (/home/dev/.npm/_npx/fe7db2aa255ae4ba/node_modules/@babel/parser/src/parser/expression.ts:1877:12)
+      at Parser.parseParenAndDistinguishExpression [as parseExprAtom] (/home/dev/.npm/_npx/fe7db2aa255ae4ba/node_modules/@babel/parser/src/parser/expression.ts:1197:21)
+      at Parser.parseExprAtom [as parseExprSubscripts] (/home/dev/.npm/_npx/fe7db2aa255ae4ba/node_modules/@babel/parser/src/parser/expression.ts:742:23)
+      at Parser.parseExprSubscripts [as parseUpdate] (/home/dev/.npm/_npx/fe7db2aa255ae4ba/node_modules/@babel/parser/src/parser/expression.ts:721:21)
+      at Parser.parseUpdate [as parseMaybeUnary] (/home/dev/.npm/_npx/fe7db2aa255ae4ba/node_modules/@babel/parser/src/parser/expression.ts:683:23)
+      at Parser.parseMaybeUnary [as parseMaybeUnaryOrPrivate] (/home/dev/.npm/_npx/fe7db2aa255ae4ba/node_modules/@babel/parser/src/parser/expression.ts:417:14)
+      at Parser.parseMaybeUnaryOrPrivate [as parseExprOps] (/home/dev/.npm/_npx/fe7db2aa255ae4ba/node_modules/@babel/parser/src/parser/expression.ts:429:23)
+      at Parser.parseExprOps [as parseMaybeConditional] (/home/dev/.npm/_npx/fe7db2aa255ae4ba/node_modules/@babel/parser/src/parser/expression.ts:384:23)
+      at Parser.parseMaybeConditional [as parseMaybeAssign] (/home/dev/.npm/_npx/fe7db2aa255ae4ba/node_modules/@babel/parser/src/parser/expression.ts:301:21)
+      at parseMaybeAssign (/home/dev/.npm/_npx/fe7db2aa255ae4ba/node_modules/@babel/parser/src/parser/expression.ts:257:12)
+      at Parser.callback [as allowInAnd] (/home/dev/.npm/_npx/fe7db2aa255ae4ba/node_modules/@babel/parser/src/parser/expression.ts:3227:12)
+      at Parser.allowInAnd [as parseMaybeAssignAllowIn] (/home/dev/.npm/_npx/fe7db2aa255ae4ba/node_modules/@babel/parser/src/parser/expression.ts:256:17)
+      at Parser.parseMaybeAssignAllowIn [as parseMaybeAssignAllowInOrVoidPattern] (/home/dev/.npm/_npx/fe7db2aa255ae4ba/node_modules/@babel/parser/src/parser/expression.ts:3341:17)
+      at Parser.parseMaybeAssignAllowInOrVoidPattern [as parseExprListItem] (/home/dev/.npm/_npx/fe7db2aa255ae4ba/node_modules/@babel/parser/src/parser/expression.ts:2823:18)
+      at Parser.parseExprListItem [as parseCallExpressionArguments] (/home/dev/.npm/_npx/fe7db2aa255ae4ba/node_modules/@babel/parser/src/parser/expression.ts:1069:14)
+      at Parser.parseCallExpressionArguments [as parseCoverCallAndAsyncArrowHead] (/home/dev/.npm/_npx/fe7db2aa255ae4ba/node_modules/@babel/parser/src/parser/expression.ts:949:29)
+      at Parser.parseCoverCallAndAsyncArrowHead [as parseSubscript] (/home/dev/.npm/_npx/fe7db2aa255ae4ba/node_modules/@babel/parser/src/parser/expression.ts:822:19)
+      at Parser.parseSubscript [as parseSubscripts] (/home/dev/.npm/_npx/fe7db2aa255ae4ba/node_modules/@babel/parser/src/parser/expression.ts:781:19)
+      at Parser.parseSubscripts [as parseExprSubscripts] (/home/dev/.npm/_npx/fe7db2aa255ae4ba/node_modules/@babel/parser/src/parser/expression.ts:748:17)
+      at Parser.parseExprSubscripts [as parseUpdate] (/home/dev/.npm/_npx/fe7db2aa255ae4ba/node_modules/@babel/parser/src/parser/expression.ts:721:21)
+      at Parser.parseUpdate [as parseMaybeUnary] (/home/dev/.npm/_npx/fe7db2aa255ae4ba/node_modules/@babel/parser/src/parser/expression.ts:683:23)
+      at Parser.parseMaybeUnary [as parseMaybeUnaryOrPrivate] (/home/dev/.npm/_npx/fe7db2aa255ae4ba/node_modules/@babel/parser/src/parser/expression.ts:417:14)
+      at Parser.parseMaybeUnaryOrPrivate [as parseExprOps] (/home/dev/.npm/_npx/fe7db2aa255ae4ba/node_modules/@babel/parser/src/parser/expression.ts:429:23)
+      at Parser.parseExprOps [as parseMaybeConditional] (/home/dev/.npm/_npx/fe7db2aa255ae4ba/node_modules/@babel/parser/src/parser/expression.ts:384:23)
+      at Parser.parseMaybeConditional [as parseMaybeAssign] (/home/dev/.npm/_npx/fe7db2aa255ae4ba/node_modules/@babel/parser/src/parser/expression.ts:301:21)
+      at Parser.parseMaybeAssign [as parseExpressionBase] (/home/dev/.npm/_npx/fe7db2aa255ae4ba/node_modules/@babel/parser/src/parser/expression.ts:226:23)
+      at parseExpressionBase (/home/dev/.npm/_npx/fe7db2aa255ae4ba/node_modules/@babel/parser/src/parser/expression.ts:217:39)
+      at Parser.callback [as allowInAnd] (/home/dev/.npm/_npx/fe7db2aa255ae4ba/node_modules/@babel/parser/src/parser/expression.ts:3222:16)
+      at Parser.allowInAnd [as parseExpression] (/home/dev/.npm/_npx/fe7db2aa255ae4ba/node_modules/@babel/parser/src/parser/expression.ts:217:17)
+      at Parser.parseExpression [as parseStatementContent] (/home/dev/.npm/_npx/fe7db2aa255ae4ba/node_modules/@babel/parser/src/parser/statement.ts:688:23)
+      at Parser.parseStatementContent [as parseStatementLike] (/home/dev/.npm/_npx/fe7db2aa255ae4ba/node_modules/@babel/parser/src/parser/statement.ts:482:17)
+      at Parser.parseStatementLike [as parseModuleItem] (/home/dev/.npm/_npx/fe7db2aa255ae4ba/node_modules/@babel/parser/src/parser/statement.ts:419:17)
+      at Parser.parseModuleItem [as parseBlockOrModuleBlockBody] (/home/dev/.npm/_npx/fe7db2aa255ae4ba/node_modules/@babel/parser/src/parser/statement.ts:1443:16)
+      at Parser.parseBlockOrModuleBlockBody [as parseBlockBody] (/home/dev/.npm/_npx/fe7db2aa255ae4ba/node_modules/@babel/parser/src/parser/statement.ts:1417:10)
+      at Parser.parseBlockBody [as parseProgram] (/home/dev/.npm/_npx/fe7db2aa255ae4ba/node_modules/@babel/parser/src/parser/statement.ts:229:10)
+      at Parser.parseProgram [as parseTopLevel] (/home/dev/.npm/_npx/fe7db2aa255ae4ba/node_modules/@babel/parser/src/parser/statement.ts:203:25)
+      at Parser.parseTopLevel [as parse] (/home/dev/.npm/_npx/fe7db2aa255ae4ba/node_modules/@babel/parser/src/parser/index.ts:83:25)
+      at parse (/home/dev/.npm/_npx/fe7db2aa255ae4ba/node_modules/@babel/parser/src/index.ts:86:38)
+      at parser (/home/dev/.npm/_npx/fe7db2aa255ae4ba/node_modules/@babel/core/src/parser/index.ts:29:19)
+          at parser.next (<anonymous>)
+      at normalizeFile (/home/dev/.npm/_npx/fe7db2aa255ae4ba/node_modules/@babel/core/src/transformation/normalize-file.ts:49:24)
+          at normalizeFile.next (<anonymous>)
+      at run (/home/dev/.npm/_npx/fe7db2aa255ae4ba/node_modules/@babel/core/src/transformation/index.ts:41:36)
+          at run.next (<anonymous>)
+      at transform (/home/dev/.npm/_npx/fe7db2aa255ae4ba/node_modules/@babel/core/src/transform.ts:29:20)
+          at transform.next (<anonymous>)
+      at evaluateSync (/home/dev/.npm/_npx/fe7db2aa255ae4ba/node_modules/gensync/index.js:251:28)
+      at sync (/home/dev/.npm/_npx/fe7db2aa255ae4ba/node_modules/gensync/index.js:89:14)
+      at fn (/home/dev/.npm/_npx/fe7db2aa255ae4ba/node_modules/@babel/core/src/errors/rewrite-stack-trace.ts:99:14)
+      at transformSync (/home/dev/.npm/_npx/fe7db2aa255ae4ba/node_modules/@babel/core/src/transform.ts:66:52)
+      at ScriptTransformer.transformSource (/home/dev/.npm/_npx/fe7db2aa255ae4ba/node_modules/@jest/transform/build/ScriptTransformer.js:545:31)
+      at ScriptTransformer._transformAndBuildScript (/home/dev/.npm/_npx/fe7db2aa255ae4ba/node_modules/@jest/transform/build/ScriptTransformer.js:674:40)
+      at ScriptTransformer.transform (/home/dev/.npm/_npx/fe7db2aa255ae4ba/node_modules/@jest/transform/build/ScriptTransformer.js:726:19)
+
+Test Suites: 1 failed, 1 total
+Tests:       0 total
+Snapshots:   0 total
+Time:        0.245 s
+Ran all test suites.

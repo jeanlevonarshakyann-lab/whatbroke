@@ -1005,6 +1005,40 @@
       "generic": 2
     }
   },
+  "jest_json_assertions_fail.txt": {
+    "winner": "jest",
+    "parser": "jest --json",
+    "failures": 3,
+    "claimants": [
+      "jest --json",
+      "generic"
+    ],
+    "shadow": {
+      "generic": 1
+    }
+  },
+  "jest_json_statuses_fail.txt": {
+    "winner": "jest",
+    "parser": "jest --json",
+    "failures": 1,
+    "claimants": [
+      "jest --json",
+      "generic"
+    ],
+    "shadow": {
+      "generic": 1
+    }
+  },
+  "jest_json_suite_fail.txt": {
+    "winner": "jest",
+    "parser": "jest --json",
+    "failures": 1,
+    "claimants": [
+      "jest --json",
+      "generic"
+    ],
+    "shadow": {}
+  },
   "jest_snapshot_fail.txt": {
     "winner": "jest",
     "parser": "jest",
@@ -1020,6 +1054,34 @@
     }
   },
   "jest_suite_fail.txt": {
+    "winner": "jest",
+    "parser": "jest",
+    "failures": 1,
+    "claimants": [
+      "jest",
+      "go",
+      "node",
+      "generic"
+    ],
+    "shadow": {
+      "generic": 1
+    }
+  },
+  "jest_text_statuses_fail.txt": {
+    "winner": "jest",
+    "parser": "jest",
+    "failures": 1,
+    "claimants": [
+      "jest",
+      "go",
+      "node",
+      "generic"
+    ],
+    "shadow": {
+      "generic": 2
+    }
+  },
+  "jest_text_suite_same_fail.txt": {
     "winner": "jest",
     "parser": "jest",
     "failures": 1,

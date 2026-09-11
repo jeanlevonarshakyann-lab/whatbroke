@@ -1,0 +1,28 @@
+npm notice run jt2@1.0.0 npx
+npm notice run 'jest'
+FAIL ./t.test.js
+  ✕ fails (2 ms)
+  ✓ passes
+  ○ skipped skipped
+  ✎ todo later
+
+  ● fails
+
+    expect(received).toBe(expected) // Object.is equality
+
+    Expected: 2
+    Received: 1
+
+    > 1 | test('fails', () => { expect(1).toBe(2); });
+        |                                 ^
+      2 | test('passes', () => { expect(1).toBe(1); });
+      3 | test.skip('skipped', () => { expect(1).toBe(2); });
+      4 | test.todo('later');
+
+      at Object.toBe (t.test.js:1:33)
+
+Test Suites: 1 failed, 1 total
+Tests:       1 failed, 1 skipped, 1 todo, 1 passed, 4 total
+Snapshots:   0 total
+Time:        0.169 s
+Ran all test suites.

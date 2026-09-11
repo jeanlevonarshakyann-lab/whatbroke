@@ -2,6 +2,11 @@
 
 ## Unreleased
 
+- Reads `jest --json`. Jest sends its human report to stderr and its JSON document to
+  stdout, so logs that retained only stdout fell through to one generic guess. Assertion
+  failures, skipped/todo/pass tallies and a suite that fails before running tests now
+  agree with paired captures of Jest's human output. Several JSON documents in one job
+  keep every run instead of stopping after the first.
 - Retry-duplicated Go, clang and ESLint output no longer inflates the headline after
   identical diagnostics have been collapsed; hidden warnings are counted uniquely too.
 

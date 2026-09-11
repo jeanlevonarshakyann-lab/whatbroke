@@ -209,7 +209,7 @@ them.
 | **node --test** | test name, `file:line`, and the assertion out of TAP's YAML block |
 | **Node stack traces** | the error, the caret, your frames; `node:internal` hidden |
 | **Playwright** | the test name, the line that actually threw, and the offending expression — not the paths to its artifact files |
-| **jest** | test name, `file:line`, the matcher, expected vs received |
+| **jest / jest --json** | test name, `file:line`, the matcher, expected vs received; the machine report is read as the same Jest failures when stdout is all the log retained |
 | **tap** | test name, `file:line:col` from its own `at:` block, and the values out of its diff — not the file-level roll-up, which counts failures rather than being one |
 | **jasmine** | spec name, the assertion, and the frame in your spec — its own frames name no file at all, so they cannot be mistaken for yours |
 | **ava** | test name, the assertion and the value it is about — the diff for a comparison, the prose for anything else; a thrown class names the failure without pretending to be its identity |

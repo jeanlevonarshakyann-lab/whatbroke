@@ -519,6 +519,8 @@ const GO_UNDER_ANOTHER_OWNER = new Set(["golangci_typecheck_fail.txt", "gotest_j
 const SAME_RUN_TWO_ENCODINGS = [
   new Set(["cargo_json_fail.txt", "cargo_plain_same_fail.txt"]),
   new Set(["eslint_json_fail.txt", "eslint_json_runner_fail.txt", "eslint_text_same_fail.txt"]),
+  new Set(["jest_json_statuses_fail.txt", "jest_text_statuses_fail.txt"]),
+  new Set(["jest_json_suite_fail.txt", "jest_text_suite_same_fail.txt"]),
 ];
 const sameRun = (a, b) => SAME_RUN_TWO_ENCODINGS.some((group) => group.has(a) && group.has(b));
 

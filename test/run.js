@@ -1131,6 +1131,39 @@ const CASES = [
       assert.match(f.message, /Received: 1049/);
       assert.equal(r.failures[1].title, "expired token");
     } },
+  // Captured from three real Jest failures with `--json`. Jest writes its normal
+  // report to stderr and this document to stdout, so keeping only stdout used to turn
+  // three named failures into one generic guess over the JSON plumbing.
+  { file: "jest_json_assertions_fail.txt", tool: "jest", n: 3, check: (r) => {
+      assert.equal(r.summary, "3 failed, 1 passed, 4 total");
+      assert.deepEqual(r.failures.map((f) => f.title), ["adds", "objects", "throws"]);
+      assert.deepEqual(r.failures.map((f) => f.line), [1, 2, 3]);
+      assert.match(r.failures[0].message, /Expected: 3/);
+      assert.match(r.failures[1].message, /deep equality/);
+      assert.match(r.failures[2].message, /undefinedFn is not defined/);
+    } },
+  // One run with every non-failing status makes the tally order and wording
+  // observable, and was captured both as text and JSON for the parity gate below.
+  { file: "jest_json_statuses_fail.txt", tool: "jest", n: 1, check: (r) => {
+      assert.equal(r.summary, "1 failed, 1 skipped, 1 todo, 1 passed, 4 total");
+      assert.equal(r.failures[0].file, "t.test.js");
+      assert.equal(r.failures[0].line, 1);
+      assert.equal(r.failures[0].col, 33);
+    } },
+  { file: "jest_text_statuses_fail.txt", tool: "jest", n: 1, check: (r) => {
+      assert.equal(r.failures[0].title, "fails");
+    } },
+  // A suite-load error has no test and no user stack frame. The machine report's
+  // absolute test-result name is the only location it provides.
+  { file: "jest_json_suite_fail.txt", tool: "jest", n: 1, check: (r) => {
+      assert.equal(r.summary, "1 failed, 1 total (no tests ran)");
+      assert.equal(r.failures[0].file, "/home/dev/app/t.test.js");
+      assert.equal(r.failures[0].title, "Test suite failed to run");
+      assert.match(r.failures[0].message, /Jest encountered an unexpected token/);
+    } },
+  { file: "jest_text_suite_same_fail.txt", tool: "jest", n: 1, check: (r) => {
+      assert.equal(r.failures[0].title, "Test suite failed to run");
+    } },
   { file: "gotest_fail.txt", tool: "go test", n: 3, check: (r) => {
       assert.match(r.summary, /3 tests failed/);
       assert.equal(r.failures[0].title, "TestInvoiceTotal");
@@ -3280,6 +3313,39 @@ try {
   console.log("  ok   eslint -f json says what the table eslint printed says");
   pass++;
 } catch (e) { console.log(`  FAIL eslint json vs table\n       ${e.message}`); fail++; }
+
+// Jest sends the human report to stderr and its JSON document to stdout. These paired
+// captures are the same invocations, not lookalike hand-written examples: the machine
+// path must preserve the assertion facts, status tally and suite-load diagnosis.
+try {
+  const json = analyse(fx("jest_json_statuses_fail.txt"));
+  const text = analyse(fx("jest_text_statuses_fail.txt"));
+  const facts = (r) => r.failures.map((f) =>
+    [f.file, f.line, f.col, f.title, f.severity, f.message]);
+  assert.equal(json.tool, text.tool);
+  assert.equal(json.summary, text.summary);
+  assert.deepEqual(facts(json), facts(text),
+    "--json and the human report disagree about the failed assertion");
+
+  const jsonSuite = analyse(fx("jest_json_suite_fail.txt"));
+  const textSuite = analyse(fx("jest_text_suite_same_fail.txt"));
+  assert.equal(jsonSuite.summary, textSuite.summary);
+  assert.equal(jsonSuite.failures[0].title, textSuite.failures[0].title);
+  assert.equal(jsonSuite.failures[0].message, textSuite.failures[0].message);
+  assert.ok(jsonSuite.failures[0].file.endsWith(`/${textSuite.failures[0].file}`),
+    "the absolute JSON name and relative terminal name do not identify the same file");
+
+  const several = analyse(fx("jest_json_statuses_fail.txt") + "\n" +
+    fx("jest_json_assertions_fail.txt"));
+  assert.equal(several.failures.length, 4, "a second Jest JSON document was ignored");
+  assert.equal(several.summary, undefined,
+    "separate invocation tallies must not be presented as one run's tally");
+
+  const notJest = analyse('{"success":false,"testResults":[]}');
+  assert.notEqual(notJest?.tool, "jest", "an arbitrary object with testResults was claimed as Jest");
+  console.log("  ok   jest --json says what the human report says");
+  pass++;
+} catch (e) { console.log(`  FAIL jest json vs text\n       ${e.message}`); fail++; }
 
 // The same Go run captured plainly and with -v has to say the same thing - file, line,
 // test and message for every failure. Verbose mode is where a test's output sits above
