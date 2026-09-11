@@ -547,10 +547,15 @@ Because you already know what's wrong the instant you can see it. The problem wa
 
 ## When whatbroke runs the command itself
 
-`whatbroke vitest` tells whatbroke which tool is about to fail, and that is evidence no
-line of the log can contradict. Each parser declares the commands that imply it, and a
-named tool is tried first — including through a wrapper, so `npx vitest run` and
-`./node_modules/.bin/vitest` both count.
+`whatbroke vitest` tells whatbroke which leaf tool is about to fail, and that is strong
+evidence when two parsers recognise the same log. Each parser declares the commands that
+imply it, and a named leaf tool is tried first — including through a path or launcher, so
+`npx vitest run` and `./node_modules/.bin/vitest` both count.
+
+Script runners are deliberately different. `npm test`, `pnpm test`, and `yarn build`
+name a parent process whose child produced the useful Jest, Vitest, Vite, or other
+diagnostic. Their lifecycle error remains in the result, but cannot replace the child's
+actionable failure as the primary diagnosis.
 
 It only reorders. The parser still has to recognise the output and find something, so
 naming a tool that did not produce the log changes nothing, and piped logs — which carry

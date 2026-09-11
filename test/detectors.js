@@ -148,6 +148,11 @@ test("every parser declares what kind of tool it is", () => {
       assert.equal(ex.name, "generic", `${ex.name} is a known tool; "unknown" is the fallback's category`);
     }
     assert.ok(Array.isArray(ex.commands), `${ex.name}: no commands declared`);
+    if (ex.commandHints !== undefined) {
+      assert.ok(Array.isArray(ex.commandHints), `${ex.name}: commandHints must be an array`);
+      assert.ok(ex.commandHints.every((command) => ex.commands.includes(command)),
+        `${ex.name}: commandHints must be drawn from commands`);
+    }
     if (ex.name !== "generic") assert.ok(ex.commands.length > 0, `${ex.name}: declares no command that implies it`);
   }
 });
@@ -235,9 +240,9 @@ test("every failure carries a category", () => {
   }
 });
 
-// The command is evidence no log line can contradict: someone typing `whatbroke vitest`
-// is saying which tool is about to fail. It only reorders, so it can improve an
-// ambiguous log without being able to damage an unambiguous one.
+// A leaf command is strong evidence: someone typing `whatbroke vitest` is saying which
+// tool is about to fail. It only reorders, so it can improve an ambiguous log without
+// being able to damage an unambiguous one.
 test("the command that was run breaks a tie between two parsers", () => {
   const both = readFileSync(join(fixtures, "jest_fail.txt"), "utf8") + "\n" +
                readFileSync(join(fixtures, "vitest_fail.txt"), "utf8");
@@ -247,6 +252,28 @@ test("the command that was run breaks a tie between two parsers", () => {
   // the tool's name is rarely the bare first argument
   assert.equal(analyse(both, { command: ["npx", "vitest", "run"] }).tool, "vitest");
   assert.equal(analyse(both, { command: ["./node_modules/.bin/vitest"] }).tool, "vitest");
+  assert.equal(analyse(both, { command: ["VITEST.CMD"] }).tool, "vitest",
+    "Windows command names are case-insensitive");
+  assert.equal(analyse(both, { command: ["vitest", "jest"] }).tool, "vitest",
+    "a later tool-like argument cannot outrank the executable");
+});
+
+test("a launcher command cannot outrank the failure produced by its child", () => {
+  const cases = [
+    ["jest_fail.txt", "npm_fail.txt", ["npm", "test"], "jest", "npm"],
+    ["vitest_fail.txt", "pnpm_script_fail.txt", ["pnpm", "test"], "vitest", "pnpm"],
+    ["vite_resolve_fail.txt", "yarn_fail.txt", ["yarn", "build"], "vite", "yarn"],
+    ["pytest_fail.txt", "pip_resolve_fail.txt", ["poetry", "run", "pytest"], "pytest", "pip"],
+    ["pytest_fail.txt", "pip_resolve_fail.txt", ["uv", "run", "pytest"], "pytest", "pip"],
+  ];
+  for (const [child, launcher, command, wanted, secondary] of cases) {
+    const raw = readFileSync(join(fixtures, child), "utf8") + "\n" +
+      readFileSync(join(fixtures, launcher), "utf8");
+    const result = analyse(raw, { command });
+    assert.equal(result.tool, wanted, `${command.join(" ")} promoted the launcher over ${wanted}`);
+    assert.ok(result.others.some((other) => other.tool === secondary),
+      `${secondary}'s own diagnostic should still be retained`);
+  }
 });
 
 test("naming the wrong tool cannot damage a clear log", () => {

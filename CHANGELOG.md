@@ -2,6 +2,10 @@
 
 ## Unreleased
 
+- Launcher command hints no longer promote npm, pnpm, Yarn, Poetry, or uv above the
+  actionable failure from the child they ran. Direct leaf-tool hints respect argument
+  order and Windows' case-insensitive executable names, while the launcher's own
+  diagnostic remains attributed as secondary output.
 - Seven- and eight-bit terminal CSI and OSC controls are stripped, including cursor
   controls and OSC 8 hyperlinks. Wrapping fixture lines in those controls previously
   changed every corpus result and made 104 of 200 fixtures lose their recognized parser.

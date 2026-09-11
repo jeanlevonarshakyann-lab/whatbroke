@@ -48,6 +48,8 @@ export default {
   name: "pip",
   category: "package",
   commands: ["pip", "pip3", "uv", "poetry"],
+  // uv and Poetry may merely launch the tool that owns the useful diagnostic.
+  commandHints: ["pip", "pip3"],
 
   // `ERROR: ` alone belongs to half a dozen tools, so it has to be corroborated by
   // something only pip prints.

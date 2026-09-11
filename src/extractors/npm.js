@@ -19,6 +19,7 @@ export default {
   name: "npm",
   category: "package",
   commands: ["npm", "pnpm", "yarn"],
+  commandHints: [],
   detect: (s) => /^npm (?:error|ERR!)\s/m.test(s),
 
   extract(s) {

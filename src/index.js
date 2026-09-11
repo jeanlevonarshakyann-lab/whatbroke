@@ -220,17 +220,25 @@ function dropEchoes(mine, others) {
   return kept;
 }
 
-/** When whatbroke launches the command itself it knows what was run, and that is
- *  evidence no log line can contradict: someone typing `whatbroke pytest tests/` is
- *  telling us which tool is about to fail. It only reorders - the parser still has to
- *  claim the text and find something - so a log that turns out to be from another tool
- *  is read correctly anyway. Piped logs carry no command and are entirely unaffected. */
+/** When whatbroke launches a leaf tool itself, its name is useful evidence for breaking
+ *  ties: `whatbroke pytest tests/` says which parser should lead. A script launcher is
+ *  different. `npm test`, `pnpm test`, and `yarn build` name the parent process while
+ *  Jest, Vitest, Vite, or another child prints the actionable failure. Promoting the
+ *  launcher would bury that cause beneath a generic non-zero-exit message.
+ *
+ *  Reordering still only affects parsers that both claim and extract from the log.
+ *  Piped logs carry no command and are entirely unaffected. */
 function ordered(command) {
   if (!command?.length) return EXTRACTORS;
   // `npx jest`, `poetry run pytest`, `./node_modules/.bin/eslint` - the tool's name is
   // somewhere in the argv, not necessarily first, and not necessarily bare.
-  const words = new Set(command.flatMap((a) => String(a).split(/[\\/]/)).map((w) => w.replace(/\.(exe|cmd|bat)$/i, "")));
-  const hinted = EXTRACTORS.filter((ex) => ex.commands?.some((c) => words.has(c)));
+  const words = command.flatMap((a) => String(a).split(/[\\/]/))
+    .map((word) => word.replace(/\.(exe|cmd|bat)$/i, "").toLowerCase());
+  const hints = (extractor) => extractor.commandHints ?? extractor.commands;
+  const firstMention = (extractor) => Math.min(...hints(extractor)
+    .map((commandName) => words.indexOf(commandName.toLowerCase())).filter((index) => index >= 0));
+  const hinted = EXTRACTORS.filter((extractor) => Number.isFinite(firstMention(extractor)))
+    .sort((a, b) => firstMention(a) - firstMention(b));
   return hinted.length ? [...hinted, ...EXTRACTORS.filter((ex) => !hinted.includes(ex))] : EXTRACTORS;
 }
 

@@ -19,6 +19,7 @@ export const pnpm = {
   name: "pnpm",
   category: "package",
   commands: ["pnpm", "pnpx"],
+  commandHints: [],
 
   // ERR_PNPM_* is pnpm's alone. ELIFECYCLE is shared with npm, but npm writes it as
   // `npm error code ELIFECYCLE`, never as an indented column.
@@ -53,6 +54,7 @@ export const yarn = {
   name: "yarn",
   category: "package",
   commands: ["yarn"],
+  commandHints: [],
 
   // `error ` on its own belongs to half the tools in existence, so it has to be
   // corroborated by something only yarn prints.
