@@ -1,3 +1,5 @@
+import { uniqueFailures } from "../util.js";
+
 const FAIL_RE = /^[^\S\n]*--- (FAIL|SKIP): (\S+)/;
 const PANIC_RE = /^panic: (.+?)(?:[^\S\n]\[recovered.*\])?$/m;
 const LOC_RE = /^[^\S\n]+([\w./\\-]+\.go):(\d+):[^\S\n]*(.*)$/;
@@ -131,8 +133,6 @@ export default {
     // not compile and another whose tests fail writes both into one stream - that is one
     // ordinary invocation, not two glued together - and returning here reported "1
     // compile error" and dropped every test that failed in the packages that did build.
-    const builds = failures.length;
-
     // --- data races ---
     // The detector names the exact line where the racing access happened, which is
     // the bug. The test assertion that follows only reports a wrong total, so
@@ -175,6 +175,11 @@ export default {
       if (!msg.length && !file) continue;
       failures.push({ file, line, title: name, subject: name, category: "test", severity: "error", message: msg.join("\n") });
     }
+
+    const distinct = uniqueFailures(failures);
+    failures.length = 0;
+    failures.push(...distinct);
+    const builds = failures.filter((f) => f.title === "compile error").length;
 
     if (!failures.length) {
       const panic = standalonePanic(lines);

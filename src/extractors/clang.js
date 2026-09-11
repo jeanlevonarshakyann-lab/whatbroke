@@ -1,3 +1,5 @@
+import { uniqueFailures } from "../util.js";
+
 // The column is optional. gcc drops it under -fno-show-column, and older gcc never
 // printed one at all - which left `inc.c:1: fatal error: nope.h: No such file or
 // directory` read by no parser in the tool.
@@ -29,7 +31,7 @@ export default {
 
   extract(s) {
     const failures = [];
-    let warnings = 0;
+    const warningLines = new Set();
     for (const line of s.split("\n")) {
       const driver = line.match(DRIVER_RE);
       if (driver) {
@@ -44,13 +46,16 @@ export default {
       if (!match[3] && !C_FAMILY.test(match[1])) continue;
       const code = match[5].match(CODE_RE);
       const message = code ? match[5].replace(CODE_RE, "") : match[5];
-      if (match[4] === "warning") { warnings++; continue; }
+      if (match[4] === "warning") { warningLines.add(line); continue; }
       failures.push({
         file: match[1], line: +match[2], ...(match[3] ? { col: +match[3] } : {}),
         title: code?.[1] ?? match[4], code: code?.[1], label: code ? undefined : match[4], severity: match[4], message,
       });
     }
     if (!failures.length) return null;
+    const rawFailures = failures.length;
+    const distinct = uniqueFailures(failures);
+    const warnings = warningLines.size;
     // clang ends each translation unit with its own count, and every clean log in the
     // corpus agrees with it exactly - 14 for 14, 3 for 3. It stops agreeing when the log
     // has been damaged, and the commonest way that happens is `make -j`: two compilers
@@ -65,13 +70,13 @@ export default {
     // wreckage that survived intact, and saying nothing was the real failure here.
     const declared = [...s.matchAll(/^(\d+) errors? generated\.$/gm)]
       .reduce((n, m) => n + Number(m[1]), 0);
-    const n = failures.length;
-    const missed = declared > n ? declared : 0;
+    const n = distinct.length;
+    const missed = declared > rawFailures ? declared : 0;
     return {
       tool: "clang",
       summary: (missed ? `${n} of the ${missed} errors clang reported` : `${n} error${n > 1 ? "s" : ""}`) +
         (warnings ? ` — ${warnings} warning${warnings > 1 ? "s" : ""} hidden` : ""),
-      failures,
+      failures: distinct,
     };
   },
 };

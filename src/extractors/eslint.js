@@ -1,3 +1,5 @@
+import { uniqueFailures } from "../util.js";
+
 const PROB_RE = /^[^\S\n]+(\d+):(\d+)[^\S\n]+(error|warning)[^\S\n]+(.+?)\s{2,}([\w@/-]+)[^\S\n]*$/;
 
 // eslint reports a broken config by crashing, so the log is a Node stack pointing into
@@ -34,30 +36,36 @@ export default {
     }
     const lines = s.split("\n");
     const failures = [];
-    let file = null, warnings = 0;
+    let file = null;
+    const warningLines = new Set();
 
     for (const l of lines) {
       const p = l.match(PROB_RE);
       if (p) {
-        if (p[3] === "warning") { warnings++; continue; }   // errors are what block you
+        if (p[3] === "warning") {
+          warningLines.add(JSON.stringify([file, +p[1], +p[2], p[4], p[5]]));
+          continue;   // errors are what block you
+        }
         failures.push({ file, line: +p[1], col: +p[2], title: p[5], code: p[5], severity: p[3], message: p[4] });
         continue;
       }
       if (l.trim() && !/^\s/.test(l) && !/^[✖x✔]/.test(l.trim())) file = l.trim();
     }
 
+    const tableFailures = uniqueFailures(failures);
+    const warnings = warningLines.size;
     let summary;
     const m = s.match(/^[^\S\n]*[✖x][^\S\n]+(\d+ problems? \(.+?\))[^\S\n]*$/m);
     if (m) summary = m[1];
-    if (!failures.length && !configFailures.length) return null;
-    if (warnings) summary = `${summary ?? `${failures.length} errors`} — ${warnings} warning${warnings > 1 ? "s" : ""} hidden`;
+    if (!tableFailures.length && !configFailures.length) return null;
+    if (warnings) summary = `${summary ?? `${tableFailures.length} errors`} — ${warnings} warning${warnings > 1 ? "s" : ""} hidden`;
     // The config error is why eslint stopped, so it leads; anything it did manage to
     // lint before or after follows it rather than being dropped.
     if (configFailures.length) {
-      summary = failures.length
-        ? `configuration error — ${summary ?? `${failures.length} problems`} elsewhere`
+      summary = tableFailures.length
+        ? `configuration error — ${summary ?? `${tableFailures.length} problems`} elsewhere`
         : "configuration error";
     }
-    return { tool: "eslint", summary, failures: [...configFailures, ...failures] };
+    return { tool: "eslint", summary, failures: uniqueFailures([...configFailures, ...tableFailures]) };
   },
 };

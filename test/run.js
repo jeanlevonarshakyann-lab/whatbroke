@@ -2973,6 +2973,21 @@ try {
 } catch (e) { console.log(`  FAIL duplicate diagnostics\n       ${e.message}`); fail++; }
 
 try {
+  // CI systems retry and concatenate a failed step. The visible diagnostics are
+  // de-duplicated, so the headline must describe that same visible set rather than the
+  // number of times the runner happened to print it.
+  for (const name of ["gotest_build_and_tests_fail.txt", "clang_fail.txt", "eslint_fail.txt"]) {
+    const raw = fx(name);
+    const once = analyse(raw);
+    const retried = analyse(raw + "\n" + raw);
+    assert.deepEqual(retried.failures, once.failures, `${name}: retry changed the visible failures`);
+    assert.equal(retried.summary, once.summary, `${name}: retry inflated the headline`);
+  }
+  console.log("  ok   retry duplication cannot inflate a de-duplicated headline");
+  pass++;
+} catch (e) { console.log(`  FAIL duplicate headline counts\n       ${e.message}`); fail++; }
+
+try {
   const r = spawnSync(process.execPath, [cli, "--no-source", "node", "-e",
     "null.x"], { encoding: "utf8" });
   assert.equal(r.status, 1);

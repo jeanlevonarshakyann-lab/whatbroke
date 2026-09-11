@@ -2,6 +2,9 @@
 
 ## Unreleased
 
+- Retry-duplicated Go, clang and ESLint output no longer inflates the headline after
+  identical diagnostics have been collapsed; hidden warnings are counted uniquely too.
+
 ## 0.4.0 — 2026-09-10
 
 - Reads flake8, pylint and black. flake8 and pylint were reaching the guess and black

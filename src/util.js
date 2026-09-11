@@ -1,6 +1,22 @@
 export const ANSI = new RegExp("\\x1b\\[[0-9;]*[a-zA-Z]", "g");
 export const stripAnsi = (s) => s.replace(ANSI, "");
 
+/** Keep the first copy of each public diagnostic. Extractors that build a numerical
+ * headline use this before counting so a retried/concatenated log cannot say more
+ * failures were shown than survive the reader's final de-duplication. */
+export function uniqueFailures(failures) {
+  const seen = new Set();
+  return failures.filter((failure) => {
+    const key = JSON.stringify([
+      failure.file ?? null, failure.line ?? null, failure.col ?? null,
+      failure.title ?? "", failure.message ?? "", failure.stmt ?? "",
+    ]);
+    if (seen.has(key)) return false;
+    seen.add(key);
+    return true;
+  });
+}
+
 /** Node/py internals and vendored code are almost never what you're looking for. */
 const NOISE = [
   /^node:/, /node:internal/, /[/\\]node_modules[/\\]/, /[/\\]site-packages[/\\]/,
