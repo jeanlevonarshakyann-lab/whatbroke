@@ -2005,6 +2005,22 @@ const CASES = [
       // the frames are inside the assert library, not the user's code
       assert.ok(!/jsr\.io/.test(f.message));
     } },
+  // `--junit-path=-` is not a reporter choice - it writes the XML to stdout ALONGSIDE
+  // whichever reporter is running, so one run arrives twice in one log. Both of these
+  // are one real run of two tests, one failing. Counting both renderings reported that
+  // single failure as two, and with the TAP reporter it also showed the test twice.
+  { file: "denotest_junit_alongside_fail.txt", tool: "deno test", n: 1, check: (r) => {
+      assert.equal(r.summary, "1 failed, 1 passed", "the run was counted twice");
+      assert.equal(r.failures[0].title, "adds");
+      assert.equal(r.failures[0].file, "./reporter_test.ts");
+    } },
+  { file: "denotest_tap_junit_fail.txt", tool: "deno test", n: 1, check: (r) => {
+      // TAP has no column and JUnit does, so the shared de-duplication - which keys on
+      // the location - could not join them, and the same test was listed twice.
+      assert.equal(r.summary, "1 failed, 1 passed");
+      assert.equal(r.failures[0].title, "adds");
+      assert.match(r.failures[0].message, /Error: expected three/);
+    } },
   { file: "denotest_reporter_plain_fail.txt", tool: "deno test", n: 1, check: (r) => {
       assert.equal(r.failures[0].title, "adds");
       assert.equal(r.failures[0].file, "./reporter_test.ts");

@@ -142,6 +142,24 @@ function denoTapFailures(text) {
   return failures;
 }
 
+/** `--junit-path=-` writes the XML to stdout ALONGSIDE whatever reporter is running, so
+ *  a single run arrives twice - once as the human report, once as XML. Adding both
+ *  counted one failure as two, and with the TAP reporter it showed the same test twice.
+ *
+ *  The tell is adjacency, which is what Deno itself guarantees: the XML follows the
+ *  other report's closing tally immediately, with nothing between but the declaration.
+ *  Two separate runs always have a run boundary in between - `error: Test failed`, or
+ *  the next run's `Check`/`running` line - so a second run is never mistaken for this. */
+function precededByItsOwnRun(lines, rootAt) {
+  for (let i = rootAt - 1; i >= 0; i--) {
+    const line = lines[i].trim();
+    if (!line || /^<\?xml\b/.test(line)) continue;
+    return /^(?:FAILED|ok)[^\S\n]*\|[^\S\n]*\d+[^\S\n]+passed[^\S\n]*\|[^\S\n]*\d+[^\S\n]+failed/.test(line) ||
+      /^1\.\.\d+$/.test(line);
+  }
+  return false;
+}
+
 /** Deno's JUnit reporter, bounded by its own `testsuites name="deno test"` root. */
 function denoJunit(text) {
   const lines = text.split("\n");
@@ -152,6 +170,8 @@ function denoJunit(text) {
     const root = xmlAttributes(lines[rootAt]);
     let rootEnd = rootAt + 1;
     while (rootEnd < lines.length && !/<\/testsuites>/.test(lines[rootEnd])) rootEnd++;
+    // The same run, already reported above in another form. It has nothing to add.
+    if (precededByItsOwnRun(lines, rootAt)) { rootAt = rootEnd; continue; }
     for (let i = rootAt + 1; i < rootEnd; i++) {
       if (!/<testcase\b/.test(lines[i])) continue;
       const test = xmlAttributes(lines[i]);

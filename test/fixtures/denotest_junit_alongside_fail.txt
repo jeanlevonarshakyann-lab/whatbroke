@@ -1,0 +1,33 @@
+Check reporter_test.ts
+running 2 tests from ./reporter_test.ts
+adds ... FAILED (682µs)
+ok ... ok (34µs)
+
+ ERRORS 
+
+adds => ./reporter_test.ts:1:6
+error: Error: expected three
+  if (1 + 1 !== 3) throw new Error("expected three");
+                         ^
+    at file:///home/dev/deno-junit/reporter_test.ts:2:26
+
+ FAILURES 
+
+adds => ./reporter_test.ts:1:6
+
+FAILED | 1 passed | 1 failed (3ms)
+
+<?xml version="1.0" encoding="UTF-8"?>
+<testsuites name="deno test" tests="2" failures="1" errors="0" time="0.003">
+    <testsuite name="./reporter_test.ts" tests="2" disabled="0" errors="0" failures="1">
+        <testcase name="adds" classname="./reporter_test.ts" time="0.001" line="1" col="6">
+            <failure message="Uncaught Error: expected three">Error: expected three
+  if (1 + 1 !== 3) throw new Error(&quot;expected three&quot;);
+                         ^
+    at file:///home/dev/deno-junit/reporter_test.ts:2:26</failure>
+        </testcase>
+        <testcase name="ok" classname="./reporter_test.ts" time="0.000" line="4" col="6">
+        </testcase>
+    </testsuite>
+</testsuites>
+error: Test failed
