@@ -8,10 +8,18 @@ const SUITE_RE = /^[^\S\n]*FAIL[^\S\n]+(.+?)[^\S\n]+\[[^\S\n]*(.+?)[^\S\n]*\][^\
 // "FAIL  t/crash.test.js [ t/crash.test.js ]". go writes "FAIL <pkg> [build failed]" for
 // a package that would not compile, and the same shape read that as a vitest suite named
 // after a Go package - one failure more than the log holds whenever the two shared a log.
-// vitest's bracket holds a file; go's holds a phrase.
+//
+// What tells them apart is that vitest's bracket REPEATS the header, and go's does not.
+// Asking instead whether the bracket looked like a filename - no spaces, one extension -
+// dropped every suite under a directory with a space in its name: "FAIL  my tests/a.test.js
+// [ my tests/a.test.js ]" came back as nothing, which is the mistake #94 fixed elsewhere.
+// The header ENDS with the bracket rather than equalling it, because a workspace project
+// badges the file first: "FAIL  |unit| my tests/a.test.js [ my tests/a.test.js ]".
 function suiteOf(line) {
   const m = line.match(SUITE_RE);
-  return m && /^\S+\.\w+$/.test(m[2].trim()) ? m : null;
+  if (!m) return null;
+  const head = m[1].trim(), inside = m[2].trim();
+  return inside && head.endsWith(inside) ? m : null;
 }
 const LOC_RE = /^[^\S\n]*[❯>][^\S\n]+(.+?):(\d+):(\d+)[^\S\n]*$/;
 const SEP_RE = /^[⎯─-╿\s]*(?:\[\d+\/\d+\])?[⎯─-╿\s]*$/;
@@ -26,13 +34,14 @@ export default {
   extract(s) {
     const lines = s.split("\n");
     const failures = [];
+    let unloaded = 0;
 
     for (let i = 0; i < lines.length; i++) {
       const suite = suiteOf(lines[i]);
       const m = lines[i].match(FAIL_RE) ?? suite;
       if (!m) continue;
       // In the suite form both captures are the file; the failure is the file itself.
-      const [, file, title] = suite ? [null, suite[1], suite[1]] : m;
+      const [, file, title] = suite ? [null, suite[2].trim(), suite[2].trim()] : m;
 
       // vitest writes the assertion on the line straight under the FAIL header - every
       // one of the blocks in the corpus has a gap of exactly one, separators aside.
@@ -57,6 +66,7 @@ export default {
         }
       }
       if (!message) continue;
+      if (suite) unloaded++;
       failures.push({
         file: loc?.file ?? file, line: loc?.line, col: loc?.col,
         title, subject: title, severity: "error", message: [message, ...diff.slice(0, 4)].join("\n"),
@@ -76,6 +86,12 @@ export default {
     if (!failures.length) return null;
     const files = s.match(/^[^\S\n]*Test Files[^\S\n]+(.+?)[^\S\n]*$/m);
     if (/^no tests$/.test(summary ?? "") && files) summary = `${files[1]} (no tests ran)`;
+    // "Tests  1 failed (1)" counts tests, and a file that never loaded declared none - so
+    // a log holding one of each was headlined "1 failed" over two failures. Say what the
+    // test tally cannot see, unless the headline already says no tests ran at all.
+    if (unloaded && summary && !/no tests ran/.test(summary)) {
+      summary += ` — ${unloaded} file${unloaded > 1 ? "s" : ""} failed to load`;
+    }
     return { tool: "vitest", summary, failures };
   },
 };

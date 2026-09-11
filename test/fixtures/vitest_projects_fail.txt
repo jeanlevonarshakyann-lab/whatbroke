@@ -1,0 +1,79 @@
+npm notice run jsprobe@1.0.0 npx
+npm notice run 'vitest' run --config vitest.projects.config.mjs
+
+ RUN  v5.0.0 /home/dev/app
+
+ ❯ |unit| vitestdir/plain/crash.test.js (0 test)
+ ❯ |unit| vitestdir/my tests/crash.test.js (0 test)
+ ❯ |unit| vitestdir/plain/sum.test.js (1 test | 1 failed) 4ms
+   × adds 3ms
+ ❯ |unit| vitestdir/my tests/sum.test.js (1 test | 1 failed) 4ms
+   × adds 3ms
+
+⎯⎯⎯⎯⎯⎯ Failed Suites 2 ⎯⎯⎯⎯⎯⎯⎯
+
+ FAIL  |unit| vitestdir/my tests/crash.test.js [ vitestdir/my tests/crash.test.js ]
+Error: boom at import
+ ❯ vitestdir/my tests/crash.test.js:2:7
+      1| import { test, expect } from 'vitest'
+      2| throw new Error('boom at import')
+       |       ^
+      3| test('never', () => { expect(1).toBe(1) })
+      4|
+
+⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯[1/4]⎯
+
+ FAIL  |unit| vitestdir/plain/crash.test.js [ vitestdir/plain/crash.test.js ]
+Error: boom at import
+ ❯ vitestdir/plain/crash.test.js:2:7
+      1| import { test, expect } from 'vitest'
+      2| throw new Error('boom at import')
+       |       ^
+      3| test('never', () => { expect(1).toBe(1) })
+      4|
+
+⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯[2/4]⎯
+
+
+⎯⎯⎯⎯⎯⎯⎯ Failed Tests 2 ⎯⎯⎯⎯⎯⎯⎯
+
+ FAIL  |unit| vitestdir/my tests/sum.test.js > adds
+AssertionError: expected 2 to be 3 // Object.is equality
+
+- Expected
++ Received
+
+- 3
++ 2
+
+ ❯ vitestdir/my tests/sum.test.js:2:36
+      1| import { test, expect } from 'vitest'
+      2| test('adds', () => { expect(1 + 1).toBe(3) })
+       |                                    ^
+      3|
+
+⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯[3/4]⎯
+
+ FAIL  |unit| vitestdir/plain/sum.test.js > adds
+AssertionError: expected 2 to be 3 // Object.is equality
+
+- Expected
++ Received
+
+- 3
++ 2
+
+ ❯ vitestdir/plain/sum.test.js:2:36
+      1| import { test, expect } from 'vitest'
+      2| test('adds', () => { expect(1 + 1).toBe(3) })
+       |                                    ^
+      3|
+
+⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯[4/4]⎯
+
+
+ Test Files  4 failed (4)
+      Tests  2 failed (2)
+   Start at  17:10:13
+   Duration  87ms (transform 38%, import 24%, tests 20%, worker 18%, environment 1%)
+

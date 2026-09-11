@@ -2258,6 +2258,18 @@
       "generic": 6
     }
   },
+  "vitest_projects_fail.txt": {
+    "winner": "vitest",
+    "parser": "vitest",
+    "failures": 4,
+    "claimants": [
+      "vitest",
+      "generic"
+    ],
+    "shadow": {
+      "generic": 8
+    }
+  },
   "vitest_suite_fail.txt": {
     "winner": "vitest",
     "parser": "vitest",
@@ -2268,6 +2280,18 @@
     ],
     "shadow": {
       "generic": 2
+    }
+  },
+  "vitest_suite_spaced_fail.txt": {
+    "winner": "vitest",
+    "parser": "vitest",
+    "failures": 2,
+    "claimants": [
+      "vitest",
+      "generic"
+    ],
+    "shadow": {
+      "generic": 4
     }
   },
   "webpack_parse_fail.txt": {
