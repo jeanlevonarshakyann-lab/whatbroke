@@ -405,6 +405,20 @@
       "generic": 1
     }
   },
+  "denotest_junit_alongside_fail.txt": {
+    "winner": "deno test",
+    "parser": "deno test",
+    "failures": 1,
+    "claimants": [
+      "deno test",
+      "go",
+      "node",
+      "generic"
+    ],
+    "shadow": {
+      "generic": 4
+    }
+  },
   "denotest_reporter_junit_fail.txt": {
     "winner": "deno test",
     "parser": "deno test",
@@ -480,6 +494,20 @@
     ],
     "shadow": {
       "generic": 2
+    }
+  },
+  "denotest_tap_junit_fail.txt": {
+    "winner": "deno test",
+    "parser": "deno test",
+    "failures": 1,
+    "claimants": [
+      "deno test",
+      "deno",
+      "go",
+      "generic"
+    ],
+    "shadow": {
+      "generic": 3
     }
   },
   "docker_buildkit_npm_fail.txt": {
