@@ -1,0 +1,58 @@
+
+ RUN  v5.0.0 /home/dev/shop
+
+ ❯ test/cart.test.js (1 test | 1 failed) 3ms
+   ❯ cart (1)
+     × totals an invoice 3ms
+ ❯ test/ship.test.js (1 test | 1 failed) 4ms
+   × quotes shipping 3ms
+
+⎯⎯⎯⎯⎯⎯⎯ Failed Tests 2 ⎯⎯⎯⎯⎯⎯⎯
+
+ FAIL  test/cart.test.js > cart > totals an invoice
+AssertionError: expected 5 to be 6 // Object.is equality
+
+- Expected
++ Received
+
+- 6
++ 5
+
+ ❯ test/cart.test.js:5:75
+      3| describe("cart", () => {
+      4|   test("totals an invoice", () => {
+      5|     expect([{ price: 2 }, { price: 3 }].reduce((a, b) => a + b.price, …
+       |                                                                           ^
+      6|   });
+      7| });
+
+⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯[1/2]⎯
+
+ FAIL  test/ship.test.js > quotes shipping
+AssertionError: expected { zone: 'eu', cost: 4 } to deeply equal { zone: 'uk', cost: 4 }
+
+- Expected
++ Received
+
+  {
+    "cost": 4,
+-   "zone": "uk",
++   "zone": "eu",
+  }
+
+ ❯ test/ship.test.js:4:35
+      2|
+      3| test("quotes shipping", () => {
+      4|   expect({ zone: "eu", cost: 4 }).toEqual({ zone: "uk", cost: 4 });
+       |                                   ^
+      5| });
+      6|
+
+⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯[2/2]⎯
+
+
+ Test Files  2 failed (2)
+      Tests  2 failed (2)
+   Start at  01:05:30
+   Duration  82ms (transform 44%, import 25%, tests 21%, worker 9%)
+

@@ -1,0 +1,36 @@
+<?xml version="1.0" encoding="UTF-8" ?>
+<testsuites name="vitest tests" tests="2" failures="2" errors="0" time="0.0070405">
+    <testsuite name="test/cart.test.js" timestamp="2026-09-12T15:05:31.813Z" hostname="ci-runner-7.local" tests="1" failures="1" errors="0" skipped="0" time="0.003297875">
+        <testcase classname="test/cart.test.js" name="cart &gt; totals an invoice" time="0.002778125">
+            <failure message="expected 5 to be 6 // Object.is equality" type="AssertionError">
+AssertionError: expected 5 to be 6 // Object.is equality
+
+- Expected
++ Received
+
+- 6
++ 5
+
+ ❯ test/cart.test.js:5:75
+            </failure>
+        </testcase>
+    </testsuite>
+    <testsuite name="test/ship.test.js" timestamp="2026-09-12T15:05:31.815Z" hostname="ci-runner-7.local" tests="1" failures="1" errors="0" skipped="0" time="0.003742625">
+        <testcase classname="test/ship.test.js" name="quotes shipping" time="0.003248042">
+            <failure message="expected { zone: &apos;eu&apos;, cost: 4 } to deeply equal { zone: &apos;uk&apos;, cost: 4 }" type="AssertionError">
+AssertionError: expected { zone: &apos;eu&apos;, cost: 4 } to deeply equal { zone: &apos;uk&apos;, cost: 4 }
+
+- Expected
++ Received
+
+  {
+    &quot;cost&quot;: 4,
+-   &quot;zone&quot;: &quot;uk&quot;,
++   &quot;zone&quot;: &quot;eu&quot;,
+  }
+
+ ❯ test/ship.test.js:4:35
+            </failure>
+        </testcase>
+    </testsuite>
+</testsuites>

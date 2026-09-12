@@ -1250,6 +1250,44 @@ const CASES = [
         `wrapper frame leaked: ${JSON.stringify(f.trace)}`);
       assert.equal(f.hiddenFrames, 7);
     } },
+  // One vitest run of two test files, in the default reporter, --reporter=junit and
+  // --reporter=github-actions. The document came back with no diagnosis at all, and the
+  // annotations fell through to the generic reader, which printed vitest's %0A-encoded
+  // diff back as one long line.
+  { file: "vitest_reporters_text_same_fail.txt", tool: "vitest", n: 2, check: (r) => {
+      assert.deepEqual(r.failures.map((f) => f.subject),
+        ["cart > totals an invoice", "quotes shipping"]);
+      assert.deepEqual(r.failures.map((f) => f.line), [5, 4]);
+    } },
+  // JUnit is a shape every runner writes, so the bound is the suite vitest names itself.
+  { file: "vitest_junit_fail.txt", tool: "vitest", n: 2, check: (r) => {
+      assert.deepEqual(r.failures.map((f) => f.subject),
+        ["cart > totals an invoice", "quotes shipping"]);
+      // the pointer frame in the body, not the file the suite is named after
+      assert.equal(r.failures[0].file, "test/cart.test.js");
+      assert.equal(r.failures[0].line, 5);
+      assert.equal(r.failures[0].col, 75);
+      // the value diff is part of the answer and the pretty reporter keeps it, so this
+      // keeps it too - without the "- Expected / + Received" headers, which promise a
+      // diff and show none
+      assert.equal(r.failures[0].message,
+        "AssertionError: expected 5 to be 6 // Object.is equality\n- 6\n+ 5");
+      assert.doesNotMatch(JSON.stringify(r.failures), /[-+] (?:Expected|Received)/);
+      // the entities are decoded
+      assert.doesNotMatch(JSON.stringify(r.failures), /&(?:quot|apos|gt|lt|amp);/);
+    } },
+  // The annotation opens its title with the test file, which is the file it already
+  // points at - a title whose first segment is not that file is another tool's.
+  { file: "vitest_github_fail.txt", tool: "vitest", n: 2, check: (r) => {
+      assert.deepEqual(r.failures.map((f) => f.subject),
+        ["cart > totals an invoice", "quotes shipping"]);
+      assert.equal(r.failures[1].line, 4);
+      assert.equal(r.failures[1].col, 35);
+      // the encoded newlines are decoded, not printed back
+      assert.doesNotMatch(JSON.stringify(r.failures), /%0A/);
+      // and the file is not repeated inside the test's name
+      assert.doesNotMatch(JSON.stringify(r.failures.map((f) => f.subject)), /test\//);
+    } },
   { file: "vitest_fail.txt", tool: "vitest", n: 3, check: (r) => {
       assert.match(r.summary, /3 failed \| 1 passed/);
       const f = r.failures[0];
@@ -2730,6 +2768,8 @@ for (const [group, encodings, silentAbout = []] of [
   ["phpunit testdox", ["phpunit_text_same_fail.txt", "phpunit_testdox_fail.txt"], ["subject"]],
   // dotnet test's console output prints no columns and neither does the trx document.
   ["dotnet test", ["dotnettest_text_same_fail.txt", "dotnettest_trx_fail.txt"]],
+  ["vitest", ["vitest_reporters_text_same_fail.txt", "vitest_junit_fail.txt",
+    "vitest_github_fail.txt"]],
 ]) {
   try {
     // The path is the other legitimate difference: a formatter that writes a machine
