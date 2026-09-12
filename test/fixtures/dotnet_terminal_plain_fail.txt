@@ -1,0 +1,11 @@
+/home/dev/dotnet-terminal/Broken.cs(5,34): error CS0103: The name 'MissingOne' does not exist in the current context [/home/dev/dotnet-terminal/Shop.csproj]
+/home/dev/dotnet-terminal/Broken.cs(6,35): error CS0103: The name 'MissingTwo' does not exist in the current context [/home/dev/dotnet-terminal/Shop.csproj]
+
+Build FAILED.
+
+/home/dev/dotnet-terminal/Broken.cs(5,34): error CS0103: The name 'MissingOne' does not exist in the current context [/home/dev/dotnet-terminal/Shop.csproj]
+/home/dev/dotnet-terminal/Broken.cs(6,35): error CS0103: The name 'MissingTwo' does not exist in the current context [/home/dev/dotnet-terminal/Shop.csproj]
+    0 Warning(s)
+    2 Error(s)
+
+Time Elapsed 00:00:00.79

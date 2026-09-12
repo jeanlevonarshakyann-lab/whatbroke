@@ -1,0 +1,5 @@
+  Shop [36;1mnet10.0[m [31;1mfailed with 2 error(s)[m (0.1s)
+    /home/dev/dotnet-terminal/[1mBroken.cs[m(5,34): [31;1merror[m [31;1mCS0103[m: The name 'MissingOne' does not exist in the current context
+    /home/dev/dotnet-terminal/[1mBroken.cs[m(6,35): [31;1merror[m [31;1mCS0103[m: The name 'MissingTwo' does not exist in the current context
+
+Build [31;1mfailed with 2 error(s)[m in 0.3s

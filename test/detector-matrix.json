@@ -626,6 +626,26 @@
     ],
     "shadow": {}
   },
+  "dotnet_terminal_logger_fail.txt": {
+    "winner": "dotnet",
+    "parser": "dotnet",
+    "failures": 2,
+    "claimants": [
+      "dotnet",
+      "generic"
+    ],
+    "shadow": {}
+  },
+  "dotnet_terminal_plain_fail.txt": {
+    "winner": "dotnet",
+    "parser": "dotnet",
+    "failures": 2,
+    "claimants": [
+      "dotnet",
+      "generic"
+    ],
+    "shadow": {}
+  },
   "dotnettest_fail.txt": {
     "winner": "dotnet test",
     "parser": "dotnet test",
