@@ -69,8 +69,13 @@ export default {
     const total = n + warnings;
     return {
       tool: "eslint",
+      // ...and then the part the table reading says and this one did not: the warnings
+      // are counted in eslint's sentence but they are not among the failures below it,
+      // so a reader comparing the two encodings of one run saw the same four failures
+      // under two different headlines.
       summary: `${total} problem${total === 1 ? "" : "s"} (${n} error${n === 1 ? "" : "s"}, ` +
-        `${warnings} warning${warnings === 1 ? "" : "s"})`,
+        `${warnings} warning${warnings === 1 ? "" : "s"})` +
+        (warnings ? ` — ${warnings} warning${warnings > 1 ? "s" : ""} hidden` : ""),
       failures,
     };
   },

@@ -1,0 +1,8 @@
+
+Oops! Something went wrong! :(
+
+ESLint: 10.10.0
+
+No files matching the pattern "src/nosuchfile.js" were found.
+Please check for typing mistakes in the pattern.
+

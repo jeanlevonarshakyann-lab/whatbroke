@@ -1,0 +1,1 @@
+Invalid option '--bogus-flag' - perhaps you meant '--flag'?

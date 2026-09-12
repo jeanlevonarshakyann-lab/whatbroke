@@ -816,6 +816,16 @@
       "generic": 1
     }
   },
+  "eslint_badflag_fail.txt": {
+    "winner": "eslint",
+    "parser": "eslint",
+    "failures": 1,
+    "claimants": [
+      "eslint",
+      "generic"
+    ],
+    "shadow": {}
+  },
   "eslint_bulk_fail.txt": {
     "winner": "eslint",
     "parser": "eslint",
@@ -847,6 +857,16 @@
     "claimants": [
       "eslint",
       "stylelint",
+      "generic"
+    ],
+    "shadow": {}
+  },
+  "eslint_formatter_fail.txt": {
+    "winner": "eslint",
+    "parser": "eslint",
+    "failures": 1,
+    "claimants": [
+      "eslint",
       "generic"
     ],
     "shadow": {}
@@ -893,10 +913,41 @@
     ],
     "shadow": {}
   },
+  "eslint_nofiles_fail.txt": {
+    "winner": "eslint",
+    "parser": "eslint",
+    "failures": 1,
+    "claimants": [
+      "eslint",
+      "generic"
+    ],
+    "shadow": {}
+  },
   "eslint_text_same_fail.txt": {
     "winner": "eslint",
     "parser": "eslint",
     "failures": 6,
+    "claimants": [
+      "eslint",
+      "stylelint",
+      "generic"
+    ],
+    "shadow": {}
+  },
+  "eslint_warnings_json_fail.txt": {
+    "winner": "eslint",
+    "parser": "eslint -f json",
+    "failures": 4,
+    "claimants": [
+      "eslint -f json",
+      "generic"
+    ],
+    "shadow": {}
+  },
+  "eslint_warnings_text_same_fail.txt": {
+    "winner": "eslint",
+    "parser": "eslint",
+    "failures": 4,
     "claimants": [
       "eslint",
       "stylelint",
