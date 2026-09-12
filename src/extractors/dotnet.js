@@ -3,7 +3,13 @@ const DIAGNOSTIC_RE = /^(.+?\.(?:cs|fs|vb))\((\d+),(\d+)\):[^\S\n]+(error|warnin
 // that will not restore are both reported by MSBuild or NuGet with a code but no
 // position - "app.csproj : error NU1101: ..." , "MSBUILD : error MSB1003: ..." - and
 // requiring a position meant two of the commonest .NET failures produced nothing at all.
-const PROJECT_RE = /^(\S.*?)[^\S\n]+:[^\S\n]+(error|warning)[^\S\n]+((?:MSB|NU|NETSDK)\d+):[^\S\n]+(.+)$/;
+// The Terminal Logger indents every diagnostic beneath the target that produced it.
+// That padding is presentation, not part of the path - and requiring the line to BEGIN
+// with the project meant a restore failure under `--tl:on` matched nothing at all, so
+// `dotnet restore` came back silent about an NU1101 it had just printed. The leading
+// run of spaces is skipped rather than captured, so the path still starts at a
+// non-space and a filename that genuinely contains spaces is untouched.
+const PROJECT_RE = /^[^\S\n]*(\S.*?)[^\S\n]+:[^\S\n]+(error|warning)[^\S\n]+((?:MSB|NU|NETSDK)\d+):[^\S\n]+(.+)$/;
 
 export default {
   name: "dotnet",

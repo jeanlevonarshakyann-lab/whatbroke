@@ -126,6 +126,21 @@ const CASES = [
       assert.equal(r.failures[0].file, undefined, "MSBUILD is the tool speaking, not a file");
       assert.match(r.failures[0].message, /Specify a project or solution file/);
     } },
+  // The same failing restore captured twice: as MSBuild prints it, and under .NET 10's
+  // Terminal Logger (`--tl:on`), which indents every diagnostic beneath its target and
+  // wraps the code in an OSC 8 hyperlink to the docs. The indentation alone meant the
+  // project-level pattern - which required the line to begin with the path - matched
+  // nothing, so a real NU1101 came back with no diagnosis at all.
+  { file: "dotnet_restore_plain_fail.txt", tool: "dotnet", n: 1, check: (r) => {
+      assert.equal(r.failures[0].file, "/home/dev/dotnet-restore/app.csproj");
+      assert.equal(r.failures[0].code, "NU1101");
+      assert.match(r.failures[0].message, /Unable to find package ThisPackageDoesNotExist\.Xyz/);
+    } },
+  { file: "dotnet_restore_terminal_fail.txt", tool: "dotnet", n: 1, check: (r) => {
+      assert.equal(r.failures[0].file, "/home/dev/dotnet-restore/app.csproj",
+        "Terminal Logger indentation leaked into the project path");
+      assert.equal(r.failures[0].code, "NU1101", "the OSC 8 hyperlink around the code survived stripping");
+    } },
   { file: "dotnet_restore_fail.txt", tool: "dotnet", n: 1, check: (r) => {
       // NuGet prints the same failure once as it happens and again under "Build FAILED."
       assert.equal(r.failures[0].code, "NU1101");
@@ -3407,6 +3422,20 @@ try {
   console.log("  ok   .NET diagnostics need no restore banner and do not claim TypeScript");
   pass++;
 } catch (e) { console.log(`  FAIL banner-free .NET detection\n       ${e.message}`); fail++; }
+
+// A presentation mode is not a different failure. Terminal Logger is what `dotnet` uses
+// by default on a terminal in .NET 10, so this is the ordinary way a restore fails now.
+try {
+  const plain = analyse(fx("dotnet_restore_plain_fail.txt"));
+  const terminal = analyse(fx("dotnet_restore_terminal_fail.txt"));
+  const facts = (r) => r.failures.map((f) => [f.file, f.line, f.col, f.code, f.severity, f.message]);
+  assert.equal(terminal.tool, plain.tool);
+  assert.equal(terminal.summary, plain.summary);
+  assert.deepEqual(facts(terminal), facts(plain),
+    "a restore failure reads differently under the Terminal Logger");
+  console.log("  ok   a Terminal Logger restore failure says what plain MSBuild says");
+  pass++;
+} catch (e) { console.log(`  FAIL Terminal Logger restore vs plain\n       ${e.message}`); fail++; }
 
 try {
   const r = spawnSync(process.execPath, [cli, "--json", process.execPath, "-e",
