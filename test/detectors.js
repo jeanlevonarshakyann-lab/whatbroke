@@ -337,6 +337,16 @@ test("parsers match whitespace that is not an ASCII space", () => {
 // a log level is bracketed exactly like a rollup diagnostic code.
 const INTERLEAVED = ["npm warn deprecated foo@1.0.0", "Downloading package...", "[INFO] progress 45%", "> my-app@1.0.0 test"];
 
+// Losing detail and losing the document are not the same failure. A pretty-printed
+// report - mocha's JSON, markdownlint's --json - is one value spread over many lines,
+// so a line landing inside it does not cut a diagnostic in half, it makes the whole
+// thing invalid and nothing can be read from it at all. That is a property of the
+// format, not a weakness in the parser, so it is named here rather than spent from the
+// budget below. The same run's text capture is in the corpus and takes the mutation.
+const INTERLEAVING_DESTROYS = new Set([...SERIALIZED_FIXTURES,
+  "mocha_json_fail.txt", "markdownlint_json_fail.txt",
+]);
+
 test("interleaved output never invents a failure", () => {
   const gained = [];
   const lost = [];
@@ -354,7 +364,7 @@ test("interleaved output never invents a failure", () => {
     const n = r?.failures.length ?? 0;
     if (r && r.tool === base.tool && n > base.failures.length) {
       gained.push(`${name}: ${base.failures.length} -> ${n}`);
-    } else if (n < base.failures.length && !SERIALIZED_FIXTURES.has(name)) {
+    } else if (n < base.failures.length && !INTERLEAVING_DESTROYS.has(name)) {
       lost.push(`${name}: ${base.failures.length} -> ${n}`);
     }
   }
@@ -362,7 +372,7 @@ test("interleaved output never invents a failure", () => {
   assert.deepEqual(gained, [], "a parser matched a line that was not its own");
   // Losing detail when a block is cut in half is honest degradation, but it should stay
   // rare enough to notice if it spreads.
-  assert.ok(lost.length <= 3, `${lost.length} fixtures lost failures: ${lost.join("; ")}`);
+  assert.ok(lost.length <= 2, `${lost.length} fixtures lost failures: ${lost.join("; ")}`);
 });
 
 // Runaway backtracking.

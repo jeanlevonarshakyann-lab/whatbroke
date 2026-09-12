@@ -1,0 +1,99 @@
+[
+  {
+    "fileName": "doc.md",
+    "lineNumber": 1,
+    "ruleNames": [
+      "MD041",
+      "first-line-heading",
+      "first-line-h1"
+    ],
+    "ruleDescription": "First line in a file should be a top-level heading",
+    "ruleInformation": "https://github.com/DavidAnson/markdownlint/blob/v0.41.1/doc/md041.md",
+    "errorDetail": null,
+    "errorContext": "#Heading no space",
+    "errorRange": null,
+    "fixInfo": null,
+    "severity": "error"
+  },
+  {
+    "fileName": "doc.md",
+    "lineNumber": 1,
+    "ruleNames": [
+      "MD018",
+      "no-missing-space-atx"
+    ],
+    "ruleDescription": "No space after hash on atx style heading",
+    "ruleInformation": "https://github.com/DavidAnson/markdownlint/blob/v0.41.1/doc/md018.md",
+    "errorDetail": null,
+    "errorContext": "#Heading no space",
+    "errorRange": [
+      1,
+      2
+    ],
+    "fixInfo": {
+      "editColumn": 2,
+      "insertText": " "
+    },
+    "severity": "error"
+  },
+  {
+    "fileName": "doc.md",
+    "lineNumber": 2,
+    "ruleNames": [
+      "MD010",
+      "no-hard-tabs"
+    ],
+    "ruleDescription": "Hard tabs",
+    "ruleInformation": "https://github.com/DavidAnson/markdownlint/blob/v0.41.1/doc/md010.md",
+    "errorDetail": "Column: 10",
+    "errorContext": null,
+    "errorRange": [
+      10,
+      1
+    ],
+    "fixInfo": {
+      "editColumn": 10,
+      "deleteCount": 1,
+      "insertText": " "
+    },
+    "severity": "error"
+  },
+  {
+    "fileName": "doc.md",
+    "lineNumber": 2,
+    "ruleNames": [
+      "MD009",
+      "no-trailing-spaces"
+    ],
+    "ruleDescription": "Trailing spaces",
+    "ruleInformation": "https://github.com/DavidAnson/markdownlint/blob/v0.41.1/doc/md009.md",
+    "errorDetail": "Expected: 0 or 2; Actual: 1",
+    "errorContext": null,
+    "errorRange": [
+      10,
+      1
+    ],
+    "fixInfo": {
+      "editColumn": 10,
+      "deleteCount": 1
+    },
+    "severity": "error"
+  },
+  {
+    "fileName": "doc.md",
+    "lineNumber": 3,
+    "ruleNames": [
+      "MD032",
+      "blanks-around-lists"
+    ],
+    "ruleDescription": "Lists should be surrounded by blank lines",
+    "ruleInformation": "https://github.com/DavidAnson/markdownlint/blob/v0.41.1/doc/md032.md",
+    "errorDetail": null,
+    "errorContext": "* item",
+    "errorRange": null,
+    "fixInfo": {
+      "insertText": "\n"
+    },
+    "severity": "error"
+  }
+]

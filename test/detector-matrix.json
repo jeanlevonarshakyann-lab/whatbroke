@@ -1493,10 +1493,30 @@
       "generic": 1
     }
   },
+  "markdownlint_aliases_fail.txt": {
+    "winner": "markdownlint",
+    "parser": "markdownlint",
+    "failures": 5,
+    "claimants": [
+      "markdownlint",
+      "generic"
+    ],
+    "shadow": {}
+  },
   "markdownlint_fail.txt": {
     "winner": "markdownlint",
     "parser": "markdownlint",
     "failures": 2,
+    "claimants": [
+      "markdownlint",
+      "generic"
+    ],
+    "shadow": {}
+  },
+  "markdownlint_json_fail.txt": {
+    "winner": "markdownlint",
+    "parser": "markdownlint",
+    "failures": 5,
     "claimants": [
       "markdownlint",
       "generic"
@@ -2584,6 +2604,39 @@
       "generic"
     ],
     "shadow": {}
+  },
+  "stylelint_json_fail.txt": {
+    "winner": "stylelint",
+    "parser": "stylelint",
+    "failures": 3,
+    "claimants": [
+      "stylelint",
+      "generic"
+    ],
+    "shadow": {}
+  },
+  "stylelint_string_fail.txt": {
+    "winner": "stylelint",
+    "parser": "stylelint",
+    "failures": 3,
+    "claimants": [
+      "eslint",
+      "stylelint",
+      "generic"
+    ],
+    "shadow": {}
+  },
+  "stylelint_unix_fail.txt": {
+    "winner": "stylelint",
+    "parser": "stylelint",
+    "failures": 3,
+    "claimants": [
+      "stylelint",
+      "generic"
+    ],
+    "shadow": {
+      "generic": 3
+    }
   },
   "swc_fail.txt": {
     "winner": "swc",

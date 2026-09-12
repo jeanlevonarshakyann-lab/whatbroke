@@ -136,3 +136,48 @@ export function xmlAttributes(tag) {
   for (const match of tag.matchAll(/([\w:.-]+)="([^"]*)"/g)) attributes[match[1]] = xmlText(match[2]);
   return attributes;
 }
+
+/** Parse the JSON value that starts at `start`, or null.
+ *
+ *  Whitespace outside the strings is rewritten to a plain space on the way past: JSON
+ *  admits only space, tab, CR and LF between its tokens, and a runner that re-indents
+ *  what it relays - pnpm uses U+2009 THIN SPACE - otherwise leaves a report that will
+ *  not parse at all. Inside a string the same character is data and is kept. */
+function jsonValueAt(text, start) {
+  const opener = text[start];
+  const closer = opener === "[" ? "]" : "}";
+  let depth = 0, inString = false, escaped = false;
+  const out = [];
+  for (let i = start; i < text.length; i++) {
+    const c = text[i];
+    if (inString) {
+      out.push(c);
+      if (escaped) escaped = false;
+      else if (c === "\\") escaped = true;
+      else if (c === '"') inString = false;
+      continue;
+    }
+    out.push(/\s/.test(c) && !"\t\n\r ".includes(c) ? " " : c);
+    if (c === '"') { inString = true; continue; }
+    if (c === opener) depth++;
+    else if (c === closer && --depth === 0) {
+      try { return JSON.parse(out.join("")); } catch { return null; }
+    }
+  }
+  return null;
+}
+
+/** The first JSON document in `text` that opens a line and that `accept` recognises.
+ *
+ *  A report pretty-printed across many lines cannot be found by looking for a line that
+ *  parses, and starting at the first bracket in the log is worse than useless once a
+ *  second tool has printed JSON of its own - the scan opens on somebody else's bracket
+ *  and swallows the rest. Every bracket that opens a line is a candidate instead, and
+ *  the first one the caller recognises wins. */
+export function findJsonDocument(text, accept) {
+  for (const open of text.matchAll(/^[^\S\n]*[[{]/gm)) {
+    const value = jsonValueAt(text, open.index + open[0].length - 1);
+    if (value !== null && accept(value)) return value;
+  }
+  return null;
+}
