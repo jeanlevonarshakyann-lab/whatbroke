@@ -1,0 +1,7 @@
+{
+  "error": {
+    "code": "E404",
+    "summary": "Not Found - GET https://registry.npmjs.org/this-package-really-does-not-exist-9x7 - Not found",
+    "detail": "The requested resource 'this-package-really-does-not-exist-9x7@^1.0.0' could not be found or you do not have permission to access it.\n\nNote that you can also install from a\ntarball, folder, http url, or git url."
+  }
+}

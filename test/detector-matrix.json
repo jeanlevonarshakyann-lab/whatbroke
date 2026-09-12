@@ -2092,6 +2092,26 @@
       "generic": 1
     }
   },
+  "npm_404_json_fail.txt": {
+    "winner": "npm",
+    "parser": "npm",
+    "failures": 1,
+    "claimants": [
+      "npm",
+      "generic"
+    ],
+    "shadow": {}
+  },
+  "npm_404_text_same_fail.txt": {
+    "winner": "npm",
+    "parser": "npm",
+    "failures": 1,
+    "claimants": [
+      "npm",
+      "generic"
+    ],
+    "shadow": {}
+  },
   "npm_eresolve_fail.txt": {
     "winner": "npm",
     "parser": "npm",

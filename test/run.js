@@ -2445,6 +2445,26 @@ const CASES = [
       assert.ok(!/slowest|seconds average/.test(f.message),
         "profiling output must not land inside a failure");
     } },
+  // A registry failure is coded E404 and prefixed 404, because the number is the HTTP
+  // status underneath it. The code pattern was written E[A-Z_]+ and matched neither, so
+  // the line naming the code was read as the first line of the MESSAGE, the failure
+  // carried no code at all, and the repeated prefix and npm's standing advice spent the
+  // rest of a three-line message - leaving out the line that says which package.
+  { file: "npm_404_text_same_fail.txt", tool: "npm", n: 1, check: (r) => {
+      assert.equal(r.failures[0].code, "E404");
+      assert.match(r.failures[0].message, /this-package-really-does-not-exist-9x7@\^1\.0\.0/);
+      // the code is the code; saying it again on every line is noise
+      assert.doesNotMatch(r.failures[0].message, /^404\b/m);
+      // and the standing advice for any 404 is not the diagnosis
+      assert.doesNotMatch(r.failures[0].message, /tarball, folder/);
+    } },
+  // `npm --json` says it twice: the same block on stderr, a document on stdout. A
+  // pipeline that keeps only stdout keeps only the document, and nothing read it.
+  { file: "npm_404_json_fail.txt", tool: "npm", n: 1, check: (r) => {
+      assert.equal(r.failures[0].code, "E404");
+      assert.match(r.failures[0].message, /this-package-really-does-not-exist-9x7@\^1\.0\.0/);
+      assert.doesNotMatch(r.failures[0].message, /tarball, folder/);
+    } },
   { file: "npm_fail.txt", tool: "npm", n: 1, check: (r) => {
       // real `npm run nonexistent-script`. Modern npm prefixes every line with
       // "npm error", which does not start with the word "error", so the generic
@@ -2827,6 +2847,7 @@ for (const [group, encodings, silentAbout = []] of [
   // eslint's stylish formatter trims the full stop its own rules write; the document
   // keeps it. That is eslint's doing, not the reader's, so the message is named here.
   ["eslint", ["eslint_warnings_text_same_fail.txt", "eslint_warnings_json_fail.txt"], ["message"]],
+  ["npm", ["npm_404_text_same_fail.txt", "npm_404_json_fail.txt"]],
 ]) {
   try {
     // The path is the other legitimate difference: a formatter that writes a machine
@@ -2835,7 +2856,7 @@ for (const [group, encodings, silentAbout = []] of [
     const said = (name) => analyse(fx(name)).failures
       .map((f) => JSON.stringify(["file", "line", "col", "code", "subject", "message"]
         .filter((k) => !silentAbout.includes(k))
-        .map((k) => (k === "file" ? f.file.split("/").pop() : f[k] ?? null))))
+        .map((k) => (k === "file" ? f.file?.split("/").pop() ?? null : f[k] ?? null))))
       .sort();
     const first = said(encodings[0]);
     assert.ok(first.length > 0, `${encodings[0]}: nothing extracted`);

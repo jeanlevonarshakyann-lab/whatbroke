@@ -285,6 +285,7 @@ them.
 | **tsc** | errors grouped by file, with the assignability chain down to the real reason — and `--pretty`, which writes `file:line:col - error TS2322:` instead of `file(line,col):`, and is the default whenever tsc thinks it is talking to a terminal |
 | **git** | the conflicted files, not "Automatic merge failed"; the rejected ref, not five lines of `hint:` |
 | **npm** | its own failures — a missing script, a bad engine — without the trailing advice |
+| **npm `--json`** | npm says it twice — the same `npm error` block on stderr, a document on stdout — and a pipeline that keeps only stdout keeps only the document. Both now give the same code and the same two lines. A registry failure is coded `E404` and prefixed `404`, because the number is the HTTP status underneath it; the prefix comes off, since the code is already the code |
 | **pnpm** | its error code and message — indented with a thin space, which is why it needed one |
 | **yarn** | the failure without the documentation link that follows it |
 | **pip** | the exception a build backend actually raised, not `subprocess-exited-with-error`; resolution failures once rather than twice, without the package index pasted in |
