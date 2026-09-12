@@ -2171,6 +2171,32 @@ const CASES = [
       // "at Context.&#x3C;anonymous&#x3E;" - numeric references, not the named five.
       assert.doesNotMatch(JSON.stringify(r.failures), /&#x|&lt;|<failure/);
     } },
+  // One real vitest run in three of its reporters. `--reporter=tap` and `tap-flat` are
+  // TAP 13 with a YAML block, but in vitest's own dialect - `at: "path:line:col"` on one
+  // line, the class and text under `error:` - where tap.js reads node-tap's `at:` map. So
+  // neither matched, and a failing run came back as one guess reading "error:".
+  { file: "vitest_text_same_fail.txt", tool: "vitest", n: 1, check: (r) => {
+      assert.equal(r.summary, "1 failed | 1 passed (2)");
+      assert.equal(r.failures[0].title, "invoice total");
+      assert.equal(r.failures[0].file, "shop.test.js");
+      assert.deepEqual([r.failures[0].line, r.failures[0].col], [3, 16]);
+    } },
+  { file: "vitest_tapflat_fail.txt", tool: "vitest", n: 1, check: (r) => {
+      assert.equal(r.summary, "1 failed | 1 passed (2)", "the plan and the results give the counts");
+      // tap-flat names the test "file > test"; the file is already the location.
+      assert.equal(r.failures[0].title, "invoice total");
+      assert.deepEqual([r.failures[0].line, r.failures[0].col], [3, 16]);
+      // TAP prints the absolute path where the pretty reporter prints what you typed.
+      assert.equal(r.failures[0].file, "/home/dev/vitest/shop.test.js");
+      assert.match(r.failures[0].message, /AssertionError: expected 1049 to be 1050/);
+    } },
+  { file: "vitest_tap_fail.txt", tool: "vitest", n: 1, check: (r) => {
+      // The nested reporter wraps the file's tests in a result of its own, opened with a
+      // brace. Counting that roll-up as well would report one failing test as two.
+      assert.equal(r.failures.length, 1);
+      assert.equal(r.failures[0].title, "invoice total");
+      assert.doesNotMatch(r.failures[0].title, /time=|\{|shop\.test\.js/);
+    } },
   { file: "gorace_fail.txt", tool: "go test", n: 3, check: (r) => {
       // real `go test -race`. The detector names the exact line of the racing
       // access - the bug - while the assertion below it only reports a wrong total.
@@ -3918,6 +3944,19 @@ try {
   console.log("  ok   mocha's machine formats agree with each other");
   pass++;
 } catch (e) { console.log(`  FAIL mocha json vs xunit\n       ${e.message}`); fail++; }
+
+// Three reporters, one run. They differ only in how the path is written.
+try {
+  const text = analyse(fx("vitest_text_same_fail.txt"));
+  const flat = analyse(fx("vitest_tapflat_fail.txt"));
+  const nested = analyse(fx("vitest_tap_fail.txt"));
+  const facts = (r) => [r.tool, r.summary, r.failures[0].line, r.failures[0].col,
+    r.failures[0].title, r.failures[0].message];
+  assert.deepEqual(facts(flat), facts(text), "vitest's tap-flat and pretty reports disagree");
+  assert.deepEqual(facts(nested), facts(text), "vitest's nested tap and pretty reports disagree");
+  console.log("  ok   vitest's TAP reporters say what its pretty one says");
+  pass++;
+} catch (e) { console.log(`  FAIL vitest tap vs pretty\n       ${e.message}`); fail++; }
 
 const cliResults = await (await import("./cli.js")).runCliTests();
 pass += cliResults.pass;

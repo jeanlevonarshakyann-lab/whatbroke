@@ -41,6 +41,12 @@ const BLOCK_LINE_RE = /^(?:[^\S\n]*#|[^\S\n]+\S)/;
 // (test_shop.cjs:4:12)`. Frames inside the runtime are never the reader's code.
 const FRAME_RE = /^[^\S\n]*at[^\S\n]+(?:.*?\()?([^\s()]+?):(\d+):(\d+)\)?[^\S\n]*$/;
 const INTERNAL_RE = /^node:|[\\/]node_modules[\\/]|^(?:internal|timers)[\\/]/;
+// A result that opens a brace is a group's roll-up - vitest's nested TAP wraps a file's
+// tests in one - and its members report themselves below it. tap.js skips the same thing
+// by another name; counting it turns a file with one failing test into two failures.
+const GROUP_RE = /\{[^\S\n]*$/;
+// TAP directives and timings hang off the name: `not ok 1 - adds # time=10.42ms`.
+const DIRECTIVE_RE = /[^\S\n]*#[^\S\n]*(?:time=|SKIP\b|TODO\b).*$/i;
 const MAX_MESSAGE_LINES = 2;
 
 export default {
@@ -51,7 +57,8 @@ export default {
   detect(text) {
     if (!PLAN_RE.test(text)) return false;
     const lines = text.split("\n");
-    return lines.some((line, i) => NOT_OK_RE.test(line) && !structured(lines, i));
+    return lines.some((line, i) =>
+      NOT_OK_RE.test(line) && !structured(lines, i) && !GROUP_RE.test(line));
   },
 
   extract(text) {
@@ -65,8 +72,9 @@ export default {
     const named = namedDiagnostics(lines);
     for (let i = 0; i < lines.length; i++) {
       const head = lines[i].match(NOT_OK_RE);
-      if (!head || structured(lines, i)) continue;
-      const name = head[2] || (head[1] ? `test ${head[1]}` : "test");
+      if (!head || structured(lines, i) || GROUP_RE.test(lines[i])) continue;
+      const name = (head[2] || "").replace(DIRECTIVE_RE, "").trim() ||
+        (head[1] ? `test ${head[1]}` : "test");
       let file, col, at;
       const got = {}, body = [];
       // The block is everything until TAP's next statement. A result line or the plan
