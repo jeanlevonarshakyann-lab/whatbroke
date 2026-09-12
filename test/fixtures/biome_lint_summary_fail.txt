@@ -1,0 +1,25 @@
+reporter/violations ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+
+  i Some lint rules or assist actions reported some violations.
+  
+  i The following files have violations:
+  
+  - src/cart.js (1 error, 1 warning)
+  - src/checkout.js (1 error)
+  
+  i The following lint rules have violations:
+  
+  Rule Name                                        Diagnostics
+  
+  lint/correctness/noUnusedVariables               1 (1 warning)
+  lint/suspicious/noDoubleEquals                   1 (1 error)
+  lint/suspicious/noDebugger                       1 (1 error)
+
+Checked 2 files in 1443µs. No fixes applied.
+Found 2 errors.
+Found 1 warning.
+lint ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+
+  × Some errors were emitted while running checks.
+  
+

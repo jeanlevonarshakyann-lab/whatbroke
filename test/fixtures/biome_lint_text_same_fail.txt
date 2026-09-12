@@ -1,0 +1,66 @@
+src/cart.js:2:9 lint/correctness/noUnusedVariables  FIXABLE  ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+
+  ! This variable unused is unused.
+  
+    1 │ export function total(lines) {
+  > 2 │   const unused = 1;
+      │         ^^^^^^
+    3 │   debugger;
+    4 │   return lines.reduce((a, b) => a + b.price, 0);
+  
+  i Unused variables are often the result of typos, incomplete refactors, or other sources of bugs.
+  
+  i Unsafe fix: If this is intentional, prepend unused with an underscore.
+  
+    1 1 │   export function total(lines) {
+    2   │ - ··const·unused·=·1;
+      2 │ + ··const·_unused·=·1;
+    3 3 │     debugger;
+    4 4 │     return lines.reduce((a, b) => a + b.price, 0);
+  
+
+src/cart.js:3:3 lint/suspicious/noDebugger  FIXABLE  ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+
+  × This is an unexpected use of the debugger statement.
+  
+    1 │ export function total(lines) {
+    2 │   const unused = 1;
+  > 3 │   debugger;
+      │   ^^^^^^^^^
+    4 │   return lines.reduce((a, b) => a + b.price, 0);
+    5 │ }
+  
+  i Unsafe fix: Remove debugger statement
+  
+    1 1 │   export function total(lines) {
+    2 2 │     const unused = 1;
+    3   │ - ··debugger;
+    4 3 │     return lines.reduce((a, b) => a + b.price, 0);
+    5 4 │   }
+  
+
+src/checkout.js:2:14 lint/suspicious/noDoubleEquals  FIXABLE  ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+
+  × Using == may be unsafe if you are relying on type coercion.
+  
+    1 │ export function pay(amount) {
+  > 2 │   if (amount == "0") {
+      │              ^^
+    3 │     return false;
+    4 │   }
+  
+  i == is only allowed when comparing against null.
+  
+  i Unsafe fix: Use === instead.
+  
+    2 │ ··if·(amount·===·"0")·{
+      │                +       
+
+Checked 2 files in 1752µs. No fixes applied.
+Found 2 errors.
+Found 1 warning.
+lint ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+
+  × Some errors were emitted while running checks.
+  
+

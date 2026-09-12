@@ -1,3 +1,4 @@
+import { findJsonDocument, githubAnnotations, xmlAttributes, xmlText } from "../util.js";
 // Biome heads each finding with the location and the rule, then says what is wrong on
 // the line under it, then draws the source and offers fixes:
 //
@@ -63,12 +64,165 @@ function prefixed(name) {
   return /:[^\S\n]/.test(name);
 }
 
+// --------------------------------------------------------------- the other reporters
+//
+// `--reporter` changes how the same run is printed, and biome has five of them. None
+// was read: a run that reported three violations came back with no diagnosis at all.
+//
+// Each is bounded by something biome itself declares, never by the shape of the format
+// alone - the GitHub annotation, the GitLab Code Quality array and the JUnit document
+// are all formats other tools write too, and claiming one of those on sight would mean
+// claiming their logs.
+//
+// A rule's category is a path: `lint/suspicious/noDebugger`. Biome's own sections are
+// single words - `parse`, `format`, `organizeImports`, `assist`.
+const CATEGORY = /^(?:[\w-]+\/[\w-]+(?:\/[\w-]+)*|parse|format|organizeImports|assist)$/;
+
+// --reporter=json. `command` is the subcommand that ran, and `summary` counts what it
+// checked; no other tool writes a document carrying both beside a diagnostics array.
+const JSON_MARK = (v) => !!v && typeof v === "object" && !Array.isArray(v) &&
+  typeof v.command === "string" && !!v.summary && Array.isArray(v.diagnostics) &&
+  v.diagnostics.every((d) => d && typeof d.category === "string" && !!d.location);
+
+// --reporter=gitlab. GitLab's Code Quality format is a generic one, so what says this is
+// biome is the check name: a rule category, not a free-text check name.
+const GITLAB_MARK = (v) => Array.isArray(v) && v.length > 0 && v.every((d) =>
+  d && typeof d.check_name === "string" && CATEGORY.test(d.check_name) &&
+  typeof d.fingerprint === "string" && !!d.location && typeof d.location.path === "string");
+
+// --reporter=junit writes a JUnit document that names itself, and names biome again on
+// every suite. The rule comes back as a class path - `org.biome.lint.suspicious.noDebugger`
+// - which is biome's own category with the separators changed, so it is changed back.
+// The scan has to stay inside biome's own document. A JUnit file is what every runner
+// writes, and a log holding two of them - biome's report beside deno's - handed biome
+// deno's suites as well, because deciding on the whole log and then reading the whole
+// log are not the same bound. The document is cut out first, and a case still has to
+// carry biome's own class path to be read.
+const JUNIT_DOC_RE = /<testsuites\b[^>]*\bname="Biome"[^>]*>([\s\S]*?)<\/testsuites>/g;
+const JUNIT_SUITES = /<testsuites\b[^>]*\bname="Biome"/;
+const BIOME_CLASS = /^org\.biome\./;
+const JUNIT_CASE_RE = /<testcase\b([^>]*)>([\s\S]*?)<\/testcase>/g;
+const JUNIT_SUITE_RE = /<testsuite\b([^>]*)>([\s\S]*?)<\/testsuite>/g;
+const JUNIT_FAILURE_RE = /<failure\b([^>]*?)(?:\/>|>([\s\S]*?)<\/failure>)/;
+
+// --reporter=summary. Biome heads its own sections here, and lists the files under one
+// of them. There are no line numbers anywhere in this format, so none are invented.
+const SUMMARY_SECTION = /^[^\S\n]*reporter\/(violations|format)[^\S\n]*━+[^\S\n]*$/;
+const SUMMARY_SECTION_ANY = /^[^\S\n]*reporter\/(?:violations|format)[^\S\n]*━+[^\S\n]*$/m;
+const SUMMARY_FILES = /^[^\S\n]*i[^\S\n]+The following files (?:have violations|need to be formatted):[^\S\n]*$/;
+const SUMMARY_ITEM = /^[^\S\n]*-[^\S\n]+(\S.*?)(?:[^\S\n]+\(([^)]*)\))?[^\S\n]*$/;
+const SUMMARY_RULES = /^[^\S\n]*i[^\S\n]+The following lint rules have violations:[^\S\n]*$/;
+const SUMMARY_RULE_ROW = /^[^\S\n]*([\w-]+\/[\w-]+(?:\/[\w-]+)*)[^\S\n]{2,}\d+/;
+
+/** Every reading of `s` that came from one of biome's machine reporters. */
+function reported(s) {
+  const out = [];
+  // Each scan is skipped unless the log holds the one string that reporter must
+  // print, so asking biome about a large log it has nothing to do with stays cheap.
+  const doc = s.includes('"diagnostics"') ? findJsonDocument(s, JSON_MARK) : null;
+  for (const d of doc?.diagnostics ?? []) {
+    const start = d.location.span?.[0] ?? d.location.start ?? {};
+    out.push({
+      file: d.location.path?.file ?? d.location.path ?? undefined,
+      // A whole-file notice is padded out to a position biome does not really mean -
+      // line 0 in this reporter, line 1 in the next. Line 0 does not exist, so it is
+      // the one padding that can be recognised, and it is dropped rather than shown.
+      line: start.line > 0 ? start.line : undefined,
+      col: start.line > 0 && start.column > 0 ? start.column : undefined,
+      title: d.category, code: d.category,
+      severity: d.severity === "error" || d.severity === "fatal" ? "error" : "warning",
+      message: String(d.message ?? "").trim(),
+    });
+  }
+
+  // --reporter=github. Every tool's annotations look alike, so what marks these as
+  // biome's is the title: biome puts its rule category there, and the formatters that
+  // share this shape either write no title or write a sentence.
+  for (const a of (/^[^\S\n]*::(?:error|warning|notice)[^\S\n]/m.test(s) ? githubAnnotations(s) : [])) {
+    const title = a.props.title;
+    if (!title || !CATEGORY.test(title) || !a.props.file) continue;
+    const line = Number(a.props.line);
+    const col = Number(a.props.col ?? a.props.column);
+    out.push({
+      file: a.props.file,
+      line: Number.isFinite(line) && line > 0 ? line : undefined,
+      col: Number.isFinite(col) && col > 0 ? col : undefined,
+      title, code: title,
+      severity: a.severity === "error" ? "error" : "warning",
+      message: a.message.trim(),
+    });
+  }
+
+  for (const d of (s.includes('"check_name"') ? findJsonDocument(s, GITLAB_MARK) : null) ?? []) {
+    out.push({
+      file: d.location.path,
+      line: d.location.lines?.begin > 0 ? d.location.lines.begin : undefined,
+      title: d.check_name, code: d.check_name,
+      // GitLab's own scale. Biome writes error as critical and warning as major.
+      severity: d.severity === "critical" || d.severity === "blocker" ? "error" : "warning",
+      message: String(d.description ?? "").trim(),
+    });
+  }
+
+  for (const doc of JUNIT_SUITES.test(s) ? s.matchAll(JUNIT_DOC_RE) : []) {
+    for (const suite of doc[1].matchAll(JUNIT_SUITE_RE)) {
+      const file = xmlAttributes(suite[1]).name;
+      for (const test of suite[2].matchAll(JUNIT_CASE_RE)) {
+        const a = xmlAttributes(test[1]);
+        const f = test[2].match(JUNIT_FAILURE_RE);
+        if (!f || !BIOME_CLASS.test(String(a.name ?? ""))) continue;
+        // `org.biome.lint.suspicious.noDebugger` is the category with its separators
+        // changed for a format that expects a class name; this changes them back.
+        const code = String(a.name ?? "").replace(/^org\.biome\./, "").replace(/\./g, "/");
+        out.push({
+          file, line: +a.line > 0 ? +a.line : undefined,
+          col: +a.column > 0 ? +a.column : undefined,
+          title: code, code,
+          // This reporter records no severity at all: biome's warnings and its errors
+          // are both written as failures. Nothing here can tell them apart, so nothing
+          // here pretends to - the run failed and these are what it said.
+          severity: "error",
+          message: xmlText(xmlAttributes(f[1]).message ?? f[2] ?? "").trim(),
+        });
+      }
+    }
+  }
+
+  return out;
+}
+
+/** The files a `--reporter=summary` run named, with the counts it gave for each.
+ *
+ *  This reporter prints no line numbers anywhere, so a finding from it is about a file
+ *  and says so. The rules it lists are counted across the whole run and cannot be
+ *  attached to any one file, so they go in the run's own summary line instead. */
+function summarised(s) {
+  const files = [];
+  const rules = [];
+  let listing = null;
+  for (const line of s.split("\n")) {
+    if (SUMMARY_SECTION.test(line)) { listing = null; continue; }
+    if (SUMMARY_FILES.test(line)) { listing = "files"; continue; }
+    if (SUMMARY_RULES.test(line)) { listing = "rules"; continue; }
+    if (listing === "rules") {
+      const r = line.match(SUMMARY_RULE_ROW);
+      if (r) { rules.push(r[1]); continue; }
+    }
+    if (listing !== "files") continue;
+    const m = line.match(SUMMARY_ITEM);
+    if (!m) { if (line.trim()) listing = null; continue; }
+    files.push({ file: m[1], counts: m[2] });
+  }
+  return { files, rules };
+}
+
 export default {
   name: "biome",
   category: "lint",
   commands: ["biome"],
 
-  detect: (s) => s.split("\n").some((l) => header(l) !== null),
+  detect: (s) => s.split("\n").some((l) => header(l) !== null) ||
+    reported(s).length > 0 || SUMMARY_SECTION_ANY.test(s),
 
   extract(s) {
     const lines = s.split("\n");
@@ -98,7 +252,53 @@ export default {
         message: message || h.code, stmt,
       });
     }
+    // ...and the same run as one of biome's machine reporters printed it. A log can
+    // hold both - CI keeps the human output and writes the report beside it - so what
+    // the text form already said is not said again. The reporters disagree over whether
+    // a column is printed at all, so the column is not part of what makes a finding
+    // distinct.
+    const seen = new Set(found.map((f) => [f.file, f.line, f.code].join("\u0000")));
+    for (const f of reported(s)) {
+      // The machine reporters carry biome's closing remarks as diagnostics of their own,
+      // and "Code formatting aborted due to parsing errors" is the parse error above it
+      // said a second time. The text reader already steps over those; so does this, or a
+      // file biome could not parse is reported as two things going wrong instead of one.
+      if (RESTATEMENT.test(f.message)) continue;
+      const key = [f.file, f.line, f.code].join("\u0000");
+      if (seen.has(key)) continue;
+      seen.add(key);
+      found.push(f);
+    }
+
+    // ...and the summary reporter, which is a run in its own right rather than a last
+    // resort: a log can hold a `biome format` run and a `--reporter=summary` run, and
+    // reading the summary only when nothing else was found lost the second one whole.
+    const { files, rules } = summarised(s);
+    for (const { file, counts } of files) {
+      const key = [file, undefined, "violations"].join("\u0000");
+      if (seen.has(key)) continue;
+      seen.add(key);
+      found.push({
+        file, title: "violations", label: "violations", severity: "error",
+        message: counts ? `biome reported ${counts} here` : "biome reported violations here",
+      });
+    }
+
     if (!found.length) return null;
+    // When the summary reporter is all there was, the run's own line says what it said:
+    // how many files, and which rules - counted over the whole run, so they cannot be
+    // attached to any one file.
+    if (found.every((f) => f.label === "violations")) {
+      const only = found.length;
+      return {
+        tool: "biome",
+        // "biome would not accept these" says nothing went wrong, and the run exited
+        // non-zero. The guarantees suite catches a headline that reads like success.
+        summary: `${only} file${only === 1 ? "" : "s"} failed biome's checks` +
+          (rules.length ? ` — ${rules.join(", ")}` : ""),
+        failures: found,
+      };
+    }
     // The house rule everywhere else here: an error is what failed the run, and warnings
     // stand behind it - unless they are all there is, and then they are the reason.
     const errors = found.filter((f) => f.severity === "error");
