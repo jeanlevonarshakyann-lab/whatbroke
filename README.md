@@ -205,7 +205,7 @@ them.
 | **deno test** | test name and `file:line` from the header, without the assert-library frames |
 | **deno run** | the exception class, `file:line:col` and your frames — the message without `error:` and without the `file://` scheme |
 | **deno check** | the `TS` code, the explanation and the location — not the `error: Type checking failed.` tally underneath them |
-| **bun test** | test name, `file:line`, the matcher — not bun's echoed source |
+| **bun test** | test name, `file:line`, the matcher — not bun's echoed source. bun prints the failure and THEN says whose it was, so each block belongs to the `(fail)` line under it; a run whose capture began mid-stream has a first failure whose block is not in the log, and it says so rather than borrowing the next one's. The block is bounded by its own shape and by bun's opening banner, so it cannot reach a progress bar or the tool that ran before |
 | **bun** | a runtime crash read as bun's rather than node's, keyed on the version bun stamps at the foot of one |
 | **node --test** | test name, `file:line`, and the assertion out of TAP's YAML block |
 | **Node stack traces** | the error, the caret, your frames; `node:internal` hidden |
