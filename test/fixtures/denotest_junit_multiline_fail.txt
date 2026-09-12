@@ -1,0 +1,35 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<testsuites name="deno test" tests="2" failures="2" errors="0" time="0.011">
+    <testsuite name="./tests/cart_test.ts" tests="2" disabled="0" errors="0" failures="2">
+        <testcase name="cart &gt; totals an invoice" classname="./tests/cart_test.ts" time="0.010" line="3" col="6">
+            <failure message="Uncaught AssertionError: Values are not equal.
+
+
+    [Diff] Actual / Expected
+
+
+-   5
++   6
+">AssertionError: Values are not equal.
+
+
+    [Diff] Actual / Expected
+
+
+-   5
++   6
+
+  throw new AssertionError(message);
+        ^
+    at assertEquals (https://jsr.io/@std/assert/1.0.19/equals.ts:67:9)
+    at file:///home/dev/shop/tests/cart_test.ts:4:3</failure>
+        </testcase>
+        <testcase name="cart &gt; raises unexpectedly" classname="./tests/cart_test.ts" time="0.000" line="7" col="6">
+            <failure message="Uncaught Error: fixture exploded">Error: fixture exploded
+  throw new Error(&quot;fixture exploded&quot;);
+        ^
+    at file:///home/dev/shop/tests/cart_test.ts:8:9</failure>
+        </testcase>
+    </testsuite>
+</testsuites>
+[0m[1m[31merror[0m: Test failed

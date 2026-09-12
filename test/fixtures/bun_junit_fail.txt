@@ -1,0 +1,13 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<testsuites name="bun test" tests="2" assertions="1" failures="2" skipped="0" time="0.005341">
+  <testsuite name="bt/cart.test.ts" file="bt/cart.test.ts" tests="2" assertions="1" failures="2" skipped="0" time="0" hostname="ci-runner-7">
+    <testsuite name="cart" file="bt/cart.test.ts" line="3" tests="1" assertions="1" failures="1" skipped="0" time="0" hostname="ci-runner-7">
+      <testcase name="totals an invoice" classname="cart" time="0.00017" file="bt/cart.test.ts" line="4" assertions="1">
+        <failure type="AssertionError" />
+      </testcase>
+    </testsuite>
+    <testcase name="raises unexpectedly" classname="" time="0.000035" file="bt/cart.test.ts" line="9" assertions="0">
+      <failure type="AssertionError" />
+    </testcase>
+  </testsuite>
+</testsuites>

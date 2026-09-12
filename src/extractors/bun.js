@@ -1,4 +1,4 @@
-import { isNoise } from "../util.js";
+import { isNoise, xmlAttributes, xmlText } from "../util.js";
 
 // node writes stack paths as file:// URLs when a module throws; bun writes plain paths,
 // but a bun process running an ESM entry can produce either.
@@ -41,6 +41,48 @@ const DIFF_COUNT_RE = /^[-+][^\S\n]*(Expected|Received)[^\S\n]+[-+][^\S\n]*\d+[^
 // run. Neither is a diagnosis, and the first failure's block starts at the top of the
 // log, so without these the run's version string was reported as its assertion.
 const BANNER_RE = /^bun test v[\d.]+/;
+// What a run says about a test whose own output is not in the log - the capture began
+// mid-run, or the format never carried it. Worded once so both places say it alike.
+const NO_BLOCK = "bun reported this test as failed; its output is not in this log";
+
+// --reporter=junit writes a document that records WHICH tests failed and nothing else:
+// every outcome is a bare `<failure type="AssertionError" />` with no message and no
+// body. Nothing read it, so a CI job keeping only the XML got no diagnosis at all -
+// where the names, the file and the line each test is declared on were all sitting in it.
+//
+// JUnit is a shape every runner writes, so the bound is the suite bun names itself. The
+// suites nest - a describe block inside a file - and cases hang off both levels, so the
+// document is read whole rather than a level at a time.
+const BUN_DOC_RE = /<testsuites\b[^>]*\bname="bun test"[^>]*>([\s\S]*?)<\/testsuites>/g;
+const BUN_SUITES = /<testsuites\b[^>]*\bname="bun test"/;
+const CASE_RE = /<testcase\b([^>]*?)(?:\/>|>([\s\S]*?)<\/testcase>)/g;
+const OUTCOME_RE = /<(failure|error)\b([^>]*?)(?:\/>|>([\s\S]*?)<\/\1>)/;
+
+/** The failed cases of a `--reporter=junit` document, or none. */
+function junitCases(s) {
+  if (!BUN_SUITES.test(s)) return [];
+  const out = [];
+  const mine = [...s.matchAll(BUN_DOC_RE)].map((d) => d[1]).join("\n");
+  for (const test of mine.matchAll(CASE_RE)) {
+    const body = test[2] ?? "";
+    const outcome = body.match(OUTCOME_RE);
+    if (!outcome) continue;
+    const a = xmlAttributes(test[1]);
+    const detail = xmlText(outcome[3] ?? "").trim() || xmlAttributes(outcome[2]).message || "";
+    // The describe block is the classname, and bun's own reporter writes the two with a
+    // chevron between them. A test declared outside one has no classname at all.
+    const name = [a.classname, a.name].filter(Boolean).join(" > ");
+    out.push({
+      file: a.file, line: /^\d+$/.test(a.line) ? +a.line : undefined,
+      // The test's name is what identifies it; the outcome's `type` is a class name
+      // with nothing behind it in this format, and a failure carries one handle or the
+      // other, never both.
+      title: name, subject: name, severity: "error",
+      message: detail || NO_BLOCK,
+    });
+  }
+  return out;
+}
 const FILE_HEAD_RE = /^\S+:[^\S\n]*$/;
 const MAX_MESSAGE_LINES = 4;
 
@@ -48,8 +90,9 @@ export default {
   name: "bun test",
   category: "test",
   commands: ["bun"],
-  detect: (s) => /^\(fail\)[^\S\n]+/m.test(s) &&
-    (/^Ran \d+ tests? across/m.test(s) || /^[^\S\n]*\d+ fail[^\S\n]*$/m.test(s)),
+  detect: (s) => (/^\(fail\)[^\S\n]+/m.test(s) &&
+    (/^Ran \d+ tests? across/m.test(s) || /^[^\S\n]*\d+ fail[^\S\n]*$/m.test(s))) ||
+    junitCases(s).length > 0,
 
   extract(s) {
     const lines = s.split("\n");
@@ -109,8 +152,17 @@ export default {
         file, line, col, title: head[1], subject: head[1], severity: "error",
         // A failure whose block is not in the log still happened. Saying so is the
         // whole of what the log supports; taking the next test's block is not.
-        message: msg.length ? msg.join("\n") : "bun reported this test as failed; its output is not in this log",
+        message: msg.length ? msg.join("\n") : NO_BLOCK,
       });
+    }
+
+    // ...and the document, when a job kept that as well as - or instead of - the
+    // console output. A test already read from the console is not read again.
+    const said = new Set(failures.map((f) => f.subject));
+    for (const f of junitCases(s)) {
+      if (said.has(f.subject)) continue;
+      said.add(f.subject);
+      failures.push(f);
     }
 
     if (!failures.length) return null;
@@ -123,6 +175,15 @@ export default {
     const bits = [];
     if (failed) bits.push(`${failed} fail`);
     if (passed) bits.push(`${passed} pass`);
+    // The document prints no tally line; it counts the same things on its root suite.
+    if (!bits.length) {
+      const root = s.match(/<testsuites\b[^>]*\bname="bun test"[^>]*>/);
+      const counts = root ? xmlAttributes(root[0]) : {};
+      const fails = Number(counts.failures ?? 0) + Number(counts.errors ?? 0);
+      const total = Number(counts.tests ?? 0);
+      if (fails) bits.push(`${fails} fail`);
+      if (total - fails > 0) bits.push(`${total - fails} pass`);
+    }
 
     return { tool: "bun test", summary: bits.length ? bits.join(", ") : undefined, failures };
   },
