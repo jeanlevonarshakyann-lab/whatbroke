@@ -1089,6 +1089,24 @@ const CASES = [
   // Captured with pnpm 9 and yarn 1.22. pnpm indents its diagnostics with U+2009 THIN
   // SPACE, not a space - a pattern written [ \t] matches none of it, which is how the
   // whitespace class used across every parser came to be wrong.
+  // Newer pnpm draws the same failure as a box rather than a column, and nothing read
+  // it: the code was all the generic fallback could find, so a failed install said
+  // ERR_PNPM_FETCH_404 and never which package, or why. The arrow is the diagnosis, the
+  // cross is what pnpm was doing at the time, and `help:` is what to do next.
+  { file: "pnpm_boxed_fail.txt", tool: "pnpm", n: 1, check: (r) => {
+      assert.equal(r.failures[0].code, "ERR_PNPM_FETCH_404");
+      // pnpm hard-wraps, and here the break lands inside the package name - joining the
+      // continuation with a space would make one package into two
+      assert.match(r.failures[0].message, /this-package-really-does-not-exist-9x7: Not Found - 404/);
+      assert.doesNotMatch(r.failures[0].message, /this-\s+package/);
+      // ...and a break between words keeps its space
+      assert.match(r.failures[0].message, /registry, or you have no permission/);
+      // the headline is one line, not the whole box
+      assert.equal(r.summary, r.failures[0].message.split("\n")[0]);
+      assert.match(r.summary, /^Failed to resolve dependency tree/);
+      // the note about which header was sent is not the diagnosis
+      assert.doesNotMatch(JSON.stringify(r.failures), /authorization header/i);
+    } },
   { file: "pnpm_script_fail.txt", tool: "pnpm", n: 1, check: (r) => {
       const raw = fx("pnpm_script_fail.txt");
       assert.ok(raw.includes("\u2009"), "this fixture exists because pnpm uses a thin space");
