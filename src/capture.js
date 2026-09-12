@@ -74,6 +74,12 @@ const PROBABLE_DIAGNOSTIC = new RegExp([
   "^[^\\S\\n]*(?:[{}\\[\\],]+[^\\S\\n]*$|\"[\\w.$-]+\"[^\\S\\n]*:)",
   // Go's tally and the bullets test runners draw carry no word at all
   "^\\s*(?:---\\s*FAIL|FAIL\\b|\\u25cf|\\u2717|\\u2716|\\u00d7)",
+  // A tool that refuses to start says why in one sentence and stops. eslint's three
+  // are all the log there is, and none of them uses failure vocabulary: an option it
+  // does not know, a formatter it no longer ships, a pattern that matched nothing.
+  "^Invalid option '",
+  "^The \\S+ formatter is no longer part of core\\b",
+  "^No files matching the pattern\\b",
 ].join("|"), "im");
 
 /** Drop a trailing character that the cut left half-written.

@@ -527,6 +527,10 @@ const indistinguishable = (a, b) => SAME_SYNTAX.some((g) => g.has(a) && g.has(b)
 const SAME_RUN_TWO_ENCODINGS = [
   new Set(["cargo_json_fail.txt", "cargo_plain_same_fail.txt"]),
   new Set(["eslint_json_fail.txt", "eslint_json_runner_fail.txt", "eslint_text_same_fail.txt"]),
+  // ...and a second run, one with warnings among its errors. Same four failures either
+  // way; the document keeps the full stop its own rules write and the table trims it,
+  // which is eslint's doing and does not make a second problem.
+  new Set(["eslint_warnings_text_same_fail.txt", "eslint_warnings_json_fail.txt"]),
   new Set(["jest_json_statuses_fail.txt", "jest_text_statuses_fail.txt"]),
   new Set(["jest_json_suite_fail.txt", "jest_text_suite_same_fail.txt"]),
   // mocha: one run of test_shop.cjs, captured in three of its reporters. They

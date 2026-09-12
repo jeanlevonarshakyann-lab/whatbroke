@@ -1315,6 +1315,41 @@ const CASES = [
       assert.equal(r.failures[2].title, "throws");
       assert.match(r.failures[2].message, /TypeError/);
     } },
+  // Not every refusal is a crash. eslint can stop before it lints anything and just say
+  // why - a sentence with no error class, no location and no stack - and a log holding
+  // only that came back "could not identify a diagnostic" over a command that exited 2
+  // and said exactly what was wrong with it. Each of these names eslint or its own
+  // option in the text, which is what makes the sentence eslint's and not some other
+  // tool's prose.
+  { file: "eslint_badflag_fail.txt", tool: "eslint", n: 1, check: (r) => {
+      assert.equal(r.failures[0].label, "invalid option");
+      assert.match(r.failures[0].message, /--bogus-flag/);
+      // a headline has to admit the run failed
+      assert.match(r.summary, /refused to run/);
+    } },
+  { file: "eslint_nofiles_fail.txt", tool: "eslint", n: 1, check: (r) => {
+      assert.equal(r.failures[0].label, "no files matched");
+      // the advice under the sentence is part of the answer
+      assert.match(r.failures[0].message, /Please check for typing mistakes/);
+      assert.doesNotMatch(JSON.stringify(r.failures), /node_modules/);
+    } },
+  { file: "eslint_formatter_fail.txt", tool: "eslint", n: 1, check: (r) => {
+      assert.equal(r.failures[0].label, "formatter not installed");
+      assert.match(r.failures[0].message, /eslint-formatter-unix/);
+    } },
+  // One run with warnings among its errors, in the table and in -f json. The failures
+  // always agreed; the headlines did not - the table said how many warnings had stepped
+  // aside and the document did not, so one run read two ways read two ways.
+  { file: "eslint_warnings_text_same_fail.txt", tool: "eslint", n: 4, check: (r) => {
+      assert.equal(r.summary, "6 problems (4 errors, 2 warnings) — 2 warnings hidden");
+      assert.deepEqual(r.failures.map((f) => f.code),
+        ["no-unused-vars", "no-undef", "no-undef", "no-undef"]);
+    } },
+  { file: "eslint_warnings_json_fail.txt", tool: "eslint", n: 4, check: (r) => {
+      assert.equal(r.summary, "6 problems (4 errors, 2 warnings) — 2 warnings hidden");
+      assert.deepEqual(r.failures.map((f) => f.code),
+        ["no-unused-vars", "no-undef", "no-undef", "no-undef"]);
+    } },
   { file: "eslint_fail.txt", tool: "eslint", n: 3, check: (r) => {
       // warnings are not errors: 4 problems reported, 3 shown
       assert.match(r.summary, /1 warning hidden/);
@@ -2789,6 +2824,9 @@ for (const [group, encodings, silentAbout = []] of [
   // The JSON report carries the assertion's own message and no rendered diff - the diff
   // is drawn by the reporters, not stored. What it does carry is checked below.
   ["vitest json", ["vitest_reporters_text_same_fail.txt", "vitest_json_fail.txt"], ["message"]],
+  // eslint's stylish formatter trims the full stop its own rules write; the document
+  // keeps it. That is eslint's doing, not the reader's, so the message is named here.
+  ["eslint", ["eslint_warnings_text_same_fail.txt", "eslint_warnings_json_fail.txt"], ["message"]],
 ]) {
   try {
     // The path is the other legitimate difference: a formatter that writes a machine
