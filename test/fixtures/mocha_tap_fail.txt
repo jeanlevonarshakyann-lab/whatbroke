@@ -1,0 +1,16 @@
+not ok 1 shop invoice total
+  Expected values to be strictly equal:
+  
+  1049 !== 1050
+  
+  AssertionError [ERR_ASSERTION]: Expected values to be strictly equal:
+  
+  1049 !== 1050
+  
+      at Context.<anonymous> (test_shop.cjs:4:12)
+      at process.processImmediate (node:internal/timers:484:21)
+ok 2 shop applies discount
+# tests 2
+# pass 1
+# fail 1
+1..2

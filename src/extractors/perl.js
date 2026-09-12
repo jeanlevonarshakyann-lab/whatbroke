@@ -6,6 +6,16 @@
 // The pattern is greedy on the message so it binds to the LAST "at FILE line N" - a
 // message can contain the word "at", and the location is always last.
 const DIAGNOSTIC_RE = /^(.+)[^\S\n]at[^\S\n](\S+)[^\S\n]line[^\S\n](\d+)(?:,[^\S\n]*(.+?))?\.?$/;
+// Test::More reports where a test failed in a TAP comment - "#   at shop.t line 5." -
+// which is the shape above with a hash in front of it. Reading those as dies turned a
+// failing Perl suite into failures whose entire message was "#", and hid the test names
+// and the got/expected values that the TAP document actually carries.
+//
+// The rule is what is left of the message once the location is taken off it: a die
+// always says something, and here there is nothing but the hash. Testing the start of
+// the line instead would have been simpler and wrong - a CI runner stamps its prefix in
+// front of the hash, and then the guard misses and the whole document is misread again.
+const TAP_COMMENT_MESSAGE = /(?:^|[^\S\n])#[^\S\n]*$/;
 // A Perl source file, or one of the two names perl uses for a program with no file.
 const PERL_SRC = /\.(?:pl|pm|t|cgi|psgi)$/i;
 const NO_FILE = /^(?:-e|-|\(eval \d+\))$/;
@@ -43,6 +53,11 @@ const WARNINGS = [
 // The module search path is longer than the diagnosis and never varies.
 const INC_LIST = /[^\S\n]*\(@INC (?:contains|entries checked):[^)]*\)/;
 
+/** A match whose message is only a hash is Test::More reporting, not Perl dying. */
+function tapComment(m) {
+  return m && TAP_COMMENT_MESSAGE.test(m[1]) ? null : m;
+}
+
 export default {
   name: "perl",
   category: "runtime",
@@ -54,7 +69,7 @@ export default {
     const lines = s.split("\n");
     if (lines.some((l) => RESTATES.some((re) => re.test(l)))) return true;
     return lines.some((l) => {
-      const m = l.match(DIAGNOSTIC_RE);
+      const m = tapComment(l.match(DIAGNOSTIC_RE));
       return !!m && (PERL_SRC.test(m[2]) || NO_FILE.test(m[2]));
     });
   },
@@ -64,7 +79,7 @@ export default {
     let warnings = 0;
     for (const line of s.split("\n")) {
       if (RESTATES.some((re) => re.test(line))) continue;
-      const m = line.match(DIAGNOSTIC_RE);
+      const m = tapComment(line.match(DIAGNOSTIC_RE));
       if (!m) continue;
       if (!PERL_SRC.test(m[2]) && !NO_FILE.test(m[2])) continue;
 

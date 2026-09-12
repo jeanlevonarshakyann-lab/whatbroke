@@ -2047,6 +2047,39 @@ const CASES = [
       assert.equal(r.failures[0].file, "./reporter_test.ts");
       assert.equal(r.failures[0].line, 9);
     } },
+  // Bare TAP: what every harness emits when you ask for TAP and nothing more. It has no
+  // version line and no YAML block, so tap.js - which reads node-tap's TAP 14 - required
+  // both and matched neither. `mocha --reporter tap` produced nothing at all, and Perl's
+  // came out of the perl parser as two failures whose whole message was "#".
+  //
+  // The mocha capture is one real run; its `spec` form of the same run reports the same
+  // test at the same place, which is what these assertions pin.
+  { file: "mocha_tap_fail.txt", tool: "tap", n: 1, check: (r) => {
+      assert.equal(r.summary, "1 failed, 1 passed");
+      assert.equal(r.failures[0].title, "shop invoice total");
+      assert.equal(r.failures[0].file, "test_shop.cjs", "the indented stack carries the location");
+      assert.equal(r.failures[0].line, 4);
+      assert.equal(r.failures[0].col, 12);
+      assert.match(r.failures[0].message, /1049 !== 1050/);
+    } },
+  // One real Test::More suite, recorded twice: run directly, and under `prove -v`.
+  { file: "perl_tap_fail.txt", tool: "tap", n: 2, check: (r) => {
+      assert.equal(r.summary, "2 failed, 1 passed", "the plan says how many ran");
+      assert.deepEqual(r.failures.map((f) => f.title), ["invoice total", "code matches"]);
+      assert.equal(r.failures[0].file, "shop.t");
+      assert.equal(r.failures[0].line, 5);
+      assert.equal(r.failures[0].message, "expected '1050', got '1049'");
+      assert.doesNotMatch(JSON.stringify(r.failures), /Failed test|^"#"$/m);
+    } },
+  { file: "perl_prove_fail.txt", tool: "tap", n: 2, check: (r) => {
+      // prove prints the diagnostics BEFORE the stream, so nothing sits under the
+      // result line. Test::More names the test it is describing, and that name is the
+      // same string the `not ok` line carries - so the two are matched on it.
+      assert.deepEqual(r.failures.map((f) => f.line), [5, 7]);
+      assert.equal(r.failures[0].message, "expected '1050', got '1049'");
+      // "Dubious, test returned 2" follows the stream and belongs to no test.
+      assert.doesNotMatch(JSON.stringify(r.failures), /Dubious|subtests/);
+    } },
   { file: "gorace_fail.txt", tool: "go test", n: 3, check: (r) => {
       // real `go test -race`. The detector names the exact line of the racing
       // access - the bug - while the assertion below it only reports a wrong total.
@@ -3754,6 +3787,16 @@ try {
   console.log("  ok   a package that will not build does not hide the tests that failed, in any encoding");
   pass++;
 } catch (e) { console.log(`  FAIL build and tests\n       ${e.message}`); fail++; }
+
+// A reporter is a presentation, not a different failure.
+try {
+  const raw = analyse(fx("perl_tap_fail.txt"));
+  const prove = analyse(fx("perl_prove_fail.txt"));
+  const facts = (r) => r.failures.map((f) => [f.file, f.line, f.title, f.message]);
+  assert.deepEqual(facts(prove), facts(raw), "prove -v and raw TAP disagree about one suite");
+  console.log("  ok   prove -v and raw TAP say the same thing");
+  pass++;
+} catch (e) { console.log(`  FAIL prove -v vs raw TAP\n       ${e.message}`); fail++; }
 
 const cliResults = await (await import("./cli.js")).runCliTests();
 pass += cliResults.pass;
