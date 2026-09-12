@@ -169,6 +169,25 @@ const CASES = [
       assert.match(r.failures[0].message, /test file blew up at load/);
       assert.doesNotMatch(JSON.stringify(r.failures), /phar:\/\//, "PHPUnit's own frames are not the cause");
     } },
+  // Captured with vitest 5.0 in a directory whose name has a space. vitest repeats the
+  // file in brackets when it fails to load, and asking whether that bracket looked like a
+  // filename - no spaces, one extension - dropped the suite without a word: the log read
+  // as the one test that ran. The bracket repeating the header is what vitest guarantees.
+  { file: "vitest_suite_spaced_fail.txt", tool: "vitest", n: 2, check: (r) => {
+      assert.equal(r.failures[0].file, "vitestdir/my tests/crash.test.js");
+      assert.match(r.failures[0].message, /boom at import/);
+      assert.equal(r.failures[1].title, "adds");
+      // vitest's own tally counts tests, and a file that never loaded declared none.
+      assert.equal(r.summary, "1 failed (1) — 1 file failed to load");
+    } },
+  // The same files under a workspace project: vitest badges each header "|unit|" and the
+  // bracket still holds the bare file, so the header ends with it rather than equalling it.
+  { file: "vitest_projects_fail.txt", tool: "vitest", n: 4, check: (r) => {
+      assert.doesNotMatch(JSON.stringify(r.failures.map((f) => [f.file, f.title])), /\|unit\|/,
+        "the project badge is not part of the file");
+      assert.equal(r.failures.filter((f) => /crash\.test\.js$/.test(f.title)).length, 2);
+      assert.equal(r.summary, "2 failed (2) — 2 files failed to load");
+    } },
   { file: "vitest_suite_fail.txt", tool: "vitest", n: 1, check: (r) => {
       // A suite that throws before declaring a test cannot be named after one, so vitest
       // lists it under "Failed Suites" with the file in brackets rather than a test name
