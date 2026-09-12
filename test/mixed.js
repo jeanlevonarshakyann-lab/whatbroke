@@ -529,6 +529,9 @@ const SAME_RUN_TWO_ENCODINGS = [
   // vitest: one run in three reporters. They carry the same failure, differing only in
   // whether the path is the absolute one TAP prints or the one you typed.
   new Set(["vitest_text_same_fail.txt", "vitest_tap_fail.txt", "vitest_tapflat_fail.txt"]),
+  // pytest: one run in five traceback styles. Same two tests, same two messages.
+  new Set(["pytest_tb_long_same_fail.txt", "pytest_tb_short_fail.txt", "pytest_tb_line_fail.txt",
+    "pytest_tb_no_fail.txt", "pytest_tb_native_fail.txt"]),
 ];
 const sameRun = (a, b) => SAME_RUN_TWO_ENCODINGS.some((group) => group.has(a) && group.has(b));
 

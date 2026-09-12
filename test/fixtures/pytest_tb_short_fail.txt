@@ -1,0 +1,22 @@
+======================================= test session starts ========================================
+platform darwin -- Python 3.12.8, pytest-9.1.1, pluggy-1.6.0
+rootdir: /home/dev/pytest
+collected 3 items
+
+test_shop.py FF.                                                                             [100%]
+
+============================================= FAILURES =============================================
+________________________________________ test_invoice_total ________________________________________
+test_shop.py:6: in test_invoice_total
+    assert invoice_total([500, 550]) == 1050
+E   assert 1049 == 1050
+E    +  where 1049 = invoice_total([500, 550])
+_________________________________________ test_missing_key _________________________________________
+test_shop.py:11: in test_missing_key
+    assert rates["taxrate"] == 0.2
+           ^^^^^^^^^^^^^^^^
+E   KeyError: 'taxrate'
+===================================== short test summary info ======================================
+FAILED test_shop.py::test_invoice_total - assert 1049 == 1050
+FAILED test_shop.py::test_missing_key - KeyError: 'taxrate'
+=================================== 2 failed, 1 passed in 0.01s ====================================

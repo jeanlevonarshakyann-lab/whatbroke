@@ -2228,6 +2228,68 @@
       "generic": 6
     }
   },
+  "pytest_tb_line_fail.txt": {
+    "winner": "pytest",
+    "parser": "pytest",
+    "failures": 2,
+    "claimants": [
+      "pytest",
+      "generic"
+    ],
+    "shadow": {
+      "generic": 4
+    }
+  },
+  "pytest_tb_long_same_fail.txt": {
+    "winner": "pytest",
+    "parser": "pytest",
+    "failures": 2,
+    "claimants": [
+      "pytest",
+      "generic"
+    ],
+    "shadow": {
+      "generic": 4
+    }
+  },
+  "pytest_tb_native_fail.txt": {
+    "winner": "pytest",
+    "parser": "pytest",
+    "failures": 2,
+    "claimants": [
+      "pytest",
+      "python",
+      "generic"
+    ],
+    "shadow": {
+      "python": 2,
+      "generic": 3
+    }
+  },
+  "pytest_tb_no_fail.txt": {
+    "winner": "pytest",
+    "parser": "pytest",
+    "failures": 2,
+    "claimants": [
+      "pytest",
+      "generic"
+    ],
+    "shadow": {
+      "generic": 2
+    }
+  },
+  "pytest_tb_short_fail.txt": {
+    "winner": "pytest",
+    "parser": "pytest",
+    "failures": 2,
+    "claimants": [
+      "pytest",
+      "generic"
+    ],
+    "shadow": {
+      "generic": 4
+    }
+  },
   "rspec_fail.txt": {
     "winner": "rspec",
     "parser": "rspec",
