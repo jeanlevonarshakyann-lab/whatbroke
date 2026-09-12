@@ -2716,6 +2716,43 @@
       "generic": 4
     }
   },
+  "vitest_tap_fail.txt": {
+    "winner": "vitest",
+    "parser": "vitest",
+    "failures": 1,
+    "claimants": [
+      "vitest",
+      "generic"
+    ],
+    "shadow": {
+      "generic": 1
+    }
+  },
+  "vitest_tapflat_fail.txt": {
+    "winner": "vitest",
+    "parser": "vitest",
+    "failures": 1,
+    "claimants": [
+      "vitest",
+      "go",
+      "generic"
+    ],
+    "shadow": {
+      "generic": 1
+    }
+  },
+  "vitest_text_same_fail.txt": {
+    "winner": "vitest",
+    "parser": "vitest",
+    "failures": 1,
+    "claimants": [
+      "vitest",
+      "generic"
+    ],
+    "shadow": {
+      "generic": 2
+    }
+  },
   "webpack_parse_fail.txt": {
     "winner": "webpack",
     "parser": "webpack",

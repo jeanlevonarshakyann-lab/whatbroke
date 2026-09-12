@@ -75,6 +75,7 @@ export default {
       // `failureType`, which tap never writes, and node's parser reads them.
       let nodes = false;
       let deno = false;
+      let vitests = false;
       for (let j = i + 1; j < lines.length && j <= i + 40; j++) {
         if (NOT_OK_RE.test(lines[j]) || END_RE.test(lines[j])) break;
         if (/^[^\S\n]*failureType:/.test(lines[j])) { nodes = true; break; }
@@ -84,8 +85,13 @@ export default {
         if (/^[^\S\n]*\{.*"severity"\s*:\s*"fail".*\}[^\S\n]*$/.test(lines[j])) {
           deno = true; break;
         }
+        // vitest writes the location as one quoted string - `at: "path:line:col"` -
+        // where tap opens a map under `at:` and puts fileName and lineNumber inside it.
+        // Its parser reads that dialect; taking the block here found none of tap's own
+        // fields and produced a failure with no location and the timing left in its name.
+        if (/^[^\S\n]*at:[^\S\n]*"/.test(lines[j])) { vitests = true; break; }
       }
-      if (nodes || deno) continue;
+      if (nodes || deno || vitests) continue;
 
       const field = {};
       const diff = [];

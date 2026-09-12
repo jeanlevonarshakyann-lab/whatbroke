@@ -1,0 +1,34 @@
+
+ RUN  v5.0.0 /home/dev/vitest
+
+ ❯ shop.test.js (2 tests | 1 failed) 19ms
+   × invoice total 16ms
+   ✓ applies discount 0ms
+
+⎯⎯⎯⎯⎯⎯⎯ Failed Tests 1 ⎯⎯⎯⎯⎯⎯⎯
+
+ FAIL  shop.test.js > invoice total
+AssertionError: expected 1049 to be 1050 // Object.is equality
+
+- Expected
++ Received
+
+- 1050
++ 1049
+
+ ❯ shop.test.js:3:16
+      1| import { test, expect } from "vitest";
+      2| test("invoice total", () => {
+      3|   expect(1049).toBe(1050);
+       |                ^
+      4| });
+      5| test("applies discount", () => {
+
+⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯[1/1]⎯
+
+
+ Test Files  1 failed (1)
+      Tests  1 failed | 1 passed (2)
+   Start at  12:49:09
+   Duration  398ms (transform 41%, import 29%, tests 16%, worker 14%)
+

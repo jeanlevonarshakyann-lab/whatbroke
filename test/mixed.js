@@ -526,6 +526,9 @@ const SAME_RUN_TWO_ENCODINGS = [
   // first two lines where xunit's is three - but the extra line is context under the
   // same comparison, and the shared de-duplication joins them.
   new Set(["mocha_json_fail.txt", "mocha_xunit_fail.txt", "mocha_tap_fail.txt"]),
+  // vitest: one run in three reporters. They carry the same failure, differing only in
+  // whether the path is the absolute one TAP prints or the one you typed.
+  new Set(["vitest_text_same_fail.txt", "vitest_tap_fail.txt", "vitest_tapflat_fail.txt"]),
 ];
 const sameRun = (a, b) => SAME_RUN_TWO_ENCODINGS.some((group) => group.has(a) && group.has(b));
 

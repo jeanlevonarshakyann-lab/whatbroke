@@ -1,0 +1,12 @@
+TAP version 13
+1..2
+not ok 1 - shop.test.js > invoice total # time=9.92ms
+    ---
+    error:
+        name: "AssertionError"
+        message: "expected 1049 to be 1050 // Object.is equality"
+    at: "/home/dev/vitest/shop.test.js:3:16"
+    actual: "1049"
+    expected: "1050"
+    ...
+ok 2 - shop.test.js > applies discount # time=0.51ms
