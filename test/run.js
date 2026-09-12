@@ -682,6 +682,18 @@ const CASES = [
       assert.match(r.failures[0].message, /fmt\.Printf call needs 1 arg but has 2 args/);
       assert.match(r.failures[1].message, /format %s has arg 42 of wrong type int/);
     } },
+  // ...and `-json` is the one form that does say. The analyzer names itself there, so
+  // the finding carries `printf` rather than being read as the compiler's. It is one
+  // document PER PACKAGE, concatenated with nothing between them, so a reader that
+  // stops at the first would report one package and drop the rest of the run.
+  { file: "govet_json_fail.txt", tool: "go vet", n: 2, check: (r) => {
+      assert.deepEqual(r.failures.map((f) => f.code), ["printf", "printf"]);
+      assert.deepEqual(r.failures.map((f) => f.file),
+        ["/home/dev/shop/shop/cart.go", "/home/dev/shop/ship/box.go"]);
+      assert.equal(r.failures[0].line, 7);
+      assert.equal(r.failures[0].col, 14);
+      assert.match(r.summary, /printf/);
+    } },
   // Captured on the system perl, 5.34. Perl puts the location at the end of the message,
   // in prose, so nothing recognised it and a failing perl script produced no diagnosis.
   { file: "perl_die_fail.txt", tool: "perl", n: 1, check: (r) => {
@@ -1367,6 +1379,24 @@ const CASES = [
       const cargo = analyse(fx("cargobuild_fail.txt"));
       assert.equal(cargo.tool, "cargo", "cargo output must not be claimed by ruff");
     } },
+  // One mypy run over two files, in its default output and in --output=json. The JSON
+  // form carries a column the text form does not print unless asked, and a `hint` where
+  // the text form writes a note under the error.
+  { file: "mypy_text_same_fail.txt", tool: "mypy", n: 4, check: (r) => {
+      assert.deepEqual(r.failures.map((f) => f.code),
+        ["return-value", "assignment", "operator", "return-value"]);
+      assert.equal(r.failures[0].col, undefined);
+      assert.equal(r.summary, "4 errors in 2 files");
+    } },
+  { file: "mypy_json_fail.txt", tool: "mypy", n: 4, check: (r) => {
+      assert.deepEqual(r.failures.map((f) => f.code),
+        ["return-value", "assignment", "operator", "return-value"]);
+      assert.equal(r.failures[0].file, "pkg/ship.py");
+      assert.equal(r.failures[0].line, 2);
+      assert.equal(r.failures[0].col, 11);
+      assert.equal(r.failures[0].message,
+        'Incompatible return value type (got "float", expected "str")');
+    } },
   { file: "mypy_fail.txt", tool: "mypy", n: 3, check: (r) => {
       assert.equal(r.summary, "3 errors in 1 file");          // "1 file", not "1 files"
       assert.equal(r.failures[0].file, "typed.py");
@@ -1465,6 +1495,31 @@ const CASES = [
       assert.deepEqual(r.failures.map((f) => f.code),
         ["key-duplicates", "line-length", "trailing-spaces", "syntax"]);
       assert.equal(r.failures[1].message, "line too long (106 > 80 characters)");
+    } },
+  // One yamllint run over two files in all three of its formats. -f github writes the
+  // workflow annotations every tool's GitHub formatter writes, so what marks these as
+  // yamllint's is inside the message: yamllint puts its own parsable line there, which
+  // says the position a second time. If the two positions disagree it is not yamllint's.
+  { file: "yamllint_text_same_fail.txt", tool: "yamllint", n: 3, check: (r) => {
+      assert.deepEqual(r.failures.map((f) => f.code),
+        ["colons", "trailing-spaces", "key-duplicates"]);
+      assert.match(r.summary, /2 warnings hidden/);
+    } },
+  { file: "yamllint_parsable_same_fail.txt", tool: "yamllint", n: 3, check: (r) => {
+      assert.deepEqual(r.failures.map((f) => f.code),
+        ["colons", "trailing-spaces", "key-duplicates"]);
+      assert.equal(r.failures[2].file, "config.yml");
+    } },
+  { file: "yamllint_github_fail.txt", tool: "yamllint", n: 3, check: (r) => {
+      assert.deepEqual(r.failures.map((f) => f.code),
+        ["colons", "trailing-spaces", "key-duplicates"]);
+      assert.equal(r.failures[0].file, "deploy.yml");
+      assert.equal(r.failures[0].line, 1);
+      assert.equal(r.failures[0].col, 7);
+      // the position yamllint repeats inside the annotation is not part of the message
+      assert.equal(r.failures[0].message, "too many spaces after colon");
+      assert.doesNotMatch(JSON.stringify(r.failures), /\[colons\]/);
+      assert.match(r.summary, /2 warnings hidden/);
     } },
   // Captured with Docker 28 / BuildKit. Docker prints the offending Dockerfile line
   // inside a fenced excerpt and marks it with ">>>", and repeats each error once per
@@ -2511,6 +2566,11 @@ for (const [group, encodings, silentAbout = []] of [
   // without one. biome's JUnit and summary reporters print strictly less than the rest
   // and are pinned on their own above rather than being made to agree here.
   ["biome gitlab", ["biome_lint_text_same_fail.txt", "biome_lint_gitlab_fail.txt"], ["col"]],
+  ["yamllint", ["yamllint_text_same_fail.txt", "yamllint_parsable_same_fail.txt",
+    "yamllint_github_fail.txt"]],
+  // mypy's default output prints no column unless it is asked for one; --output=json
+  // always carries it.
+  ["mypy", ["mypy_text_same_fail.txt", "mypy_json_fail.txt"], ["col"]],
 ]) {
   try {
     // The path is the other legitimate difference: a formatter that writes a machine
