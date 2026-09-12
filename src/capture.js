@@ -80,6 +80,9 @@ const PROBABLE_DIAGNOSTIC = new RegExp([
   "^Invalid option '",
   "^The \\S+ formatter is no longer part of core\\b",
   "^No files matching the pattern\\b",
+  // ...and a reporter told to write to a file says so and prints nothing else, so that
+  // one line is the entire log of a failed run.
+  "^[A-Z][A-Z-]* report written to ",
 ].join("|"), "im");
 
 /** Drop a trailing character that the cut left half-written.

@@ -3385,6 +3385,16 @@
       "generic": 8
     }
   },
+  "vitest_report_file_fail.txt": {
+    "winner": "vitest",
+    "parser": "vitest",
+    "failures": 1,
+    "claimants": [
+      "vitest",
+      "generic"
+    ],
+    "shadow": {}
+  },
   "vitest_reporters_text_same_fail.txt": {
     "winner": "vitest",
     "parser": "vitest",
