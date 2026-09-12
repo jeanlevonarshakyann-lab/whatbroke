@@ -118,3 +118,21 @@ export function collapseRepeats(message) {
   }
   return out.join("\n");
 }
+
+/** Decode XML character data. Numeric references matter as much as the named five:
+ *  mocha's xunit reporter writes `&#x3C;anonymous&#x3E;` where node's JUnit writes
+ *  `&lt;`, and a parser that knows only the names leaves markup in the message. */
+export function xmlText(value) {
+  return String(value).replace(/&(?:#(\d+)|#x([\da-fA-F]+)|quot|apos|lt|gt|amp);/g, (entity, dec, hex) => {
+    if (dec) return String.fromCodePoint(Number(dec));
+    if (hex) return String.fromCodePoint(parseInt(hex, 16));
+    return { "&quot;": '"', "&apos;": "'", "&lt;": "<", "&gt;": ">", "&amp;": "&" }[entity.toLowerCase()];
+  });
+}
+
+/** The attributes of one XML start tag, decoded. */
+export function xmlAttributes(tag) {
+  const attributes = {};
+  for (const match of tag.matchAll(/([\w:.-]+)="([^"]*)"/g)) attributes[match[1]] = xmlText(match[2]);
+  return attributes;
+}

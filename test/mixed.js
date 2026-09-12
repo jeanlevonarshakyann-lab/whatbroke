@@ -521,6 +521,11 @@ const SAME_RUN_TWO_ENCODINGS = [
   new Set(["eslint_json_fail.txt", "eslint_json_runner_fail.txt", "eslint_text_same_fail.txt"]),
   new Set(["jest_json_statuses_fail.txt", "jest_text_statuses_fail.txt"]),
   new Set(["jest_json_suite_fail.txt", "jest_text_suite_same_fail.txt"]),
+  // mocha: one run of test_shop.cjs, captured in three of its reporters. They
+  // deduplicate down to one. The JSON report carries no diff, so its message is the
+  // first two lines where xunit's is three - but the extra line is context under the
+  // same comparison, and the shared de-duplication joins them.
+  new Set(["mocha_json_fail.txt", "mocha_xunit_fail.txt", "mocha_tap_fail.txt"]),
 ];
 const sameRun = (a, b) => SAME_RUN_TWO_ENCODINGS.some((group) => group.has(a) && group.has(b));
 

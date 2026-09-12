@@ -5,6 +5,25 @@ const ERR_RE = /^(?:Uncaught )?((?:[A-Z]\w*)?(?:Error|Exception)(?:\s\[[\w_]+\])
 // so source context was never shown for a module, and the location read as a URL.
 const unfile = (p) => (p?.startsWith("file://") ? decodeURIComponent(p.slice(7)) : p);
 
+/** Line numbers that sit inside a <failure>/<error> element's body. */
+function xmlBodyLines(lines) {
+  const inside = new Set();
+  let open = null;
+  for (let i = 0; i < lines.length; i++) {
+    if (open) {
+      inside.add(i);
+      if (new RegExp(`</${open}>`).test(lines[i])) open = null;
+      continue;
+    }
+    const start = lines[i].match(/<(failure|error)\b[^>]*>/);
+    // A self-closing tag or one that closes on its own line holds nothing after it.
+    if (start && !new RegExp(`</${start[1]}>`).test(lines[i].slice(lines[i].indexOf(start[0]) + start[0].length))) {
+      open = start[1];
+    }
+  }
+  return inside;
+}
+
 export default {
   name: "node",
   category: "runtime",
@@ -18,7 +37,15 @@ export default {
     const SOURCE_GAP = 4;
     const failures = [];
 
+    // A JUnit-shaped report carries the failing tool's stack verbatim inside <failure>,
+    // and mocha's xunit reporter writes it unescaped and unindented - so it reads exactly
+    // like a Node crash. It is not one: it is somebody's report OF one, already read by
+    // the parser that owns the document, and taking it too reported the same failure
+    // twice, titled with the error class instead of the test's name.
+    const reported = xmlBodyLines(lines);
+
     for (let errIdx = 0; errIdx < lines.length; errIdx++) {
+      if (reported.has(errIdx)) continue;
       const error = lines[errIdx].match(ERR_RE);
       if (!error) continue;
 

@@ -65,6 +65,13 @@ const PROBABLE_DIAGNOSTIC = new RegExp([
   // extension so the location pattern above does not match it either, and the whole
   // log is frequently that one line.
   "^(?:make(?:\\[\\d+\\])?:|[^\\s:]+:\\d+:)[^\\S\\n]+\\*\\*\\*[^\\S\\n]",
+  // A structured report only means anything whole. eslint's and jest's arrive on one
+  // line, so keeping that line keeps the document - but `mocha --reporter json` pretty
+  // prints across forty, and dropping the braces between two interesting lines leaves
+  // something no parser can read. A line of JSON is cheap to keep and absent from
+  // ordinary build chatter, so keeping all of them costs a budget nothing in practice
+  // and is the only way a multi-line report survives being buried.
+  "^[^\\S\\n]*(?:[{}\\[\\],]+[^\\S\\n]*$|\"[\\w.$-]+\"[^\\S\\n]*:)",
   // Go's tally and the bullets test runners draw carry no word at all
   "^\\s*(?:---\\s*FAIL|FAIL\\b|\\u25cf|\\u2717|\\u2716|\\u00d7)",
 ].join("|"), "im");

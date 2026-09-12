@@ -1,3 +1,4 @@
+import { xmlText, xmlAttributes } from "../util.js";
 // `deno test` gathers its failures under an ERRORS banner:
 //
 //    ERRORS
@@ -80,26 +81,6 @@ const denoPretty = {
 const TAP_VERSION_RE = /^TAP version \d+[^\S\n]*$/m;
 const TAP_NOT_OK_RE = /^[^\S\n]*not ok[^\S\n]+\d+[^\S\n]*-?[^\S\n]*(.*?)[^\S\n]*$/;
 const TAP_END_RE = /^[^\S\n]*\.\.\.[^\S\n]*$/;
-
-function xmlText(value) {
-  return String(value).replace(/&(?:#(\d+)|#x([\da-f]+)|quot|apos|lt|gt|amp);/gi, (entity, dec, hex) => {
-    if (dec || hex) {
-      const point = dec ? Number(dec) : parseInt(hex, 16);
-      return Number.isInteger(point) && point <= 0x10ffff && !(point >= 0xd800 && point <= 0xdfff)
-        ? String.fromCodePoint(point)
-        : entity;
-    }
-    return { "&quot;": '"', "&apos;": "'", "&lt;": "<", "&gt;": ">", "&amp;": "&" }[entity.toLowerCase()];
-  });
-}
-
-function xmlAttributes(tag) {
-  const attributes = {};
-  for (const match of tag.matchAll(/([\w:.-]+)="([^"]*)"/g)) {
-    attributes[match[1]] = xmlText(match[2]);
-  }
-  return attributes;
-}
 
 function usefulMessage(value) {
   const messageLines = value.split("\n");

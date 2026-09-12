@@ -2130,6 +2130,31 @@ const CASES = [
       // "Dubious, test returned 2" follows the stream and belongs to no test.
       assert.doesNotMatch(JSON.stringify(r.failures), /Dubious|subtests/);
     } },
+  // One real mocha run in its two machine formats. `--reporter json` produced nothing at
+  // all - mocha pretty-prints it across forty lines, so unlike eslint's or jest's it
+  // cannot be found by scanning for a line that parses. `--reporter xunit` was claimed by
+  // the node parser, because the stack inside <failure> looks like one of node's: the
+  // failure came back titled "AssertionError [ERR_ASSERTION]" with the test's name
+  // nowhere, no count of what passed, and XML entities left in the message.
+  //
+  // The spec reporter reports this same run as `shop invoice total` at test_shop.cjs:4:12
+  // with "1 failing, 1 passing", which is what these two are checked against.
+  { file: "mocha_json_fail.txt", tool: "mocha", n: 1, check: (r) => {
+      assert.equal(r.summary, "1 failing, 1 passing");
+      assert.equal(r.failures[0].title, "shop invoice total", "fullTitle, not the bare test name");
+      assert.equal(r.failures[0].file, "test_shop.cjs", "the frame that threw, not the whole file");
+      assert.equal(r.failures[0].line, 4);
+      assert.equal(r.failures[0].col, 12);
+      assert.equal(r.failures[0].message, "Expected values to be strictly equal:\n1049 !== 1050");
+    } },
+  { file: "mocha_xunit_fail.txt", tool: "mocha", n: 1, check: (r) => {
+      assert.equal(r.summary, "1 failing, 1 passing", "mocha files an assertion under errors, not failures");
+      assert.equal(r.failures[0].title, "shop invoice total", "classname and name together");
+      assert.equal(r.failures[0].line, 4);
+      assert.equal(r.failures[0].col, 12);
+      // "at Context.&#x3C;anonymous&#x3E;" - numeric references, not the named five.
+      assert.doesNotMatch(JSON.stringify(r.failures), /&#x|&lt;|<failure/);
+    } },
   { file: "gorace_fail.txt", tool: "go test", n: 3, check: (r) => {
       // real `go test -race`. The detector names the exact line of the racing
       // access - the bug - while the assertion below it only reports a wrong total.
@@ -3861,6 +3886,18 @@ try {
   console.log("  ok   prove -v and raw TAP say the same thing");
   pass++;
 } catch (e) { console.log(`  FAIL prove -v vs raw TAP\n       ${e.message}`); fail++; }
+// Two machine formats of one run have to agree with each other, and with what the human
+// reporter says about it. They differ only in how much of the diff each one carries.
+try {
+  const json = analyse(fx("mocha_json_fail.txt"));
+  const xunit = analyse(fx("mocha_xunit_fail.txt"));
+  const where = (r) => [r.tool, r.summary, r.failures[0].file, r.failures[0].line,
+    r.failures[0].col, r.failures[0].title];
+  assert.deepEqual(where(xunit), where(json), "mocha's json and xunit reports disagree");
+  assert.equal(xunit.failures[0].message.split("\n")[0], json.failures[0].message.split("\n")[0]);
+  console.log("  ok   mocha's machine formats agree with each other");
+  pass++;
+} catch (e) { console.log(`  FAIL mocha json vs xunit\n       ${e.message}`); fail++; }
 
 const cliResults = await (await import("./cli.js")).runCliTests();
 pass += cliResults.pass;
