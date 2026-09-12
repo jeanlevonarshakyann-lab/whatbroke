@@ -1,0 +1,54 @@
+
+In inputs/a.sh line 2:
+unused="daily report"
+^----^ SC2034 (warning): unused appears unused. Verify use (or export if used externally).
+
+
+In inputs/a.sh line 3:
+echo $*
+     ^-- SC2048 (warning): Use "$@" (with quotes) to prevent whitespace problems.
+     ^-- SC2086 (info): Double quote to prevent globbing and word splitting.
+
+Did you mean:
+echo "$*"
+
+
+In inputs/a.sh line 4:
+files=`ls "reports with spaces"`
+      ^------------------------^ SC2006 (style): Use $(...) notation instead of legacy backticks `...`.
+
+Did you mean:
+files=$(ls "reports with spaces")
+
+
+In inputs/a.sh line 5:
+cd $1
+^---^ SC2164 (warning): Use 'cd ... || exit' or 'cd ... || return' in case cd fails.
+   ^-- SC2086 (info): Double quote to prevent globbing and word splitting.
+
+Did you mean:
+cd "$1" || exit
+
+
+In inputs/a.sh line 6:
+printf '%s\n' $files
+              ^----^ SC2086 (info): Double quote to prevent globbing and word splitting.
+
+Did you mean:
+printf '%s\n' "$files"
+
+
+In inputs/b.sh line 4:
+  echo ${message
+  ^-- SC1009 (info): The mentioned syntax error was in this simple command.
+       ^-- SC1073 (error): Couldn't parse this parameter expansion. Fix to allow more checks.
+
+
+In inputs/b.sh line 7:
+
+^-- SC1072 (error):  Fix any mentioned problems and try again.
+
+For more information:
+  https://www.shellcheck.net/wiki/SC2034 -- unused appears unused. Verify use...
+  https://www.shellcheck.net/wiki/SC2048 -- Use "$@" (with quotes) to prevent...
+  https://www.shellcheck.net/wiki/SC2164 -- Use 'cd ... || exit' or 'cd ... |...

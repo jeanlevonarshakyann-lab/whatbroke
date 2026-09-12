@@ -2729,6 +2729,16 @@
       "generic": 1
     }
   },
+  "shellcheck_checkstyle_fail.txt": {
+    "winner": "shellcheck",
+    "parser": "shellcheck",
+    "failures": 2,
+    "claimants": [
+      "shellcheck",
+      "generic"
+    ],
+    "shadow": {}
+  },
   "shellcheck_fail.txt": {
     "winner": "shellcheck",
     "parser": "shellcheck",
@@ -2751,10 +2761,52 @@
       "generic": 7
     }
   },
+  "shellcheck_gcc_same_fail.txt": {
+    "winner": "shellcheck",
+    "parser": "shellcheck",
+    "failures": 2,
+    "claimants": [
+      "shellcheck",
+      "generic"
+    ],
+    "shadow": {
+      "generic": 10
+    }
+  },
+  "shellcheck_json1_fail.txt": {
+    "winner": "shellcheck",
+    "parser": "shellcheck",
+    "failures": 2,
+    "claimants": [
+      "shellcheck",
+      "generic"
+    ],
+    "shadow": {}
+  },
+  "shellcheck_json_fail.txt": {
+    "winner": "shellcheck",
+    "parser": "shellcheck",
+    "failures": 2,
+    "claimants": [
+      "shellcheck",
+      "generic"
+    ],
+    "shadow": {}
+  },
   "shellcheck_style_fail.txt": {
     "winner": "shellcheck",
     "parser": "shellcheck",
     "failures": 3,
+    "claimants": [
+      "shellcheck",
+      "generic"
+    ],
+    "shadow": {}
+  },
+  "shellcheck_tty_same_fail.txt": {
+    "winner": "shellcheck",
+    "parser": "shellcheck",
+    "failures": 2,
     "claimants": [
       "shellcheck",
       "generic"

@@ -1,3 +1,4 @@
+import { findJsonDocument, xmlAttributes } from "../util.js";
 // shellcheck writes two formats a CI job is likely to produce, and neither was read.
 // Its default is a block per location:
 //
@@ -21,13 +22,60 @@ const CARET = /^([^\S\n]*)\^[-^]*[^\S\n]+(SC\d+)[^\S\n]+\((error|warning|info|st
 // The trailing code is what makes the line shellcheck's rather than any compiler's.
 const GCC = /^(.+?):(\d+):(\d+):[^\S\n]+(error|warning|note):[^\S\n]+(.+?)[^\S\n]+\[(SC\d+)\][^\S\n]*$/;
 
+// And three machine formats, none of which was read. `-f json` is a bare array of the
+// findings; `-f json1` is the same array inside an object, which is the difference
+// between them; `-f checkstyle` is an XML document.
+//
+// The code is a NUMBER in the JSON forms and `ShellCheck.SC2086` in the checkstyle one,
+// where the text forms print `SC2086`. Both are turned back into what shellcheck calls
+// the check everywhere else, so one run printed two ways is one finding and not two.
+const COMMENT = (c) => c && typeof c.file === "string" && Number.isInteger(c.line) &&
+  Number.isInteger(c.code) && typeof c.level === "string" && typeof c.message === "string";
+const JSON_MARK = (v) => {
+  const list = Array.isArray(v) ? v : Array.isArray(v?.comments) ? v.comments : null;
+  return !!list && list.length > 0 && list.every(COMMENT);
+};
+const comments = (s) => {
+  if (!s.includes('"level"')) return [];
+  const v = findJsonDocument(s, JSON_MARK);
+  return v === null ? [] : Array.isArray(v) ? v : v.comments;
+};
+// checkstyle is a shape other linters write too, so what makes it shellcheck's is the
+// source attribute: every finding declares `ShellCheck.SC####` as the check that made it.
+const CHECKSTYLE_FILE = /<file\b([^>]*)>([\s\S]*?)<\/file>/g;
+const CHECKSTYLE_ERROR = /<error\b([^>]*?)\/?>/g;
+const SHELLCHECK_SOURCE = /^ShellCheck\.(SC\d+)$/;
+
+/** The findings of a run in one of the three machine formats. */
+function machine(s) {
+  const out = [];
+  for (const c of comments(s)) {
+    out.push({ file: c.file, line: c.line, col: c.column, code: `SC${c.code}`,
+      severity: c.level, message: String(c.message).trim() });
+  }
+  if (s.includes("ShellCheck.SC")) {
+    for (const doc of s.matchAll(CHECKSTYLE_FILE)) {
+      const file = xmlAttributes(doc[1]).name;
+      for (const err of doc[2].matchAll(CHECKSTYLE_ERROR)) {
+        const a = xmlAttributes(err[1]);
+        const source = SHELLCHECK_SOURCE.exec(a.source ?? "");
+        if (!source || !file) continue;
+        out.push({ file, line: +a.line, col: +a.column, code: source[1],
+          severity: a.severity, message: String(a.message ?? "").trim() });
+      }
+    }
+  }
+  return out;
+}
+
 export default {
   name: "shellcheck",
   category: "lint",
   commands: ["shellcheck"],
 
   detect: (s) => HEADER.test(s.split("\n").find((l) => HEADER.test(l)) ?? "") ||
-    GCC.test(s.split("\n").find((l) => GCC.test(l)) ?? ""),
+    GCC.test(s.split("\n").find((l) => GCC.test(l)) ?? "") ||
+    machine(s).length > 0,
 
   extract(s) {
     const lines = s.split("\n");
@@ -50,6 +98,7 @@ export default {
       const c = file && lines[i].match(CARET);
       if (c) found.push({ file, line, col: c[1].length + 1, code: c[2], severity: c[3], message: c[4], stmt });
     }
+    found.push(...machine(s));
     if (!found.length) return null;
     // A log can hold both formats - two shellcheck runs, or one job rendering twice - and
     // the same finding then arrives once per format. They are not two problems. The code

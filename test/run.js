@@ -1493,6 +1493,42 @@ const CASES = [
       assert.equal(r.failures[0].col, 10);
       assert.equal(r.failures[0].stmt, undefined);
     } },
+  // One shellcheck run over two scripts, captured in all five of its formats. Two of the
+  // ten findings are errors and the rest stand behind them. -f json, -f json1 and
+  // -f checkstyle were not read at all - and the checkstyle document quotes its
+  // attributes with single quotes, which the shared XML reader did not know, so it found
+  // no attributes and read the whole document as empty.
+  { file: "shellcheck_tty_same_fail.txt", tool: "shellcheck", n: 2, check: (r) => {
+      assert.deepEqual(r.failures.map((f) => f.code), ["SC1073", "SC1072"]);
+      assert.equal(r.failures[0].file, "inputs/b.sh");
+      assert.equal(r.failures[0].col, 8);
+      assert.match(r.summary, /8 lower-severity findings hidden/);
+    } },
+  { file: "shellcheck_gcc_same_fail.txt", tool: "shellcheck", n: 2, check: (r) => {
+      assert.deepEqual(r.failures.map((f) => f.code), ["SC1073", "SC1072"]);
+      assert.match(r.summary, /8 lower-severity findings hidden/);
+    } },
+  // The code is a number in the JSON forms, and the two differ only in whether the
+  // findings are the document or sit inside one.
+  { file: "shellcheck_json_fail.txt", tool: "shellcheck", n: 2, check: (r) => {
+      assert.deepEqual(r.failures.map((f) => f.code), ["SC1073", "SC1072"]);
+      assert.equal(r.failures[0].line, 4);
+      assert.equal(r.failures[0].col, 8);
+      assert.match(r.summary, /8 lower-severity findings hidden/);
+    } },
+  { file: "shellcheck_json1_fail.txt", tool: "shellcheck", n: 2, check: (r) => {
+      assert.deepEqual(r.failures.map((f) => f.code), ["SC1073", "SC1072"]);
+      assert.match(r.summary, /8 lower-severity findings hidden/);
+    } },
+  // checkstyle is a shape other linters write too, so what makes a finding shellcheck's
+  // is the check that declares itself as ShellCheck.SC####.
+  { file: "shellcheck_checkstyle_fail.txt", tool: "shellcheck", n: 2, check: (r) => {
+      assert.deepEqual(r.failures.map((f) => f.code), ["SC1073", "SC1072"]);
+      assert.equal(r.failures[0].file, "inputs/b.sh");
+      // the numeric character references are decoded, not left as &#40;
+      assert.doesNotMatch(JSON.stringify(r.failures), /&#\d+;/);
+      assert.match(r.summary, /8 lower-severity findings hidden/);
+    } },
   { file: "shellcheck_style_fail.txt", tool: "shellcheck", n: 3, check: (r) => {
       // shellcheck exits non-zero on style and info findings too, and a run that fails
       // on nothing worse is the common case. Saying nothing would be worse than saying
@@ -2596,6 +2632,12 @@ for (const [group, encodings, silentAbout = []] of [
   // always carries it.
   ["mypy", ["mypy_text_same_fail.txt", "mypy_json_fail.txt"], ["col"]],
   ["jest", ["jest_gh_text_same_fail.txt", "jest_github_fail.txt"]],
+  // shellcheck's default block format is the only one that quotes the offending source
+  // line, so `stmt` is not compared across the group - but it is not in the compared
+  // fields anyway.
+  ["shellcheck", ["shellcheck_tty_same_fail.txt", "shellcheck_gcc_same_fail.txt",
+    "shellcheck_json_fail.txt", "shellcheck_json1_fail.txt",
+    "shellcheck_checkstyle_fail.txt"]],
 ]) {
   try {
     // The path is the other legitimate difference: a formatter that writes a machine
@@ -2623,6 +2665,34 @@ for (const [group, encodings, silentAbout = []] of [
     console.log(`  FAIL ${group} formats\n       ${e.message}`);
     fail++;
   }
+}
+
+// A self-closing XML element holds nothing after it.
+//
+// Node's parser steps over stacks that are quoted INSIDE a <failure> or <error> element,
+// because a JUnit report of a crash is somebody's report and not the crash. It found the
+// end of such an element by looking for the closing tag - and `<error ... />` has none,
+// so a document made entirely of self-closing errors opened a region that never closed
+// and swallowed everything printed after it. shellcheck's checkstyle report is exactly
+// that document, and a Node crash printed after one disappeared.
+try {
+  const crash = fx("node_stack.txt");
+  const alone = analyse(crash);
+  const after = analyse(fx("shellcheck_checkstyle_fail.txt") + "\n" + crash);
+  const nodes = [after, ...(after.others ?? [])].filter((r) => r.tool === "node");
+  assert.equal(nodes.length, 1, "the crash after a checkstyle report went missing");
+  assert.deepEqual(nodes[0].failures.map((f) => `${f.file}:${f.line}`),
+    alone.failures.map((f) => `${f.file}:${f.line}`));
+  // ...and the reason the step-over exists still holds: a stack quoted inside a real
+  // <failure>...</failure> body is still the report's, not a crash of its own.
+  const quoted = analyse(fx("mocha_xunit_fail.txt"));
+  assert.ok(![quoted, ...(quoted.others ?? [])].some((r) => r.tool === "node"),
+    "a stack quoted inside a <failure> body was read as a crash");
+  console.log("  ok   a self-closing <error/> does not swallow the rest of the log");
+  pass++;
+} catch (e) {
+  console.log(`  FAIL self-closing XML element\n       ${e.message}`);
+  fail++;
 }
 
 // Every field a parser sets is eventually rendered, and the renderer interpolates

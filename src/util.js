@@ -130,10 +130,16 @@ export function xmlText(value) {
   });
 }
 
-/** The attributes of one XML start tag, decoded. */
+/** The attributes of one XML start tag, decoded.
+ *
+ *  Either quote. XML allows both, and shellcheck's checkstyle report uses single ones
+ *  throughout - so a reader that knew only double quotes found no attributes at all and
+ *  read the whole document as empty. */
 export function xmlAttributes(tag) {
   const attributes = {};
-  for (const match of tag.matchAll(/([\w:.-]+)="([^"]*)"/g)) attributes[match[1]] = xmlText(match[2]);
+  for (const match of tag.matchAll(/([\w:.-]+)=(?:"([^"]*)"|'([^']*)')/g)) {
+    attributes[match[1]] = xmlText(match[2] ?? match[3]);
+  }
   return attributes;
 }
 
