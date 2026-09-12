@@ -243,6 +243,7 @@ them.
 | **markdownlint `--json`** | the same violations as records, worded exactly as the text form words them |
 | **flake8** | the check code as the code and `file:line:col` — the code is what goes in a `noqa` comment |
 | **pylint** | the symbolic name as the title and the numeric code beside it; when a run has real errors the convention and refactor advice steps aside and is counted. A path may contain a space — the message code after it is what bounds the name |
+| **pylint `-f parseable` / `msvs` / `json` / `json2`** | the same run in its other four formats, agreeing with the text form finding for finding. The two bracketed formats print no column, and none is invented for them; they also put the enclosing class or function after the symbolic name — behind a comma in one and behind nothing in the other — so what is skipped is whatever follows the name, not whatever follows a comma |
 | **black** | which files failed the format check, and for one it cannot parse, the reason and the position |
 | **ruff** | rule code, `file:line`, the message and ruff's own fix hint — and its other `--output-format` settings: `concise`, `grouped`, `github` (a workflow annotation, percent-encoded because it may not span lines) and `json`. `concise` is the same line flake8 prints, so ruff claims it only on something flake8 never writes — the `[*] N fixable` note about its own `--fix` option |
 | **pyright** | the rule name as the code, the column, and the indented line that says *why* — not the column pasted into the message |
