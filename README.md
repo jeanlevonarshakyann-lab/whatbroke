@@ -199,6 +199,7 @@ them.
 | Tool | What you get |
 |---|---|
 | **pytest** | test name, `file:line`, the assertion, the `E` explanation |
+| **pytest `--tb=...`** | every traceback style, not just the default: `short` puts the location at the top of the block as `file:line: in name`, `line` and `no` print no block at all, and `native` prints a Python traceback. The short test summary is the backbone — it names each failed test and what it raised in every style — and the traceback is asked only where. With `--tb=line` the two are matched by the message they share rather than by the order they appear in |
 | **unittest** | same, with the deepest *your-code* frame — not the harness |
 | **Python tracebacks** | the frame in your code, not the 9 in site-packages |
 | **deno test** | test name and `file:line` from the header, without the assert-library frames |

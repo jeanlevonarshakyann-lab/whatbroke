@@ -2197,6 +2197,47 @@ const CASES = [
       assert.equal(r.failures[0].title, "invoice total");
       assert.doesNotMatch(r.failures[0].title, /time=|\{|shop\.test\.js/);
     } },
+  // One real pytest run in five traceback styles. --tb is a flag CI configs set
+  // constantly, and only the default was read properly: --tb=short lost every location,
+  // --tb=line and --tb=no fell to the fallback (which made two failures into four), and
+  // --tb=native was left to the traceback parser - right failures, wrong tool, no counts.
+  { file: "pytest_tb_long_same_fail.txt", tool: "pytest", n: 2, check: (r) => {
+      assert.equal(r.summary, "2 failed, 1 passed in 0.01s");
+      assert.deepEqual(r.failures.map((f) => [f.title, f.file, f.line]), [
+        ["test_invoice_total", "test_shop.py", 6],
+        ["test_missing_key", "test_shop.py", 11],
+      ]);
+    } },
+  { file: "pytest_tb_short_fail.txt", tool: "pytest", n: 2, check: (r) => {
+      // --tb=short moves the location to the top of the block and writes "in <function>"
+      // after it, where the default writes the exception or nothing.
+      assert.deepEqual(r.failures.map((f) => [f.file, f.line]), [
+        ["test_shop.py", 6], ["test_shop.py", 11],
+      ], "the location is on the first line of the block, not the last");
+    } },
+  { file: "pytest_tb_line_fail.txt", tool: "pytest", n: 2, check: (r) => {
+      // No block is printed at all. The summary names the tests; the one-line locations
+      // are matched to them by the message they share, not by the order they appear in.
+      assert.deepEqual(r.failures.map((f) => [f.title, f.line]), [
+        ["test_invoice_total", 6], ["test_missing_key", 11],
+      ]);
+      assert.equal(r.failures[1].message, "KeyError: 'taxrate'");
+    } },
+  { file: "pytest_tb_no_fail.txt", tool: "pytest", n: 2, check: (r) => {
+      // Nothing but the summary. It still names both tests and what they raised.
+      assert.deepEqual(r.failures.map((f) => [f.title, f.file]), [
+        ["test_invoice_total", "test_shop.py"], ["test_missing_key", "test_shop.py"],
+      ]);
+      assert.equal(r.failures[0].line, undefined, "no line is printed, so none is invented");
+    } },
+  { file: "pytest_tb_native_fail.txt", tool: "pytest", n: 2, check: (r) => {
+      // A Python traceback, mostly pytest's own machinery. The frame that matters is the
+      // last one outside it.
+      assert.deepEqual(r.failures.map((f) => [f.file, f.line]), [
+        ["/home/dev/pytest/test_shop.py", 6], ["/home/dev/pytest/test_shop.py", 11],
+      ]);
+      assert.doesNotMatch(JSON.stringify(r.failures), /site-packages|_pytest|pluggy/);
+    } },
   { file: "gorace_fail.txt", tool: "go test", n: 3, check: (r) => {
       // real `go test -race`. The detector names the exact line of the racing
       // access - the bug - while the assertion below it only reports a wrong total.
@@ -3054,6 +3095,11 @@ try {
     // unittest reports its failures AS Python tracebacks, so both match by design
     // and the more specific one is listed first
     "py_unittest.txt": ["unittest", "python"],
+    // --tb=native prints a Python traceback inside pytest's own report, so the traceback
+    // parser matches it the way it matches unittest's. Both match by design; pytest is
+    // listed first and adds what python cannot see from the traceback alone - the test
+    // names and the run's counts.
+    "pytest_tb_native_fail.txt": ["pytest", "python"],
     // esbuild's CLI wrapper crashes after esbuild exits non-zero, so the log carries a
     // real diagnostic AND a Node stack. Both parsers match by design; esbuild is listed
     // first and wins, and the wrapper's stack is filtered out of the mixed-log path
@@ -3957,6 +4003,21 @@ try {
   console.log("  ok   vitest's TAP reporters say what its pretty one says");
   pass++;
 } catch (e) { console.log(`  FAIL vitest tap vs pretty\n       ${e.message}`); fail++; }
+// Five traceback styles, one run. The style changes how much is printed, never which
+// tests failed or what they raised.
+try {
+  const styles = ["long_same", "short", "line", "no", "native"]
+    .map((n) => analyse(fx(`pytest_tb_${n}_fail.txt`)));
+  const named = (r) => r.failures.map((f) => f.title);
+  for (const r of styles) {
+    assert.equal(r.tool, "pytest");
+    assert.deepEqual(named(r), ["test_invoice_total", "test_missing_key"]);
+    assert.match(r.summary, /2 failed, 1 passed/);
+    assert.match(r.failures[1].message, /KeyError: 'taxrate'/);
+  }
+  console.log("  ok   every pytest traceback style names the same failures");
+  pass++;
+} catch (e) { console.log(`  FAIL pytest traceback styles\n       ${e.message}`); fail++; }
 
 const cliResults = await (await import("./cli.js")).runCliTests();
 pass += cliResults.pass;

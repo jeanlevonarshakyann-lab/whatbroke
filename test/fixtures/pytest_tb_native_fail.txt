@@ -1,0 +1,122 @@
+======================================= test session starts ========================================
+platform darwin -- Python 3.12.8, pytest-9.1.1, pluggy-1.6.0
+rootdir: /home/dev/pytest
+collected 3 items
+
+test_shop.py FF.                                                                             [100%]
+
+============================================= FAILURES =============================================
+________________________________________ test_invoice_total ________________________________________
+Traceback (most recent call last):
+  File "/home/dev/pytest/.venv/lib/python3.12/site-packages/_pytest/runner.py", line 361, in from_call
+    result: TResult | None = func()
+                             ^^^^^^
+  File "/home/dev/pytest/.venv/lib/python3.12/site-packages/_pytest/runner.py", line 250, in <lambda>
+    lambda: runtest_hook(item=item, **kwds),
+            ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/home/dev/pytest/.venv/lib/python3.12/site-packages/pluggy/_hooks.py", line 512, in __call__
+    return self._hookexec(self.name, self._hookimpls.copy(), kwargs, firstresult)
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/home/dev/pytest/.venv/lib/python3.12/site-packages/pluggy/_manager.py", line 120, in _hookexec
+    return self._inner_hookexec(hook_name, methods, kwargs, firstresult)
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/home/dev/pytest/.venv/lib/python3.12/site-packages/pluggy/_callers.py", line 167, in _multicall
+    raise exception
+  File "/home/dev/pytest/.venv/lib/python3.12/site-packages/pluggy/_callers.py", line 139, in _multicall
+    teardown.throw(exception)
+  File "/home/dev/pytest/.venv/lib/python3.12/site-packages/_pytest/logging.py", line 865, in pytest_runtest_call
+    yield
+  File "/home/dev/pytest/.venv/lib/python3.12/site-packages/pluggy/_callers.py", line 139, in _multicall
+    teardown.throw(exception)
+  File "/home/dev/pytest/.venv/lib/python3.12/site-packages/_pytest/capture.py", line 900, in pytest_runtest_call
+    return (yield)
+            ^^^^^
+  File "/home/dev/pytest/.venv/lib/python3.12/site-packages/pluggy/_callers.py", line 139, in _multicall
+    teardown.throw(exception)
+  File "/home/dev/pytest/.venv/lib/python3.12/site-packages/_pytest/skipping.py", line 268, in pytest_runtest_call
+    return (yield)
+            ^^^^^
+  File "/home/dev/pytest/.venv/lib/python3.12/site-packages/pluggy/_callers.py", line 121, in _multicall
+    res = hook_impl.function(*args)
+          ^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/home/dev/pytest/.venv/lib/python3.12/site-packages/_pytest/runner.py", line 184, in pytest_runtest_call
+    item.runtest()
+  File "/home/dev/pytest/.venv/lib/python3.12/site-packages/_pytest/python.py", line 1707, in runtest
+    self.ihook.pytest_pyfunc_call(pyfuncitem=self)
+  File "/home/dev/pytest/.venv/lib/python3.12/site-packages/pluggy/_hooks.py", line 512, in __call__
+    return self._hookexec(self.name, self._hookimpls.copy(), kwargs, firstresult)
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/home/dev/pytest/.venv/lib/python3.12/site-packages/pluggy/_manager.py", line 120, in _hookexec
+    return self._inner_hookexec(hook_name, methods, kwargs, firstresult)
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/home/dev/pytest/.venv/lib/python3.12/site-packages/pluggy/_callers.py", line 167, in _multicall
+    raise exception
+  File "/home/dev/pytest/.venv/lib/python3.12/site-packages/pluggy/_callers.py", line 121, in _multicall
+    res = hook_impl.function(*args)
+          ^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/home/dev/pytest/.venv/lib/python3.12/site-packages/_pytest/python.py", line 167, in pytest_pyfunc_call
+    result = testfunction(**testargs)
+             ^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/home/dev/pytest/test_shop.py", line 6, in test_invoice_total
+    assert invoice_total([500, 550]) == 1050
+AssertionError: assert 1049 == 1050
+ +  where 1049 = invoice_total([500, 550])
+_________________________________________ test_missing_key _________________________________________
+Traceback (most recent call last):
+  File "/home/dev/pytest/.venv/lib/python3.12/site-packages/_pytest/runner.py", line 361, in from_call
+    result: TResult | None = func()
+                             ^^^^^^
+  File "/home/dev/pytest/.venv/lib/python3.12/site-packages/_pytest/runner.py", line 250, in <lambda>
+    lambda: runtest_hook(item=item, **kwds),
+            ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/home/dev/pytest/.venv/lib/python3.12/site-packages/pluggy/_hooks.py", line 512, in __call__
+    return self._hookexec(self.name, self._hookimpls.copy(), kwargs, firstresult)
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/home/dev/pytest/.venv/lib/python3.12/site-packages/pluggy/_manager.py", line 120, in _hookexec
+    return self._inner_hookexec(hook_name, methods, kwargs, firstresult)
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/home/dev/pytest/.venv/lib/python3.12/site-packages/pluggy/_callers.py", line 167, in _multicall
+    raise exception
+  File "/home/dev/pytest/.venv/lib/python3.12/site-packages/pluggy/_callers.py", line 139, in _multicall
+    teardown.throw(exception)
+  File "/home/dev/pytest/.venv/lib/python3.12/site-packages/_pytest/logging.py", line 865, in pytest_runtest_call
+    yield
+  File "/home/dev/pytest/.venv/lib/python3.12/site-packages/pluggy/_callers.py", line 139, in _multicall
+    teardown.throw(exception)
+  File "/home/dev/pytest/.venv/lib/python3.12/site-packages/_pytest/capture.py", line 900, in pytest_runtest_call
+    return (yield)
+            ^^^^^
+  File "/home/dev/pytest/.venv/lib/python3.12/site-packages/pluggy/_callers.py", line 139, in _multicall
+    teardown.throw(exception)
+  File "/home/dev/pytest/.venv/lib/python3.12/site-packages/_pytest/skipping.py", line 268, in pytest_runtest_call
+    return (yield)
+            ^^^^^
+  File "/home/dev/pytest/.venv/lib/python3.12/site-packages/pluggy/_callers.py", line 121, in _multicall
+    res = hook_impl.function(*args)
+          ^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/home/dev/pytest/.venv/lib/python3.12/site-packages/_pytest/runner.py", line 184, in pytest_runtest_call
+    item.runtest()
+  File "/home/dev/pytest/.venv/lib/python3.12/site-packages/_pytest/python.py", line 1707, in runtest
+    self.ihook.pytest_pyfunc_call(pyfuncitem=self)
+  File "/home/dev/pytest/.venv/lib/python3.12/site-packages/pluggy/_hooks.py", line 512, in __call__
+    return self._hookexec(self.name, self._hookimpls.copy(), kwargs, firstresult)
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/home/dev/pytest/.venv/lib/python3.12/site-packages/pluggy/_manager.py", line 120, in _hookexec
+    return self._inner_hookexec(hook_name, methods, kwargs, firstresult)
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/home/dev/pytest/.venv/lib/python3.12/site-packages/pluggy/_callers.py", line 167, in _multicall
+    raise exception
+  File "/home/dev/pytest/.venv/lib/python3.12/site-packages/pluggy/_callers.py", line 121, in _multicall
+    res = hook_impl.function(*args)
+          ^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/home/dev/pytest/.venv/lib/python3.12/site-packages/_pytest/python.py", line 167, in pytest_pyfunc_call
+    result = testfunction(**testargs)
+             ^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/home/dev/pytest/test_shop.py", line 11, in test_missing_key
+    assert rates["taxrate"] == 0.2
+           ~~~~~^^^^^^^^^^^
+KeyError: 'taxrate'
+===================================== short test summary info ======================================
+FAILED test_shop.py::test_invoice_total - assert 1049 == 1050
+FAILED test_shop.py::test_missing_key - KeyError: 'taxrate'
+=================================== 2 failed, 1 passed in 0.00s ====================================
