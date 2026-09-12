@@ -1,4 +1,9 @@
-const DIAGNOSTIC_RE = /^(.+?\.(?:cs|fs|vb))\((\d+),(\d+)\):[^\S\n]+(error|warning)[^\S\n]+([A-Z]\w*\d+):[^\S\n]+(.+)$/m;
+// The Terminal Logger indents each diagnostic beneath the target that produced it, so
+// the same leading run of spaces that hid a project-level error from PROJECT_RE ended up
+// INSIDE the path here - every file began with four spaces, and an editor link or a
+// source lookup pointed at a file that cannot exist. Skipped rather than captured, so a
+// filename that genuinely contains spaces still keeps them.
+const DIAGNOSTIC_RE = /^[^\S\n]*(.+?\.(?:cs|fs|vb))\((\d+),(\d+)\):[^\S\n]+(error|warning)[^\S\n]+([A-Z]\w*\d+):[^\S\n]+(.+)$/m;
 // Not every .NET failure comes from the compiler. A missing project file and a package
 // that will not restore are both reported by MSBuild or NuGet with a code but no
 // position - "app.csproj : error NU1101: ..." , "MSBUILD : error MSB1003: ..." - and

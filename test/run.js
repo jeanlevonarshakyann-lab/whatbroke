@@ -131,6 +131,22 @@ const CASES = [
   // wraps the code in an OSC 8 hyperlink to the docs. The indentation alone meant the
   // project-level pattern - which required the line to begin with the path - matched
   // nothing, so a real NU1101 came back with no diagnosis at all.
+  // The compiler half of the same presentation problem. .NET 10 uses the Terminal Logger
+  // by default on a terminal, and it indents each diagnostic beneath its target - so the
+  // four spaces that hid a project-level error from the other pattern ended up INSIDE the
+  // path here, and every file began with them. One real project, built twice.
+  { file: "dotnet_terminal_plain_fail.txt", tool: "dotnet", n: 2, check: (r) => {
+      assert.deepEqual(r.failures.map((f) => [f.file, f.line, f.col]), [
+        ["/home/dev/dotnet-terminal/Broken.cs", 5, 34],
+        ["/home/dev/dotnet-terminal/Broken.cs", 6, 35],
+      ]);
+    } },
+  { file: "dotnet_terminal_logger_fail.txt", tool: "dotnet", n: 2, check: (r) => {
+      assert.deepEqual(r.failures.map((f) => [f.file, f.line, f.col]), [
+        ["/home/dev/dotnet-terminal/Broken.cs", 5, 34],
+        ["/home/dev/dotnet-terminal/Broken.cs", 6, 35],
+      ], "Terminal Logger indentation leaked into the source path");
+    } },
   { file: "dotnet_restore_plain_fail.txt", tool: "dotnet", n: 1, check: (r) => {
       assert.equal(r.failures[0].file, "/home/dev/dotnet-restore/app.csproj");
       assert.equal(r.failures[0].code, "NU1101");
@@ -3507,6 +3523,10 @@ try {
   assert.equal(terminal.summary, plain.summary);
   assert.deepEqual(facts(terminal), facts(plain),
     "a restore failure reads differently under the Terminal Logger");
+  const build = analyse(fx("dotnet_terminal_plain_fail.txt"));
+  const buildTl = analyse(fx("dotnet_terminal_logger_fail.txt"));
+  assert.deepEqual(facts(buildTl), facts(build),
+    "a compile failure reads differently under the Terminal Logger");
   console.log("  ok   a Terminal Logger restore failure says what plain MSBuild says");
   pass++;
 } catch (e) { console.log(`  FAIL Terminal Logger restore vs plain\n       ${e.message}`); fail++; }
