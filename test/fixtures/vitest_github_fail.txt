@@ -1,0 +1,4 @@
+
+::error file=/home/dev/shop/test/cart.test.js,title=test/cart.test.js > cart > totals an invoice,line=5,column=75::AssertionError: expected 5 to be 6 // Object.is equality%0A%0A- Expected%0A+ Received%0A%0A- 6%0A+ 5%0A%0A ❯ test/cart.test.js:5:75%0A%0A
+
+::error file=/home/dev/shop/test/ship.test.js,title=test/ship.test.js > quotes shipping,line=4,column=35::AssertionError: expected { zone: 'eu', cost: 4 } to deeply equal { zone: 'uk', cost: 4 }%0A%0A- Expected%0A+ Received%0A%0A  {%0A    "cost": 4,%0A-   "zone": "uk",%0A+   "zone": "eu",%0A  }%0A%0A ❯ test/ship.test.js:4:35%0A%0A

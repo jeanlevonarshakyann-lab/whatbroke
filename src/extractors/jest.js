@@ -57,6 +57,11 @@ function annotated(s) {
   for (const a of githubAnnotations(s)) {
     if (a.severity !== "error" || !a.props.title || !a.props.file) continue;
     if (!mine.has(a.props.file.split(/[\\/]/).pop())) continue;
+    // ...and vitest writes this shape too, with the same basenames whenever the two
+    // suites name their files alike. What tells them apart is the title: vitest opens
+    // it with the test file it is already pointing at, and jest never does.
+    const [head] = a.props.title.split(" > ");
+    if (head !== a.props.title && head.split(/[\\/]/).pop() === a.props.file.split(/[\\/]/).pop()) continue;
     const body = a.message.split("\n");
     const msg = diagnosis(body);
     if (!msg.length) continue;

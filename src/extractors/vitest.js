@@ -1,3 +1,4 @@
+import { githubAnnotations, xmlAttributes, xmlText } from "../util.js";
 const FAIL_RE = /^[^\S\n]*FAIL[^\S\n]+(.+?)[^\S\n]+>[^\S\n]+(.+?)[^\S\n]*$/;
 // A suite that throws before any test is declared cannot be named after a test, so
 // vitest lists it under "Failed Suites" with the file in brackets instead of a test
@@ -80,11 +81,98 @@ function vitestTap(text) {
   return dialect && failures.length ? { failures, passed } : null;
 }
 
+// --reporter=junit and --reporter=github-actions, neither of which was read: the JUnit
+// document came back with no diagnosis at all, and the annotations fell through to the
+// generic reader, which printed vitest's %0A-encoded diff back at you as one long line.
+//
+// Both shapes are written by other tools, so both are bounded by something vitest
+// declares. The document names its own suite `vitest tests`. The annotation opens its
+// title with the test file, which is the file the annotation already points at - so a
+// title whose first segment is not that file is not vitest's.
+// The document is cut out before it is read. A log can hold two JUnit reports - vitest's
+// beside PHPUnit's or node's - and deciding on the whole log and then reading the whole
+// log is not a bound: it hands vitest everybody else's test cases.
+const VITEST_DOC_RE = /<testsuites\b[^>]*\bname="vitest tests"[^>]*>([\s\S]*?)<\/testsuites>/g;
+const VITEST_SUITES = /<testsuites\b[^>]*\bname="vitest tests"/;
+const JUNIT_CASE_RE = /<testcase\b([^>]*?)(?:\/>|>([\s\S]*?)<\/testcase>)/g;
+const JUNIT_FAILURE_RE = /<(failure|error)\b([^>]*?)(?:\/>|>([\s\S]*?)<\/\1>)/;
+// vitest writes its frames with a pointer rather than the word "at".
+const VITEST_FRAME = /^[^\S\n]*[❯>][^\S\n]+(.+?):(\d+):(\d+)[^\S\n]*$/;
+const base = (p) => String(p ?? "").split(/[\\/]/).pop();
+// The diff a value comparison prints is part of the answer, and the pretty reporter's
+// reading already keeps it. The machine reporters carry the same block, so it is read
+// the same way - message first, then the values, without the "- Expected / + Received"
+// headers that promise a diff and show none.
+const DIFF_HEADER = /^[-+][^\S\n]*(?:Expected|Received):?[^\S\n]*$/;
+function saidIn(body) {
+  let message = "";
+  const diff = [];
+  for (const raw of body) {
+    if (VITEST_FRAME.test(raw)) break;
+    const l = raw.trim();
+    if (!l) continue;
+    if (!message) { message = l; continue; }
+    if (/^[-+][^\S\n]*\S/.test(l) && !DIFF_HEADER.test(l)) diff.push(l);
+  }
+  return [message, ...diff.slice(0, 4)].join("\n");
+}
+
+/** The failures of a --reporter=junit document, or none. */
+function vitestJunit(s) {
+  if (!VITEST_SUITES.test(s)) return [];
+  const out = [];
+  const mine = [...s.matchAll(VITEST_DOC_RE)].map((d) => d[1]).join("\n");
+  for (const test of mine.matchAll(JUNIT_CASE_RE)) {
+    if (!test[2]) continue;
+    const a = xmlAttributes(test[1]);
+    const outcome = test[2].match(JUNIT_FAILURE_RE);
+    if (!outcome) continue;
+    const body = xmlText(outcome[3] ?? "").split("\n");
+    let file = a.classname, line, col;
+    for (const raw of body) {
+      const at = raw.match(VITEST_FRAME);
+      if (at) { file = at[1]; line = +at[2]; col = +at[3]; break; }
+    }
+    // The first line of the body is the message with its class in front of it, which is
+    // what the pretty reporter prints; the attribute holds the same text without it.
+    const message = saidIn(body) || xmlAttributes(outcome[2]).message || "";
+    out.push({
+      file, line, col, title: a.name, subject: a.name, severity: "error", message,
+    });
+  }
+  return out;
+}
+
+/** The failures a --reporter=github-actions run annotated, or none. */
+function vitestAnnotations(s) {
+  if (!/^[^\S\n]*::error[^\S\n]/m.test(s)) return [];
+  const out = [];
+  for (const a of githubAnnotations(s)) {
+    if (a.severity !== "error" || !a.props.title || !a.props.file) continue;
+    // `title=test/cart.test.js > cart > totals an invoice` - the first segment is the
+    // file the annotation already points at. Anything else is another tool's annotation.
+    const parts = a.props.title.split(" > ");
+    if (parts.length < 2 || base(parts[0]) !== base(a.props.file)) continue;
+    const body = a.message.split("\n");
+    let file = a.props.file, line = +a.props.line || undefined, col = +(a.props.column ?? a.props.col) || undefined;
+    for (const raw of body) {
+      const at = raw.match(VITEST_FRAME);
+      if (at) { file = at[1]; line = +at[2]; col = +at[3]; break; }
+    }
+    const name = parts.slice(1).join(" > ");
+    out.push({
+      file, line, col, title: name, subject: name, severity: "error", message: saidIn(body),
+    });
+  }
+  return out;
+}
+
 export default {
   name: "vitest",
   category: "test",
   commands: ["vitest"],
-  detect: (s) => vitestTap(s) !== null ||
+  detect: (s) => vitestTap(s) !== null || vitestJunit(s).length > 0 ||
+    vitestAnnotations(s).length > 0 ||
     /^[^\S\n]*RUN[^\S\n]+v\d/m.test(s) || /Failed (?:Tests|Suites) \d+/.test(s) ||
     FAIL_RE.test(s) || s.split("\n").some((l) => suiteOf(l) !== null),
 
@@ -154,6 +242,20 @@ export default {
         if (!seen.has(key)) { seen.add(key); failures.push(f); }
       }
       summary ??= `${failures.length} failed | ${tap.passed} passed (${failures.length + tap.passed})`;
+    }
+    // ...and the machine reporters, on the same terms: same test, same line, same
+    // column is one rendering said twice, and the file is compared by its last segment
+    // because they print the absolute path where the pretty reporter prints yours.
+    const machine = [...vitestJunit(s), ...vitestAnnotations(s)];
+    if (machine.length) {
+      const seen = new Set(failures.map((f) =>
+        `${base(f.file)}\u0000${f.line}\u0000${f.col}\u0000${f.title}`));
+      for (const f of machine) {
+        const key = `${base(f.file)}\u0000${f.line}\u0000${f.col}\u0000${f.title}`;
+        if (!seen.has(key)) { seen.add(key); failures.push(f); }
+      }
+      // Neither reporter prints a tally line of its own.
+      summary ??= `${failures.length} failed (${failures.length})`;
     }
     if (!failures.length) return null;
     const files = s.match(/^[^\S\n]*Test Files[^\S\n]+(.+?)[^\S\n]*$/m);
