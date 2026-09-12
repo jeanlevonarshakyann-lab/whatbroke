@@ -78,7 +78,7 @@ const PROBABLE_DIAGNOSTIC = new RegExp([
   // are all the log there is, and none of them uses failure vocabulary: an option it
   // does not know, a formatter it no longer ships, a pattern that matched nothing.
   "^Invalid option '",
-  "\\bis no longer part of core\\b",
+  "^The \\S+ formatter is no longer part of core\\b",
   "^No files matching the pattern\\b",
 ].join("|"), "im");
 
