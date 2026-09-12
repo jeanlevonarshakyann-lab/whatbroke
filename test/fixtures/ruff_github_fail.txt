@@ -1,0 +1,3 @@
+::error title=ruff (F401),file=/home/dev/ruff/lint_me.py,line=1,col=8,endLine=1,endColumn=10::lint_me.py:1:8: F401 `os` imported but unused%0A  help: Remove unused import: `os`
+::error title=ruff (F401),file=/home/dev/ruff/lint_me.py,line=2,col=8,endLine=2,endColumn=11::lint_me.py:2:8: F401 `sys` imported but unused%0A  help: Remove unused import: `sys`
+::error title=ruff (F841),file=/home/dev/ruff/lint_me.py,line=6,col=5,endLine=6,endColumn=11::lint_me.py:6:5: F841 Local variable `unused` is assigned to but never used%0A  help: Remove assignment to unused variable `unused`

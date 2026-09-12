@@ -302,6 +302,10 @@ test("naming the wrong tool cannot damage a clear log", () => {
 // the same mutation through the paired text fixtures.
 const SERIALIZED_FIXTURES = new Set([
   "swiftc_parseable_fail.txt", "terraform_validate_json_fail.txt",
+  // A pretty-printed JSON report is a document, not a stream of lines: splicing another
+  // tool's output into the middle of one leaves something no parser can read, and that
+  // is the format's nature rather than a parser being fragile.
+  "ruff_json_fail.txt", "mocha_json_fail.txt",
 ]);
 
 test("parsers match whitespace that is not an ASCII space", () => {

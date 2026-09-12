@@ -2444,10 +2444,64 @@
       "generic": 1
     }
   },
+  "ruff_concise_fail.txt": {
+    "winner": "ruff",
+    "parser": "ruff",
+    "failures": 3,
+    "claimants": [
+      "ruff",
+      "flake8",
+      "generic"
+    ],
+    "shadow": {
+      "flake8": 3,
+      "generic": 3
+    }
+  },
   "ruff_fail.txt": {
     "winner": "ruff",
     "parser": "ruff",
     "failures": 4,
+    "claimants": [
+      "ruff",
+      "generic"
+    ],
+    "shadow": {}
+  },
+  "ruff_full_same_fail.txt": {
+    "winner": "ruff",
+    "parser": "ruff",
+    "failures": 3,
+    "claimants": [
+      "ruff",
+      "generic"
+    ],
+    "shadow": {}
+  },
+  "ruff_github_fail.txt": {
+    "winner": "ruff",
+    "parser": "ruff",
+    "failures": 3,
+    "claimants": [
+      "ruff",
+      "generic"
+    ],
+    "shadow": {}
+  },
+  "ruff_grouped_fail.txt": {
+    "winner": "ruff",
+    "parser": "ruff",
+    "failures": 3,
+    "claimants": [
+      "ruff",
+      "generic"
+    ],
+    "shadow": {}
+  },
+  "ruff_json_fail.txt": {
+    "winner": "ruff",
+    "parser": "ruff",
+    "failures": 3,
     "claimants": [
       "ruff",
       "generic"

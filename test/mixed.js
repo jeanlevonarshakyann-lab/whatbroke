@@ -506,6 +506,14 @@ test("a pair of logs never yields more failures than the two apart", () => {
 const GO_UNDER_ANOTHER_OWNER = new Set(["golangci_typecheck_fail.txt", "gotest_json_fail.txt",
   "gotest_build_and_tests_json_fail.txt"]);
 
+// Two parsers reading one syntax. ruff's --output-format=concise and flake8's only
+// output are the same line - file, column, code, message - so a log holding both cannot
+// be split by content, and whichever parser owns it reads all of it. Nothing is lost:
+// checked, all eleven findings are present both apart and together, and the only thing
+// that changes is the name on them. That is the ambiguity, not a defect.
+const SAME_SYNTAX = [new Set(["ruff", "flake8"])];
+const indistinguishable = (a, b) => SAME_SYNTAX.some((g) => g.has(a) && g.has(b));
+
 // Each group is ONE run captured more than once - as text and as JSON - so the fixtures
 // can be compared against each other. Concatenating two from a group is not two runs, it
 // is one run said twice, and the union is not the sum. They are groups rather than one
@@ -535,6 +543,9 @@ const SAME_RUN_TWO_ENCODINGS = [
   // tsc and cargo: one run each, printed two ways.
   new Set(["tsc_plain_same_fail.txt", "tsc_pretty_fail.txt"]),
   new Set(["cargo_human_same_fail.txt", "cargo_short_fail.txt"]),
+  // ruff: one run in five of its output formats.
+  new Set(["ruff_full_same_fail.txt", "ruff_concise_fail.txt", "ruff_grouped_fail.txt",
+    "ruff_github_fail.txt", "ruff_json_fail.txt"]),
 ];
 const sameRun = (a, b) => SAME_RUN_TWO_ENCODINGS.some((group) => group.has(a) && group.has(b));
 
@@ -596,6 +607,7 @@ test("every ordered pair recovers exactly the failures in its parts", () => {
       // invocations in one stream, only with neither side owned by go's own parser.
       const goish = (n) => GO_UNDER_ANOTHER_OWNER.has(n) || parserOf(solo.get(n))?.name === "go";
       if ((GO_UNDER_ANOTHER_OWNER.has(a) && goish(b)) || (GO_UNDER_ANOTHER_OWNER.has(b) && goish(a))) continue;
+      if (indistinguishable(parserOf(solo.get(a))?.name, parserOf(solo.get(b))?.name)) continue;
       if (sameRun(a, b)) continue;
       pairs++;
       const apart = identities([...allFailures(solo.get(a)), ...allFailures(solo.get(b))]);

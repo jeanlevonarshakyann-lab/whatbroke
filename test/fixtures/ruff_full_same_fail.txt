@@ -1,0 +1,38 @@
+F401 [*] `os` imported but unused
+ --> lint_me.py:1:8
+  |
+1 | import os
+  |        ^^
+2 | import sys
+  |
+help: Remove unused import: `os`
+  |
+  - import os
+1 | import sys
+  |
+
+F401 [*] `sys` imported but unused
+ --> lint_me.py:2:8
+  |
+1 | import os
+2 | import sys
+  |        ^^^
+help: Remove unused import: `sys`
+  |
+1 | import os
+  - import sys
+2 |
+  |
+
+F841 Local variable `unused` is assigned to but never used
+ --> lint_me.py:6:5
+  |
+5 | def add(a, b):
+6 |     unused = 1
+  |     ^^^^^^
+7 |     return a + b
+  |
+help: Remove assignment to unused variable `unused`
+
+Found 3 errors.
+[*] 2 fixable with the `--fix` option (1 hidden fix can be enabled with the `--unsafe-fixes` option).
