@@ -2094,6 +2094,26 @@ const CASES = [
       assert.match(f.message, /expected:<.*not found.*> but was:<.*is absent.*>/);
       assert.ok(!/Tests run:/.test(f.message), "the counter is a summary, not a failure message");
     } },
+  // One `dotnet test` run, in its console output and in the trx document a .NET CI job
+  // keeps beside it. The document was not read at all. A <TestRun> element on its own is
+  // not evidence of anything, so what is required is the namespace it declares.
+  { file: "dotnettest_text_same_fail.txt", tool: "dotnet test", n: 3, check: (r) => {
+      assert.deepEqual(r.failures.map((f) => f.subject),
+        ["ArithmeticTests.Crash", "ArithmeticTests.Addition", "ArithmeticTests.Greeting"]);
+      assert.deepEqual(r.failures.map((f) => f.line), [12, 6, 9]);
+      assert.equal(r.summary, "3 failed (3)");
+    } },
+  { file: "dotnettest_trx_fail.txt", tool: "dotnet test", n: 3, check: (r) => {
+      assert.deepEqual(r.failures.map((f) => f.subject),
+        ["ArithmeticTests.Crash", "ArithmeticTests.Addition", "ArithmeticTests.Greeting"]);
+      // the first frame in your own code, not the reflection frames under it
+      assert.deepEqual(r.failures.map((f) => f.line), [12, 6, 9]);
+      assert.equal(r.failures[0].file, "/home/dev/shop/UnitTest1.cs");
+      assert.equal(r.failures[0].message, "System.InvalidOperationException : fixture exploded");
+      // the document prints no tally line, but it counts the same things
+      assert.equal(r.summary, "3 failed (3)");
+      assert.doesNotMatch(JSON.stringify(r.failures), /StackTrace|MethodBaseInvoker/);
+    } },
   { file: "dotnettest_fail.txt", tool: "dotnet test", n: 3, check: (r) => {
       // real `dotnet test` (Microsoft.Testing.Platform + xUnit) on khellang/Scrutor
       // after changing one default lifetime. This output used to fall through to the
@@ -2708,6 +2728,8 @@ for (const [group, encodings, silentAbout = []] of [
   // pinned in its own row above.
   ["phpunit", ["phpunit_text_same_fail.txt", "phpunit_junit_fail.txt"]],
   ["phpunit testdox", ["phpunit_text_same_fail.txt", "phpunit_testdox_fail.txt"], ["subject"]],
+  // dotnet test's console output prints no columns and neither does the trx document.
+  ["dotnet test", ["dotnettest_text_same_fail.txt", "dotnettest_trx_fail.txt"]],
 ]) {
   try {
     // The path is the other legitimate difference: a formatter that writes a machine

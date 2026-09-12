@@ -742,6 +742,28 @@
       "generic": 8
     }
   },
+  "dotnettest_text_same_fail.txt": {
+    "winner": "dotnet test",
+    "parser": "dotnet test",
+    "failures": 3,
+    "claimants": [
+      "dotnet test",
+      "generic"
+    ],
+    "shadow": {
+      "generic": 3
+    }
+  },
+  "dotnettest_trx_fail.txt": {
+    "winner": "dotnet test",
+    "parser": "dotnet test",
+    "failures": 3,
+    "claimants": [
+      "dotnet test",
+      "generic"
+    ],
+    "shadow": {}
+  },
   "dotnettest_vstest_detailed_fail.txt": {
     "winner": "dotnet test",
     "parser": "dotnet test",
