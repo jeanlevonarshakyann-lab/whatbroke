@@ -345,6 +345,7 @@ const INTERLEAVED = ["npm warn deprecated foo@1.0.0", "Downloading package...", 
 // budget below. The same run's text capture is in the corpus and takes the mutation.
 const INTERLEAVING_DESTROYS = new Set([...SERIALIZED_FIXTURES,
   "mocha_json_fail.txt", "markdownlint_json_fail.txt",
+  "pylint_json_fail.txt", "pylint_json2_fail.txt",
 ]);
 
 test("interleaved output never invents a failure", () => {

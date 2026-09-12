@@ -2236,10 +2236,60 @@
       "generic": 4
     }
   },
+  "pylint_json2_fail.txt": {
+    "winner": "pylint",
+    "parser": "pylint",
+    "failures": 3,
+    "claimants": [
+      "pylint",
+      "generic"
+    ],
+    "shadow": {}
+  },
+  "pylint_json_fail.txt": {
+    "winner": "pylint",
+    "parser": "pylint",
+    "failures": 3,
+    "claimants": [
+      "pylint",
+      "generic"
+    ],
+    "shadow": {}
+  },
+  "pylint_msvs_fail.txt": {
+    "winner": "pylint",
+    "parser": "pylint",
+    "failures": 3,
+    "claimants": [
+      "pylint",
+      "generic"
+    ],
+    "shadow": {}
+  },
+  "pylint_parseable_fail.txt": {
+    "winner": "pylint",
+    "parser": "pylint",
+    "failures": 3,
+    "claimants": [
+      "pylint",
+      "generic"
+    ],
+    "shadow": {}
+  },
   "pylint_spaced_path_fail.txt": {
     "winner": "pylint",
     "parser": "pylint",
     "failures": 1,
+    "claimants": [
+      "pylint",
+      "generic"
+    ],
+    "shadow": {}
+  },
+  "pylint_text_same_fail.txt": {
+    "winner": "pylint",
+    "parser": "pylint",
+    "failures": 3,
     "claimants": [
       "pylint",
       "generic"

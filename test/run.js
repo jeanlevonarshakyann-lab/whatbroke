@@ -1541,6 +1541,48 @@ const CASES = [
       // What bounds the name is the message code after it, not the name's own shape.
       assert.match(r.summary, /4 advisory hidden/);
     } },
+  // One run of pylint over two modules, captured in all five of its formats. The text
+  // form was read; the other four were not. Three errors, and the docstring advice and
+  // the unused variable step aside and are counted.
+  { file: "pylint_text_same_fail.txt", tool: "pylint", n: 3, check: (r) => {
+      assert.deepEqual(r.failures.map((f) => f.code), ["E1101", "E0602", "E0602"]);
+      assert.equal(r.failures[0].file, "my project/orders.py");
+      assert.equal(r.failures[0].col, 42);
+      assert.match(r.summary, /3 advisory hidden/);
+    } },
+  // -f parseable and -f msvs put the code and the symbolic name in a bracket, and put
+  // the enclosing class or function after it - parseable behind a comma, msvs behind
+  // nothing at all. Reading the comma as the separator found every finding at module
+  // level and lost every finding inside a class.
+  { file: "pylint_parseable_fail.txt", tool: "pylint", n: 3, check: (r) => {
+      assert.deepEqual(r.failures.map((f) => f.code), ["E1101", "E0602", "E0602"]);
+      assert.equal(r.failures[0].file, "my project/orders.py");
+      assert.equal(r.failures[0].title, "no-member");
+      // the format prints no column, so none is invented
+      assert.equal(r.failures[0].col, undefined);
+      // the enclosing method is not part of the message
+      assert.doesNotMatch(JSON.stringify(r.failures), /Basket\.total/);
+    } },
+  { file: "pylint_msvs_fail.txt", tool: "pylint", n: 3, check: (r) => {
+      assert.deepEqual(r.failures.map((f) => f.code), ["E1101", "E0602", "E0602"]);
+      assert.equal(r.failures[0].line, 9);
+      assert.equal(r.failures[0].message, "Instance of 'Basket' has no 'lines' member");
+      assert.doesNotMatch(JSON.stringify(r.failures), /Basket\.total/);
+    } },
+  // -f json is an array of messages, -f json2 the same messages in an object beside the
+  // run's statistics - with the one key renamed. Both are pretty-printed over many
+  // lines, so neither can be found by looking for a line that parses.
+  { file: "pylint_json_fail.txt", tool: "pylint", n: 3, check: (r) => {
+      assert.deepEqual(r.failures.map((f) => f.code), ["E1101", "E0602", "E0602"]);
+      assert.equal(r.failures[2].file, "my project/shipping.py");
+      assert.equal(r.failures[2].col, 20);
+      assert.match(r.summary, /3 advisory hidden/);
+    } },
+  { file: "pylint_json2_fail.txt", tool: "pylint", n: 3, check: (r) => {
+      assert.deepEqual(r.failures.map((f) => f.code), ["E1101", "E0602", "E0602"]);
+      assert.deepEqual(r.failures.map((f) => f.title),
+        ["no-member", "undefined-variable", "undefined-variable"]);
+    } },
   { file: "biome_spaced_path_fail.txt", tool: "biome", n: 1, check: (r) => {
       assert.equal(r.failures[0].file, "my project/src/app.js");
       assert.equal(r.failures[0].code, "parse");
@@ -2397,21 +2439,34 @@ for (const c of CASES) {
 // the way these parsers broke was always the same shape: one format was read, the others
 // silently gave less. Comparing the formats against each other is what catches that,
 // because each capture on its own looks perfectly plausible.
-for (const [group, encodings] of [
+// A format may legitimately print less than another - pylint's -f parseable and -f msvs
+// carry no column at all - and a field the tool never printed is the format speaking,
+// not the parser guessing. Those are named per group; everything else has to match.
+for (const [group, encodings, silentAbout = []] of [
   ["markdownlint", ["markdownlint_aliases_fail.txt", "markdownlint_json_fail.txt"]],
   ["stylelint", ["stylelint_string_fail.txt", "stylelint_unix_fail.txt", "stylelint_json_fail.txt"]],
+  ["pylint", ["pylint_text_same_fail.txt", "pylint_parseable_fail.txt", "pylint_msvs_fail.txt",
+    "pylint_json_fail.txt", "pylint_json2_fail.txt"], ["col"]],
 ]) {
   try {
-    // The path is the one legitimate difference: a formatter that writes a machine
+    // The path is the other legitimate difference: a formatter that writes a machine
     // format writes the absolute path, and the one that writes a table writes the path
-    // you typed. Everything else has to match.
+    // you typed.
     const said = (name) => analyse(fx(name)).failures
-      .map((f) => JSON.stringify([f.file.split("/").pop(), f.line, f.col ?? null, f.code, f.message]))
+      .map((f) => JSON.stringify(["file", "line", "col", "code", "message"]
+        .filter((k) => !silentAbout.includes(k))
+        .map((k) => (k === "file" ? f.file.split("/").pop() : f[k] ?? null))))
       .sort();
     const first = said(encodings[0]);
     assert.ok(first.length > 0, `${encodings[0]}: nothing extracted`);
     for (const other of encodings.slice(1)) {
       assert.deepEqual(said(other), first, `${group}: ${other} disagrees with ${encodings[0]}`);
+    }
+    // ...and a named silence is a claim about the format, not a licence to lose the
+    // field everywhere: whatever else the group agrees on, one encoding still has it.
+    for (const k of silentAbout) {
+      assert.ok(encodings.some((n) => analyse(fx(n)).failures.some((f) => f[k] !== undefined)),
+        `${group}: no encoding carries ${k}, so it is not a per-format difference`);
     }
     console.log(`  ok   ${group}: ${encodings.length} formats of one run agree (${first.length} failures)`);
     pass++;

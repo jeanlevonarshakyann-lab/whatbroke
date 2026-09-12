@@ -1,0 +1,80 @@
+[
+    {
+        "type": "error",
+        "module": "orders",
+        "obj": "Basket.total",
+        "line": 9,
+        "column": 42,
+        "endLine": 9,
+        "endColumn": 52,
+        "path": "my project/orders.py",
+        "symbol": "no-member",
+        "message": "Instance of 'Basket' has no 'lines' member",
+        "message-id": "E1101"
+    },
+    {
+        "type": "error",
+        "module": "orders",
+        "obj": "Basket.discount",
+        "line": 14,
+        "column": 30,
+        "endLine": 14,
+        "endColumn": 34,
+        "path": "my project/orders.py",
+        "symbol": "undefined-variable",
+        "message": "Undefined variable 'rate'",
+        "message-id": "E0602"
+    },
+    {
+        "type": "warning",
+        "module": "orders",
+        "obj": "Basket.discount",
+        "line": 13,
+        "column": 8,
+        "endLine": 13,
+        "endColumn": 14,
+        "path": "my project/orders.py",
+        "symbol": "unused-variable",
+        "message": "Unused variable 'unused'",
+        "message-id": "W0612"
+    },
+    {
+        "type": "convention",
+        "module": "shipping",
+        "obj": "",
+        "line": 1,
+        "column": 0,
+        "endLine": null,
+        "endColumn": null,
+        "path": "my project/shipping.py",
+        "symbol": "missing-module-docstring",
+        "message": "Missing module docstring",
+        "message-id": "C0114"
+    },
+    {
+        "type": "convention",
+        "module": "shipping",
+        "obj": "cost",
+        "line": 1,
+        "column": 0,
+        "endLine": 1,
+        "endColumn": 8,
+        "path": "my project/shipping.py",
+        "symbol": "missing-function-docstring",
+        "message": "Missing function or method docstring",
+        "message-id": "C0116"
+    },
+    {
+        "type": "error",
+        "module": "shipping",
+        "obj": "cost",
+        "line": 2,
+        "column": 20,
+        "endLine": 2,
+        "endColumn": 24,
+        "path": "my project/shipping.py",
+        "symbol": "undefined-variable",
+        "message": "Undefined variable 'RATE'",
+        "message-id": "E0602"
+    }
+]
