@@ -1312,6 +1312,31 @@
       "generic": 2
     }
   },
+  "jest_gh_text_same_fail.txt": {
+    "winner": "jest",
+    "parser": "jest",
+    "failures": 2,
+    "claimants": [
+      "jest",
+      "go",
+      "node",
+      "generic"
+    ],
+    "shadow": {
+      "generic": 3
+    }
+  },
+  "jest_github_fail.txt": {
+    "winner": "jest",
+    "parser": "jest",
+    "failures": 2,
+    "claimants": [
+      "jest",
+      "node",
+      "generic"
+    ],
+    "shadow": {}
+  },
   "jest_json_assertions_fail.txt": {
     "winner": "jest",
     "parser": "jest --json",

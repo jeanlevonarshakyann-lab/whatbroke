@@ -1,0 +1,46 @@
+FAIL test/ship.test.js
+  ● quotes shipping
+
+    expect(received).toEqual(expected) // deep equality
+
+    - Expected  - 1
+    + Received  + 1
+
+      Object {
+        "cost": 4,
+    -   "zone": "uk",
+    +   "zone": "eu",
+      }
+
+      1 | test("quotes shipping", () => {
+    > 2 |   expect({ zone: "eu", cost: 4 }).toEqual({ zone: "uk", cost: 4 });
+        |                                   ^
+      3 | });
+      4 |
+
+      at Object.toEqual (test/ship.test.js:2:35)
+
+FAIL test/cart.test.js
+  ● cart › totals an invoice
+
+    expect(received).toBe(expected) // Object.is equality
+
+    Expected: 6
+    Received: 5
+
+      3 | describe("cart", () => {
+      4 |   test("totals an invoice", () => {
+    > 5 |     expect(total([{ price: 2 }, { price: 3 }])).toBe(6);
+        |                                                 ^
+      6 |   });
+      7 |
+      8 |   test("handles an empty cart", () => {
+
+      at Object.toBe (test/cart.test.js:5:49)
+
+A worker process has failed to exit gracefully and has been force exited. This is likely caused by tests leaking due to improper teardown. Try running with --detectOpenHandles to find leaks. Active timers can also cause this, ensure that .unref() was called on them.
+Test Suites: 2 failed, 2 total
+Tests:       2 failed, 1 passed, 3 total
+Snapshots:   0 total
+Time:        0.814 s
+Ran all test suites.

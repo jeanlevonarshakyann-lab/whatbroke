@@ -1,0 +1,47 @@
+
+::error file=/home/dev/shop/test/ship.test.js,line=2,title=quotes shipping::expect(received).toEqual(expected) // deep equality%0A%0A- Expected  - 1%0A+ Received  + 1%0A%0A  Object {%0A    "cost": 4,%0A-   "zone": "uk",%0A+   "zone": "eu",%0A  }%0A    at Object.toEqual (test/ship.test.js:2:35)
+
+::error file=/home/dev/shop/test/cart.test.js,line=5,title=cart › totals an invoice::expect(received).toBe(expected) // Object.is equality%0A%0AExpected: 6%0AReceived: 5%0A    at Object.toBe (test/cart.test.js:5:49)
+
+::group::Errors thrown in test/ship.test.js
+  ● quotes shipping
+
+    expect(received).toEqual(expected) // deep equality
+
+    - Expected  - 1
+    + Received  + 1
+
+      Object {
+        "cost": 4,
+    -   "zone": "uk",
+    +   "zone": "eu",
+      }
+
+      1 | test("quotes shipping", () => {
+    > 2 |   expect({ zone: "eu", cost: 4 }).toEqual({ zone: "uk", cost: 4 });
+        |                                   ^
+      3 | });
+      4 |
+
+      at Object.toEqual (test/ship.test.js:2:35)
+
+::endgroup::
+::group::Errors thrown in test/cart.test.js
+  ● cart › totals an invoice
+
+    expect(received).toBe(expected) // Object.is equality
+
+    Expected: 6
+    Received: 5
+
+      3 | describe("cart", () => {
+      4 |   test("totals an invoice", () => {
+    > 5 |     expect(total([{ price: 2 }, { price: 3 }])).toBe(6);
+        |                                                 ^
+      6 |   });
+      7 |
+      8 |   test("handles an empty cart", () => {
+
+      at Object.toBe (test/cart.test.js:5:49)
+
+::endgroup::
