@@ -1,0 +1,32 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<testsuites>
+  <testsuite name="CLI Arguments" tests="3" assertions="2" errors="1" failures="2" skipped="0" time="0.000767">
+    <testsuite name="ArithmeticTest" file="/home/dev/app/inputs/php tests/ArithmeticTest.php" tests="2" assertions="2" errors="0" failures="2" skipped="0" time="0.000581">
+      <testcase name="testAddition" file="/home/dev/app/inputs/php tests/ArithmeticTest.php" line="7" class="ArithmeticTest" classname="ArithmeticTest" assertions="1" time="0.000306">
+        <failure type="PHPUnit\Framework\ExpectationFailedException">ArithmeticTest::testAddition
+Failed asserting that 4 is identical to 5.
+
+/home/dev/app/inputs/php tests/ArithmeticTest.php:9</failure>
+      </testcase>
+      <testcase name="testGreeting" file="/home/dev/app/inputs/php tests/ArithmeticTest.php" line="12" class="ArithmeticTest" classname="ArithmeticTest" assertions="1" time="0.000275">
+        <failure type="PHPUnit\Framework\ExpectationFailedException">ArithmeticTest::testGreeting
+Failed asserting that two strings are identical.
+--- Expected
++++ Actual
+@@ @@
+-'hello world'
++'goodbye world'
+
+/home/dev/app/inputs/php tests/ArithmeticTest.php:14</failure>
+      </testcase>
+    </testsuite>
+    <testsuite name="CrashTest" file="/home/dev/app/inputs/php tests/CrashTest.php" tests="1" assertions="0" errors="1" failures="0" skipped="0" time="0.000186">
+      <testcase name="testUnexpectedCrash" file="/home/dev/app/inputs/php tests/CrashTest.php" line="7" class="CrashTest" classname="CrashTest" assertions="0" time="0.000186">
+        <error type="RuntimeException">CrashTest::testUnexpectedCrash
+RuntimeException: fixture exploded
+
+/home/dev/app/inputs/php tests/CrashTest.php:9</error>
+      </testcase>
+    </testsuite>
+  </testsuite>
+</testsuites>

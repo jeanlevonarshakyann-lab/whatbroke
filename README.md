@@ -267,12 +267,14 @@ them.
 | **RuboCop** | the cop as the code, the column, and the offending line — `[Correctable]` dropped, since it says `-a` would fix it rather than what is wrong. Conventions step behind a real error the way pylint's do |
 | **golangci-lint** | the linter that raised it as the code, so a run of findings from one linter groups as one thing to fix. Told apart from `go build` — whose diagnostics are otherwise identical — by the linter's name in brackets at the end of the line, which go never writes |
 | **RSpec** | example name, failure message, and `spec/file:line` location |
+| **RSpec `-f json`** | the same examples as one document, with the line from the backtrace rather than the line the example is declared on, so it agrees with the text reporters. It carries one thing less than they do — the `Failure/Error:` line quoting the example's source, which no reporter puts in the document — and one thing more: the exception's class for every failure, where the text form names it only when the exception is not an unmet expectation. Pending examples are counted, not reported |
 | **Ruby** | the exception class, the line that raised, and the unwind — for a missing gem, the line that asked for it rather than `kernel_require.rb` |
 | **Perl** | the location, which Perl writes as prose at the end of the message — but never out of a TAP comment, which is Test::More reporting a test rather than Perl dying; `near "= ;"` kept, the `@INC` list dropped, warnings told apart from a fatal die by what they say |
 | **javac / Maven / Gradle** | JVM compiler errors with warnings excluded, Surefire test failures, and build scripts that fail to evaluate |
 | **.NET** | compiler error codes with `file:line:column`; warnings set aside |
 | **dotnet test** | test name, `file:line`, the assertion; reflection frames dropped |
 | **PHPUnit** | test name, assertion message, and `file:line` location |
+| **PHPUnit `--log-junit` / `--testdox`** | JUnit is a shape every runner writes, so what makes a result PHPUnit's is inside the element: PHPUnit opens the body by naming the test as `Class::method`, and a result is read only when that name is the case's own. The location is the one the body ends with — the line the assertion failed on, not the line the method is declared on. The document prints no tally, so the sentence comes from the counts on its root suite. `--testdox` renames the class and the test into prose, which is the point of that format, so those are the names reported |
 | **PHP** | the exception class and the stack; PHP writes every diagnostic twice, and you get it once |
 | **esbuild** | the diagnostic and its source line — not the CLI wrapper's `Command failed:` stack |
 | **vite / rollup** | the rollup error code, `file:line:col` and the offending line |
