@@ -1270,6 +1270,30 @@ const CASES = [
       assert.ok(r.failures.every((f) => /messy\.js$/.test(f.file)), "file must attach to each problem");
       assert.equal(r.failures[2].title, "no-undef");
     } },
+  // One jest run over two test files, in the default reporter and in the GitHub one.
+  // The GitHub reporter prints no tally at all, and repeats each failure inside a
+  // ::group:: - so the count comes from what was annotated, and a failure that appears
+  // in both the annotation and the group is read once.
+  { file: "jest_gh_text_same_fail.txt", tool: "jest", n: 2, check: (r) => {
+      assert.deepEqual(r.failures.map((f) => f.subject),
+        ["quotes shipping", "cart › totals an invoice"]);
+      assert.equal(r.failures[0].file, "test/ship.test.js");
+      assert.equal(r.summary, "2 failed, 1 passed, 3 total");
+    } },
+  { file: "jest_github_fail.txt", tool: "jest", n: 2, check: (r) => {
+      assert.deepEqual(r.failures.map((f) => f.subject),
+        ["quotes shipping", "cart › totals an invoice"]);
+      // the frame inside the annotation points at the assertion, not at the line the
+      // test opens on, which is all the annotation's own file= and line= can say
+      assert.equal(r.failures[0].file, "test/ship.test.js");
+      assert.equal(r.failures[0].line, 2);
+      assert.equal(r.failures[0].col, 35);
+      assert.equal(r.failures[1].line, 5);
+      // the reporter has no tally of its own, and "2 tests" is not "0 total"
+      assert.equal(r.summary, "2 tests failed");
+      // the encoded newlines are decoded, not left as %0A
+      assert.doesNotMatch(JSON.stringify(r.failures), /%0A/);
+    } },
   { file: "jest_fail.txt", tool: "jest", n: 2, check: (r) => {
       assert.match(r.summary, /2 failed, 1 passed/);
       const f = r.failures[0];
@@ -2571,13 +2595,14 @@ for (const [group, encodings, silentAbout = []] of [
   // mypy's default output prints no column unless it is asked for one; --output=json
   // always carries it.
   ["mypy", ["mypy_text_same_fail.txt", "mypy_json_fail.txt"], ["col"]],
+  ["jest", ["jest_gh_text_same_fail.txt", "jest_github_fail.txt"]],
 ]) {
   try {
     // The path is the other legitimate difference: a formatter that writes a machine
     // format writes the absolute path, and the one that writes a table writes the path
     // you typed.
     const said = (name) => analyse(fx(name)).failures
-      .map((f) => JSON.stringify(["file", "line", "col", "code", "message"]
+      .map((f) => JSON.stringify(["file", "line", "col", "code", "subject", "message"]
         .filter((k) => !silentAbout.includes(k))
         .map((k) => (k === "file" ? f.file.split("/").pop() : f[k] ?? null))))
       .sort();
