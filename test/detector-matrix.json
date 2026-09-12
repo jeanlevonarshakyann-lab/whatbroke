@@ -2434,6 +2434,18 @@
       "generic": 3
     }
   },
+  "pnpm_boxed_fail.txt": {
+    "winner": "pnpm",
+    "parser": "pnpm",
+    "failures": 1,
+    "claimants": [
+      "pnpm",
+      "generic"
+    ],
+    "shadow": {
+      "generic": 1
+    }
+  },
   "pnpm_lifecycle_fail.txt": {
     "winner": "pnpm",
     "parser": "pnpm",

@@ -1,0 +1,10 @@
+Error: ERR_PNPM_FETCH_404
+
+  × installing dependencies
+  ╰─▶ Failed to resolve dependency tree: GET https://registry.npmjs.org/this-
+      package-really-does-not-exist-9x7: Not Found - 404
+  help: this-package-really-does-not-exist-9x7 is not in the npm registry, or
+        you have no permission to fetch it.
+        
+        An authorization header was used: Bearer npm_[hidden]
+

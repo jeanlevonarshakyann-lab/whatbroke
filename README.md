@@ -289,6 +289,7 @@ them.
 | **npm** | its own failures — a missing script, a bad engine — without the trailing advice |
 | **npm `--json`** | npm says it twice — the same `npm error` block on stderr, a document on stdout — and a pipeline that keeps only stdout keeps only the document. Both now give the same code and the same two lines. A registry failure is coded `E404` and prefixed `404`, because the number is the HTTP status underneath it; the prefix comes off, since the code is already the code |
 | **pnpm** | its error code and message — indented with a thin space, which is why it needed one |
+| **pnpm's boxed errors** | newer pnpm draws the same failure as a box rather than a column — the code on its own line, then what it was doing, then the cause behind an arrow, then `help:`. Nothing read it, so a failed install said `ERR_PNPM_FETCH_404` and never which package, or why. The lines are hard-wrapped and the break lands inside a word often enough to matter: a wrap after a hyphen or a slash is rejoined without a space, so a package name stays one package |
 | **yarn** | the failure without the documentation link that follows it |
 | **pip** | the exception a build backend actually raised, not `subprocess-exited-with-error`; resolution failures once rather than twice, without the package index pasted in |
 | **a log stamped by CI** | GitHub Actions and `gh run view --log`, Jenkins' Timestamper, Buildkite `--timestamp-lines`, `docker logs --timestamps`, journald — the stamp comes off before anything reads the log |
