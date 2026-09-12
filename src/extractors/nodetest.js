@@ -13,7 +13,7 @@
 //
 // Everything worth showing is in there; the trick is that `error: |-` is a YAML
 // block scalar, so its content is the following lines indented one level deeper.
-import { isNoise } from "../util.js";
+import { isNoise, xmlText, xmlAttributes } from "../util.js";
 import { SOURCE_RANGE } from "../ownership.js";
 
 const NOT_OK_RE = /^([^\S\n]*)not ok[^\S\n]+\d+[^\S\n]+-[^\S\n]+(.+?)[^\S\n]*$/;
@@ -31,17 +31,6 @@ const ALT_LOCATION_RE = /^(?:test|suite)[^\S\n]+at[^\S\n]+(.+?):(\d+):(\d+)[^\S\
 const unfile = (path) => path?.startsWith("file://")
   ? decodeURIComponent(path.slice(7))
   : path;
-
-function xmlText(value) {
-  return String(value).replace(/&(?:quot|apos|lt|gt|amp);/g,
-    (entity) => ({ "&quot;": '"', "&apos;": "'", "&lt;": "<", "&gt;": ">", "&amp;": "&" })[entity]);
-}
-
-function xmlAttributes(tag) {
-  const attributes = {};
-  for (const match of tag.matchAll(/([\w:.-]+)="([^"]*)"/g)) attributes[match[1]] = xmlText(match[2]);
-  return attributes;
-}
 
 function userFrame(lines, start, end) {
   const frames = [];

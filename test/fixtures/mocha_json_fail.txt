@@ -1,0 +1,73 @@
+{
+  "stats": {
+    "suites": 1,
+    "tests": 2,
+    "passes": 1,
+    "pending": 0,
+    "failures": 1,
+    "start": "2026-09-11T23:42:47.469Z",
+    "end": "2026-09-11T23:42:47.471Z",
+    "duration": 2
+  },
+  "tests": [
+    {
+      "title": "invoice total",
+      "fullTitle": "shop invoice total",
+      "file": "/home/dev/mocha/test_shop.cjs",
+      "duration": 0,
+      "currentRetry": 0,
+      "err": {
+        "stack": "AssertionError [ERR_ASSERTION]: Expected values to be strictly equal:\n\n1049 !== 1050\n\n    at Context.<anonymous> (test_shop.cjs:4:12)\n    at process.processImmediate (node:internal/timers:484:21)",
+        "message": "Expected values to be strictly equal:\n\n1049 !== 1050\n",
+        "generatedMessage": true,
+        "name": "AssertionError",
+        "code": "ERR_ASSERTION",
+        "actual": "1049",
+        "expected": "1050",
+        "operator": "strictEqual",
+        "diff": "simple"
+      }
+    },
+    {
+      "title": "applies discount",
+      "fullTitle": "shop applies discount",
+      "file": "/home/dev/mocha/test_shop.cjs",
+      "duration": 0,
+      "currentRetry": 0,
+      "speed": "fast",
+      "err": {}
+    }
+  ],
+  "pending": [],
+  "failures": [
+    {
+      "title": "invoice total",
+      "fullTitle": "shop invoice total",
+      "file": "/home/dev/mocha/test_shop.cjs",
+      "duration": 0,
+      "currentRetry": 0,
+      "err": {
+        "stack": "AssertionError [ERR_ASSERTION]: Expected values to be strictly equal:\n\n1049 !== 1050\n\n    at Context.<anonymous> (test_shop.cjs:4:12)\n    at process.processImmediate (node:internal/timers:484:21)",
+        "message": "Expected values to be strictly equal:\n\n1049 !== 1050\n",
+        "generatedMessage": true,
+        "name": "AssertionError",
+        "code": "ERR_ASSERTION",
+        "actual": "1049",
+        "expected": "1050",
+        "operator": "strictEqual",
+        "diff": "simple"
+      }
+    }
+  ],
+  "passes": [
+    {
+      "title": "applies discount",
+      "fullTitle": "shop applies discount",
+      "file": "/home/dev/mocha/test_shop.cjs",
+      "duration": 0,
+      "currentRetry": 0,
+      "speed": "fast",
+      "err": {}
+    }
+  ]
+}

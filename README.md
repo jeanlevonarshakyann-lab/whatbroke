@@ -215,6 +215,7 @@ them.
 | **jasmine** | spec name, the assertion, and the frame in your spec — its own frames name no file at all, so they cannot be mistaken for yours |
 | **ava** | test name, the assertion and the value it is about — the diff for a comparison, the prose for anything else; a thrown class names the failure without pretending to be its identity |
 | **mocha** | suite and test name, the assertion, and the frame in your test — not the ten `node:internal` ones under it; a timeout reports no location rather than a line inside node's timers |
+| **mocha --reporter json / xunit** | the machine formats a pipeline asks for. mocha pretty-prints its JSON across forty lines, so unlike eslint's or jest's it cannot be found by scanning for a line that parses — it is found by its own shape, and whitespace outside the strings is normalised on the way in, since a runner that re-indents with a thin space would otherwise leave it unparseable. Both give the test's full name and the line that threw, agreeing with what the human reporters say about the same run |
 | **vitest** | same, with the real source line — not vitest's truncated `…` version |
 | **eslint** | errors only; warnings counted and set aside |
 | **eslint `-f json`** | the same failures read from eslint's own report — rule, line and column exactly as the table prints them. The report is one line, so it is found wherever it sits in a log, under a package runner's banner included |

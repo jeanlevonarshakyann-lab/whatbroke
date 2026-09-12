@@ -8,6 +8,8 @@ import deno from "./extractors/deno.js";
 import tsc from "./extractors/tsc.js";
 import jestjson from "./extractors/jestjson.js";
 import jest from "./extractors/jest.js";
+import mochajson from "./extractors/mochajson.js";
+import mochaxunit from "./extractors/mochaxunit.js";
 import mocha from "./extractors/mocha.js";
 import ava from "./extractors/ava.js";
 import jasmine from "./extractors/jasmine.js";
@@ -68,7 +70,7 @@ import { stripRedrawnCiPrefix, wrapperCandidates } from "./normalize.js";
 import { addSourceRanges, preserveSourceRange, rangesOverlap, setParser } from "./ownership.js";
 
 // order matters: most specific first, generic last
-export const EXTRACTORS = [pytest, nodetest, bun, bunRuntime, deno, denoRuntime, playwright, jestjson, jest, mocha, ava, jasmine, tap, taptext, vitest, unittest, traceback, eslintjson, eslint, ruff, pylint, flake8, rubocop, golangci, markdownlint, stylelint, shellcheck, yamllint, biome, oxlint, black, prettier, sass, less, webpack, babel, swc, pyright, mypy, cmake, terraform, swift, clang, ruby, perl, php, rspec, jvm, dotnettest, dotnet, phpunit, cargojson, cargo, gojson, gotest, esbuild, vite, node, tsc, git, kubectl, docker, make, npm, pnpm, yarn, pip, generic];
+export const EXTRACTORS = [pytest, nodetest, bun, bunRuntime, deno, denoRuntime, playwright, jestjson, jest, mochajson, mochaxunit, mocha, ava, jasmine, tap, taptext, vitest, unittest, traceback, eslintjson, eslint, ruff, pylint, flake8, rubocop, golangci, markdownlint, stylelint, shellcheck, yamllint, biome, oxlint, black, prettier, sass, less, webpack, babel, swc, pyright, mypy, cmake, terraform, swift, clang, ruby, perl, php, rspec, jvm, dotnettest, dotnet, phpunit, cargojson, cargo, gojson, gotest, esbuild, vite, node, tsc, git, kubectl, docker, make, npm, pnpm, yarn, pip, generic];
 
 function dedupeFailures(failures) {
   // Collapsing here rather than in each parser puts it on every failure that reaches the

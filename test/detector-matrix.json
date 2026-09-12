@@ -1507,6 +1507,16 @@
       "generic": 1
     }
   },
+  "mocha_json_fail.txt": {
+    "winner": "mocha",
+    "parser": "mocha json",
+    "failures": 1,
+    "claimants": [
+      "mocha json",
+      "generic"
+    ],
+    "shadow": {}
+  },
   "mocha_load_fail.txt": {
     "winner": "mocha",
     "parser": "mocha",
@@ -1545,6 +1555,17 @@
     "shadow": {
       "generic": 1
     }
+  },
+  "mocha_xunit_fail.txt": {
+    "winner": "mocha",
+    "parser": "mocha xunit",
+    "failures": 1,
+    "claimants": [
+      "mocha xunit",
+      "node",
+      "generic"
+    ],
+    "shadow": {}
   },
   "mypy_columns_fail.txt": {
     "winner": "mypy",

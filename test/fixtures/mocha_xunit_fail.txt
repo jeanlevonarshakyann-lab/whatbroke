@@ -1,0 +1,19 @@
+<testsuite name="Mocha Tests" tests="2" failures="0" errors="1" skipped="0" timestamp="Fri, 11 Sep 2026 23:42:48 GMT" time="0.002">
+<testcase classname="shop" name="invoice total" file="/home/dev/mocha/test_shop.cjs" time="0"><failure>Expected values to be strictly equal:
+
+1049 !== 1050
+
+
+      + expected - actual
+
+      -1049
+      +1050
+      
+AssertionError [ERR_ASSERTION]: Expected values to be strictly equal:
+
+1049 !== 1050
+
+    at Context.&#x3C;anonymous&#x3E; (test_shop.cjs:4:12)
+    at process.processImmediate (node:internal/timers:484:21)</failure></testcase>
+<testcase classname="shop" name="applies discount" file="/home/dev/mocha/test_shop.cjs" time="0"/>
+</testsuite>
