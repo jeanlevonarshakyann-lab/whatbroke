@@ -1260,6 +1260,22 @@ const CASES = [
       assert.deepEqual(r.failures.map((f) => f.line), [5, 4]);
     } },
   // JUnit is a shape every runner writes, so the bound is the suite vitest names itself.
+  // Vitest writes Jest's document deliberately, and leaves `message` empty - the failure
+  // text is in each assertion's failureMessages instead. The reconstruction found
+  // nothing to reconstruct and the run came back with no diagnosis. The two documents
+  // say which they are: Jest's carries `wasInterrupted`, vitest's carries `benchmarks`
+  // on every assertion.
+  { file: "vitest_json_fail.txt", tool: "vitest", n: 2, check: (r) => {
+      assert.deepEqual(r.failures.map((f) => f.subject),
+        ["cart > totals an invoice", "quotes shipping"]);
+      assert.equal(r.failures[0].file, "/home/dev/shop/test/cart.test.js");
+      assert.equal(r.failures[0].line, 5);
+      assert.equal(r.failures[0].col, 75);
+      // `fullName` joins the names with a space, which is neither reporter's separator
+      assert.doesNotMatch(JSON.stringify(r.failures), /cart totals an invoice/);
+      // the frames inside vitest's own dist are not where your test failed
+      assert.doesNotMatch(JSON.stringify(r.failures), /node_modules/);
+    } },
   { file: "vitest_junit_fail.txt", tool: "vitest", n: 2, check: (r) => {
       assert.deepEqual(r.failures.map((f) => f.subject),
         ["cart > totals an invoice", "quotes shipping"]);
@@ -2770,6 +2786,9 @@ for (const [group, encodings, silentAbout = []] of [
   ["dotnet test", ["dotnettest_text_same_fail.txt", "dotnettest_trx_fail.txt"]],
   ["vitest", ["vitest_reporters_text_same_fail.txt", "vitest_junit_fail.txt",
     "vitest_github_fail.txt"]],
+  // The JSON report carries the assertion's own message and no rendered diff - the diff
+  // is drawn by the reporters, not stored. What it does carry is checked below.
+  ["vitest json", ["vitest_reporters_text_same_fail.txt", "vitest_json_fail.txt"], ["message"]],
 ]) {
   try {
     // The path is the other legitimate difference: a formatter that writes a machine
@@ -2816,6 +2835,26 @@ try {
   pass++;
 } catch (e) {
   console.log(`  FAIL rspec message silence\n       ${e.message}`);
+  fail++;
+}
+
+// The same shape of silence for vitest: its JSON report stores the assertion's message
+// and not the diff its reporters draw, so what the document does carry has to be the
+// first line of what they print, exactly.
+try {
+  const pretty = analyse(fx("vitest_reporters_text_same_fail.txt")).failures;
+  const json = analyse(fx("vitest_json_fail.txt")).failures;
+  assert.equal(pretty.length, json.length);
+  for (let i = 0; i < pretty.length; i++) {
+    assert.equal(json[i].message, pretty[i].message.split("\n")[0],
+      `${json[i].subject}: the document says something else on the first line`);
+  }
+  // ...and the reporters really do add more than the document has.
+  assert.ok(pretty.some((f) => f.message.includes("\n")), "no reporter drew a diff");
+  console.log("  ok   vitest's JSON report is the first line of what its reporters print");
+  pass++;
+} catch (e) {
+  console.log(`  FAIL vitest message silence\n       ${e.message}`);
   fail++;
 }
 
