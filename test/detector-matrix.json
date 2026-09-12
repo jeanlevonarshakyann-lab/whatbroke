@@ -2194,6 +2194,17 @@
       "generic": 1
     }
   },
+  "phpunit_junit_fail.txt": {
+    "winner": "phpunit",
+    "parser": "phpunit",
+    "failures": 3,
+    "claimants": [
+      "phpunit",
+      "go",
+      "generic"
+    ],
+    "shadow": {}
+  },
   "phpunit_load_fail.txt": {
     "winner": "phpunit",
     "parser": "phpunit",
@@ -2203,6 +2214,33 @@
       "generic"
     ],
     "shadow": {}
+  },
+  "phpunit_testdox_fail.txt": {
+    "winner": "phpunit",
+    "parser": "phpunit",
+    "failures": 3,
+    "claimants": [
+      "jest",
+      "phpunit",
+      "generic"
+    ],
+    "shadow": {
+      "generic": 1
+    }
+  },
+  "phpunit_text_same_fail.txt": {
+    "winner": "phpunit",
+    "parser": "phpunit",
+    "failures": 3,
+    "claimants": [
+      "jest",
+      "phpunit",
+      "go",
+      "generic"
+    ],
+    "shadow": {
+      "generic": 2
+    }
   },
   "pip_badreq_fail.txt": {
     "winner": "pip",
@@ -2523,6 +2561,16 @@
       "generic": 2
     }
   },
+  "rspec_json_fail.txt": {
+    "winner": "rspec",
+    "parser": "rspec",
+    "failures": 3,
+    "claimants": [
+      "rspec",
+      "generic"
+    ],
+    "shadow": {}
+  },
   "rspec_load_fail.txt": {
     "winner": "rspec",
     "parser": "rspec",
@@ -2545,6 +2593,18 @@
     ],
     "shadow": {
       "generic": 1
+    }
+  },
+  "rspec_text_same_fail.txt": {
+    "winner": "rspec",
+    "parser": "rspec",
+    "failures": 3,
+    "claimants": [
+      "rspec",
+      "generic"
+    ],
+    "shadow": {
+      "generic": 3
     }
   },
   "rubocop_fail.txt": {

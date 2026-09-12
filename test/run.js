@@ -1915,6 +1915,32 @@ const CASES = [
       assert.deepEqual(r.failures.map((f) => [f.title, f.line]).sort(), [["compile error", 3], ["TestAdd", 7], ["TestTable/zero", 22], ["TestParallelA", 30]].sort());
       assert.equal(r.summary, "1 compile error, 3 tests failed");
     } },
+  // One rspec run of four examples - three failing, one pending - in a directory whose
+  // name has a space in it, captured in the progress format and in -f json. The document
+  // was not read at all. It carries one thing less than the text form and one thing
+  // more: no `Failure/Error:` line quoting the example's source, and the exception's
+  // class for every failure rather than only for the ones that are not unmet
+  // expectations.
+  { file: "rspec_text_same_fail.txt", tool: "rspec", n: 3, check: (r) => {
+      assert.equal(r.summary, "4 examples, 3 failures, 1 pending");
+      assert.deepEqual(r.failures.map((f) => f.line), [2, 3, 2]);
+      assert.equal(r.failures[0].file, "./inputs/ruby specs/math failures_spec.rb");
+      assert.match(r.failures[0].message, /^it\('adds whole numbers'\)/);
+    } },
+  { file: "rspec_json_fail.txt", tool: "rspec", n: 3, check: (r) => {
+      // the document has no sentence of its own, so one is written from what it counted
+      assert.equal(r.summary, "4 examples, 3 failures, 1 pending");
+      assert.deepEqual(r.failures.map((f) => f.subject), ["math failures adds whole numbers",
+        "math failures compares labels", "runtime states raises unexpectedly"]);
+      // the line that raised, from the backtrace - not the line the example opens on
+      assert.deepEqual(r.failures.map((f) => f.line), [2, 3, 2]);
+      assert.equal(r.failures[0].file, "./inputs/ruby specs/math failures_spec.rb");
+      assert.equal(r.failures[0].message, "expected: 5\ngot: 4\n(compared using ==)");
+      // an unmet expectation is its message; anything else is named by its class first
+      assert.equal(r.failures[2].message, "ArgumentError:\nfixture exploded");
+      // the pending example is not a failure
+      assert.doesNotMatch(JSON.stringify(r.failures), /is not implemented yet/);
+    } },
   { file: "rspec_fail.txt", tool: "rspec", n: 2, check: (r) => {
       assert.equal(r.summary, "3 examples, 2 failures");
       assert.equal(r.failures[0].title, "shop totals an invoice");
@@ -1970,6 +1996,42 @@ const CASES = [
       // the trailing [/path/app.csproj] is noise, not part of the message
       assert.ok(!r.failures.some((f) => /csproj/.test(f.message)),
         "the project path must be stripped from the message");
+    } },
+  // One PHPUnit run - two failed assertions and one escaped exception, which PHPUnit
+  // counts separately - in its console output, its --log-junit document and --testdox.
+  { file: "phpunit_text_same_fail.txt", tool: "phpunit", n: 3, check: (r) => {
+      assert.equal(r.summary, "2 failures, 1 error");
+      // The errors section is printed above the failures section with a rule between
+      // them. Without stopping at the rule the error carried "--" and the next
+      // section's heading along as part of its message.
+      assert.equal(r.failures[0].message, "RuntimeException: fixture exploded");
+      assert.equal(r.failures[0].line, 9);
+    } },
+  // JUnit is a shape every runner writes, so what makes a result PHPUnit's is inside
+  // the element: PHPUnit opens the body by naming the test as `Class::method`, and a
+  // result is read only when that name is the case's own.
+  { file: "phpunit_junit_fail.txt", tool: "phpunit", n: 3, check: (r) => {
+      // the document prints no tally, but it counts the same things on its root suite
+      assert.equal(r.summary, "2 failures, 1 error");
+      assert.deepEqual(r.failures.map((f) => f.subject), ["ArithmeticTest::testAddition",
+        "ArithmeticTest::testGreeting", "CrashTest::testUnexpectedCrash"]);
+      // the line the assertion failed on, which the body ends with - not the line the
+      // method is declared on, which the element's own attribute gives
+      assert.deepEqual(r.failures.map((f) => f.line), [9, 14, 9]);
+      assert.equal(r.failures[0].message, "Failed asserting that 4 is identical to 5.");
+      assert.doesNotMatch(JSON.stringify(r.failures), /ArithmeticTest::testAddition\\n/);
+    } },
+  // --testdox renames the class and the test into prose, which is the point of the
+  // format, so those are the names reported. The location and the message are the ones
+  // the console output gives.
+  { file: "phpunit_testdox_fail.txt", tool: "phpunit", n: 3, check: (r) => {
+      assert.equal(r.summary, "2 failures, 1 error");
+      assert.deepEqual(r.failures.map((f) => f.subject),
+        ["Arithmetic › Addition", "Arithmetic › Greeting", "Crash › Unexpected crash"]);
+      assert.deepEqual(r.failures.map((f) => f.line), [9, 14, 9]);
+      assert.equal(r.failures[0].message, "Failed asserting that 4 is identical to 5.");
+      // the rule PHPUnit draws down the left of the body is not part of the message
+      assert.doesNotMatch(JSON.stringify(r.failures), /│/);
     } },
   { file: "phpunit_fail.txt", tool: "phpunit", n: 2, check: (r) => {
       assert.equal(r.summary, "2 failures");
@@ -2638,6 +2700,14 @@ for (const [group, encodings, silentAbout = []] of [
   ["shellcheck", ["shellcheck_tty_same_fail.txt", "shellcheck_gcc_same_fail.txt",
     "shellcheck_json_fail.txt", "shellcheck_json1_fail.txt",
     "shellcheck_checkstyle_fail.txt"]],
+  // rspec's text reporters quote the failing example's source on a `Failure/Error:`
+  // line; -f json carries no such thing, so the message is the one field that cannot
+  // match. What it does carry is checked below, where the two are compared line by line.
+  ["rspec", ["rspec_text_same_fail.txt", "rspec_json_fail.txt"], ["message"]],
+  // --testdox renames every test on purpose, so the name is what differs there; it is
+  // pinned in its own row above.
+  ["phpunit", ["phpunit_text_same_fail.txt", "phpunit_junit_fail.txt"]],
+  ["phpunit testdox", ["phpunit_text_same_fail.txt", "phpunit_testdox_fail.txt"], ["subject"]],
 ]) {
   try {
     // The path is the other legitimate difference: a formatter that writes a machine
@@ -2665,6 +2735,26 @@ for (const [group, encodings, silentAbout = []] of [
     console.log(`  FAIL ${group} formats\n       ${e.message}`);
     fail++;
   }
+}
+
+// ...and where a format is silent about the message, that silence has a shape. rspec's
+// -f json drops exactly one line: the `Failure/Error:` line quoting the example's
+// source, which no reporter puts in the document. Everything under it is the same.
+try {
+  const text = analyse(fx("rspec_text_same_fail.txt")).failures;
+  const json = analyse(fx("rspec_json_fail.txt")).failures;
+  assert.equal(text.length, json.length);
+  for (let i = 0; i < text.length; i++) {
+    const [quoted, ...rest] = text[i].message.split("\n");
+    assert.match(quoted, /^it\(/, "the dropped line is the one quoting the source");
+    assert.equal(json[i].message, rest.join("\n"),
+      `${json[i].subject}: the document says something else under the quoted line`);
+  }
+  console.log("  ok   rspec -f json drops the quoted source line and nothing else");
+  pass++;
+} catch (e) {
+  console.log(`  FAIL rspec message silence\n       ${e.message}`);
+  fail++;
 }
 
 // A self-closing XML element holds nothing after it.

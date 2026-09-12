@@ -1,0 +1,36 @@
+PHPUnit 11.5.56 by Sebastian Bergmann and contributors.
+
+Runtime:       PHP 8.5.10
+
+FFE                                                                 3 / 3 (100%)
+
+Time: 00:00.001, Memory: 25.47 MB
+
+There was 1 error:
+
+1) CrashTest::testUnexpectedCrash
+RuntimeException: fixture exploded
+
+/home/dev/app/inputs/php tests/CrashTest.php:9
+
+--
+
+There were 2 failures:
+
+1) ArithmeticTest::testAddition
+Failed asserting that 4 is identical to 5.
+
+/home/dev/app/inputs/php tests/ArithmeticTest.php:9
+
+2) ArithmeticTest::testGreeting
+Failed asserting that two strings are identical.
+--- Expected
++++ Actual
+@@ @@
+-'hello world'
++'goodbye world'
+
+/home/dev/app/inputs/php tests/ArithmeticTest.php:14
+
+ERRORS!
+Tests: 3, Assertions: 2, Errors: 1, Failures: 2.

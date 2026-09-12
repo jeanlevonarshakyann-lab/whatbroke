@@ -1,0 +1,44 @@
+FFF*
+
+Pending: (Failures listed here are expected and do not affect your suite's status)
+
+  1) runtime states is not implemented yet
+     # Not yet implemented
+     # ./inputs/ruby specs/runtime states_spec.rb:3
+
+Failures:
+
+  1) math failures adds whole numbers
+     Failure/Error: it('adds whole numbers') { expect(2 + 2).to eq(5) }
+
+       expected: 5
+            got: 4
+
+       (compared using ==)
+     # ./inputs/ruby specs/math failures_spec.rb:2:in `block (2 levels) in <top (required)>'
+
+  2) math failures compares labels
+     Failure/Error: it('compares labels') { expect('daily report').to eq('weekly report') }
+
+       expected: "weekly report"
+            got: "daily report"
+
+       (compared using ==)
+     # ./inputs/ruby specs/math failures_spec.rb:3:in `block (2 levels) in <top (required)>'
+
+  3) runtime states raises unexpectedly
+     Failure/Error: it('raises unexpectedly') { raise ArgumentError, 'fixture exploded' }
+
+     ArgumentError:
+       fixture exploded
+     # ./inputs/ruby specs/runtime states_spec.rb:2:in `block (2 levels) in <top (required)>'
+
+Finished in 0.00424 seconds (files took 0.0458 seconds to load)
+4 examples, 3 failures, 1 pending
+
+Failed examples:
+
+rspec ./inputs/ruby specs/math failures_spec.rb:2 # math failures adds whole numbers
+rspec ./inputs/ruby specs/math failures_spec.rb:3 # math failures compares labels
+rspec ./inputs/ruby specs/runtime states_spec.rb:2 # runtime states raises unexpectedly
+
