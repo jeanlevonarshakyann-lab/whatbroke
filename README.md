@@ -220,13 +220,13 @@ them.
 | **vitest** | same, with the real source line — not vitest's truncated `…` version |
 | **vitest --reporter=tap / tap-flat** | TAP 13 in vitest's own dialect — `at: "path:line:col"` on one line and the class under `error:`, where node-tap opens a map — so neither TAP parser matched it. The two values come back as the diff the pretty reporter prints, since TAP carries them as fields instead. The nested reporter's file-level roll-up is not a failure; its members report themselves |
 | **eslint** | errors only; warnings counted and set aside |
-| **eslint `-f json`** | the same failures read from eslint's own report — rule, line and column exactly as the table prints them. The report is one line, so it is found wherever it sits in a log, under a package runner's banner included |
+| **eslint `-f json`** | the same failures read from eslint's own report — rule, line and column exactly as the table prints them. The report is one line, so it is found wherever it sits in a log, under a package runner's banner included — `-f json-with-metadata` too, which wraps the same array in an object beside the rule metadata |
 | **go test** | test name, `file:line`, the message; panics resolved past the runtime frames, and `-race` reports at the racing line |
 | **go test -json** | the same failures as `go test -v`, from the test2json stream gotestsum and most Go CI keep. Each output event is a line of the verbose log, so the log is rebuilt line for line and read by go's own parser — subtests, parallel tests and panics included |
 | **go build** | compile errors with source context |
 | **go vet** | the location, which sits inside the message when vet reports a package that will not compile |
 | **cargo test** | test name, `file:line`, the assertion and its left/right values |
-| **cargo build** | error code and the inline annotation — not the 25 lines of trait impls |
+| **cargo build** | error code and the inline annotation — not the 25 lines of trait impls — and `--message-format=short`, which puts the whole diagnostic on one line with no `-->` beneath it |
 | **cargo clippy** | the lint name as the title, so you know what to fix or allow |
 | **cargo `--message-format=json`** | the same failures, read from the schema rather than the rendered text — `rustc --error-format=json` too. The primary span is the location, and the source line it carries is what gets quoted |
 | **less** | the class, message, `file:line:col` and the offending line — lessc puts all of it on one line, with the location as prose at the end |
@@ -267,7 +267,7 @@ them.
 | **PHP** | the exception class and the stack; PHP writes every diagnostic twice, and you get it once |
 | **esbuild** | the diagnostic and its source line — not the CLI wrapper's `Command failed:` stack |
 | **vite / rollup** | the rollup error code, `file:line:col` and the offending line |
-| **tsc** | errors grouped by file, with the assignability chain down to the real reason |
+| **tsc** | errors grouped by file, with the assignability chain down to the real reason — and `--pretty`, which writes `file:line:col - error TS2322:` instead of `file(line,col):`, and is the default whenever tsc thinks it is talking to a terminal |
 | **git** | the conflicted files, not "Automatic merge failed"; the rejected ref, not five lines of `hint:` |
 | **npm** | its own failures — a missing script, a bad engine — without the trailing advice |
 | **pnpm** | its error code and message — indented with a thin space, which is why it needed one |

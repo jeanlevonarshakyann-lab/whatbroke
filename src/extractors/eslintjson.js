@@ -13,7 +13,10 @@
 // ("Resolving dependencies", "> lint@1.0.0 lint") and a job may hold more than one run.
 // Reading line by line finds the report wherever it sits, where parsing the whole log as
 // a document found nothing the moment anything else was printed alongside it.
-const LOOKS_LIKE = /^[^\S\n]*\[.*\][^\S\n]*$/;
+// `-f json` writes a bare array; `-f json-with-metadata` wraps the same array in an
+// object alongside the rule metadata. Requiring a bracketed line meant the second form
+// was not read at all.
+const LOOKS_LIKE = /^[^\S\n]*[[{].*[\]}][^\S\n]*$/;
 
 function results(s) {
   // Parsing a document to decide whether to claim it is worth avoiding when the answer
@@ -24,7 +27,10 @@ function results(s) {
     if (!LOOKS_LIKE.test(line) || !line.includes('"filePath"')) continue;
     let parsed;
     try { parsed = JSON.parse(line); } catch { continue; }
-    if (!Array.isArray(parsed) || !parsed.length) continue;
+    const list = Array.isArray(parsed) ? parsed
+      : (parsed && Array.isArray(parsed.results) ? parsed.results : null);
+    if (!list?.length) continue;
+    parsed = list;
     if (!parsed.every((r) => r && typeof r.filePath === "string" && Array.isArray(r.messages))) continue;
     out.push(...parsed);
   }

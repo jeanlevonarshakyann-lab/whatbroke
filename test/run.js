@@ -2238,6 +2238,47 @@ const CASES = [
       ]);
       assert.doesNotMatch(JSON.stringify(r.failures), /site-packages|_pytest|pluggy/);
     } },
+  // Three tools, one question: does the flag that changes how a diagnostic is PRINTED
+  // change what is read out of it? Each is one real run captured in two forms.
+  //
+  // tsc --pretty is the default whenever tsc thinks it is talking to a terminal, and
+  // plenty of tsconfigs turn it on. It writes "file:line:col - error TS2322:" where the
+  // plain form writes "file(line,col): error TS2322:", and none of it was read.
+  { file: "tsc_plain_same_fail.txt", tool: "tsc", n: 2, check: (r) => {
+      assert.deepEqual(r.failures.map((f) => [f.file, f.line, f.col, f.code]), [
+        ["bad.ts", 1, 7, "TS2322"], ["bad.ts", 2, 40, "TS2322"],
+      ]);
+    } },
+  { file: "tsc_pretty_fail.txt", tool: "tsc", n: 2, check: (r) => {
+      assert.deepEqual(r.failures.map((f) => [f.file, f.line, f.col, f.code]), [
+        ["bad.ts", 1, 7, "TS2322"], ["bad.ts", 2, 40, "TS2322"],
+      ]);
+      // The source excerpt under the message is indented, and the squiggle under THAT
+      // would read as part of tsc's explanation chain if a blank line did not end it.
+      assert.doesNotMatch(JSON.stringify(r.failures), /~~|\bconst n:/);
+    } },
+  // `-f json-with-metadata` is the same report as `-f json` wrapped in an object beside
+  // the rule metadata. Requiring a bracketed line meant the wrapped form read as nothing.
+  { file: "eslint_json_metadata_fail.txt", tool: "eslint", n: 2, check: (r) => {
+      assert.deepEqual(r.failures.map((f) => [f.line, f.col, f.code]), [
+        [1, 7, "no-unused-vars"], [3, 22, "no-undef"],
+      ]);
+      assert.match(r.summary, /3 problems/);
+    } },
+  // cargo --message-format=short puts the whole diagnostic on one line and drops the
+  // "-->" beneath it. The fallback made three failures of two, counting the tally.
+  { file: "cargo_human_same_fail.txt", tool: "cargo", n: 2, check: (r) => {
+      assert.deepEqual(r.failures.map((f) => [f.file, f.line, f.code]), [
+        ["src/main.rs", 3, "E0425"], ["src/main.rs", 2, "E0308"],
+      ]);
+    } },
+  { file: "cargo_short_fail.txt", tool: "cargo", n: 2, check: (r) => {
+      assert.deepEqual(r.failures.map((f) => [f.file, f.line, f.col, f.code]), [
+        ["src/main.rs", 3, 20, "E0425"], ["src/main.rs", 2, 22, "E0308"],
+      ]);
+      assert.doesNotMatch(JSON.stringify(r.failures), /could not compile/,
+        "the tally is not a third error");
+    } },
   { file: "gorace_fail.txt", tool: "go test", n: 3, check: (r) => {
       // real `go test -race`. The detector names the exact line of the racing
       // access - the bug - while the assertion below it only reports a wrong total.
@@ -4018,6 +4059,20 @@ try {
   console.log("  ok   every pytest traceback style names the same failures");
   pass++;
 } catch (e) { console.log(`  FAIL pytest traceback styles\n       ${e.message}`); fail++; }
+
+// A flag that changes how a diagnostic is printed must not change what is read from it.
+try {
+  const same = (a, b, what) => {
+    const facts = (r) => r.failures.map((f) => [f.file, f.line, f.col, f.code, f.title]);
+    const x = analyse(fx(a)), y = analyse(fx(b));
+    assert.equal(y.tool, x.tool, `${what}: different tool`);
+    assert.deepEqual(facts(y), facts(x), `${what}: different failures`);
+  };
+  same("tsc_plain_same_fail.txt", "tsc_pretty_fail.txt", "tsc --pretty");
+  same("cargo_human_same_fail.txt", "cargo_short_fail.txt", "cargo --message-format=short");
+  console.log("  ok   a printing flag does not change what is read");
+  pass++;
+} catch (e) { console.log(`  FAIL printing flags\n       ${e.message}`); fail++; }
 
 const cliResults = await (await import("./cli.js")).runCliTests();
 pass += cliResults.pass;

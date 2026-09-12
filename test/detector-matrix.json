@@ -167,6 +167,18 @@
       "generic": 1
     }
   },
+  "cargo_human_same_fail.txt": {
+    "winner": "cargo",
+    "parser": "cargo",
+    "failures": 2,
+    "claimants": [
+      "cargo",
+      "generic"
+    ],
+    "shadow": {
+      "generic": 3
+    }
+  },
   "cargo_json_fail.txt": {
     "winner": "cargo",
     "parser": "cargo --message-format=json",
@@ -223,6 +235,18 @@
     ],
     "shadow": {
       "generic": 1
+    }
+  },
+  "cargo_short_fail.txt": {
+    "winner": "cargo",
+    "parser": "cargo",
+    "failures": 2,
+    "claimants": [
+      "cargo",
+      "generic"
+    ],
+    "shadow": {
+      "generic": 3
     }
   },
   "cargobuild_fail.txt": {
@@ -749,6 +773,16 @@
     "winner": "eslint",
     "parser": "eslint -f json",
     "failures": 6,
+    "claimants": [
+      "eslint -f json",
+      "generic"
+    ],
+    "shadow": {}
+  },
+  "eslint_json_metadata_fail.txt": {
+    "winner": "eslint",
+    "parser": "eslint -f json",
+    "failures": 2,
     "claimants": [
       "eslint -f json",
       "generic"
@@ -2686,6 +2720,26 @@
     "winner": "tsc",
     "parser": "tsc",
     "failures": 3,
+    "claimants": [
+      "tsc",
+      "generic"
+    ],
+    "shadow": {}
+  },
+  "tsc_plain_same_fail.txt": {
+    "winner": "tsc",
+    "parser": "tsc",
+    "failures": 2,
+    "claimants": [
+      "tsc",
+      "generic"
+    ],
+    "shadow": {}
+  },
+  "tsc_pretty_fail.txt": {
+    "winner": "tsc",
+    "parser": "tsc",
+    "failures": 2,
     "claimants": [
       "tsc",
       "generic"
