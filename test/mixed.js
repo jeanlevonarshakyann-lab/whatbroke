@@ -532,6 +532,9 @@ const SAME_RUN_TWO_ENCODINGS = [
   // pytest: one run in five traceback styles. Same two tests, same two messages.
   new Set(["pytest_tb_long_same_fail.txt", "pytest_tb_short_fail.txt", "pytest_tb_line_fail.txt",
     "pytest_tb_no_fail.txt", "pytest_tb_native_fail.txt"]),
+  // tsc and cargo: one run each, printed two ways.
+  new Set(["tsc_plain_same_fail.txt", "tsc_pretty_fail.txt"]),
+  new Set(["cargo_human_same_fail.txt", "cargo_short_fail.txt"]),
 ];
 const sameRun = (a, b) => SAME_RUN_TWO_ENCODINGS.some((group) => group.has(a) && group.has(b));
 

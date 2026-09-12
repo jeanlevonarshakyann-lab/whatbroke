@@ -5,12 +5,18 @@ const LINE_RE = /^(.+?)\((\d+),(\d+)\): (error|warning) (TS\d+): (.*)$/;
 // an unknown flag - those are reported with no location at all, and requiring one meant
 // they were dropped without a word. A run reporting three errors came back with two.
 const BARE_RE = /^(error|warning) (TS\d+): (.*)$/;
+// `tsc --pretty` - the default whenever tsc thinks it is talking to a terminal, and what
+// a good many tsconfigs turn on - writes the location as `file:line:col - error TS2322:`
+// instead of `file(line,col): error TS2322:`. The same diagnostic, and none of it was
+// read: a real compile failure came back with no diagnosis at all. The group order
+// matches LINE_RE so both forms take the same path below.
+const PRETTY_RE = /^(.+?):(\d+):(\d+)[^\S\n]+-[^\S\n]+(error|warning)[^\S\n]+(TS\d+):[^\S\n]*(.*)$/;
 
 export default {
   name: "tsc",
   category: "typecheck",
   commands: ["tsc", "vue-tsc"],
-  detect: (s) => s.split("\n").some((l) => LINE_RE.test(l) || BARE_RE.test(l)),
+  detect: (s) => s.split("\n").some((l) => LINE_RE.test(l) || PRETTY_RE.test(l) || BARE_RE.test(l)),
   extract(s) {
     const failures = [];
     const lines = s.split("\n");
@@ -22,7 +28,7 @@ export default {
         }
         continue;
       }
-      const m = lines[i].match(LINE_RE);
+      const m = lines[i].match(LINE_RE) ?? lines[i].match(PRETTY_RE);
       if (!m || m[4] !== "error") continue;
       // tsc explains an assignability error as an indented chain, and the DEEPEST
       // line is the actual reason - "Type 'string' is not assignable to type

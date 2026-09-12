@@ -22,6 +22,12 @@ const RAN_TESTS = /^test result:|^----[^\S\n]+\S.*[^\S\n]+stdout[^\S\n]+----/m;
 const CARGO_OWN = /^(?:no matching package named|failed to select a version|failed to parse manifest|could not find `[^`]+` in registry|failed to run custom build command|failed to (?:load|download|verify) )/;
 const RESOLVE_RE = new RegExp(`^error: ${CARGO_OWN.source.slice(1)}`, "m");
 const STDLIB = /\/rustlib\/|\/\.cargo\/registry\//;
+// `--message-format=short` puts the whole diagnostic on one line and drops the `-->`
+// entirely, so nothing here matched it and a real compile failure came out of the
+// fallback - with the "could not compile" tally counted as a third error, and no error
+// codes to group on. The file has to be a Rust source: without that the shape is just
+// `file:line:col: error:`, which is half the tools in the corpus.
+const SHORT_RE = /^(.+?\.rs):(\d+):(\d+):[^\S\n]+(error|warning)(?:\[(E\d+)\])?:[^\S\n]*(.*?)[^\S\n]*$/;
 // "could not compile ... due to N previous errors" is a tally, not a distinct error
 // Cargo's own report of a failure that was already printed above it. "failed to run
 // custom build command" belongs here with the rest: it is what cargo says after a build
@@ -40,6 +46,7 @@ export default {
     (/^error: /m.test(s) && /^[^\S\n]*-->[^\S\n]+\S+:\d+:\d+[^\S\n]*$/m.test(s)) ||
     /^test result: /m.test(s) ||
     RESOLVE_RE.test(s) ||
+    s.split("\n").some((l) => SHORT_RE.test(l)) ||
     PANIC_ANYWHERE.test(s),
 
   extract(s) {
@@ -74,6 +81,17 @@ export default {
     // that runs `cargo clippy` and then `cargo test` puts both in one log, and returning
     // early threw clippy's fifteen findings away without saying so.
     const panics = failures.length;
+
+    // --- --message-format=short: one line, location first, no `-->` beneath it ---
+    for (const line of lines) {
+      const m = line.match(SHORT_RE);
+      if (!m || m[4] !== "error") continue;
+      failures.push({
+        file: m[1], line: +m[2], col: +m[3],
+        title: m[5] ?? "error", ...(m[5] ? { code: m[5] } : { label: "error" }),
+        severity: "error", message: m[6],
+      });
+    }
 
     // --- compile errors ---
     for (let i = 0; i < lines.length; i++) {
