@@ -1283,6 +1283,17 @@ const CASES = [
   // nothing to reconstruct and the run came back with no diagnosis. The two documents
   // say which they are: Jest's carries `wasInterrupted`, vitest's carries `benchmarks`
   // on every assertion.
+  // A reporter that writes to a file says so and prints nothing else. The run failed,
+  // the answer exists, and a log holding only this line came back "could not identify a
+  // diagnostic" - when vitest had just said where to look.
+  { file: "vitest_report_file_fail.txt", tool: "vitest", n: 1, check: (r) => {
+      assert.equal(r.failures[0].label, "report");
+      assert.match(r.failures[0].message, /\/home\/dev\/shop\/\.vitest\/json\/output\.json/);
+      // a headline has to admit the run failed, and "wrote a report" does not
+      assert.match(r.summary, /the run failed and its JSON report is not in this log/);
+      // it is a note about where the answer is, not a location in your code
+      assert.equal(r.failures[0].file, undefined);
+    } },
   { file: "vitest_json_fail.txt", tool: "vitest", n: 2, check: (r) => {
       assert.deepEqual(r.failures.map((f) => f.subject),
         ["cart > totals an invoice", "quotes shipping"]);

@@ -99,6 +99,10 @@ const JUNIT_FAILURE_RE = /<(failure|error)\b([^>]*?)(?:\/>|>([\s\S]*?)<\/\1>)/;
 // vitest writes its frames with a pointer rather than the word "at".
 const VITEST_FRAME = /^[^\S\n]*[❯>][^\S\n]+(.+?):(\d+):(\d+)[^\S\n]*$/;
 const base = (p) => String(p ?? "").split(/[\\/]/).pop();
+// A reporter that writes to a file says so and prints nothing else. The run failed, the
+// answer exists, and the log holding only this line came back "could not identify a
+// diagnostic" - when vitest had just said where to look.
+const REPORT_WRITTEN = /^([A-Z][A-Z-]*) report written to (\S.*?)[^\S\n]*$/m;
 // The diff a value comparison prints is part of the answer, and the pretty reporter's
 // reading already keeps it. The machine reporters carry the same block, so it is read
 // the same way - message first, then the values, without the "- Expected / + Received"
@@ -172,7 +176,7 @@ export default {
   category: "test",
   commands: ["vitest"],
   detect: (s) => vitestTap(s) !== null || vitestJunit(s).length > 0 ||
-    vitestAnnotations(s).length > 0 ||
+    vitestAnnotations(s).length > 0 || REPORT_WRITTEN.test(s) ||
     /^[^\S\n]*RUN[^\S\n]+v\d/m.test(s) || /Failed (?:Tests|Suites) \d+/.test(s) ||
     FAIL_RE.test(s) || s.split("\n").some((l) => suiteOf(l) !== null),
 
@@ -257,7 +261,23 @@ export default {
       // Neither reporter prints a tally line of its own.
       summary ??= `${failures.length} failed (${failures.length})`;
     }
-    if (!failures.length) return null;
+    if (!failures.length) {
+      // Nothing was read because there was nothing to read: the reporter wrote its
+      // report to a file. Saying where is the whole of what this log supports, and it
+      // is more than saying nothing.
+      const wrote = s.match(REPORT_WRITTEN);
+      if (!wrote) return null;
+      return {
+        tool: "vitest",
+        // "a report was written" does not say anything went wrong, and the guarantees
+        // suite rejects a headline that reads like nothing did.
+        summary: `the run failed and its ${wrote[1]} report is not in this log`,
+        failures: [{
+          title: "report", label: "report", severity: "error",
+          message: `vitest wrote its ${wrote[1]} report to ${wrote[2]}; this log holds none of what it said`,
+        }],
+      };
+    }
     const files = s.match(/^[^\S\n]*Test Files[^\S\n]+(.+?)[^\S\n]*$/m);
     if (/^no tests$/.test(summary ?? "") && files) summary = `${files[1]} (no tests ran)`;
     // "Tests  1 failed (1)" counts tests, and a file that never loaded declared none - so
