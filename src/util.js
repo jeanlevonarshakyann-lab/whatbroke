@@ -175,11 +175,20 @@ function jsonValueAt(text, start) {
  *  and swallows the rest. Every bracket that opens a line is a candidate instead, and
  *  the first one the caller recognises wins. */
 export function findJsonDocument(text, accept) {
+  for (const value of jsonDocuments(text, accept)) return value;
+  return null;
+}
+
+/** Every JSON document in `text` that opens a line and that `accept` recognises.
+ *
+ *  One report is not always one document: `go vet -json` writes a separate object per
+ *  package, concatenated with nothing between them, so stopping at the first one reads
+ *  one package and silently drops the rest. */
+export function* jsonDocuments(text, accept) {
   for (const open of text.matchAll(/^[^\S\n]*[[{]/gm)) {
     const value = jsonValueAt(text, open.index + open[0].length - 1);
-    if (value !== null && accept(value)) return value;
+    if (value !== null && accept(value)) yield value;
   }
-  return null;
 }
 
 // A tool asked for GitHub Actions output writes workflow commands, one per finding:

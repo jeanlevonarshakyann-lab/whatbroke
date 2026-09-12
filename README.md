@@ -225,6 +225,7 @@ them.
 | **go test -json** | the same failures as `go test -v`, from the test2json stream gotestsum and most Go CI keep. Each output event is a line of the verbose log, so the log is rebuilt line for line and read by go's own parser — subtests, parallel tests and panics included |
 | **go build** | compile errors with source context |
 | **go vet** | the location, which sits inside the message when vet reports a package that will not compile |
+| **go vet `-json`** | the one form that says which analyzer spoke: plain `go vet` writes `file:line:col: message`, which is a compile error's shape exactly, and nothing in the line says an analyzer produced it. Here `printf` or `copylocks` is the code. It is one document per package, concatenated with nothing between them, so every document is read rather than the first |
 | **cargo test** | test name, `file:line`, the assertion and its left/right values |
 | **cargo build** | error code and the inline annotation — not the 25 lines of trait impls — and `--message-format=short`, which puts the whole diagnostic on one line with no `-->` beneath it |
 | **cargo clippy** | the lint name as the title, so you know what to fix or allow |
@@ -249,6 +250,7 @@ them.
 | **ruff** | rule code, `file:line`, the message and ruff's own fix hint — and its other `--output-format` settings: `concise`, `grouped`, `github` (a workflow annotation, percent-encoded because it may not span lines) and `json`. `concise` is the same line flake8 prints, so ruff claims it only on something flake8 never writes — the `[*] N fixable` note about its own `--fix` option |
 | **pyright** | the rule name as the code, the column, and the indented line that says *why* — not the column pasted into the message |
 | **mypy** | error code, `file:line`, the type-checking message; notes and warnings set aside |
+| **mypy `--output=json`** | the same errors as records, one per line, agreeing with the text form. This form always carries a column, which the default output prints only when asked, and a `hint` where the text form writes a note under the error |
 | **Terraform** | the file, the line, the block, and the sentence at the bottom of the box that says what to do |
 | **CMake** | the script line and the command that raised it — `add_executable`, `find_package` |
 | **ninja** | no parser of its own: what fails under it is a compiler, which already has one |
@@ -257,6 +259,7 @@ them.
 | **Swift** | the diagnostic and the `[#group]` tag as its code — not the annotation swiftc draws underneath, which repeats the message word for word |
 | **ShellCheck** | the `SCxxxx` code, the source line, and the column the carets are drawn under — from the block format it prints by default as well as `-f gcc`. A run that fails on nothing worse than style still says so, because shellcheck exits non-zero on those too |
 | **yamllint** | the rule, matched as the last parenthesised word so a message like `line too long (106 > 80 characters)` keeps its own brackets. Warnings are set aside: yamllint exits zero on a run that found only those |
+| **yamllint `-f github`** | the workflow annotations every tool's GitHub formatter writes, so what marks these as yamllint's is inside the message: yamllint repeats its own parsable line there, position and rule and all. If that position and the annotation's disagree, the annotation is not yamllint's. The repeated position is removed from the message |
 | **Docker / BuildKit** | the Dockerfile line it marked with `>>>`, and the step's own error rather than the `failed to build: failed to solve:` restatement of it at the end. Not `process "…" did not complete successfully` — that is docker relaying an inner command's exit status, and the tool that actually failed says it better |
 | **make** | make's own failures — a makefile it cannot parse, a target with no rule, a recipe whose command is not installed. Not `make: *** [target] Error 1`: that relays somebody else's exit status, and the compiler underneath already has a parser. make ends a line `Stop.` when it is refusing to continue and `Error N` when it is only passing one on, and that is the line this parser draws |
 | **RuboCop** | the cop as the code, the column, and the offending line — `[Correctable]` dropped, since it says `-a` would fix it rather than what is wrong. Conventions step behind a real error the way pylint's do |

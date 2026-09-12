@@ -1,3 +1,4 @@
+import { jsonDocuments } from "../util.js";
 const MAX_NOTES = 2;
 const DIAGNOSTIC_RE = /^(.+?):(\d+)(?::(\d+))?:[^\S\n]+(error|warning|note):[^\S\n]+(.+?)(?:[^\S\n]+\[([^\]]+)\])?$/;
 // mypy only ever reports Python source. "file:line: error: message" is not its shape
@@ -6,13 +7,23 @@ const DIAGNOSTIC_RE = /^(.+?):(\d+)(?::(\d+))?:[^\S\n]+(error|warning|note):[^\S
 // error. The detect gate already required an extension on the no-summary path; the
 // extract had no such gate, so a run carrying "Found N errors" claimed anything.
 const PYTHON_SRC = /\.pyi?$/;
+// --output=json writes one record per line rather than one sentence per line. It carries
+// a column where the text form prints none, and a `hint` where the text form writes a
+// note under the error. Nothing read it, so a run that found four type errors came back
+// with no diagnosis at all.
+const RECORD = (v) => !!v && typeof v === "object" && !Array.isArray(v) &&
+  typeof v.file === "string" && Number.isInteger(v.line) &&
+  typeof v.message === "string" && typeof v.severity === "string" &&
+  ("hint" in v) && ("code" in v);
+const records = (s) => s.includes('"severity"') ? [...jsonDocuments(s, RECORD)] : [];
 
 export default {
   name: "mypy",
   category: "typecheck",
   commands: ["mypy"],
   detect: (s) =>
-    (/^[^\S\n]*Found \d+ errors? in \d+ files?/m.test(s) ||
+    (records(s).length > 0 ||
+      /^[^\S\n]*Found \d+ errors? in \d+ files?/m.test(s) ||
       // Python source and stubs can include columns and omit the summary.
       // A bare file:line diagnostic also matches javac, so require an extension.
       /^.+\.pyi?:\d+(?::\d+)?:[^\S\n]+(?:error|warning|note):[^\S\n]+/m.test(s)),
@@ -41,6 +52,34 @@ export default {
         file: match[1], line: +match[2], col: match[3] ? +match[3] : undefined,
         title: match[6] ?? "mypy", code: match[6], severity: match[4], 
         message: [match[5], ...notes].join("\n"),
+      });
+    }
+    // ...and the same diagnostics as --output=json writes them. A record already read
+    // from the text form is not read twice; the formats differ only over the column,
+    // which the text form does not print unless it is asked to.
+    const seen = new Set(failures.map((f) => [f.file, f.line, f.code].join("\u0000")));
+    const found = records(s);
+    for (let i = 0; i < found.length; i++) {
+      const r = found[i];
+      if (r.severity === "note" || !PYTHON_SRC.test(r.file)) continue;
+      if (r.severity !== "error") { warnings++; continue; }
+      const key = [r.file, r.line, r.code ?? undefined].join("\u0000");
+      if (seen.has(key)) continue;
+      seen.add(key);
+      // A note at the same position continues this error, exactly as it does in the
+      // text form - for a call-overload failure the notes carry the valid signatures.
+      const notes = [];
+      if (r.hint) notes.push(String(r.hint));
+      for (let j = i + 1; j < found.length && notes.length < MAX_NOTES; j++) {
+        const n = found[j];
+        if (n.severity !== "note" || n.file !== r.file || n.line !== r.line) break;
+        notes.push(n.message);
+      }
+      failures.push({
+        file: r.file, line: r.line,
+        col: Number.isInteger(r.column) ? r.column : undefined,
+        title: r.code ?? "mypy", code: r.code ?? undefined, severity: "error",
+        message: [r.message, ...notes].join("\n"),
       });
     }
     if (own) {

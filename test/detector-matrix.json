@@ -1181,6 +1181,16 @@
       "generic": 1
     }
   },
+  "govet_json_fail.txt": {
+    "winner": "go vet",
+    "parser": "go vet json",
+    "failures": 2,
+    "claimants": [
+      "go vet json",
+      "generic"
+    ],
+    "shadow": {}
+  },
   "govet_printf_fail.txt": {
     "winner": "go build",
     "parser": "go",
@@ -1725,6 +1735,16 @@
       "generic": 3
     }
   },
+  "mypy_json_fail.txt": {
+    "winner": "mypy",
+    "parser": "mypy",
+    "failures": 4,
+    "claimants": [
+      "mypy",
+      "generic"
+    ],
+    "shadow": {}
+  },
   "mypy_missing_fail.txt": {
     "winner": "mypy",
     "parser": "mypy",
@@ -1759,6 +1779,18 @@
     ],
     "shadow": {
       "generic": 12
+    }
+  },
+  "mypy_text_same_fail.txt": {
+    "winner": "mypy",
+    "parser": "mypy",
+    "failures": 4,
+    "claimants": [
+      "mypy",
+      "generic"
+    ],
+    "shadow": {
+      "generic": 4
     }
   },
   "ninja_compile_fail.txt": {
@@ -3122,6 +3154,16 @@
       "generic": 1
     }
   },
+  "yamllint_github_fail.txt": {
+    "winner": "yamllint",
+    "parser": "yamllint",
+    "failures": 3,
+    "claimants": [
+      "yamllint",
+      "generic"
+    ],
+    "shadow": {}
+  },
   "yamllint_parsable_fail.txt": {
     "winner": "yamllint",
     "parser": "yamllint",
@@ -3133,6 +3175,28 @@
     "shadow": {
       "generic": 6
     }
+  },
+  "yamllint_parsable_same_fail.txt": {
+    "winner": "yamllint",
+    "parser": "yamllint",
+    "failures": 3,
+    "claimants": [
+      "yamllint",
+      "generic"
+    ],
+    "shadow": {
+      "generic": 5
+    }
+  },
+  "yamllint_text_same_fail.txt": {
+    "winner": "yamllint",
+    "parser": "yamllint",
+    "failures": 3,
+    "claimants": [
+      "yamllint",
+      "generic"
+    ],
+    "shadow": {}
   },
   "yarn_fail.txt": {
     "winner": "yarn",

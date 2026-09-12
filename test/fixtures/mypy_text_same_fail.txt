@@ -1,0 +1,5 @@
+pkg/ship.py:2: error: Incompatible return value type (got "float", expected "str")  [return-value]
+pkg/orders.py:2: error: Incompatible types in assignment (expression has type "str", variable has type "int")  [assignment]
+pkg/orders.py:3: error: Unsupported operand types for + ("int" and "list[int]")  [operator]
+pkg/orders.py:7: error: Incompatible return value type (got "str", expected "float")  [return-value]
+Found 4 errors in 2 files (checked 2 source files)
