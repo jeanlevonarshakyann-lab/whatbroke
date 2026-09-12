@@ -1,0 +1,8 @@
+::warning title=lint/correctness/noUnusedVariables,file=src/cart.js,line=2,endLine=2,col=9,endColumn=15::This variable unused is unused.
+::error title=lint/suspicious/noDebugger,file=src/cart.js,line=3,endLine=3,col=3,endColumn=12::This is an unexpected use of the debugger statement.
+::error title=lint/suspicious/noDoubleEquals,file=src/checkout.js,line=2,endLine=2,col=14,endColumn=16::Using == may be unsafe if you are relying on type coercion.
+lint ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+
+  × Some errors were emitted while running checks.
+  
+

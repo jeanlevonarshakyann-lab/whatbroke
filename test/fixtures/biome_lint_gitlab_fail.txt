@@ -1,0 +1,43 @@
+[
+  {
+    "description": "This variable unused is unused.",
+    "check_name": "lint/correctness/noUnusedVariables",
+    "fingerprint": "7189311372471069652",
+    "severity": "major",
+    "location": {
+      "path": "src/cart.js",
+      "lines": {
+        "begin": 2
+      }
+    }
+  },
+  {
+    "description": "This is an unexpected use of the debugger statement.",
+    "check_name": "lint/suspicious/noDebugger",
+    "fingerprint": "5786606551360254453",
+    "severity": "critical",
+    "location": {
+      "path": "src/cart.js",
+      "lines": {
+        "begin": 3
+      }
+    }
+  },
+  {
+    "description": "Using == may be unsafe if you are relying on type coercion.",
+    "check_name": "lint/suspicious/noDoubleEquals",
+    "fingerprint": "15143325780295700771",
+    "severity": "critical",
+    "location": {
+      "path": "src/checkout.js",
+      "lines": {
+        "begin": 2
+      }
+    }
+  }
+]
+lint ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+
+  × Some errors were emitted while running checks.
+  
+

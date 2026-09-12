@@ -1,0 +1,7 @@
+The `json` and `json-pretty` reporters are experimental and may change in patch releases.
+{"summary":{"changed":0,"unchanged":2,"matches":0,"duration":1266667,"errors":2,"warnings":1,"infos":0,"skipped":0,"suggestedFixesSkipped":0,"diagnosticsNotPrinted":0,"scannerDuration":278709},"diagnostics":[{"severity":"warning","message":"This variable unused is unused.","category":"lint/correctness/noUnusedVariables","location":{"path":"src/cart.js","start":{"line":2,"column":9},"end":{"line":2,"column":15}},"advices":[]},{"severity":"error","message":"This is an unexpected use of the debugger statement.","category":"lint/suspicious/noDebugger","location":{"path":"src/cart.js","start":{"line":3,"column":3},"end":{"line":3,"column":12}},"advices":[]},{"severity":"error","message":"Using == may be unsafe if you are relying on type coercion.","category":"lint/suspicious/noDoubleEquals","location":{"path":"src/checkout.js","start":{"line":2,"column":14},"end":{"line":2,"column":16}},"advices":[]}],"command":"lint"}
+lint ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+
+  × Some errors were emitted while running checks.
+  
+

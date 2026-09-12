@@ -181,3 +181,36 @@ export function findJsonDocument(text, accept) {
   }
   return null;
 }
+
+// A tool asked for GitHub Actions output writes workflow commands, one per finding:
+//
+//   ::error title=lint/suspicious/noDebugger,file=src/cart.js,line=3,col=3::This is ...
+//   ::warning file=bad.yml,line=1,col=1::1:1 [document-start] missing document start
+//
+// The shape is shared - biome, yamllint, eslint and jest all write it - and it carries
+// severity, location and message but never the tool's own name. So this decodes the
+// shape and the parsers decide which annotations are theirs, by what is inside them.
+const ANNOTATION_RE = /^[^\S\n]*::(error|warning|notice)[^\S\n]+([^:\n]*)::(.*)$/;
+
+/** The GitHub workflow annotations in `text`.
+ *
+ *  Reading one is not running one: the values are data here, and a log that contains
+ *  `::error::` because some tool printed it is a log, not an instruction. */
+export function githubAnnotations(text) {
+  const out = [];
+  for (const line of text.split("\n")) {
+    const m = line.match(ANNOTATION_RE);
+    if (!m) continue;
+    const props = {};
+    // `title` may contain a comma in principle; every other property is a number or a
+    // path, and GitHub itself separates them with commas, so this is what it means.
+    for (const pair of m[2].split(",")) {
+      const eq = pair.indexOf("=");
+      if (eq > 0) props[pair.slice(0, eq).trim()] = pair.slice(eq + 1).trim();
+    }
+    // GitHub percent-escapes the three characters that would end the command early.
+    const message = m[3].replace(/%0D/g, "").replace(/%0A/g, "\n").replace(/%25/g, "%");
+    out.push({ severity: m[1], props, message });
+  }
+  return out;
+}

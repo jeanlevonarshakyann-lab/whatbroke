@@ -72,6 +72,66 @@
     ],
     "shadow": {}
   },
+  "biome_lint_github_fail.txt": {
+    "winner": "biome",
+    "parser": "biome",
+    "failures": 2,
+    "claimants": [
+      "biome",
+      "generic"
+    ],
+    "shadow": {}
+  },
+  "biome_lint_gitlab_fail.txt": {
+    "winner": "biome",
+    "parser": "biome",
+    "failures": 2,
+    "claimants": [
+      "biome",
+      "generic"
+    ],
+    "shadow": {}
+  },
+  "biome_lint_json_fail.txt": {
+    "winner": "biome",
+    "parser": "biome",
+    "failures": 2,
+    "claimants": [
+      "biome",
+      "generic"
+    ],
+    "shadow": {}
+  },
+  "biome_lint_junit_fail.txt": {
+    "winner": "biome",
+    "parser": "biome",
+    "failures": 3,
+    "claimants": [
+      "biome",
+      "generic"
+    ],
+    "shadow": {}
+  },
+  "biome_lint_summary_fail.txt": {
+    "winner": "biome",
+    "parser": "biome",
+    "failures": 2,
+    "claimants": [
+      "biome",
+      "generic"
+    ],
+    "shadow": {}
+  },
+  "biome_lint_text_same_fail.txt": {
+    "winner": "biome",
+    "parser": "biome",
+    "failures": 2,
+    "claimants": [
+      "biome",
+      "generic"
+    ],
+    "shadow": {}
+  },
   "biome_spaced_path_fail.txt": {
     "winner": "biome",
     "parser": "biome",

@@ -1587,6 +1587,64 @@ const CASES = [
       assert.equal(r.failures[0].file, "my project/src/app.js");
       assert.equal(r.failures[0].code, "parse");
     } },
+  // One `biome lint` run over two files, captured in the default output and in all five
+  // of biome's --reporter formats. Only the default was read; the other five came back
+  // with no diagnosis at all.
+  { file: "biome_lint_text_same_fail.txt", tool: "biome", n: 2, check: (r) => {
+      assert.deepEqual(r.failures.map((f) => f.code),
+        ["lint/suspicious/noDebugger", "lint/suspicious/noDoubleEquals"]);
+      assert.equal(r.failures[0].col, 3);
+      assert.match(r.summary, /1 warning hidden/);
+    } },
+  { file: "biome_lint_json_fail.txt", tool: "biome", n: 2, check: (r) => {
+      assert.deepEqual(r.failures.map((f) => f.code),
+        ["lint/suspicious/noDebugger", "lint/suspicious/noDoubleEquals"]);
+      assert.equal(r.failures[0].file, "src/cart.js");
+      assert.equal(r.failures[0].line, 3);
+      assert.equal(r.failures[0].col, 3);
+      // the unused variable is a warning here too, and stands behind the errors
+      assert.match(r.summary, /1 warning hidden/);
+      assert.doesNotMatch(JSON.stringify(r.failures), /noUnusedVariables/);
+    } },
+  // The GitHub annotation shape is written by eslint and jest as well, so what marks
+  // these as biome's is the rule category it puts in the title.
+  { file: "biome_lint_github_fail.txt", tool: "biome", n: 2, check: (r) => {
+      assert.deepEqual(r.failures.map((f) => f.code),
+        ["lint/suspicious/noDebugger", "lint/suspicious/noDoubleEquals"]);
+      assert.equal(r.failures[1].line, 2);
+      assert.equal(r.failures[1].col, 14);
+      assert.match(r.summary, /1 warning hidden/);
+    } },
+  // GitLab's Code Quality format carries no column, so none is invented for it. Its own
+  // severity scale is not biome's: critical is an error, major is a warning.
+  { file: "biome_lint_gitlab_fail.txt", tool: "biome", n: 2, check: (r) => {
+      assert.deepEqual(r.failures.map((f) => f.code),
+        ["lint/suspicious/noDebugger", "lint/suspicious/noDoubleEquals"]);
+      assert.equal(r.failures[0].line, 3);
+      assert.equal(r.failures[0].col, undefined);
+      assert.match(r.summary, /1 warning hidden/);
+    } },
+  // JUnit records no severity at all - biome's warning and its errors are all written
+  // as failures - so this reporter reports three where the others report two. Nothing
+  // in the document can tell them apart, and nothing here pretends to. The rule comes
+  // back as a class path and is changed back into biome's own category.
+  { file: "biome_lint_junit_fail.txt", tool: "biome", n: 3, check: (r) => {
+      assert.deepEqual(r.failures.map((f) => f.code), ["lint/correctness/noUnusedVariables",
+        "lint/suspicious/noDebugger", "lint/suspicious/noDoubleEquals"]);
+      assert.equal(r.failures[0].file, "src/cart.js");
+      assert.equal(r.failures[0].line, 2);
+      assert.doesNotMatch(JSON.stringify(r.failures), /org\.biome/);
+      assert.doesNotMatch(r.summary, /hidden/);
+    } },
+  // The summary reporter prints no line numbers anywhere, so its findings are about
+  // files and say so. The rules it lists are counted over the whole run and cannot be
+  // attached to any one file, so they are named in the run's own line instead.
+  { file: "biome_lint_summary_fail.txt", tool: "biome", n: 2, check: (r) => {
+      assert.deepEqual(r.failures.map((f) => f.file), ["src/cart.js", "src/checkout.js"]);
+      for (const f of r.failures) assert.equal(f.line, undefined);
+      assert.match(r.failures[0].message, /1 error, 1 warning/);
+      assert.match(r.summary, /lint\/suspicious\/noDebugger/);
+    } },
   { file: "biome_format_fail.txt", tool: "biome", n: 1, check: (r) => {
       // `biome format` heads its finding with the file and no line at all, so this whole
       // shape was invisible: the only failure in the run, and the run came back silent.
@@ -2447,6 +2505,12 @@ for (const [group, encodings, silentAbout = []] of [
   ["stylelint", ["stylelint_string_fail.txt", "stylelint_unix_fail.txt", "stylelint_json_fail.txt"]],
   ["pylint", ["pylint_text_same_fail.txt", "pylint_parseable_fail.txt", "pylint_msvs_fail.txt",
     "pylint_json_fail.txt", "pylint_json2_fail.txt"], ["col"]],
+  ["biome", ["biome_lint_text_same_fail.txt", "biome_lint_json_fail.txt",
+    "biome_lint_github_fail.txt"]],
+  // GitLab's Code Quality format has nowhere to put a column, so that group is compared
+  // without one. biome's JUnit and summary reporters print strictly less than the rest
+  // and are pinned on their own above rather than being made to agree here.
+  ["biome gitlab", ["biome_lint_text_same_fail.txt", "biome_lint_gitlab_fail.txt"], ["col"]],
 ]) {
   try {
     // The path is the other legitimate difference: a formatter that writes a machine
