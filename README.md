@@ -238,7 +238,9 @@ them.
 | **Biome** | the rule path as the code, `file:line:col`, and what is wrong — not the `i` advice lines or the fix diff under them. `parse` and `format` sections count too: they are where biome puts a file it could not read and a file whose formatting differs, and the latter carries no line at all. Severity comes from the glyph biome draws — `×` for what failed, `!` for what it disliked |
 | **oxlint** | the rule name as the code and the finding without the `help:` suggestion appended to it |
 | **stylelint** | the rule name as the code, `file:line:col`, and the problem — warnings counted and set aside, like eslint |
-| **markdownlint** | the rule code, `file:line:col`, and what the rule wanted — `[Expected: 1; Actual: 2]` is the whole answer for a spacing rule |
+| **stylelint `--formatter unix` / `json`** | the same run in its other two formatters. Both name the rule as a code rather than leaving it in parentheses at the end of the sentence, and the JSON report is one value spread over many lines, so it is found by its own shape rather than by looking for a line that parses. All three formatters of one run report the same problems |
+| **markdownlint** | the rule code, `file:line:col`, and what the rule wanted — `[Expected: 1; Actual: 2]` is the whole answer for a spacing rule, where the quoted context beside it is only your own line read back. A rule may carry several aliases (`MD041/first-line-heading/first-line-h1`) and still be one rule |
+| **markdownlint `--json`** | the same violations as records, worded exactly as the text form words them |
 | **flake8** | the check code as the code and `file:line:col` — the code is what goes in a `noqa` comment |
 | **pylint** | the symbolic name as the title and the numeric code beside it; when a run has real errors the convention and refactor advice steps aside and is counted. A path may contain a space — the message code after it is what bounds the name |
 | **black** | which files failed the format check, and for one it cannot parse, the reason and the position |

@@ -1,3 +1,4 @@
+import { findJsonDocument } from "../util.js";
 // ruff emits rustc-style diagnostics: a header line, then " --> file:line:col".
 const HEAD_RE = /^([A-Z]+\d+)(?:[^\S\n]+\[[*x]\])?[^\S\n]+(.+)$/;
 // Not everything ruff reports has a rule code. A file it cannot parse is reported as

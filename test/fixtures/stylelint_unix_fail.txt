@@ -1,0 +1,5 @@
+/home/dev/site/style.css:1:13: Expected "#FFF" to be "#FFFFFF" (color-hex-length) [error]
+/home/dev/site/style.css:1:28: Disallowed unit (length-zero-no-unit) [error]
+/home/dev/site/style.css:2:1: Duplicate selector ".a", first used at line 1 (no-duplicate-selectors) [error]
+
+3 problems (3 errors, 0 warnings)

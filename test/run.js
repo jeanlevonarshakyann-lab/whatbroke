@@ -513,6 +513,30 @@ const CASES = [
       assert.match(r.summary, /1 warning hidden/);
       assert.doesNotMatch(JSON.stringify(r.failures), /Duplicate property/);
     } },
+  // One run of stylelint, printed three ways. The default table was read; the other two
+  // were not - unix fell through to the generic reader, which left the rule name buried
+  // in the message and named no tool, and json was not read at all.
+  { file: "stylelint_string_fail.txt", tool: "stylelint", n: 3, check: (r) => {
+      assert.deepEqual(r.failures.map((f) => f.code),
+        ["color-hex-length", "length-zero-no-unit", "no-duplicate-selectors"]);
+      assert.equal(r.failures[0].message, 'Expected "#FFF" to be "#FFFFFF"');
+    } },
+  { file: "stylelint_unix_fail.txt", tool: "stylelint", n: 3, check: (r) => {
+      assert.deepEqual(r.failures.map((f) => f.code),
+        ["color-hex-length", "length-zero-no-unit", "no-duplicate-selectors"]);
+      assert.equal(r.failures[0].file, "/home/dev/site/style.css");
+      assert.equal(r.failures[0].line, 1);
+      assert.equal(r.failures[0].col, 13);
+      // the rule is the code, not a parenthesis left at the end of the sentence
+      assert.doesNotMatch(JSON.stringify(r.failures.map((f) => f.message)), /\(color-hex-length\)/);
+    } },
+  { file: "stylelint_json_fail.txt", tool: "stylelint", n: 3, check: (r) => {
+      assert.deepEqual(r.failures.map((f) => f.code),
+        ["color-hex-length", "length-zero-no-unit", "no-duplicate-selectors"]);
+      assert.equal(r.failures[2].message, 'Duplicate selector ".a", first used at line 1');
+      assert.equal(r.failures[2].line, 2);
+      assert.equal(r.failures[2].col, 1);
+    } },
   // Captured with node-tap 21. TAP 14, which `node --test` also emits - they are told
   // apart by the YAML: tap writes an `at:` block, node writes `failureType`.
   { file: "tap_fail.txt", tool: "tap", n: 2, check: (r) => {
@@ -546,6 +570,28 @@ const CASES = [
       // the bracketed context is the rule quoting your file back at you
       assert.doesNotMatch(JSON.stringify(r.failures), /\[Context:/);
       assert.equal(r.failures[1].code, "MD030");
+      // ...but the other bracket says what the rule wanted, and it was being dropped
+      // with the context, leaving "Spaces after list markers" and no number.
+      assert.equal(r.failures[1].message, "Spaces after list markers [Expected: 1; Actual: 2]");
+    } },
+  // A rule may carry more than one alias. MD041 carries two, the pattern allowed one,
+  // and the violation vanished: five in the log, four reported, nothing saying one went.
+  { file: "markdownlint_aliases_fail.txt", tool: "markdownlint", n: 5, check: (r) => {
+      assert.deepEqual(r.failures.map((f) => f.code), ["MD018", "MD041", "MD009", "MD010", "MD032"]);
+      const md041 = r.failures.find((f) => f.code === "MD041");
+      assert.equal(md041.message, "First line in a file should be a top-level heading");
+      // the alias is not part of the message, however many segments it has
+      assert.doesNotMatch(JSON.stringify(r.failures), /first-line-h1/);
+    } },
+  // markdownlint --json: the same violations as records, pretty-printed over many lines.
+  // Nothing read it, so a run that reported five problems diagnosed none.
+  { file: "markdownlint_json_fail.txt", tool: "markdownlint", n: 5, check: (r) => {
+      assert.deepEqual([...r.failures.map((f) => f.code)].sort(),
+        ["MD009", "MD010", "MD018", "MD032", "MD041"]);
+      const md009 = r.failures.find((f) => f.code === "MD009");
+      assert.equal(md009.message, "Trailing spaces [Expected: 0 or 2; Actual: 1]");
+      assert.equal(md009.line, 2);
+      assert.equal(md009.col, 10);
     } },
   // Captured with ava 6. Like mocha, a failing run produced no diagnosis at all.
   { file: "ava_fail.txt", tool: "ava", n: 2, check: (r) => {
@@ -2342,6 +2388,35 @@ for (const c of CASES) {
     pass++;
   } catch (e) {
     console.log(`  FAIL ${c.file}\n       ${e.message}`);
+    fail++;
+  }
+}
+
+// A tool's --format flag changes how a run is printed, not what happened in it. So two
+// captures of ONE run, taken in two formats, have to arrive at the same failures - and
+// the way these parsers broke was always the same shape: one format was read, the others
+// silently gave less. Comparing the formats against each other is what catches that,
+// because each capture on its own looks perfectly plausible.
+for (const [group, encodings] of [
+  ["markdownlint", ["markdownlint_aliases_fail.txt", "markdownlint_json_fail.txt"]],
+  ["stylelint", ["stylelint_string_fail.txt", "stylelint_unix_fail.txt", "stylelint_json_fail.txt"]],
+]) {
+  try {
+    // The path is the one legitimate difference: a formatter that writes a machine
+    // format writes the absolute path, and the one that writes a table writes the path
+    // you typed. Everything else has to match.
+    const said = (name) => analyse(fx(name)).failures
+      .map((f) => JSON.stringify([f.file.split("/").pop(), f.line, f.col ?? null, f.code, f.message]))
+      .sort();
+    const first = said(encodings[0]);
+    assert.ok(first.length > 0, `${encodings[0]}: nothing extracted`);
+    for (const other of encodings.slice(1)) {
+      assert.deepEqual(said(other), first, `${group}: ${other} disagrees with ${encodings[0]}`);
+    }
+    console.log(`  ok   ${group}: ${encodings.length} formats of one run agree (${first.length} failures)`);
+    pass++;
+  } catch (e) {
+    console.log(`  FAIL ${group} formats\n       ${e.message}`);
     fail++;
   }
 }
