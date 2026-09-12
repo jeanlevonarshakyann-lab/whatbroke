@@ -1,0 +1,31 @@
+bun test v1.3.14 (0d9b296a)
+
+bt/cart.test.ts:
+1 | import { expect, test, describe } from "bun:test";
+2 | 
+3 | describe("cart", () => {
+4 |   test("totals an invoice", () => {
+5 |     expect([2, 3].reduce((a, b) => a + b, 0)).toBe(6);
+                                                  ^
+error: expect(received).toBe(expected)
+
+Expected: 6
+Received: 5
+
+      at <anonymous> (/home/dev/shop/bt/cart.test.ts:5:47)
+(fail) cart > totals an invoice [6.90ms]
+ 5 |     expect([2, 3].reduce((a, b) => a + b, 0)).toBe(6);
+ 6 |   });
+ 7 | });
+ 8 | 
+ 9 | test("raises unexpectedly", () => {
+10 |   throw new Error("fixture exploded");
+                                         ^
+error: fixture exploded
+      at <anonymous> (/home/dev/shop/bt/cart.test.ts:10:37)
+(fail) raises unexpectedly [0.05ms]
+
+ 0 pass
+ 2 fail
+ 1 expect() calls
+Ran 2 tests across 1 file. [154.00ms]

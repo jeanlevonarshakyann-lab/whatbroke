@@ -81,7 +81,8 @@ export default {
         const f = lines[j].match(FRAME_RE);
         if (f) {
           if (!frames.length && j - i > FIRST_FRAME) break;
-          frames.push({ fn: f[1] ?? "<anonymous>", file: unfile(f[2]), line: +f[3], col: +f[4] });
+          frames.push({ fn: f[1] ?? "<anonymous>", file: unfile(f[2]), line: +f[3], col: +f[4],
+            url: f[2].startsWith("file://") });
           continue;
         }
         if (frames.length) break;
@@ -92,6 +93,12 @@ export default {
       const user = frames.filter((f) => !isNoise(f.file));
       const at = user[0] ?? frames[0];
       if (!at && !check) continue;
+      // What the whole log had to show for detection, this diagnostic has to show for
+      // itself: a frame on a file:// URL, which is deno's alone. "error:" belongs to
+      // half the tools in existence and a frame on a plain path belongs to the other
+      // half - bun writes both - so with any deno output anywhere in the log, bun's
+      // failure was adopted as a second deno error at bun's own line.
+      if (!check && !frames.some((f) => f.url)) continue;
 
       // A module it could not resolve names the missing file as a URL inside the message.
       const message = (check ? check[2] : err[2]).replace(/"file:\/\/(\S+?)"/g, (_, p) => `"${decodeURIComponent(p)}"`);

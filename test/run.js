@@ -2481,15 +2481,39 @@ const CASES = [
       // start of a line, which is exactly what the cargo parser looks for, so bun
       // output was claimed by cargo and came back as two locationless errors.
       assert.equal(r.summary, "192 fail, 191 pass");
-      const f = r.failures[0];
+      assert.deepEqual(r.failures.map((f) => f.title),
+        ["path-to-regexp > pathToRegexp errors > should contain the error line",
+          "path-to-regexp > match / with $options > should match /"]);
+      assert.ok(!/\[[\d.]+ms\]/.test(r.failures[0].title), "the timing is not part of the test name");
+      // 192 failures, and this capture holds two of their names: it begins mid-run, so
+      // the first one's block was cut off above it. Saying so is the whole of what the
+      // log supports - the block below that line is the SECOND failure's.
+      assert.equal(r.failures[0].file, undefined);
+      assert.match(r.failures[0].message, /not in this log/);
+      const f = r.failures[1];
       assert.match(f.file, /index\.spec\.ts$/);
       assert.equal(f.line, 274);
-      assert.match(f.title, /^path-to-regexp > /);
-      assert.ok(!/\[[\d.]+ms\]/.test(f.title), "the timing is not part of the test name");
       assert.match(f.message, /expect\(received\)\.toEqual\(expected\)/);
       // bun echoes the source and a caret, and labels its diff with tallies
       assert.ok(!/^\s*\d+\s*\|/m.test(f.message), "echoed source is not the message");
       assert.ok(!/^[-+]\s*(Expected|Received)\s+[-+]\s*\d+$/m.test(f.message), "diff tallies kept");
+    } },
+  // ...and a run whose two failures differ, which is what shows the pairing. bun prints
+  // the block and THEN says whose it was, so reading forward from the "(fail)" line gave
+  // every failure the next one's message and the last one the run's tally - "0 pass"
+  // reported as a test's assertion. The only fixture above could not show it: 192
+  // parameterised cases whose blocks differ by one character.
+  { file: "bun_order_fail.txt", tool: "bun test", n: 2, check: (r) => {
+      assert.deepEqual(r.failures.map((f) => f.subject),
+        ["cart > totals an invoice", "raises unexpectedly"]);
+      assert.equal(r.failures[0].line, 5);
+      assert.equal(r.failures[0].message, "expect(received).toBe(expected)\nExpected: 6\nReceived: 5");
+      assert.equal(r.failures[1].line, 10);
+      assert.equal(r.failures[1].message, "fixture exploded");
+      // the run's own tally is not a test's assertion
+      assert.doesNotMatch(JSON.stringify(r.failures), /\d+ (?:pass|fail)\b/);
+      // nor is bun's banner, which sits above the first block
+      assert.doesNotMatch(JSON.stringify(r.failures), /bun test v/);
     } },
   { file: "deno_fail.txt", tool: "deno test", n: 2, check: (r) => {
       // real `deno test` run. Unsupported before: it fell through to the generic

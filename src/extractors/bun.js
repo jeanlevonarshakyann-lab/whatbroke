@@ -4,9 +4,8 @@ import { isNoise } from "../util.js";
 // but a bun process running an ESM entry can produce either.
 const unfile = (p) => (p.startsWith("file://") ? decodeURIComponent(p.slice(7)) : p);
 
-// `bun test`:
+// `bun test` prints the failure and THEN says whose it was:
 //
-//   (fail) suite > name > should do the thing [3.10ms]
 //   274 |         expect(fn(input)).toEqual(expected);
 //                                   ^
 //   error: expect(received).toEqual(expected)
@@ -18,6 +17,17 @@ const unfile = (p) => (p.startsWith("file://") ? decodeURIComponent(p.slice(7)) 
 //   + Received  + 1
 //
 //         at <anonymous> (/abs/path/src/index.spec.ts:274:27)
+//   (fail) suite > name > should do the thing [3.10ms]
+//
+// Reading forward from the "(fail)" line therefore gave every failure the NEXT one's
+// message and location, and gave the last one the run's tally - "0 pass" reported as a
+// test's assertion. Every bun run with more than one failure was wrong that way, and
+// the corpus could not show it: the only fixture was a run of 192 near-identical
+// parameterised cases whose blocks differ by one character.
+//
+// A block belongs to the "(fail)" line under it, back as far as the previous one. A
+// "(fail)" whose block is not in the log - the capture began mid-run, which is how that
+// fixture was taken - is still a test bun said had failed, and is still reported.
 //
 // Note bun writes "error:" at the start of a line, which the cargo parser also
 // looks for - so this must be registered ahead of it.
@@ -27,6 +37,11 @@ const AT_RE = /^[^\S\n]*at[^\S\n]+.*?\((.+?):(\d+):(\d+)\)[^\S\n]*$/;
 const SOURCE_RE = /^[^\S\n]*\d+[^\S\n]*\|/;              // bun's echoed source context
 const CARET_RE = /^[^\S\n]*\^+[^\S\n]*$/;
 const DIFF_COUNT_RE = /^[-+][^\S\n]*(Expected|Received)[^\S\n]+[-+][^\S\n]*\d+[^\S\n]*$/;
+// What bun writes above the first block: its own banner, and the file it is about to
+// run. Neither is a diagnosis, and the first failure's block starts at the top of the
+// log, so without these the run's version string was reported as its assertion.
+const BANNER_RE = /^bun test v[\d.]+/;
+const FILE_HEAD_RE = /^\S+:[^\S\n]*$/;
 const MAX_MESSAGE_LINES = 4;
 
 export default {
@@ -40,24 +55,62 @@ export default {
     const lines = s.split("\n");
     const failures = [];
 
+    // Where the first failure's block may start. bun opens a run with its own banner,
+    // so that is the earliest anything below can belong to it - and when the capture
+    // began mid-run there is no banner, and the first "(fail)" has no block at all.
+    // Without this the first failure reached back into whatever tool ran before bun,
+    // and "error: could not compile" from cargo became a bun test's assertion.
+    const banner = lines.findIndex((l) => BANNER_RE.test(l));
+    let from = banner < 0 ? null : banner + 1;
     for (let i = 0; i < lines.length; i++) {
       const head = lines[i].match(FAIL_RE);
       if (!head) continue;
 
+      // The block is bounded by its own shape, not by how far back the previous
+      // "(fail)" was. Everything bun prints in one is a source echo, a caret, its
+      // "error:" line, the detail under it, or a frame - so the walk back stops at the
+      // first line that is none of those, and cannot reach a progress bar, a banner, or
+      // another tool. Above the "error:" line bun draws only the source it points at.
+      const lo = from ?? i;             // no banner above: this failure has no block
+      let start = lo;
+      let sawError = false;
+      for (let j = i - 1; j >= lo; j--) {
+        const raw = lines[j];
+        const t = raw.trim();
+        if (!t) { start = j; continue; }
+        if (sawError) {
+          if (SOURCE_RE.test(raw) || CARET_RE.test(raw)) { start = j; continue; }
+          start = j + 1;
+          break;
+        }
+        if (ERROR_RE.test(t)) { sawError = true; start = j; continue; }
+        if (AT_RE.test(raw) || SOURCE_RE.test(raw) || CARET_RE.test(raw)) { start = j; continue; }
+        // what bun prints under "error:" - the diff, and the pair it compared
+        if (/^[-+]/.test(t) || /^(?:Expected|Received):/.test(t)) { start = j; continue; }
+        start = j + 1;
+        break;
+      }
+
       let file, line, col;
       const msg = [];
-      for (let j = i + 1; j < lines.length && !FAIL_RE.test(lines[j]); j++) {
+      for (let j = start; j < i; j++) {
         const at = lines[j].match(AT_RE);
         if (at) { if (!file) { file = at[1]; line = +at[2]; col = +at[3]; } continue; }
         const t = lines[j].trim();
         if (!t || msg.length >= MAX_MESSAGE_LINES) continue;
         // the echoed source, its caret, and the diff's own tallies are not the message
         if (SOURCE_RE.test(lines[j]) || CARET_RE.test(lines[j]) || DIFF_COUNT_RE.test(t)) continue;
+        if (BANNER_RE.test(t) || FILE_HEAD_RE.test(t)) continue;
         const err = t.match(ERROR_RE);
         msg.push(err ? err[1] : t);
       }
-      if (!msg.length) continue;
-      failures.push({ file, line, col, title: head[1], subject: head[1], severity: "error", message: msg.join("\n") });
+      from = i + 1;
+      failures.push({
+        file, line, col, title: head[1], subject: head[1], severity: "error",
+        // A failure whose block is not in the log still happened. Saying so is the
+        // whole of what the log supports; taking the next test's block is not.
+        message: msg.length ? msg.join("\n") : "bun reported this test as failed; its output is not in this log",
+      });
     }
 
     if (!failures.length) return null;

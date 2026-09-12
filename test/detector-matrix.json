@@ -189,6 +189,19 @@
       "generic": 1
     }
   },
+  "bun_order_fail.txt": {
+    "winner": "bun test",
+    "parser": "bun test",
+    "failures": 2,
+    "claimants": [
+      "bun test",
+      "node",
+      "generic"
+    ],
+    "shadow": {
+      "generic": 2
+    }
+  },
   "bun_syntax_fail.txt": {
     "winner": "bun",
     "parser": "bun",
