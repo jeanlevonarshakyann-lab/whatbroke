@@ -242,7 +242,7 @@ them.
 | **flake8** | the check code as the code and `file:line:col` — the code is what goes in a `noqa` comment |
 | **pylint** | the symbolic name as the title and the numeric code beside it; when a run has real errors the convention and refactor advice steps aside and is counted. A path may contain a space — the message code after it is what bounds the name |
 | **black** | which files failed the format check, and for one it cannot parse, the reason and the position |
-| **ruff** | rule code, `file:line`, the message and ruff's own fix hint |
+| **ruff** | rule code, `file:line`, the message and ruff's own fix hint — and its other `--output-format` settings: `concise`, `grouped`, `github` (a workflow annotation, percent-encoded because it may not span lines) and `json`. `concise` is the same line flake8 prints, so ruff claims it only on something flake8 never writes — the `[*] N fixable` note about its own `--fix` option |
 | **pyright** | the rule name as the code, the column, and the indented line that says *why* — not the column pasted into the message |
 | **mypy** | error code, `file:line`, the type-checking message; notes and warnings set aside |
 | **Terraform** | the file, the line, the block, and the sentence at the bottom of the box that says what to do |

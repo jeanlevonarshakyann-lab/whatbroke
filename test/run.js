@@ -2279,6 +2279,38 @@ const CASES = [
       assert.doesNotMatch(JSON.stringify(r.failures), /could not compile/,
         "the tally is not a third error");
     } },
+  // One real ruff run in five of its --output-format settings. Only the default was read:
+  // `concise` and `grouped` were claimed by flake8, whose `file:line:col: CODE message`
+  // is the same shape; `github` was mangled by it into a file called
+  // "lint_me.py,line=1,col=8,...::lint_me.py"; `json` said nothing at all.
+  { file: "ruff_full_same_fail.txt", tool: "ruff", n: 3, check: (r) => {
+      assert.equal(r.summary, "3 errors");
+      assert.deepEqual(r.failures.map((f) => [f.file, f.line, f.col, f.code]), [
+        ["lint_me.py", 1, 8, "F401"], ["lint_me.py", 2, 8, "F401"], ["lint_me.py", 6, 5, "F841"],
+      ]);
+    } },
+  { file: "ruff_concise_fail.txt", tool: "ruff", n: 3, check: (r) => {
+      assert.deepEqual(r.failures.map((f) => [f.line, f.code]), [[1, "F401"], [2, "F401"], [6, "F841"]]);
+      // "[*]" marks the finding fixable - ruff talking about its own options, not code.
+      assert.doesNotMatch(JSON.stringify(r.failures), /\[\*\]/);
+    } },
+  { file: "ruff_grouped_fail.txt", tool: "ruff", n: 3, check: (r) => {
+      // The file is on its own line and the findings are indented beneath it.
+      assert.equal(r.failures.every((f) => f.file === "lint_me.py"), true);
+      assert.deepEqual(r.failures.map((f) => f.line), [1, 2, 6]);
+    } },
+  { file: "ruff_github_fail.txt", tool: "ruff", n: 3, check: (r) => {
+      assert.equal(r.failures[0].file, "/home/dev/ruff/lint_me.py", "the annotation names the file once");
+      assert.deepEqual(r.failures.map((f) => [f.line, f.col]), [[1, 8], [2, 8], [6, 5]]);
+      // A workflow command cannot span lines, so the advice is percent-encoded.
+      assert.doesNotMatch(JSON.stringify(r.failures), /%0A|endLine=|::/);
+      assert.match(r.failures[0].message, /Remove unused import/);
+    } },
+  { file: "ruff_json_fail.txt", tool: "ruff", n: 3, check: (r) => {
+      assert.deepEqual(r.failures.map((f) => [f.line, f.col, f.code]), [
+        [1, 8, "F401"], [2, 8, "F401"], [6, 5, "F841"],
+      ]);
+    } },
   { file: "gorace_fail.txt", tool: "go test", n: 3, check: (r) => {
       // real `go test -race`. The detector names the exact line of the racing
       // access - the bug - while the assertion below it only reports a wrong total.
@@ -3141,6 +3173,12 @@ try {
     // listed first and adds what python cannot see from the traceback alone - the test
     // names and the run's counts.
     "pytest_tb_native_fail.txt": ["pytest", "python"],
+    // ruff's concise form and flake8's only output are the same shape - file, line,
+    // column, code, message - so flake8 matches it by design. ruff is listed first and
+    // wins on a marker flake8 never writes: the "[*] N fixable" note about its own --fix
+    // option. A ruff run with nothing fixable in it really is indistinguishable, and
+    // flake8 reads it identically anyway.
+    "ruff_concise_fail.txt": ["ruff", "flake8"],
     // esbuild's CLI wrapper crashes after esbuild exits non-zero, so the log carries a
     // real diagnostic AND a Node stack. Both parsers match by design; esbuild is listed
     // first and wins, and the wrapper's stack is filtered out of the mixed-log path
@@ -4073,6 +4111,18 @@ try {
   console.log("  ok   a printing flag does not change what is read");
   pass++;
 } catch (e) { console.log(`  FAIL printing flags\n       ${e.message}`); fail++; }
+// --output-format decides how much ruff prints, never what it found.
+try {
+  const forms = ["full_same", "concise", "grouped", "github", "json"]
+    .map((n) => [n, analyse(fx(`ruff_${n}_fail.txt`))]);
+  const where = (r) => r.failures.map((f) => [f.line, f.col, f.code]);
+  for (const [name, r] of forms) {
+    assert.equal(r.tool, "ruff", `${name}: wrong tool`);
+    assert.deepEqual(where(r), [[1, 8, "F401"], [2, 8, "F401"], [6, 5, "F841"]], `${name}: different findings`);
+  }
+  console.log("  ok   every ruff output format reports the same findings");
+  pass++;
+} catch (e) { console.log(`  FAIL ruff output formats\n       ${e.message}`); fail++; }
 
 const cliResults = await (await import("./cli.js")).runCliTests();
 pass += cliResults.pass;
