@@ -1,0 +1,17 @@
+<?xml version='1.0' encoding='UTF-8'?>
+<checkstyle version='4.3'>
+<file name='inputs/a.sh' >
+<error line='2' column='1' severity='warning' message='unused appears unused. Verify use &#40;or export if used externally&#41;.' source='ShellCheck.SC2034' />
+<error line='3' column='6' severity='warning' message='Use &#34;&#36;&#64;&#34; &#40;with quotes&#41; to prevent whitespace problems.' source='ShellCheck.SC2048' />
+<error line='3' column='6' severity='info' message='Double quote to prevent globbing and word splitting.' source='ShellCheck.SC2086' />
+<error line='4' column='7' severity='info' message='Use &#36;&#40;...&#41; notation instead of legacy backticks &#96;...&#96;.' source='ShellCheck.SC2006' />
+<error line='5' column='1' severity='warning' message='Use &#39;cd ... &#124;&#124; exit&#39; or &#39;cd ... &#124;&#124; return&#39; in case cd fails.' source='ShellCheck.SC2164' />
+<error line='5' column='4' severity='info' message='Double quote to prevent globbing and word splitting.' source='ShellCheck.SC2086' />
+<error line='6' column='15' severity='info' message='Double quote to prevent globbing and word splitting.' source='ShellCheck.SC2086' />
+</file>
+<file name='inputs/b.sh' >
+<error line='4' column='3' severity='info' message='The mentioned syntax error was in this simple command.' source='ShellCheck.SC1009' />
+<error line='4' column='8' severity='error' message='Couldn&#39;t parse this parameter expansion. Fix to allow more checks.' source='ShellCheck.SC1073' />
+<error line='7' column='1' severity='error' message=' Fix any mentioned problems and try again.' source='ShellCheck.SC1072' />
+</file>
+</checkstyle>

@@ -16,8 +16,15 @@ function xmlBodyLines(lines) {
       continue;
     }
     const start = lines[i].match(/<(failure|error)\b[^>]*>/);
-    // A self-closing tag or one that closes on its own line holds nothing after it.
-    if (start && !new RegExp(`</${start[1]}>`).test(lines[i].slice(lines[i].indexOf(start[0]) + start[0].length))) {
+    if (!start) continue;
+    // A self-closing tag is the whole element and holds nothing after it. The test for
+    // it was the closing tag alone, and `<error ... />` has none - so shellcheck's
+    // checkstyle report, which is nothing but self-closing errors, opened a region that
+    // never closed and swallowed the rest of the log. A Node crash printed after one
+    // read as somebody's report of a crash and was dropped entirely.
+    if (/\/>$/.test(start[0])) continue;
+    // ...and so does one that closes on its own line.
+    if (!new RegExp(`</${start[1]}>`).test(lines[i].slice(lines[i].indexOf(start[0]) + start[0].length))) {
       open = start[1];
     }
   }
