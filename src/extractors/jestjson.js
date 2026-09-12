@@ -35,11 +35,43 @@ function documents(text) {
   return found;
 }
 
-function humanReport(data) {
+// Vitest writes this same document - it mimics Jest's report deliberately - but leaves
+// `message` empty and puts the failure text in each assertion's `failureMessages`
+// instead. So the reconstruction below found nothing to reconstruct, jest's reader found
+// no blocks in it, and a vitest run that failed two tests came back with no diagnosis.
+//
+// The two documents say which they are. Jest's carries `wasInterrupted` at the top
+// level; vitest's carries `benchmarks` on every assertion. Neither is a guess, and a
+// document that says neither is read as before.
+const JEST_OWN = (v) => typeof v.wasInterrupted === "boolean";
+const VITEST_OWN = (v) => v.testResults.some((r) => Array.isArray(r.assertionResults) &&
+  r.assertionResults.some((a) => Array.isArray(a?.benchmarks)));
+
+/** The failure blocks for one file, in the shape the human reporter prints them. */
+function blocks(result, separator) {
+  if (result.message.trim()) return stripAnsi(result.message);
+  const out = [];
+  for (const assertion of result.assertionResults ?? []) {
+    if (assertion.status !== "failed") continue;
+    // `fullName` joins the names with a space, which is neither reporter's separator -
+    // so the name is rebuilt from the parts, with the separator the tool displays.
+    const name = [...(assertion.ancestorTitles ?? []), assertion.title]
+      .filter(Boolean).join(separator);
+    out.push(`  ● ${name}`, "");
+    for (const line of (assertion.failureMessages ?? []).join("\n").split("\n")) {
+      out.push(`    ${stripAnsi(line)}`);
+    }
+    out.push("");
+  }
+  return out.join("\n");
+}
+
+function humanReport(data, separator) {
   const out = [];
   for (const result of data.testResults) {
     out.push(`${result.status === "failed" ? "FAIL" : "PASS"} ${result.name}`);
-    if (result.message.trim()) out.push(stripAnsi(result.message));
+    const body = blocks(result, separator);
+    if (body.trim()) out.push(body);
   }
   // Jest's terminal order, checked against real paired captures.
   out.push(tally("Test Suites:", [[data.numFailedTestSuites, "failed"],
@@ -54,7 +86,8 @@ function humanReport(data) {
 function parsedDocuments(text) {
   const parsed = [];
   for (const document of documents(text)) {
-    const result = jest.extract(humanReport(document.value));
+    const mine = VITEST_OWN(document.value) && !JEST_OWN(document.value);
+    const result = jest.extract(humanReport(document.value, mine ? " > " : " \u203a "));
     if (!result?.failures?.length) continue;
     for (const failure of result.failures) {
       // A JSON report is one physical source line. Ground every reconstructed failure
@@ -63,6 +96,7 @@ function parsedDocuments(text) {
         value: { start: document.line, end: document.line + 1 }, enumerable: false,
       });
     }
+    result.tool = mine ? "vitest" : "jest";
     parsed.push(result);
   }
   return parsed;
@@ -79,7 +113,9 @@ export default {
     const results = parsedDocuments(text);
     if (!results.length) return null;
     return {
-      tool: "jest",
+      // The document says whose it is; a log holding both is read as the one that wrote
+      // the most of it rather than as a guess about which came first.
+      tool: results.every((r) => r.tool === "vitest") ? "vitest" : "jest",
       // One stream can contain several Jest invocations. Their individual tallies
       // cannot be combined faithfully when a suite failed before any test ran, so do
       // not print a confidently wrong aggregate headline.

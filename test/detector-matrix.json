@@ -3216,6 +3216,18 @@
       "generic": 2
     }
   },
+  "vitest_json_fail.txt": {
+    "winner": "vitest",
+    "parser": "jest --json",
+    "failures": 2,
+    "claimants": [
+      "jest --json",
+      "generic"
+    ],
+    "shadow": {
+      "generic": 1
+    }
+  },
   "vitest_junit_fail.txt": {
     "winner": "vitest",
     "parser": "vitest",

@@ -537,6 +537,13 @@ const SAME_RUN_TWO_ENCODINGS = [
   // vitest: one run in three reporters. They carry the same failure, differing only in
   // whether the path is the absolute one TAP prints or the one you typed.
   new Set(["vitest_text_same_fail.txt", "vitest_tap_fail.txt", "vitest_tapflat_fail.txt"]),
+  // ...and a second run in four more. The JSON report is read by the parser that owns
+  // Jest's document rather than by vitest's own, so these pairs reach this sweep where
+  // the others are skipped as same-parser - but one run printed four ways is still one
+  // run. The document stores the assertion's message and not the diff the reporters
+  // draw, so the pairs deduplicate down to one copy of each failure.
+  new Set(["vitest_reporters_text_same_fail.txt", "vitest_junit_fail.txt",
+    "vitest_github_fail.txt", "vitest_json_fail.txt"]),
   // pytest: one run in five traceback styles. Same two tests, same two messages.
   new Set(["pytest_tb_long_same_fail.txt", "pytest_tb_short_fail.txt", "pytest_tb_line_fail.txt",
     "pytest_tb_no_fail.txt", "pytest_tb_native_fail.txt"]),
