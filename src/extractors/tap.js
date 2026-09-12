@@ -27,6 +27,16 @@ const END_RE = /^[^\S\n]*\.\.\.[^\S\n]*$/;
 // A subtest's own roll-up repeats a failure that its members already reported.
 const SUBTEST_RE = /^[^\S\n]*not ok[^\S\n]+\d+[^\S\n]*-[^\S\n]*\S+\.[cm]?[jt]s\b/;
 
+/** Is there a YAML block under this result line, before the next TAP statement? */
+function hasYaml(lines, i) {
+  for (let j = i + 1; j < lines.length; j++) {
+    if (!lines[j].trim()) continue;
+    if (NOT_OK_RE.test(lines[j]) || /^[^\S\n]*ok[^\S\n]+\d+\b/.test(lines[j])) return false;
+    return /^[^\S\n]*---[^\S\n]*$/.test(lines[j]);
+  }
+  return false;
+}
+
 export default {
   name: "tap",
   category: "test",
@@ -53,6 +63,13 @@ export default {
       // The line naming a test FILE is tap reporting that the file had failures in it,
       // which its own members have already said.
       if (SUBTEST_RE.test(lines[i])) continue;
+
+      // A result with no YAML block under it is bare TAP - TAP 12, what `mocha
+      // --reporter tap` and Test::More emit - and this parser has nothing to read from
+      // it. Taking those anyway produced a failure with no location at all, and in a log
+      // holding both dialects it reported the bare ones twice: once locationless here,
+      // once properly by the parser that can read them.
+      if (!hasYaml(lines, i)) continue;
 
       // node --test's own blocks sit in the same log when a job ran both. They carry
       // `failureType`, which tap never writes, and node's parser reads them.

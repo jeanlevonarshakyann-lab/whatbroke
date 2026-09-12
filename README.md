@@ -211,6 +211,7 @@ them.
 | **Playwright** | the test name, the line that actually threw, and the offending expression — not the paths to its artifact files |
 | **jest / jest --json** | test name, `file:line`, the matcher, expected vs received; the machine report is read as the same Jest failures when stdout is all the log retained |
 | **tap** | test name, `file:line:col` from its own `at:` block, and the values out of its diff — not the file-level roll-up, which counts failures rather than being one |
+| **bare TAP** (`mocha --reporter tap`, Test::More, `prove`) | plain TAP with no version line and no YAML: the test name from the `not ok` line, the location from Test::More's `# at file line N` comment or from an indented JS stack, and `got`/`expected` as the message. Bounded by TAP's plan (`1..3`), since a lone `not ok` is a sentence several tools write. `prove` prints its diagnostics before the stream rather than under each result, so they are matched back to their test by the name Test::More gives them |
 | **jasmine** | spec name, the assertion, and the frame in your spec — its own frames name no file at all, so they cannot be mistaken for yours |
 | **ava** | test name, the assertion and the value it is about — the diff for a comparison, the prose for anything else; a thrown class names the failure without pretending to be its identity |
 | **mocha** | suite and test name, the assertion, and the frame in your test — not the ten `node:internal` ones under it; a timeout reports no location rather than a line inside node's timers |
@@ -255,7 +256,7 @@ them.
 | **golangci-lint** | the linter that raised it as the code, so a run of findings from one linter groups as one thing to fix. Told apart from `go build` — whose diagnostics are otherwise identical — by the linter's name in brackets at the end of the line, which go never writes |
 | **RSpec** | example name, failure message, and `spec/file:line` location |
 | **Ruby** | the exception class, the line that raised, and the unwind — for a missing gem, the line that asked for it rather than `kernel_require.rb` |
-| **Perl** | the location, which Perl writes as prose at the end of the message; `near "= ;"` kept, the `@INC` list dropped, warnings told apart from a fatal die by what they say |
+| **Perl** | the location, which Perl writes as prose at the end of the message — but never out of a TAP comment, which is Test::More reporting a test rather than Perl dying; `near "= ;"` kept, the `@INC` list dropped, warnings told apart from a fatal die by what they say |
 | **javac / Maven / Gradle** | JVM compiler errors with warnings excluded, Surefire test failures, and build scripts that fail to evaluate |
 | **.NET** | compiler error codes with `file:line:column`; warnings set aside |
 | **dotnet test** | test name, `file:line`, the assertion; reflection frames dropped |

@@ -1521,6 +1521,18 @@
       "generic": 1
     }
   },
+  "mocha_tap_fail.txt": {
+    "winner": "tap",
+    "parser": "tap-text",
+    "failures": 1,
+    "claimants": [
+      "tap-text",
+      "go",
+      "node",
+      "generic"
+    ],
+    "shadow": {}
+  },
   "mocha_timeout_fail.txt": {
     "winner": "mocha",
     "parser": "mocha",
@@ -1856,12 +1868,34 @@
     ],
     "shadow": {}
   },
+  "perl_prove_fail.txt": {
+    "winner": "tap",
+    "parser": "tap-text",
+    "failures": 2,
+    "claimants": [
+      "tap-text",
+      "go",
+      "generic"
+    ],
+    "shadow": {}
+  },
   "perl_syn_fail.txt": {
     "winner": "perl",
     "parser": "perl",
     "failures": 1,
     "claimants": [
       "perl",
+      "generic"
+    ],
+    "shadow": {}
+  },
+  "perl_tap_fail.txt": {
+    "winner": "tap",
+    "parser": "tap-text",
+    "failures": 2,
+    "claimants": [
+      "tap-text",
+      "go",
       "generic"
     ],
     "shadow": {}
