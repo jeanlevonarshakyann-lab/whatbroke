@@ -203,9 +203,11 @@ them.
 | **unittest** | same, with the deepest *your-code* frame — not the harness |
 | **Python tracebacks** | the frame in your code, not the 9 in site-packages |
 | **deno test** | test name and `file:line` from the header, without the assert-library frames |
+| **deno test `--reporter=junit`** | an attribute value may contain newlines, and deno's does — it puts the whole assertion, diff and all, in the failure's `message`. A reader that wanted the start tag on one line found no tag there, so the first failure of every run was skipped and only the ones whose message happened to fit on one line were read. The document is now read by the same rule the pretty reporter is, diff included |
 | **deno run** | the exception class, `file:line:col` and your frames — the message without `error:` and without the `file://` scheme |
 | **deno check** | the `TS` code, the explanation and the location — not the `error: Type checking failed.` tally underneath them |
 | **bun test** | test name, `file:line`, the matcher — not bun's echoed source. bun prints the failure and THEN says whose it was, so each block belongs to the `(fail)` line under it; a run whose capture began mid-stream has a first failure whose block is not in the log, and it says so rather than borrowing the next one's. The block is bounded by its own shape and by bun's opening banner, so it cannot reach a progress bar or the tool that ran before |
+| **bun test `--reporter=junit`** | the document records which tests failed and nothing else: every outcome is a bare `<failure type="AssertionError" />` with no message and no body. It still names each test, the file, and the line it is declared on — which is more than nothing, and nothing was what a job keeping only the XML used to get. The line is the declaration's, since the document has no other |
 | **bun** | a runtime crash read as bun's rather than node's, keyed on the version bun stamps at the foot of one |
 | **node --test** | test name, `file:line`, and the assertion out of TAP's YAML block |
 | **Node stack traces** | the error, the caret, your frames; `node:internal` hidden |

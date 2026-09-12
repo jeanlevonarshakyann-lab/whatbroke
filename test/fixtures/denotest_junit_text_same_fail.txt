@@ -1,0 +1,36 @@
+[0m[32mCheck[0m tests/cart_test.ts
+[0m[38;5;245mrunning 2 tests from ./tests/cart_test.ts[0m
+cart > totals an invoice ... [0m[31mFAILED[0m [0m[38;5;245m(11ms)[0m
+cart > raises unexpectedly ... [0m[31mFAILED[0m [0m[38;5;245m(80µs)[0m
+
+[0m[1m[37m[41m ERRORS [0m
+
+cart > totals an invoice [0m[38;5;245m=> ./tests/cart_test.ts:3:6[0m
+[0m[1m[31merror[0m: AssertionError: Values are not equal.
+
+
+    [90m[1m[Diff][22m[39m [31m[1mActual[22m[39m / [32m[1mExpected[22m[39m
+
+
+[31m[1m-   5[22m[39m
+[32m[1m+   6[22m[39m
+
+  throw new AssertionError(message);
+[0m[31m        ^[0m
+    at [0m[1m[3massertEquals[0m ([0m[36mhttps://jsr.io/@std/assert/1.0.19/equals.ts[0m:[0m[33m67[0m:[0m[33m9[0m)
+    at [0m[2m[38;5;245mfile:///home/dev/shop/[0m[0m[36mtests/cart_test.ts[0m:[0m[33m4[0m:[0m[33m3[0m
+
+cart > raises unexpectedly [0m[38;5;245m=> ./tests/cart_test.ts:7:6[0m
+[0m[1m[31merror[0m: Error: fixture exploded
+  throw new Error("fixture exploded");
+[0m[31m        ^[0m
+    at [0m[2m[38;5;245mfile:///home/dev/shop/[0m[0m[36mtests/cart_test.ts[0m:[0m[33m8[0m:[0m[33m9[0m
+
+[0m[1m[37m[41m FAILURES [0m
+
+cart > totals an invoice [0m[38;5;245m=> ./tests/cart_test.ts:3:6[0m
+cart > raises unexpectedly [0m[38;5;245m=> ./tests/cart_test.ts:7:6[0m
+
+[0m[31mFAILED[0m | 0 passed | 2 failed [0m[38;5;245m(14ms)[0m
+
+[0m[1m[31merror[0m: Test failed

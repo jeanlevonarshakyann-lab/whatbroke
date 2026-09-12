@@ -27,6 +27,9 @@ const ERROR_RE = /^error:[^\S\n]*(.+)$/;
 const DIFF_LABEL_RE = /^\[Diff\]/;
 const THROW_RE = /^throw new |^\^+$/;
 const MAX_MESSAGE_LINES = 4;
+// Deno's TAP dialect puts a JSON diagnostic in each YAML block, marked with its own
+// severity. node's says `failureType`, tap's writes an `at:` block; only deno's is this.
+const DENO_TAP_DIAGNOSTIC = /"severity"[^\S\n]*:[^\S\n]*"fail"/;
 
 const denoPretty = {
   name: "deno test",
@@ -82,6 +85,23 @@ const TAP_VERSION_RE = /^TAP version \d+[^\S\n]*$/m;
 const TAP_NOT_OK_RE = /^[^\S\n]*not ok[^\S\n]+\d+[^\S\n]*-?[^\S\n]*(.*?)[^\S\n]*$/;
 const TAP_END_RE = /^[^\S\n]*\.\.\.[^\S\n]*$/;
 
+/** The message deno's own reporter would show for this block.
+ *
+ *  The JUnit document carries the same text the pretty reporter prints - the assertion
+ *  and the value diff under it - so it is read by the same rule, or one run reported two
+ *  ways loses the diff in one of them. */
+function blockMessage(value) {
+  const msg = [];
+  for (const raw of value.split("\n")) {
+    const t = raw.trim();
+    if (!t || msg.length >= MAX_MESSAGE_LINES) continue;
+    if (/^at\s/.test(t) || DIFF_LABEL_RE.test(t) || THROW_RE.test(t)) continue;
+    const err = t.match(ERROR_RE);
+    msg.push(err ? err[1] : t);
+  }
+  return msg.join("\n");
+}
+
 function usefulMessage(value) {
   const messageLines = value.split("\n");
   const first = messageLines[0]?.trim();
@@ -135,10 +155,42 @@ function precededByItsOwnRun(lines, rootAt) {
   for (let i = rootAt - 1; i >= 0; i--) {
     const line = lines[i].trim();
     if (!line || /^<\?xml\b/.test(line)) continue;
-    return /^(?:FAILED|ok)[^\S\n]*\|[^\S\n]*\d+[^\S\n]+passed[^\S\n]*\|[^\S\n]*\d+[^\S\n]+failed/.test(line) ||
-      /^1\.\.\d+$/.test(line);
+    if (/^(?:FAILED|ok)[^\S\n]*\|[^\S\n]*\d+[^\S\n]+passed[^\S\n]*\|[^\S\n]*\d+[^\S\n]+failed/.test(line)) return true;
+    // A TAP plan closes deno's TAP reporter - and mocha's, and node's, and tap's. On its
+    // own it said "this XML is the run above said again" about somebody else's run
+    // entirely, and deno's whole document was discarded. The plan counts only when the
+    // TAP above it is deno's, which its own YAML diagnostic says and no other dialect
+    // writes.
+    if (!/^1\.\.\d+$/.test(line)) return false;
+    return lines.slice(0, i).some((l) => DENO_TAP_DIAGNOSTIC.test(l));
   }
   return false;
+}
+
+/** The start tag opening at `from`, however many lines it takes, and where it ends.
+ *
+ *  An attribute value may contain newlines, and deno's does: it puts the whole assertion
+ *  - diff and all - in the failure's `message`. A reader that wanted the tag on one line
+ *  found no tag at all there, so the first failure of every deno JUnit run was skipped
+ *  and only the ones whose message happened to be one line were read. */
+function startTag(lines, from, until) {
+  let text = "";
+  // The quote carries across the line break - that is the whole point of a value that
+  // spans lines. Starting each line outside a quote read the closing `"` as an opening
+  // one, so the tag appeared to run on until the `>` of its own closing tag.
+  let quote = null;
+  for (let i = from; i < until; i++) {
+    const line = i === from ? lines[i].slice(lines[i].search(/<(?:failure|error)\b/)) : lines[i];
+    for (let c = 0; c < line.length; c++) {
+      const ch = line[c];
+      if (quote) { if (ch === quote) quote = null; continue; }
+      if (ch === '"' || ch === "'") { quote = ch; continue; }
+      // ...and the tag ends at the first `>` that is not inside a value.
+      if (ch === ">") return { tag: text + line.slice(0, c + 1), at: i, rest: line.slice(c + 1) };
+    }
+    text += `${line}\n`;
+  }
+  return null;
 }
 
 /** Deno's JUnit reporter, bounded by its own `testsuites name="deno test"` root. */
@@ -157,18 +209,20 @@ function denoJunit(text) {
       if (!/<testcase\b/.test(lines[i])) continue;
       const test = xmlAttributes(lines[i]);
       for (let j = i + 1; j < rootEnd && !/<\/testcase>/.test(lines[j]); j++) {
-        const open = lines[j].match(/<(failure|error)\b[^>]*>(.*)$/);
+        const kind = lines[j].match(/<(failure|error)\b/);
+        if (!kind) continue;
+        const open = startTag(lines, j, rootEnd);
         if (!open) continue;
-        const close = new RegExp(`</${open[1]}>`);
-        const body = [open[2]];
-        let end = j;
+        const close = new RegExp(`</${kind[1]}>`);
+        const body = [open.rest];
+        let end = open.at;
         while (end < rootEnd && !close.test(body.at(-1))) body.push(lines[++end] ?? "");
-        const decoded = xmlText(body.join("\n").replace(new RegExp(`</${open[1]}>[\\s\\S]*$`), ""));
+        const decoded = xmlText(body.join("\n").replace(new RegExp(`</${kind[1]}>[\\s\\S]*$`), ""));
         const failure = {
           file: test.classname, line: /^\d+$/.test(test.line) ? +test.line : undefined,
           col: /^\d+$/.test(test.col) ? +test.col : undefined,
           title: test.name || "test", subject: test.name || "test", severity: "error",
-          message: usefulMessage(decoded),
+          message: blockMessage(decoded) || usefulMessage(decoded),
         };
         Object.defineProperty(failure, SOURCE_RANGE, {
           value: { start: i, end: end + 1 }, enumerable: false,

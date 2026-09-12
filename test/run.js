@@ -2503,6 +2503,20 @@ const CASES = [
   // every failure the next one's message and the last one the run's tally - "0 pass"
   // reported as a test's assertion. The only fixture above could not show it: 192
   // parameterised cases whose blocks differ by one character.
+  // bun's JUnit report records WHICH tests failed and nothing else: every outcome is a
+  // bare <failure type="AssertionError" /> with no message and no body. Nothing read it,
+  // so a job keeping only the XML got no diagnosis - with the names, the file and the
+  // line each test is declared on all sitting in it. The line is the declaration's, not
+  // the assertion's; the document has no other.
+  { file: "bun_junit_fail.txt", tool: "bun test", n: 2, check: (r) => {
+      assert.deepEqual(r.failures.map((f) => f.subject),
+        ["cart > totals an invoice", "raises unexpectedly"]);
+      assert.equal(r.failures[0].file, "bt/cart.test.ts");
+      assert.deepEqual(r.failures.map((f) => f.line), [4, 9]);
+      for (const f of r.failures) assert.match(f.message, /not in this log/);
+      // the document prints no tally line, but it counts the same things
+      assert.equal(r.summary, "2 fail");
+    } },
   { file: "bun_order_fail.txt", tool: "bun test", n: 2, check: (r) => {
       assert.deepEqual(r.failures.map((f) => f.subject),
         ["cart > totals an invoice", "raises unexpectedly"]);
@@ -2535,6 +2549,23 @@ const CASES = [
   // whichever reporter is running, so one run arrives twice in one log. Both of these
   // are one real run of two tests, one failing. Counting both renderings reported that
   // single failure as two, and with the TAP reporter it also showed the test twice.
+  // An attribute value may contain newlines, and deno's does: it puts the whole assertion
+  // - diff and all - in the failure's `message`. A reader that wanted the start tag on
+  // one line found no tag there, so the FIRST failure of every deno JUnit run was
+  // skipped and only the ones whose message happened to fit on one line were read.
+  { file: "denotest_junit_multiline_fail.txt", tool: "deno test", n: 2, check: (r) => {
+      assert.deepEqual(r.failures.map((f) => f.subject),
+        ["cart > totals an invoice", "cart > raises unexpectedly"]);
+      assert.deepEqual(r.failures.map((f) => f.line), [3, 7]);
+      // the value diff is part of the answer, and the pretty reporter keeps it
+      assert.equal(r.failures[0].message, "AssertionError: Values are not equal.\n-   5\n+   6");
+      assert.equal(r.failures[1].message, "Error: fixture exploded");
+    } },
+  { file: "denotest_junit_text_same_fail.txt", tool: "deno test", n: 2, check: (r) => {
+      assert.deepEqual(r.failures.map((f) => f.subject),
+        ["cart > totals an invoice", "cart > raises unexpectedly"]);
+      assert.deepEqual(r.failures.map((f) => f.line), [3, 7]);
+    } },
   { file: "denotest_junit_alongside_fail.txt", tool: "deno test", n: 1, check: (r) => {
       assert.equal(r.summary, "1 failed, 1 passed", "the run was counted twice");
       assert.equal(r.failures[0].title, "adds");
@@ -2872,6 +2903,7 @@ for (const [group, encodings, silentAbout = []] of [
   // keeps it. That is eslint's doing, not the reader's, so the message is named here.
   ["eslint", ["eslint_warnings_text_same_fail.txt", "eslint_warnings_json_fail.txt"], ["message"]],
   ["npm", ["npm_404_text_same_fail.txt", "npm_404_json_fail.txt"]],
+  ["deno test", ["denotest_junit_text_same_fail.txt", "denotest_junit_multiline_fail.txt"]],
 ]) {
   try {
     // The path is the other legitimate difference: a formatter that writes a machine

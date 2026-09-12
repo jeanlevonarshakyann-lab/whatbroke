@@ -189,6 +189,16 @@
       "generic": 1
     }
   },
+  "bun_junit_fail.txt": {
+    "winner": "bun test",
+    "parser": "bun test",
+    "failures": 2,
+    "claimants": [
+      "bun test",
+      "generic"
+    ],
+    "shadow": {}
+  },
   "bun_order_fail.txt": {
     "winner": "bun test",
     "parser": "bun test",
@@ -509,6 +519,33 @@
     "claimants": [
       "deno test",
       "go",
+      "node",
+      "generic"
+    ],
+    "shadow": {
+      "generic": 4
+    }
+  },
+  "denotest_junit_multiline_fail.txt": {
+    "winner": "deno test",
+    "parser": "deno test",
+    "failures": 2,
+    "claimants": [
+      "deno test",
+      "deno",
+      "node",
+      "generic"
+    ],
+    "shadow": {
+      "generic": 4
+    }
+  },
+  "denotest_junit_text_same_fail.txt": {
+    "winner": "deno test",
+    "parser": "deno test",
+    "failures": 2,
+    "claimants": [
+      "deno test",
       "node",
       "generic"
     ],
