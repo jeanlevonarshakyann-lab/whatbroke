@@ -83,6 +83,10 @@ const PROBABLE_DIAGNOSTIC = new RegExp([
   // ...and a reporter told to write to a file says so and prints nothing else, so that
   // one line is the entire log of a failed run.
   "^[A-Z][A-Z-]* report written to ",
+  // deno fmt --check heads each file it would rewrite with "from <file>:" and draws the
+  // change under it; the one failure word is in the tally at the very end, so every file
+  // but the last was cut from a large log.
+  "^from [^\\s:][^\\n]*\\.\\w+:[^\\S\\n]*$",
   // VSTest's console is translated into the SDK's thirteen UI languages, and every
   // failure word above is English. What survives translation is the shape: a result line
   // is an indented word or two, the test, and its timing in brackets; the run's tally

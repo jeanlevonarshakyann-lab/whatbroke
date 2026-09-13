@@ -573,6 +573,50 @@
       "generic": 1
     }
   },
+  "denofmt_fail.txt": {
+    "winner": "deno fmt",
+    "parser": "deno fmt",
+    "failures": 2,
+    "claimants": [
+      "deno fmt",
+      "generic"
+    ],
+    "shadow": {
+      "generic": 1
+    }
+  },
+  "denolint_compact_fail.txt": {
+    "winner": "deno lint",
+    "parser": "deno lint",
+    "failures": 2,
+    "claimants": [
+      "deno lint",
+      "generic"
+    ],
+    "shadow": {}
+  },
+  "denolint_json_fail.txt": {
+    "winner": "deno lint",
+    "parser": "deno lint",
+    "failures": 2,
+    "claimants": [
+      "deno lint",
+      "generic"
+    ],
+    "shadow": {}
+  },
+  "denolint_pretty_fail.txt": {
+    "winner": "deno lint",
+    "parser": "deno lint",
+    "failures": 2,
+    "claimants": [
+      "deno lint",
+      "generic"
+    ],
+    "shadow": {
+      "generic": 2
+    }
+  },
   "denorun_crash_fail.txt": {
     "winner": "deno",
     "parser": "deno",

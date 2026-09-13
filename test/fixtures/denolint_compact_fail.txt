@@ -1,0 +1,4 @@
+file:///home/dev/shop/orders.ts: line 1, col 14 - `any` type is not allowed (no-explicit-any)
+file:///home/dev/shop/customer.ts: line 1, col 34 - `any` type is not allowed (no-explicit-any)
+Found 2 problems
+Checked 2 files

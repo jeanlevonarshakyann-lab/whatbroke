@@ -2726,6 +2726,36 @@ const CASES = [
       // nor is bun's banner, which sits above the first block
       assert.doesNotMatch(JSON.stringify(r.failures), /bun test v/);
     } },
+  // `deno lint`, which nothing read. Its default output is laid out exactly as rustc lays
+  // out a compile error, so what tells them apart is on each finding: a rule that is a
+  // lowercase kebab-case name, not E and four digits, on a JavaScript or TypeScript file.
+  { file: "denolint_pretty_fail.txt", tool: "deno lint", n: 2, check: (r) => {
+      assert.deepEqual(r.failures.map((f) => `${f.file}:${f.line}:${f.col}`),
+        ["/home/dev/shop/orders.ts:1:14", "/home/dev/shop/customer.ts:1:34"]);
+      assert.equal(r.failures[0].code, "no-explicit-any");
+      // the rule's hint is what to write instead, and stays with the finding
+      assert.equal(r.failures[0].message, "`any` type is not allowed\nUse a specific type other than `any`");
+      assert.equal(r.failures[0].stmt, 'const order: any = "pending";');
+      assert.doesNotMatch(JSON.stringify(r.failures), /docs\.deno\.com/);
+    } },
+  // --compact puts each finding on one line, with a file:// URL and no hint.
+  { file: "denolint_compact_fail.txt", tool: "deno lint", n: 2, check: (r) => {
+      assert.deepEqual(r.failures.map((f) => `${f.file}:${f.line}:${f.col}`),
+        ["/home/dev/shop/orders.ts:1:14", "/home/dev/shop/customer.ts:1:34"]);
+      assert.equal(r.failures[0].message, "`any` type is not allowed");
+    } },
+  // --json counts columns from zero, where the other two formats of the same run count
+  // from one. Read as given, one finding would be two a column apart.
+  { file: "denolint_json_fail.txt", tool: "deno lint", n: 2, check: (r) => {
+      assert.deepEqual(r.failures.map((f) => `${f.file}:${f.line}:${f.col}`).sort(),
+        ["/home/dev/shop/customer.ts:1:34", "/home/dev/shop/orders.ts:1:14"]);
+    } },
+  { file: "denofmt_fail.txt", tool: "deno fmt", n: 2, check: (r) => {
+      assert.deepEqual(r.failures.map((f) => f.file), ["/home/dev/shop/orders.ts", "/home/dev/shop/customer.ts"]);
+      for (const f of r.failures) assert.equal(f.line, undefined);
+      // "not formatted" says nothing went wrong; the headline has to
+      assert.equal(r.summary, "2 files failed the format check");
+    } },
   { file: "deno_fail.txt", tool: "deno test", n: 2, check: (r) => {
       // real `deno test` run. Unsupported before: it fell through to the generic
       // guess, which reported three "errors" - two real failures plus deno's own
@@ -3103,6 +3133,9 @@ for (const [group, encodings, silentAbout = []] of [
   ["deno test", ["denotest_junit_text_same_fail.txt", "denotest_junit_multiline_fail.txt"]],
   ["clang formats", ["clang_format_default_fail.txt", "clang_format_msvc_fail.txt",
     "clang_format_vi_fail.txt", "clang_format_nocaret_fail.txt"]],
+  ["deno lint", ["denolint_pretty_fail.txt", "denolint_json_fail.txt"]],
+  // --compact prints no hint, so the message is the one field it cannot share.
+  ["deno lint compact", ["denolint_pretty_fail.txt", "denolint_compact_fail.txt"], ["message"]],
   // Colour changes how bun marks a failure, not which tests failed.
   ["bun colour", ["bun_color_plain_same_fail.txt", "bun_color_fail.txt"]],
   // What the run said does not change with the language it was said in - only the words
