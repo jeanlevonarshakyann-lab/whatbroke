@@ -115,9 +115,17 @@ export default {
         if (!lines[j].trim() && j > i + 1) break;
         const am = lines[j].match(ARROW_RE);
         if (am && !STDLIB.test(am[1])) { if (j - i <= LOCATION_WINDOW) loc ??= { file: am[1], line: +am[2], col: +am[3] }; continue; }
-        // rustc's inline annotation on the caret line carries the real explanation
-        const cm = lines[j].match(/^[^\S\n]*\|[^\S\n]*[\^~-]+[^\S\n]+(.+)$/);
-        if (cm && !note && !STDLIB.test(lines[j])) note = cm[1].trim();
+        // rustc's inline annotation on the caret line carries the real explanation. It is
+        // the text after the LAST run of markers: rustc draws a secondary span with dashes
+        // and the primary one with carets, and when both sit on one row -
+        //
+        //   6 |     let total: i32 = "unknown";
+        //     |                ---   ^^^^^^^^^ expected `i32`, found `&str`
+        //
+        // - taking the text after the first run made the primary span's carets part of the
+        // message: "^^^^^^^^^ expected `i32`, found `&str`".
+        const cm = lines[j].match(/^[^\S\n]*\|((?:[^\S\n]|[\^~|-])*[\^~-])[^\S\n]+(\S.*)$/);
+        if (cm && !note && !STDLIB.test(lines[j])) note = cm[2].trim();
         if (/^help: /.test(lines[j].trim()) && !note) note = lines[j].trim();
         // clippy diagnostics carry no E-code. The lint name is the useful handle -
         // what you would search for, or put in an #[allow(...)]. Take it from the

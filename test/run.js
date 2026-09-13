@@ -3005,6 +3005,9 @@ const CASES = [
       assert.deepEqual(r.failures.map((f) => [f.file, f.line, f.code]), [
         ["src/main.rs", 3, "E0425"], ["src/main.rs", 2, "E0308"],
       ]);
+      // `|                ---   ^^^^^^^^^^^^^^ expected `i32`, found `&str`` - two spans on
+      // one row. The label is what follows the last of them, not the first.
+      assert.equal(r.failures[1].message, "mismatched types\nexpected `i32`, found `&str`");
     } },
   { file: "cargo_short_fail.txt", tool: "cargo", n: 2, check: (r) => {
       assert.deepEqual(r.failures.map((f) => [f.file, f.line, f.col, f.code]), [
@@ -4862,10 +4865,13 @@ try {
   assert.equal(plain.tool, json.tool);
   assert.deepEqual(facts(json), facts(plain),
     "the JSON stream and the text cargo printed disagree about what failed");
+  // Equal, not "ends with": the text form's label was read as "^^^^ expected `i32`,
+  // found `&str`" - the primary span's carets and all, because rustc drew a secondary
+  // span's dashes earlier on the same row - and that still ended with the JSON's label.
   for (const [i, f] of json.failures.entries()) {
-    const label = f.message.split("\n").slice(1).join("\n");
-    assert.ok(label && plain.failures[i].message.endsWith(label),
-      `failure ${i}: the label differs between the two formats`);
+    assert.ok(f.message.includes("\n"), `failure ${i}: the JSON form has no label`);
+    assert.equal(plain.failures[i].message, f.message,
+      `failure ${i}: the message differs between the two formats`);
   }
   console.log("  ok   --message-format=json says what the text cargo printed says");
   pass++;
