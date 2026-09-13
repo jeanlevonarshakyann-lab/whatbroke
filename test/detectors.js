@@ -214,11 +214,16 @@ test("no README row denies a parser that exists", () => {
 // recorded it, and a home directory with the capturing user's name in it. A path is not
 // a diagnostic, so rewriting one never changes what a log reads as - which is exactly
 // why nothing else in the suite ever noticed.
-const LEAKED_PATH = /\/private\/tmp\/|\/scratchpad\/|(?:^|[\s'"(=])\/Users\/[^/\s]+\//m;
+// macOS gives every account its own temporary folder under /var/folders, named by an ID
+// that belongs to that account on that machine. A JVM report records it as
+// java.io.tmpdir among a hundred other system properties, which is how one nearly
+// arrived in a fixture unnoticed.
+const LEAKED_PATH = /\/private\/tmp\/|\/scratchpad\/|\/var\/folders\/|(?:^|[\s'"(=])\/Users\/[^/\s]+\//m;
 test("no fixture carries the path of the machine it was captured on", () => {
   // The rule is the guard, so it is pinned too: loosening it later has to be deliberate.
   for (const leak of ["at /private/tmp/tmp.X1b2/app/y.js:1", "see /Users/jean/.npm/_logs/a.log",
-    "command: /Users/x/.hermes/node/bin/node", "loadSuiteClassFile('/private/tmp/cl...')"]) {
+    "command: /Users/x/.hermes/node/bin/node", "loadSuiteClassFile('/private/tmp/cl...')",
+    '<property name="java.io.tmpdir" value="/var/folders/kk/xtl0000gn/T/"/>']) {
     assert.ok(LEAKED_PATH.test(leak), `${JSON.stringify(leak)} names the capturing machine`);
   }
   // ...and the paths CI runners really print are not leaks. Windows writes C:\Users with

@@ -1,0 +1,39 @@
+To honour the JVM settings for this build a single-use Daemon process will be forked. For more on this, please refer to https://docs.gradle.org/9.7.1/userguide/gradle_daemon.html#sec:disabling_the_daemon in the Gradle documentation.
+Daemon will be stopped at the end of the build 
+> Task :compileJava
+> Task :processResources NO-SOURCE
+> Task :classes
+> Task :compileTestJava
+> Task :processTestResources NO-SOURCE
+> Task :testClasses
+
+> Task :test FAILED
+
+InvoiceTest > roundsTaxToTheNearestCent() FAILED
+    org.opentest4j.AssertionFailedError: expected: <1238> but was: <1237>
+        at app//org.junit.jupiter.api.AssertionFailureBuilder.build(AssertionFailureBuilder.java:151)
+        at app//org.junit.jupiter.api.AssertionFailureBuilder.buildAndThrow(AssertionFailureBuilder.java:132)
+        at app//org.junit.jupiter.api.AssertEquals.failNotEqual(AssertEquals.java:197)
+        at app//org.junit.jupiter.api.AssertEquals.assertEquals(AssertEquals.java:166)
+        at app//org.junit.jupiter.api.AssertEquals.assertEquals(AssertEquals.java:161)
+        at app//org.junit.jupiter.api.Assertions.assertEquals(Assertions.java:632)
+        at app//shop.InvoiceTest.roundsTaxToTheNearestCent(InvoiceTest.java:11)
+
+RefundTest > refundsANegativeInvoice() FAILED
+    java.lang.IllegalArgumentException: net amount is negative
+        at shop.Invoice.taxCents(Invoice.java:5)
+        at shop.RefundTest.refundsANegativeInvoice(RefundTest.java:8)
+
+3 tests completed, 2 failed
+
+FAILURE: Build failed with an exception.
+
+* What went wrong:
+Execution failed for task ':test'.
+> There were failing tests. See the report at: file:///home/dev/shop/build/reports/tests/test/index.html
+
+* Try:
+> Run with --scan to get full insights from a Build Scan (powered by Develocity).
+
+BUILD FAILED in 2s
+3 actionable tasks: 3 executed

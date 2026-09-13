@@ -1,0 +1,36 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<testsuite name="shop.InvoiceTest" tests="2" skipped="0" failures="1" errors="0" timestamp="2026-09-12T23:52:26.708Z" hostname="ci-runner-7" time="0.016">
+  <properties/>
+  <testcase name="chargesNoTaxAtZeroPercent()" classname="shop.InvoiceTest" time="0.007"/>
+  <testcase name="roundsTaxToTheNearestCent()" classname="shop.InvoiceTest" time="0.004">
+    <failure message="org.opentest4j.AssertionFailedError: expected: &lt;1238&gt; but was: &lt;1237&gt;" type="org.opentest4j.AssertionFailedError">org.opentest4j.AssertionFailedError: expected: &lt;1238&gt; but was: &lt;1237&gt;
+	at org.junit.jupiter.api.AssertionFailureBuilder.build(AssertionFailureBuilder.java:151)
+	at org.junit.jupiter.api.AssertionFailureBuilder.buildAndThrow(AssertionFailureBuilder.java:132)
+	at org.junit.jupiter.api.AssertEquals.failNotEqual(AssertEquals.java:197)
+	at org.junit.jupiter.api.AssertEquals.assertEquals(AssertEquals.java:166)
+	at org.junit.jupiter.api.AssertEquals.assertEquals(AssertEquals.java:161)
+	at org.junit.jupiter.api.Assertions.assertEquals(Assertions.java:632)
+	at shop.InvoiceTest.roundsTaxToTheNearestCent(InvoiceTest.java:11)
+	at java.base/java.lang.reflect.Method.invoke(Method.java:565)
+	at java.base/java.util.ArrayList.forEach(ArrayList.java:1612)
+	at java.base/java.util.ArrayList.forEach(ArrayList.java:1612)
+</failure>
+  </testcase>
+  <system-out><![CDATA[]]></system-out>
+  <system-err><![CDATA[]]></system-err>
+</testsuite>
+<?xml version="1.0" encoding="UTF-8"?>
+<testsuite name="shop.RefundTest" tests="1" skipped="0" failures="1" errors="0" timestamp="2026-09-12T23:52:26.724Z" hostname="ci-runner-7" time="0.002">
+  <properties/>
+  <testcase name="refundsANegativeInvoice()" classname="shop.RefundTest" time="0.001">
+    <failure message="java.lang.IllegalArgumentException: net amount is negative" type="java.lang.IllegalArgumentException">java.lang.IllegalArgumentException: net amount is negative
+	at shop.Invoice.taxCents(Invoice.java:5)
+	at shop.RefundTest.refundsANegativeInvoice(RefundTest.java:8)
+	at java.base/java.lang.reflect.Method.invoke(Method.java:565)
+	at java.base/java.util.ArrayList.forEach(ArrayList.java:1612)
+	at java.base/java.util.ArrayList.forEach(ArrayList.java:1612)
+</failure>
+  </testcase>
+  <system-out><![CDATA[]]></system-out>
+  <system-err><![CDATA[]]></system-err>
+</testsuite>
