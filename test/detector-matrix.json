@@ -3072,6 +3072,28 @@
       "generic": 3
     }
   },
+  "pyright_json_fail.txt": {
+    "winner": "pyright",
+    "parser": "pyright",
+    "failures": 3,
+    "claimants": [
+      "pyright",
+      "generic"
+    ],
+    "shadow": {}
+  },
+  "pyright_text_same_fail.txt": {
+    "winner": "pyright",
+    "parser": "pyright",
+    "failures": 3,
+    "claimants": [
+      "pyright",
+      "generic"
+    ],
+    "shadow": {
+      "generic": 3
+    }
+  },
   "pytest_collect_fail.txt": {
     "winner": "pytest",
     "parser": "pytest",

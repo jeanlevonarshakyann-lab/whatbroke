@@ -525,6 +525,7 @@ const indistinguishable = (a, b) => SAME_SYNTAX.some((g) => g.has(a) && g.has(b)
 // eslint: all six deduplicate - checked, the facts from the JSON report and from the
 // table are identical and the joined log holds exactly one copy of them.
 const SAME_RUN_TWO_ENCODINGS = [
+  new Set(["pyright_text_same_fail.txt", "pyright_json_fail.txt"]),
   new Set(["cargo_json_fail.txt", "cargo_plain_same_fail.txt"]),
   new Set(["cargo_warnings_human_fail.txt", "cargo_warnings_json_fail.txt"]),
   new Set(["eslint_json_fail.txt", "eslint_json_runner_fail.txt", "eslint_text_same_fail.txt"]),

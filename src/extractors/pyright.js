@@ -1,3 +1,4 @@
+import { jsonDocuments } from "../util.js";
 // pyright indents each diagnostic under the file it belongs to, puts the column after
 // the line with a dash between location and severity, and names the rule in brackets at
 // the end of an indented explanation below:
@@ -15,12 +16,33 @@ const TALLY_RE = /^(\d+) errors?, (\d+) warnings?, (\d+) informations?$/m;
 const RULE_RE = /\((report[A-Za-z]+)\)[^\S\n]*$/;
 const MAX_DETAIL = 3;
 
+// `pyright --outputjson` - and basedpyright's - writes the same run as a document, which
+// is what an editor integration or a CI annotation step reads. Nothing read it: three
+// errors came back as no diagnosis at all.
+//
+//   { "version": "1.1.414", "generalDiagnostics": [
+//       { "file": "/app/bad.py", "severity": "error",
+//         "message": "Type \"int\" is not assignable to return type \"str\"\n  \"int\" is ...",
+//         "range": { "start": { "line": 1, "character": 11 }, ... }, "rule": "reportReturnType" } ],
+//     "summary": { "filesAnalyzed": 1, "errorCount": 3, "warningCount": 1, ... } }
+//
+// The document counts lines and characters from zero, where the text form counts both
+// from one; its message is the heading and the explanation the text form indents under
+// it, and its rule is a field rather than the end of the explanation.
+const REPORT = (v) => !!v && typeof v === "object" && Array.isArray(v.generalDiagnostics) &&
+  !!v.summary && ["errorCount", "warningCount", "informationCount"].every((k) => Number.isInteger(v.summary[k]));
+
+function jsonReports(s) {
+  return s.includes('"generalDiagnostics"') ? [...jsonDocuments(s, REPORT)] : [];
+}
+
 export default {
   name: "pyright",
   category: "typecheck",
   commands: ["pyright", "basedpyright"],
 
-  detect: (s) => TALLY_RE.test(s) || DIAG_RE.test(s.split("\n").find((l) => DIAG_RE.test(l)) ?? ""),
+  detect: (s) => TALLY_RE.test(s) || DIAG_RE.test(s.split("\n").find((l) => DIAG_RE.test(l)) ?? "") ||
+    jsonReports(s).some((r) => r.summary.errorCount > 0),
 
   extract(s) {
     const lines = s.split("\n");
@@ -52,10 +74,34 @@ export default {
         message: [head, ...detail].filter(Boolean).join("\n"),
       });
     }
+    const reports = jsonReports(s);
+    let reportedWarnings = 0;
+    for (const report of reports) {
+      reportedWarnings += report.summary.warningCount;
+      for (const d of report.generalDiagnostics) {
+        if (d?.severity !== "error" || typeof d.file !== "string" || typeof d.message !== "string") continue;
+        const start = d.range?.start;
+        const [head, ...detail] = d.message.split("\n").map((l) => l.trim()).filter(Boolean);
+        const rule = typeof d.rule === "string" && d.rule ? d.rule : undefined;
+        failures.push({
+          file: d.file,
+          line: Number.isInteger(start?.line) ? start.line + 1 : undefined,
+          col: Number.isInteger(start?.character) ? start.character + 1 : undefined,
+          title: rule ?? "error", ...(rule ? { code: rule } : { label: "error" }),
+          severity: "error",
+          message: [head, ...detail.slice(0, MAX_DETAIL)].filter(Boolean).join("\n"),
+        });
+      }
+    }
     if (!failures.length) return null;
     const tally = s.match(TALLY_RE);
-    const hidden = Number(tally?.[2] ?? warnings);
-    const n = Number(tally?.[1] ?? failures.length);
+    // A log holding only the document has no tally line; the document counts the same
+    // things, run by run.
+    const counted = reports.length && !tally
+      ? { errors: reports.reduce((n, r) => n + r.summary.errorCount, 0), warnings: reportedWarnings }
+      : null;
+    const hidden = Number(tally?.[2] ?? counted?.warnings ?? warnings);
+    const n = Number(tally?.[1] ?? counted?.errors ?? failures.length);
     return {
       tool: "pyright",
       summary: `${n} error${n === 1 ? "" : "s"}` +

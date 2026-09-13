@@ -1,0 +1,8 @@
+/home/dev/shop/app/bad.py
+  /home/dev/shop/app/bad.py:2:12 - error: Type "int" is not assignable to return type "str"
+    "int" is not assignable to "str" (reportReturnType)
+  /home/dev/shop/app/bad.py:6:5 - warning: Variable "unused_count" is not accessed (reportUnusedVariable)
+  /home/dev/shop/app/bad.py:7:25 - error: "missing_rate" is not defined (reportUndefinedVariable)
+  /home/dev/shop/app/bad.py:10:7 - error: Argument of type "Literal['not a list']" cannot be assigned to parameter "items" of type "list[int]" in function "total"
+    "Literal['not a list']" is not assignable to "list[int]" (reportArgumentType)
+3 errors, 1 warning, 0 informations
