@@ -2317,6 +2317,21 @@ const CASES = [
     } },
   // One PHPUnit run - two failed assertions and one escaped exception, which PHPUnit
   // counts separately - in its console output, its --log-junit document and --testdox.
+  // The same PHPUnit 11 run with --no-output --log-teamcity php://stdout: TeamCity's
+  // service messages and nothing else, which read as nothing. An error and a failure are
+  // both a test that failed there, so the summary says only that.
+  { file: "phpunit_teamcity_fail.txt", tool: "phpunit", n: 3, check: (r) => {
+      assert.deepEqual(r.failures.map((f) => [f.subject, f.file.split("/").pop(), f.line]), [
+        ["ArithmeticTest::testAddition", "ArithmeticTest.php", 9], ["ArithmeticTest::testGreeting", "ArithmeticTest.php", 14],
+        ["CrashTest::testUnexpectedCrash", "CrashTest.php", 9],
+      ]);
+      assert.equal(r.failures[2].message, "RuntimeException: fixture exploded");
+      assert.equal(r.summary, "3 of 3 tests failed");
+    } },
+  // --teamcity prints the messages and the console's own report, and each result is one.
+  { file: "phpunit_teamcity_text_fail.txt", tool: "phpunit", n: 3, check: (r) => {
+      assert.equal(r.summary, "2 failures, 1 error");
+    } },
   { file: "phpunit_text_same_fail.txt", tool: "phpunit", n: 3, check: (r) => {
       assert.equal(r.summary, "2 failures, 1 error");
       // The errors section is printed above the failures section with a rule between
@@ -3299,6 +3314,8 @@ for (const [group, encodings, silentAbout = []] of [
   // --testdox renames every test on purpose, so the name is what differs there; it is
   // pinned in its own row above.
   ["phpunit", ["phpunit_text_same_fail.txt", "phpunit_junit_fail.txt"]],
+  // TeamCity's message is the assertion alone; the console prints the diff under it.
+  ["phpunit teamcity", ["phpunit_text_same_fail.txt", "phpunit_teamcity_fail.txt", "phpunit_teamcity_text_fail.txt"], ["message"]],
   ["phpunit testdox", ["phpunit_text_same_fail.txt", "phpunit_testdox_fail.txt"], ["subject"]],
   // dotnet test's console output prints no columns and neither does the trx document.
   ["dotnet test", ["dotnettest_text_same_fail.txt", "dotnettest_trx_fail.txt"]],

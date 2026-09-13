@@ -24,6 +24,49 @@ const TESTDOX_TEST = /^[^\S\n]+[✘✗][^\S\n]+(\S.*?)[^\S\n]*$/;
 const TESTDOX_BODY = /^[^\S\n]*│[^\S\n]?(.*)$/;
 const TESTDOX_ANY = /^[^\S\n]+[✘✗][^\S\n]+\S/m;
 
+// --log-teamcity writes the run as TeamCity service messages, what PhpStorm and TeamCity
+// read; on its own, with --no-output, it is the entire log, and it read as nothing.
+//
+//   ##teamcity[testStarted name='testAddition' locationHint='php_qn:///app/tests/ArithmeticTest.php::\ArithmeticTest::testAddition' ...]
+//   ##teamcity[testFailed name='testAddition' message='Failed asserting that 4 is identical to 5.' details='/app/tests/ArithmeticTest.php:9|n' ...]
+//
+// Every tool that talks to TeamCity writes this shape. PHPUnit's is the `php_qn://` its
+// locationHint names the test with, and a failure is read only under a test started so.
+// The message is the assertion's first line: the diff the console prints under a
+// comparison is not in it, only the two values beside it as attributes.
+const TEAMCITY_RE = /^##teamcity\[(testStarted|testFailed|testCount)\b(.*)\][^\S\n]*$/;
+const TEAMCITY_ATTR_RE = /(\w+)='((?:\|.|[^|'])*)'/g;
+const PHP_QN_RE = /^php_qn:\/\/(.+?)::\\?([\w\\]+)::(\w+)$/;
+const unescape = (v) => v.replace(/\|(.)/g, (_, c) => ({ n: "\n", r: "\r" })[c] ?? c);
+
+/** The results of a --log-teamcity stream, and the test count it opened with. */
+function teamcityResults(s) {
+  if (!s.includes("##teamcity[") || !s.includes("php_qn://")) return { results: [], count: undefined };
+  const started = new Map();
+  const results = [];
+  let count;
+  for (const line of s.split("\n")) {
+    const m = line.match(TEAMCITY_RE);
+    if (!m) continue;
+    const a = Object.fromEntries([...m[2].matchAll(TEAMCITY_ATTR_RE)].map(([, k, v]) => [k, unescape(v)]));
+    const key = `${a.flowId ?? ""}\u0000${a.name ?? ""}`;
+    if (m[1] === "testCount") { count = (count ?? 0) + (+a.count || 0); continue; }
+    if (m[1] === "testStarted") {
+      const hint = String(a.locationHint ?? "").match(PHP_QN_RE);
+      if (hint) started.set(key, { file: hint[1], name: `${hint[2].split("\\").pop()}::${hint[3]}` });
+      continue;
+    }
+    const test = started.get(key);
+    if (!test) continue;
+    const body = bodyOf(String(a.details ?? ""));
+    results.push({
+      file: body.file ?? test.file, line: body.line, title: test.name, subject: test.name, severity: "error",
+      message: String(a.message ?? "").trim() || body.message,
+    });
+  }
+  return { results, count };
+}
+
 /** The location a PHPUnit body ends with, and the message above it. */
 function bodyOf(text) {
   let file, line;
@@ -97,7 +140,7 @@ export default {
   detect: (s) =>
     (TALLY_RE.test(s) && /^\d+\)[^\S\n]+[\w\\]+::\w+/m.test(s)) ||
     (INTERNAL_RE.test(s) && /^Location:[^\S\n]+\S+:\d+$/m.test(s)) ||
-    junitResults(s).length > 0 ||
+    junitResults(s).length > 0 || teamcityResults(s).results.length > 0 ||
     (TESTDOX_ANY.test(s) && /^Tests:[^\S\n]+\d/m.test(s)),
 
   extract(s) {
@@ -170,7 +213,8 @@ export default {
     // replaces the standard printer rather than joining it, so a log holding both is a
     // log holding two runs - and reading testdox only when nothing else was found lost
     // the second one whole.
-    const other = [...junitResults(s), ...testdoxResults(s)];
+    const teamcity = teamcityResults(s);
+    const other = [...junitResults(s), ...testdoxResults(s), ...teamcity.results];
     for (const f of other) {
       const key = [f.subject, f.file, f.line].join("\u0000");
       if (said.has(key)) continue;
@@ -209,9 +253,14 @@ export default {
         if (n) counted.push(`${n} ${kind.replace(/s$/, "")}${n > 1 ? "s" : ""}`);
       }
     }
+    // A TeamCity stream reports an error and a failure alike, as a test that failed, so
+    // that is all it is taken to say.
+    const n = failures.length;
     return {
       tool: "phpunit",
-      summary: counted.length ? counted.join(", ") : `${failures.length} failures`,
+      summary: counted.length ? counted.join(", ")
+        : teamcity.results.length && teamcity.count ? `${n} of ${teamcity.count} tests failed`
+        : `${n} failures`,
       failures,
     };
   },
