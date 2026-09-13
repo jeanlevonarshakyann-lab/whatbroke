@@ -1,0 +1,6 @@
+/home/dev/shop/app/cart.rb:3:11: C: [Correctable] Layout/SpaceInsideParens: Space inside parentheses detected.
+/home/dev/shop/app/cart.rb:3:17: C: [Correctable] Layout/SpaceInsideParens: Space inside parentheses detected.
+/home/dev/shop/app/cart.rb:4:13: C: [Correctable] Style/SymbolProc: Pass `&:price` as an argument to `sum` instead of a block.
+/home/dev/shop/app/cart.rb:7:21: C: [Correctable] Style/NilComparison: Prefer the use of the `nil?` predicate.
+/home/dev/shop/app/checkout.rb:4:13: W: [Correctable] Lint/AssignmentInCondition: Use `==` if you meant to do a comparison or wrap the expression in parentheses to indicate you meant to assign in a condition.
+/home/dev/shop/app/checkout.rb:6:3: C: [Correctable] Layout/EmptyLineAfterGuardClause: Add empty line after guard clause.

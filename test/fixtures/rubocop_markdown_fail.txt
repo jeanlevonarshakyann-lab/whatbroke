@@ -1,0 +1,42 @@
+# RuboCop Inspection Report
+
+2 files inspected, 6 offenses detected:
+
+### app/cart.rb - (4 offenses)
+  * **Line # 3 - convention:** Layout/SpaceInsideParens: Space inside parentheses detected.
+
+    ```rb
+    def total( items )
+    ```
+
+  * **Line # 3 - convention:** Layout/SpaceInsideParens: Space inside parentheses detected.
+
+    ```rb
+    def total( items )
+    ```
+
+  * **Line # 4 - convention:** Style/SymbolProc: Pass `&:price` as an argument to `sum` instead of a block.
+
+    ```rb
+      items.sum { |i| i.price }
+    ```
+
+  * **Line # 7 - convention:** Style/NilComparison: Prefer the use of the `nil?` predicate.
+
+    ```rb
+    puts undefined_rate == nil
+    ```
+
+### app/checkout.rb - (2 offenses)
+  * **Line # 4 - warning:** Lint/AssignmentInCondition: Use `==` if you meant to do a comparison or wrap the expression in parentheses to indicate you meant to assign in a condition.
+
+    ```rb
+      if amount = 0
+    ```
+
+  * **Line # 6 - convention:** Layout/EmptyLineAfterGuardClause: Add empty line after guard clause.
+
+    ```rb
+      end
+    ```
+

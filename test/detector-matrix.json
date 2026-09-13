@@ -3462,6 +3462,30 @@
       "generic": 3
     }
   },
+  "rubocop_clang_fail.txt": {
+    "winner": "rubocop",
+    "parser": "rubocop",
+    "failures": 6,
+    "claimants": [
+      "rubocop",
+      "generic"
+    ],
+    "shadow": {
+      "generic": 6
+    }
+  },
+  "rubocop_emacs_fail.txt": {
+    "winner": "rubocop",
+    "parser": "rubocop",
+    "failures": 6,
+    "claimants": [
+      "rubocop",
+      "generic"
+    ],
+    "shadow": {
+      "generic": 6
+    }
+  },
   "rubocop_fail.txt": {
     "winner": "rubocop",
     "parser": "rubocop",
@@ -3474,6 +3498,78 @@
       "generic": 12
     }
   },
+  "rubocop_github_fail.txt": {
+    "winner": "rubocop",
+    "parser": "rubocop",
+    "failures": 6,
+    "claimants": [
+      "rubocop",
+      "generic"
+    ],
+    "shadow": {}
+  },
+  "rubocop_json_fail.txt": {
+    "winner": "rubocop",
+    "parser": "rubocop",
+    "failures": 6,
+    "claimants": [
+      "rubocop",
+      "generic"
+    ],
+    "shadow": {}
+  },
+  "rubocop_junit_fail.txt": {
+    "winner": "rubocop",
+    "parser": "rubocop",
+    "failures": 6,
+    "claimants": [
+      "rubocop",
+      "generic"
+    ],
+    "shadow": {}
+  },
+  "rubocop_markdown_fail.txt": {
+    "winner": "rubocop",
+    "parser": "rubocop",
+    "failures": 5,
+    "claimants": [
+      "rubocop",
+      "generic"
+    ],
+    "shadow": {}
+  },
+  "rubocop_progress_same_fail.txt": {
+    "winner": "rubocop",
+    "parser": "rubocop",
+    "failures": 6,
+    "claimants": [
+      "rubocop",
+      "generic"
+    ],
+    "shadow": {
+      "generic": 6
+    }
+  },
+  "rubocop_quiet_fail.txt": {
+    "winner": "rubocop",
+    "parser": "rubocop",
+    "failures": 6,
+    "claimants": [
+      "rubocop",
+      "generic"
+    ],
+    "shadow": {}
+  },
+  "rubocop_simple_fail.txt": {
+    "winner": "rubocop",
+    "parser": "rubocop",
+    "failures": 6,
+    "claimants": [
+      "rubocop",
+      "generic"
+    ],
+    "shadow": {}
+  },
   "rubocop_syntax_fail.txt": {
     "winner": "rubocop",
     "parser": "rubocop",
@@ -3484,6 +3580,19 @@
     ],
     "shadow": {
       "generic": 1
+    }
+  },
+  "rubocop_tap_fail.txt": {
+    "winner": "rubocop",
+    "parser": "rubocop",
+    "failures": 6,
+    "claimants": [
+      "rubocop",
+      "tap-text",
+      "generic"
+    ],
+    "shadow": {
+      "tap-text": 2
     }
   },
   "ruby_error_fail.txt": {

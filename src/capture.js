@@ -100,6 +100,16 @@ const PROBABLE_DIAGNOSTIC = new RegExp([
   "^[^\\S\\n]*[x!][^\\S\\n]+[\\w-]+\\([\\w/-]+\\):[^\\S\\n]",
   "^[^\\S\\n]*(?:,-|\\u256d\\u2500)\\[[^\\]\\n]+:\\d+:\\d+\\][^\\S\\n]*$",
   "^Finished in [\\d.]+\\S*s on \\d+ files? with \\d+ rules using \\d+ threads\\.",
+  // rubocop --format json is one line, and nothing in it is failure vocabulary: its
+  // offenses are conventions and warnings. It opens by naming rubocop.
+  "^\\{\"metadata\":\\{\"rubocop_version\":",
+  // ...and its simple, quiet and markdown formats name each file in a heading and write
+  // each offense under it as a severity letter or word, with no failure word anywhere.
+  "^== \\S[^\\n]* ==[^\\S\\n]*$",
+  "^[CWEFRI]:[^\\S\\n]*\\d+:[^\\S\\n]*\\d+:[^\\S\\n]",
+  "^# RuboCop Inspection Report",
+  "^### [^\\n]+ - \\(\\d+ offenses?\\)",
+  "^[^\\S\\n]*\\* \\*\\*Line # \\d+ - \\w+:\\*\\*",
 ].join("|"), "im");
 
 /** Drop a trailing character that the cut left half-written.

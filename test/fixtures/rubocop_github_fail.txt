@@ -1,0 +1,7 @@
+
+::error file=app/cart.rb,line=3,col=11::Layout/SpaceInsideParens: Space inside parentheses detected.
+::error file=app/cart.rb,line=3,col=17::Layout/SpaceInsideParens: Space inside parentheses detected.
+::error file=app/cart.rb,line=4,col=13::Style/SymbolProc: Pass `&:price` as an argument to `sum` instead of a block.
+::error file=app/cart.rb,line=7,col=21::Style/NilComparison: Prefer the use of the `nil?` predicate.
+::error file=app/checkout.rb,line=4,col=13::Lint/AssignmentInCondition: Use `==` if you meant to do a comparison or wrap the expression in parentheses to indicate you meant to assign in a condition.
+::error file=app/checkout.rb,line=6,col=3::Layout/EmptyLineAfterGuardClause: Add empty line after guard clause.
