@@ -1,0 +1,10 @@
+main.go:10:15        errcheck     Error return value of `f.Close` is not checked
+store/store.go:6:11  errcheck     Error return value of `os.Remove` is not checked
+main.go:13:14        govet        printf: fmt.Printf format %d has arg "many" of wrong type string
+main.go:11:2         ineffassign  ineffectual assignment to total
+store/store.go:9:6   unused       func unusedHelper is unused
+5 issues:
+* errcheck: 2
+* govet: 1
+* ineffassign: 1
+* unused: 1

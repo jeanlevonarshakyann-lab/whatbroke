@@ -1459,6 +1459,26 @@
       "generic": 3
     }
   },
+  "golangci_checkstyle_fail.txt": {
+    "winner": "golangci-lint",
+    "parser": "golangci-lint",
+    "failures": 5,
+    "claimants": [
+      "golangci-lint",
+      "generic"
+    ],
+    "shadow": {}
+  },
+  "golangci_codeclimate_fail.txt": {
+    "winner": "golangci-lint",
+    "parser": "golangci-lint",
+    "failures": 5,
+    "claimants": [
+      "golangci-lint",
+      "generic"
+    ],
+    "shadow": {}
+  },
   "golangci_fail.txt": {
     "winner": "golangci-lint",
     "parser": "golangci-lint",
@@ -1470,6 +1490,71 @@
     ],
     "shadow": {
       "generic": 6
+    }
+  },
+  "golangci_json_fail.txt": {
+    "winner": "golangci-lint",
+    "parser": "golangci-lint",
+    "failures": 5,
+    "claimants": [
+      "golangci-lint",
+      "generic"
+    ],
+    "shadow": {}
+  },
+  "golangci_junit_fail.txt": {
+    "winner": "golangci-lint",
+    "parser": "golangci-lint",
+    "failures": 5,
+    "claimants": [
+      "golangci-lint",
+      "generic"
+    ],
+    "shadow": {
+      "generic": 5
+    }
+  },
+  "golangci_sarif_fail.txt": {
+    "winner": "golangci-lint",
+    "parser": "golangci-lint",
+    "failures": 5,
+    "claimants": [
+      "golangci-lint",
+      "generic"
+    ],
+    "shadow": {}
+  },
+  "golangci_tab_fail.txt": {
+    "winner": "golangci-lint",
+    "parser": "golangci-lint",
+    "failures": 5,
+    "claimants": [
+      "golangci-lint",
+      "generic"
+    ],
+    "shadow": {}
+  },
+  "golangci_teamcity_fail.txt": {
+    "winner": "golangci-lint",
+    "parser": "golangci-lint",
+    "failures": 5,
+    "claimants": [
+      "golangci-lint",
+      "generic"
+    ],
+    "shadow": {}
+  },
+  "golangci_text_same_fail.txt": {
+    "winner": "golangci-lint",
+    "parser": "golangci-lint",
+    "failures": 5,
+    "claimants": [
+      "golangci-lint",
+      "go",
+      "generic"
+    ],
+    "shadow": {
+      "generic": 5
     }
   },
   "golangci_typecheck_fail.txt": {
