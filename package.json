@@ -16,7 +16,9 @@
     "LICENSE"
   ],
   "scripts": {
-    "test": "node test/guarantees.js && node test/run.js && node test/capture.js && node test/normalize.js && node test/mixed.js && node test/fuzz.js && node test/detectors.js && node test/source-safety.js && node test/history.js && node test/package.js",
+    "test": "npm run test:fast && npm run test:heavy",
+    "test:fast": "node test/guarantees.js && node test/run.js && node test/capture.js && node test/normalize.js && node test/fuzz.js && node test/detectors.js && node test/source-safety.js && node test/history.js && node test/suites.js && node test/package.js",
+    "test:heavy": "node test/mixed.js",
     "prepublishOnly": "npm test"
   },
   "keywords": [

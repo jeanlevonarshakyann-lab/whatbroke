@@ -2,9 +2,20 @@ name: test
 on:
   push: { branches: [main] }
   pull_request:
+  # Every suite on every platform, once a night, for what the per-change split leaves out.
+  schedule:
+    - cron: "17 3 * * *"
+  workflow_dispatch:
+
+# A force-pushed pull request makes its previous run worthless; main's runs all finish.
+concurrency:
+  group: test-${{ github.ref }}
+  cancel-in-progress: ${{ github.event_name == 'pull_request' }}
 
 jobs:
-  test:
+  # Everything but the shredded-log suite, on every platform and Node version whatbroke
+  # supports: capture, the CLI, paths and line endings are where platforms differ.
+  fast:
     runs-on: ${{ matrix.os }}
     strategy:
       fail-fast: false
@@ -15,4 +26,32 @@ jobs:
       - uses: actions/checkout@v4
       - uses: actions/setup-node@v4
         with: { node-version: "${{ matrix.node }}" }
-      - run: npm test
+      - run: npm run test:fast
+
+  # test/mixed.js weaves every pair of fixtures into one log. It is string processing
+  # that no platform changes, and it was two thirds of every job: 5 to 10.5 of 7 to 15
+  # minutes, twelve times per push. A change runs it on the oldest and newest Node; the
+  # nightly run takes it everywhere.
+  heavy:
+    runs-on: ${{ matrix.os }}
+    strategy:
+      fail-fast: false
+      matrix:
+        os: ${{ fromJSON(github.event_name == 'schedule' && '["ubuntu-latest","macos-latest","windows-latest"]' || '["ubuntu-latest"]') }}
+        node: ${{ fromJSON(github.event_name == 'schedule' && '[18,20,22,24]' || '[18,24]') }}
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with: { node-version: "${{ matrix.node }}" }
+      - run: npm run test:heavy
+
+  # The one check branch protection requires. Naming each matrix job there would leave
+  # main unprotected the day the matrix changed; this passes only when every job did.
+  ci:
+    if: always()
+    needs: [fast, heavy]
+    runs-on: ubuntu-latest
+    steps:
+      - run: |
+          test "${{ needs.fast.result }}" = success
+          test "${{ needs.heavy.result }}" = success
