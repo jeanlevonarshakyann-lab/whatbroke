@@ -76,6 +76,7 @@ export default {
       let nodes = false;
       let deno = false;
       let vitests = false;
+      let stylelints = false;
       for (let j = i + 1; j < lines.length && j <= i + 40; j++) {
         if (NOT_OK_RE.test(lines[j]) || END_RE.test(lines[j])) break;
         if (/^[^\S\n]*failureType:/.test(lines[j])) { nodes = true; break; }
@@ -90,8 +91,12 @@ export default {
         // Its parser reads that dialect; taking the block here found none of tap's own
         // fields and produced a failure with no location and the timing left in its name.
         if (/^[^\S\n]*at:[^\S\n]*"/.test(lines[j])) { vitests = true; break; }
+        // stylelint --formatter tap keys its block by rule and lists each problem under it
+        // as `- message: "..."`. Its `not ok` names a stylesheet, not a test, and read here
+        // beside node-tap's own output it became a failure with nothing in it.
+        if (/^[^\S\n]*-[^\S\n]+message:[^\S\n]+"/.test(lines[j])) { stylelints = true; break; }
       }
-      if (nodes || deno || vitests) continue;
+      if (nodes || deno || vitests || stylelints) continue;
 
       const field = {};
       const diff = [];

@@ -587,6 +587,21 @@ const CASES = [
       // the rule is the code, not a parenthesis left at the end of the sentence
       assert.doesNotMatch(JSON.stringify(r.failures.map((f) => f.message)), /\(color-hex-length\)/);
     } },
+  // The same run under stylelint 17 - `string`, `unix` and `json` came out byte for byte as
+  // they are above - with --formatter compact and tap, which read as nothing, and verbose.
+  ...["compact", "tap", "verbose"].map((form) => ({ file: `stylelint_${form}_fail.txt`, tool: "stylelint", n: 3, check: (r) => {
+      assert.deepEqual(r.failures.map((f) => [f.line, f.col, f.code, f.message]), [
+        [1, 13, "color-hex-length", 'Expected "#FFF" to be "#FFFFFF"'], [1, 28, "length-zero-no-unit", "Disallowed unit"],
+        [2, 1, "no-duplicate-selectors", 'Duplicate selector ".a", first used at line 1'],
+      ]);
+      assert.equal(r.summary, "3 problems (3 errors, 0 warnings)");
+    } })),
+  // ...and a second run with one rule set to warn. Every format says what the table's
+  // tally says, where the machine formats used to say only how many errors they read.
+  ...["string", "compact", "tap", "json"].map((form) => ({ file: `stylelint_warn_${form}_fail.txt`, tool: "stylelint", n: 2, check: (r) => {
+      assert.deepEqual(r.failures.map((f) => f.code), ["length-zero-no-unit", "no-duplicate-selectors"]);
+      assert.equal(r.summary, "3 problems (2 errors, 1 warning) — 1 warning hidden");
+    } })),
   { file: "stylelint_json_fail.txt", tool: "stylelint", n: 3, check: (r) => {
       assert.deepEqual(r.failures.map((f) => f.code),
         ["color-hex-length", "length-zero-no-unit", "no-duplicate-selectors"]);
@@ -3200,7 +3215,10 @@ for (const c of CASES) {
 // not the parser guessing. Those are named per group; everything else has to match.
 for (const [group, encodings, silentAbout = []] of [
   ["markdownlint", ["markdownlint_aliases_fail.txt", "markdownlint_json_fail.txt"]],
-  ["stylelint", ["stylelint_string_fail.txt", "stylelint_unix_fail.txt", "stylelint_json_fail.txt"]],
+  ["stylelint", ["stylelint_string_fail.txt", "stylelint_unix_fail.txt", "stylelint_json_fail.txt",
+    "stylelint_compact_fail.txt", "stylelint_tap_fail.txt", "stylelint_verbose_fail.txt"]],
+  ["stylelint warnings", ["stylelint_warn_string_fail.txt", "stylelint_warn_compact_fail.txt",
+    "stylelint_warn_tap_fail.txt", "stylelint_warn_json_fail.txt"]],
   ["pylint", ["pylint_text_same_fail.txt", "pylint_parseable_fail.txt", "pylint_msvs_fail.txt",
     "pylint_json_fail.txt", "pylint_json2_fail.txt"], ["col"]],
   ["biome", ["biome_lint_text_same_fail.txt", "biome_lint_json_fail.txt",
