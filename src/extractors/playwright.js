@@ -17,7 +17,12 @@ const HEAD_RE = /^[^\S\n]*(\d+)\)[^\S\n]+(\S+?):(\d+):(\d+)[^\S\n]+›[^\S\n]+(.
 // The throw's own location is more precise than the test's, and is what you want.
 const AT_RE = /^[^\S\n]*at[^\S\n]+(\S+?):(\d+):(\d+)[^\S\n]*$/;
 // The excerpt marks the offending line with a chevron.
-const MARKED_RE = /^[^\S\n]*>[^\S\n]*\d+[^\S\n]*\|[^\S\n]?(.*)$/;
+const MARKED_RE = /^[^\S\n]*>[^\S\n]*(\d+)[^\S\n]*\|[^\S\n]?(.*)$/;
+// The marked line is the one that threw, so its number is the throw's line. Taking the
+// first marked line in the block quoted another failure's source whenever two captures
+// of a run shared a log line by line, and the two readings of one failure then quoted
+// different lines and were kept as two.
+const quoted = (marked, line) => (marked.find((m) => m.n === line) ?? marked[0])?.text;
 const GUTTER_RE = /^[^\S\n]*\d+[^\S\n]*\|/;
 const CARET_RE = /^[^\S\n]*\|[^\S\n]*\^/;
 // A path to an artifact to go and open is not a description of the failure.
@@ -70,8 +75,8 @@ function reported(report) {
         const error = result?.error ?? {};
         const at = result?.errorLocation ?? error.location;
         const name = [...titles, spec.title].join(" › ");
-        const stmt = String(error.snippet ?? "").split("\n").map(stripAnsi)
-          .map((l) => l.match(/^[^\S\n]*>[^\S\n]*\d+[^\S\n]*\|[^\S\n]?(.*)$/)?.[1]).find((l) => l !== undefined)?.trim();
+        const stmt = quoted(String(error.snippet ?? "").split("\n").map(stripAnsi)
+          .map((l) => l.match(MARKED_RE)).filter(Boolean).map((m) => ({ n: +m[1], text: m[2].trim() })), at?.line);
         out.push({
           file: at?.file ?? spec.file, line: at?.line ?? spec.line, col: at?.column ?? spec.column,
           title: name, subject: name, severity: "error",
@@ -96,7 +101,7 @@ function blocks(lines, headRe) {
     if (!h) continue;
     let file = h[2], line = +h[3], col = +h[4];
     const message = [];
-    let stmt;
+    const marked = [];
     for (let j = i + 1; j < lines.length && !headRe.test(lines[j]) && !TALLY_RE.test(lines[j]) &&
       !ANNOTATION_RE.test(lines[j]); j++) {
       if (PROGRESS_RE.test(lines[j])) continue;
@@ -104,15 +109,15 @@ function blocks(lines, headRe) {
       // own declaration line
       const at = lines[j].match(AT_RE);
       if (at) { file = at[1]; line = +at[2]; col = +at[3]; continue; }
-      const marked = lines[j].match(MARKED_RE);
-      if (marked) { stmt ??= marked[1].trim(); continue; }
+      const mark = lines[j].match(MARKED_RE);
+      if (mark) { marked.push({ n: +mark[1], text: mark[2].trim() }); continue; }
       if (GUTTER_RE.test(lines[j]) || CARET_RE.test(lines[j]) || ARTIFACT_RE.test(lines[j])) continue;
       const t = lines[j].trim();
       if (t && message.length < MAX_MESSAGE) message.push(t);
     }
     failures.push({
       file, line, col, title: h[5], subject: h[5], severity: "error",
-      message: message.join("\n"), stmt,
+      message: message.join("\n"), stmt: quoted(marked, line),
     });
   }
   return failures;
