@@ -11,7 +11,7 @@
 // that actually matters - how many failures each LOSING claimant would have extracted.
 // The snapshot beside it is the measurement. Adding a parser that reaches into an
 // existing fixture breaks this suite immediately and loudly, which is the entire point.
-import { readFileSync, readdirSync, writeFileSync } from "node:fs";
+import { readFileSync, readdirSync, statSync, writeFileSync } from "node:fs";
 import { fileURLToPath } from "node:url";
 import { dirname, join } from "node:path";
 import assert from "node:assert/strict";
@@ -229,6 +229,29 @@ test("no fixture carries the path of the machine it was captured on", () => {
   }
   const leaked = readdirSync(fixtures).filter((name) => LEAKED_PATH.test(readFileSync(join(fixtures, name), "utf8")));
   assert.deepEqual(leaked, [], "a fixture still names the machine it was captured on");
+});
+
+// Git decides a file is binary when it finds a NUL byte near the top, and then shows no
+// diff of it at all - on GitHub, a change to that file is a line that says "Bin". Three
+// source files carried one, each inside a string literal where the escape \u0000 means
+// exactly the same thing: two parsers whose changes could not be reviewed, and the fuzz
+// suite before them.
+test("every source file is text, so every change to it can be read", () => {
+  const root = join(fixtures, "..", "..");
+  const files = [];
+  const walk = (dir) => {
+    for (const name of readdirSync(dir)) {
+      if (name === "fixtures" || name === "node_modules" || name.startsWith(".")) continue;
+      const path = join(dir, name);
+      if (statSync(path).isDirectory()) walk(path);
+      else if (/\.(?:js|mjs|cjs|json|md|yml|yaml)$/.test(name)) files.push(path);
+    }
+  };
+  for (const dir of ["src", "test", "bin"]) walk(join(root, dir));
+  files.push(join(root, "README.md"));
+  assert.ok(files.length > 60, `only ${files.length} source files found`);
+  const binary = files.filter((path) => readFileSync(path).includes(0));
+  assert.deepEqual(binary, [], "a source file holds a raw NUL byte and git will treat it as binary");
 });
 
 test("every failure carries a category", () => {
