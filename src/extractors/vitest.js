@@ -1,4 +1,4 @@
-import { githubAnnotations, xmlAttributes, xmlText } from "../util.js";
+import { elements, firstElement, githubAnnotations, xmlAttributes, xmlText } from "../util.js";
 const FAIL_RE = /^[^\S\n]*FAIL[^\S\n]+(.+?)[^\S\n]+>[^\S\n]+(.+?)[^\S\n]*$/;
 // A suite that throws before any test is declared cannot be named after a test, so
 // vitest lists it under "Failed Suites" with the file in brackets instead of a test
@@ -24,6 +24,10 @@ function suiteOf(line) {
 }
 const LOC_RE = /^[^\S\n]*[❯>][^\S\n]+(.+?):(\d+):(\d+)[^\S\n]*$/;
 const SEP_RE = /^[⎯─-╿\s]*(?:\[\d+\/\d+\])?[⎯─-╿\s]*$/;
+// vitest prints a "- Expected / + Received" diff; keep the values, drop the header.
+// vitest labels its diff "- Expected:" / "+ Received:" - with a colon. Keeping those
+// headers without their values promises a diff and shows none.
+const DIFF_LINE = (l) => /^[^\S\n]*[-+][^\S\n]*\S/.test(l) && !/^[-+][^\S\n]*(Expected|Received):?[^\S\n]*$/.test(l.trim());
 
 // `--reporter=tap` and `--reporter=tap-flat`. Both are TAP 13 with a YAML block, but the
 // dialect is vitest's own: tap.js reads node-tap, whose `at:` opens a map of fileName and
@@ -96,6 +100,9 @@ const VITEST_DOC_RE = /<testsuites\b[^>]*\bname="vitest tests"[^>]*>([\s\S]*?)<\
 const VITEST_SUITES = /<testsuites\b[^>]*\bname="vitest tests"/;
 const JUNIT_CASE_RE = /<testcase\b([^>]*?)(?:\/>|>([\s\S]*?)<\/testcase>)/g;
 const JUNIT_FAILURE_RE = /<(failure|error)\b([^>]*?)(?:\/>|>([\s\S]*?)<\/\1>)/;
+const VITEST_DOC = { open: /<testsuites\b/, close: () => "</testsuites>" };
+const JUNIT_CASE = { open: /<testcase\b/, close: () => "</testcase>", selfClosing: true };
+const JUNIT_FAILURE = { open: /<(failure|error)\b/, close: (name) => `</${name}>`, selfClosing: true };
 // vitest writes its frames with a pointer rather than the word "at".
 const VITEST_FRAME = /^[^\S\n]*[❯>][^\S\n]+(.+?):(\d+):(\d+)[^\S\n]*$/;
 const base = (p) => String(p ?? "").split(/[\\/]/).pop();
@@ -125,11 +132,11 @@ function saidIn(body) {
 function vitestJunit(s) {
   if (!VITEST_SUITES.test(s)) return [];
   const out = [];
-  const mine = [...s.matchAll(VITEST_DOC_RE)].map((d) => d[1]).join("\n");
-  for (const test of mine.matchAll(JUNIT_CASE_RE)) {
+  const mine = [...elements(s, VITEST_DOC_RE, VITEST_DOC)].map((d) => d[1]).join("\n");
+  for (const test of elements(mine, JUNIT_CASE_RE, JUNIT_CASE)) {
     if (!test[2]) continue;
     const a = xmlAttributes(test[1]);
-    const outcome = test[2].match(JUNIT_FAILURE_RE);
+    const outcome = firstElement(test[2], JUNIT_FAILURE_RE, JUNIT_FAILURE);
     if (!outcome) continue;
     const body = xmlText(outcome[3] ?? "").split("\n");
     let file = a.classname, line, col;
@@ -184,6 +191,17 @@ export default {
     const lines = s.split("\n");
     const failures = [];
     let unloaded = 0;
+    // Under its assertion a block reads on to the next failure header or location line,
+    // keeping the diff lines it passes. Scanned for from every header, a log repeating a
+    // header read to its end once per line; the next of each is the same answer for every
+    // block, so it is found once, from the end.
+    const n = lines.length;
+    const nextFail = new Int32Array(n + 1).fill(n), nextLoc = new Int32Array(n + 1).fill(n), nextDiff = new Int32Array(n + 1).fill(n);
+    for (let k = n - 1; k >= 0; k--) {
+      nextFail[k] = FAIL_RE.test(lines[k]) ? k : nextFail[k + 1];
+      nextLoc[k] = LOC_RE.test(lines[k]) ? k : nextLoc[k + 1];
+      nextDiff[k] = DIFF_LINE(lines[k]) ? k : nextDiff[k + 1];
+    }
 
     for (let i = 0; i < lines.length; i++) {
       const suite = suiteOf(lines[i]);
@@ -198,27 +216,26 @@ export default {
       // tools write into one pipe and the block comes back shredded, whatever landed in
       // between became this test's assertion.
       const MESSAGE_GAP = 3;
-      let message = "", loc = null;
-      const diff = [];
-      for (let j = i + 1; j < lines.length; j++) {
+      let message = "", loc = null, j = i + 1;
+      for (; j < n; j++) {
         const l = lines[j];
-        if (FAIL_RE.test(l)) break;
-        if (!message && j - i > MESSAGE_GAP) break;
+        if (FAIL_RE.test(l) || j - i > MESSAGE_GAP) break;
         const lm = l.match(LOC_RE);
         if (lm) { loc = { file: lm[1], line: +lm[2], col: +lm[3] }; break; }
-        if (!message && l.trim() && !SEP_RE.test(l)) { message = l.trim(); continue; }
-        // vitest prints a "- Expected / + Received" diff; keep the values, drop the header
-        // vitest labels its diff "- Expected:" / "+ Received:" - with a colon. Keeping
-        // those headers without their values promises a diff and shows none.
-        if (/^[^\S\n]*[-+][^\S\n]*\S/.test(l) && !/^[-+][^\S\n]*(Expected|Received):?[^\S\n]*$/.test(l.trim())) {
-          diff.push(l.trim());
-        }
+        if (l.trim() && !SEP_RE.test(l)) { message = l.trim(); break; }
       }
       if (!message) continue;
+      const stop = Math.min(nextFail[j + 1], nextLoc[j + 1]);
+      if (stop < n && nextFail[j + 1] !== stop) {
+        const lm = lines[stop].match(LOC_RE);
+        loc = { file: lm[1], line: +lm[2], col: +lm[3] };
+      }
+      const diff = [];
+      for (let k = nextDiff[j + 1]; k < stop && diff.length < 4; k = nextDiff[k + 1]) diff.push(lines[k].trim());
       if (suite) unloaded++;
       failures.push({
         file: loc?.file ?? file, line: loc?.line, col: loc?.col,
-        title, subject: title, severity: "error", message: [message, ...diff.slice(0, 4)].join("\n"),
+        title, subject: title, severity: "error", message: [message, ...diff].join("\n"),
       });
     }
 

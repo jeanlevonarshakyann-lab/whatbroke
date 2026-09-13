@@ -3,31 +3,90 @@ import { isNoise } from "../util.js";
 const CHAIN = /^(?:During handling of the above exception|The above exception was the direct cause)/;
 const HEADER = /^Traceback \(most recent call last\):$/;
 
+const FRAME_RE = /^[^\S\n]*File "(.+?)", line (\d+), in (.+)$/;
+const errorLine = (line) => {
+  const l = line.trim();
+  return !!l && !/^File "/.test(l) && !/^\^+$/.test(l) && !/^~*\^+~*$/.test(l) &&
+    (/^\w[\w.]*(Error|Exception|Warning)\b/.test(l) || /^\w[\w.]*: /.test(l));
+};
+
 /**
- * The lines belonging to the traceback that starts at `start` - and no further.
+ * What every traceback in `lines` says: where it is, its deepest frame and its error.
  *
  * A traceback ends at its unindented exception line. Slicing to the end of the log
  * instead meant that in a log holding more than one tool the exception came from the
- * other one: parseTraceback searches backwards for "Name: message", and node --test
+ * other one: the error is found searching backwards for "Name: message", and node --test
  * prints "code: 'ERR_TEST_FAILURE'", which is exactly that shape.
  *
  * Chained tracebacks ("During handling of the above exception...") are one block, and
  * the last exception in the chain is the one that was actually raised, so the scan
- * steps over the notice rather than stopping at the exception line before it.
+ * steps over the notice rather than stopping at the exception line before it. A header
+ * inside a block is stepped over the same way - which is what made reading each block
+ * from its own header quadratic: a log repeating the header with no exception under any
+ * of them read to the end of the log once per header, and parsed all of it each time.
+ * Where a block ends, and the last error and frames before any line, are the same
+ * questions for every header, so they are answered once, from the end of the log.
  */
-function tracebackBody(lines, start) {
-  let end = lines.length;
-  for (let i = start + 1; i < lines.length; i++) {
-    const l = lines[i];
-    if (!l.trim() || /^[^\S\n]/.test(l)) continue;
-    if (CHAIN.test(l) || HEADER.test(l)) continue;
-    let j = i + 1;
-    while (j < lines.length && !lines[j].trim()) j++;
-    if (j < lines.length && CHAIN.test(lines[j])) { i = j; continue; }
-    end = i + 1;
-    break;
+function tracebackReadings(lines) {
+  const n = lines.length;
+  const headers = [];
+  for (let i = 0; i < n; i++) if (HEADER.test(lines[i])) headers.push(i);
+  if (!headers.length) return [];
+  // stops[i]: the line a scan from i ends its block on (n if it runs out), once a scan
+  // has passed i. A scan's path depends only on where it is, so every position it passes
+  // shares its answer, and no position is walked twice.
+  const stops = new Int32Array(n + 1).fill(-1);
+  stops[n] = n;
+  const stopFrom = (from) => {
+    const path = [];
+    let i = from, stop = n;
+    while (i < n) {
+      if (stops[i] !== -1) { stop = stops[i]; break; }
+      path.push(i);
+      const l = lines[i];
+      if (!l.trim() || /^[^\S\n]/.test(l) || CHAIN.test(l) || HEADER.test(l)) { i++; continue; }
+      let j = i + 1;
+      while (j < n && !lines[j].trim()) j++;
+      if (j < n && CHAIN.test(lines[j])) { i = j + 1; continue; }
+      stop = i;
+      break;
+    }
+    for (const at of path) stops[at] = stop;
+    return stop;
+  };
+  const ends = headers.map((start) => {
+    const stop = stopFrom(start + 1);
+    return stop < n ? stop + 1 : n;
+  });
+  // The last error line, frame and frame in your code before each block's end, read
+  // backwards from the end once for all the blocks sharing it. Blocks that end apart
+  // never overlap, so no line is read twice here either.
+  const earliest = new Map();
+  headers.forEach((start, k) => { if (!earliest.has(ends[k]) || earliest.get(ends[k]) > start) earliest.set(ends[k], start); });
+  const last = new Map();
+  for (const [end, from] of earliest) {
+    let error = -1, frame = -1, own = -1;
+    for (let k = end - 1; k > from && (error === -1 || own === -1); k--) {
+      if (error === -1 && errorLine(lines[k])) error = k;
+      if (own !== -1) continue;
+      const m = lines[k].match(FRAME_RE);
+      if (!m) continue;
+      if (frame === -1) frame = k;
+      if (!isNoise(m[1])) own = k;
+    }
+    last.set(end, { error, frame, own });
   }
-  return lines.slice(start + 1, end);
+  return headers.map((start, k) => {
+    const end = ends[k];
+    const { error, frame, own } = last.get(end);
+    const at = own > start ? own : frame > start ? frame : -1;
+    const m = at === -1 ? null : lines[at].match(FRAME_RE);
+    return {
+      start,
+      deepest: m ? { file: m[1], line: +m[2], fn: m[3], code: at + 1 < end ? lines[at + 1].trim() : "" } : undefined,
+      err: error > start ? lines[error].trim() : "",
+    };
+  });
 }
 
 /** Parse one "Traceback (most recent call last):" block into frames + final error. */
@@ -94,14 +153,12 @@ export const traceback = {
     const lines = s.split("\n");
     const failures = [];
     let unittestFallback = null;
-    for (let start = 0; start < lines.length; start++) {
-      if (!HEADER.test(lines[start])) continue;
+    for (const { start, deepest, err } of tracebackReadings(lines)) {
       // unittest owns tracebacks framed by its FAIL/ERROR header. The generic Python
       // parser must still keep scanning: a standalone traceback may follow the test
       // summary in a mixed CI log.
       const framedByUnittest = /^(?:FAIL|ERROR): /.test(lines[start - 2] ?? "") &&
         /^-{10,}$/.test(lines[start - 1] ?? "");
-      const { deepest, err } = parseTraceback(tracebackBody(lines, start));
       if (!deepest && !err) continue;
       const failure = {
         file: deepest?.file, line: deepest?.line,

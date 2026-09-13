@@ -1,4 +1,4 @@
-import { findJsonDocument, jsonDocuments, xmlAttributes } from "../util.js";
+import { elements, findJsonDocument, jsonDocuments, xmlAttributes } from "../util.js";
 // ruff emits rustc-style diagnostics: a header line, then " --> file:line:col".
 const HEAD_RE = /^([A-Z]+\d+)(?:[^\S\n]+\[[*x]\])?[^\S\n]+(.+)$/;
 // Not everything ruff reports has a rule code. A file it cannot parse is reported as
@@ -63,6 +63,9 @@ const JUNIT_DOC_RE = /<testsuites\b[^>]*\bname="ruff"[^>]*>([\s\S]*?)<\/testsuit
 const JUNIT_SUITE_RE = /<testsuite\b([^>]*)>([\s\S]*?)<\/testsuite>/g;
 const JUNIT_CASE_RE = /<testcase\b([^>]*?)(?<!\/)>([\s\S]*?)<\/testcase>/g;
 const JUNIT_FAILURE_RE = /<failure\b([^>]*)/;
+const JUNIT_DOC = { open: /<testsuites\b/, close: () => "</testsuites>" };
+const JUNIT_SUITE = { open: /<testsuite\b/, close: () => "</testsuite>" };
+const JUNIT_CASE = { open: /<testcase\b/, close: () => "</testcase>" };
 const RDJSON_MARK = (v) => !!v && typeof v === "object" && v.source?.name === "ruff" && Array.isArray(v.diagnostics);
 const SARIF_MARK = (v) => !!v && typeof v === "object" && Array.isArray(v.runs) &&
   v.runs.some((r) => r?.tool?.driver?.name === "ruff");
@@ -88,10 +91,10 @@ function reported(s, lines) {
     }
   }
   if (s.includes('name="ruff"')) {
-    for (const doc of s.matchAll(JUNIT_DOC_RE)) {
-      for (const suite of doc[1].matchAll(JUNIT_SUITE_RE)) {
+    for (const doc of elements(s, JUNIT_DOC_RE, JUNIT_DOC)) {
+      for (const suite of elements(doc[1], JUNIT_SUITE_RE, JUNIT_SUITE)) {
         const file = xmlAttributes(suite[1]).name;
-        for (const c of suite[2].matchAll(JUNIT_CASE_RE)) {
+        for (const c of elements(suite[2], JUNIT_CASE_RE, JUNIT_CASE)) {
           const a = xmlAttributes(c[1]);
           const failure = c[2].match(JUNIT_FAILURE_RE);
           if (!failure || !file) continue;

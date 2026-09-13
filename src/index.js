@@ -70,7 +70,7 @@ import generic from "./extractors/generic.js";
 import { stripAnsi, stripCiPrefix, isNoise, collapseRepeats } from "./util.js";
 import { clusterFailures } from "./cluster.js";
 import { stripRedrawnCiPrefix, wrapperCandidates } from "./normalize.js";
-import { addSourceRanges, preserveSourceRange, rangesOverlap, setParser } from "./ownership.js";
+import { addSourceRanges, ownershipBudget, preserveSourceRange, rangesOverlap, releaseOwnership, setParser, sourceRange } from "./ownership.js";
 
 // order matters: most specific first, generic last
 export const EXTRACTORS = [pytest, nodetest, bun, bunRuntime, deno, denoRuntime, denoLint, denoFmt, playwright, jestjson, jest, mochajson, mochaxunit, mocha, ava, jasmine, rubocop, tap, taptext, vitest, unittest, traceback, eslintjson, eslint, ruff, pylint, flake8, golangci, markdownlint, stylelint, shellcheck, yamllint, biome, oxlint, black, prettier, sass, less, webpack, babel, swc, pyright, mypy, cmake, terraform, swift, clang, ruby, perl, php, rspec, junitjvm, jvm, dotnettest, dotnet, phpunit, cargojson, cargo, govetjson, gojson, gotest, esbuild, vite, node, tsc, git, kubectl, docker, make, npm, pnpm, yarn, pip, generic];
@@ -138,21 +138,8 @@ function sameLocatedDiagnostic(a, b) {
   return text.length > 0 && text === message(b);
 }
 
-/** Different parsers may describe one raw line with different public fields. The
- * private source range is the tie-breaker: only diagnostics grounded in the same raw
- * region and carrying the same message may suppress one another. */
-function sameSourceDiagnostic(a, b) {
-  // Both conditions have to hold, so the cheap one goes first. Asking for a range is
-  // what forces every range in the result to be located, a scan of the whole log per
-  // failure; comparing two strings is free. Two parsers that describe different things
-  // are the overwhelming majority of pairs, and they can be rejected without locating
-  // anything at all.
-  const x = String(a.message ?? "").trim();
-  const y = String(b.message ?? "").trim();
-  if (!x || !y) return false;
-  const sameText = x === y || (Math.min(x.length, y.length) >= 4 && (x.includes(y) || y.includes(x)));
-  return sameText && !quoteDiffers(a, b) && rangesOverlap(a, b);
-}
+// How many pairs of readings one log may compare by text before it stops asking.
+const MAX_TEXT_COMPARISONS = 4_000_000;
 
 /** A CI log often holds a lint run, a typecheck and a test run one after another.
  *  Only one extractor can own the output, so name the others rather than dropping
@@ -164,7 +151,7 @@ function sameSourceDiagnostic(a, b) {
  *
  *  `failures` still means "what the winning tool reported", unchanged, so nothing that
  *  reads it sees a different shape. Everything else arrives here, attributed. */
-function otherTools(s, winner, mine, cluster) {
+function otherTools(s, winner, mine, cluster, budget) {
   const exact = (f) => JSON.stringify([f.file ?? null, f.line ?? null, f.col ?? null, f.title ?? "", f.message ?? ""]);
   const claimed = new Map();
   const claim = (f) => claimed.set(exact(f), [...(claimed.get(exact(f)) ?? []), f]);
@@ -179,18 +166,65 @@ function otherTools(s, winner, mine, cluster) {
     locations.set(key, at);
   };
   mine.forEach(remember);
-  const claimedFailures = [...mine];
+  // Two readings are one diagnosis when their text agrees and their ranges overlap. Asking
+  // that of every pair was the work of a log with two tools in it: flake8 and mypy over
+  // 1.6 MiB compared 41 million pairs, and doubling the log quadrupled the time. Text that
+  // is equal is found by looking it up. Text that merely contains the other has to be
+  // searched for, and that search stops at a budget: past it, a reading is kept rather
+  // than suppressed as a copy of something it was never compared with.
+  const text = new Map();
+  const textOf = (f) => {
+    let t = text.get(f);
+    if (t === undefined) text.set(f, t = String(f.message ?? "").trim());
+    return t;
+  };
+  const byText = new Map(), searchable = [];
+  let comparisons = 0;
+  const hold = (g) => {
+    const t = textOf(g);
+    if (!t) return;
+    if (!byText.has(t)) byText.set(t, []);
+    byText.get(t).push(g);
+    if (t.length >= 4) searchable.push(g);
+  };
+  mine.forEach(hold);
+  const within = (count) => {
+    if (comparisons + count > MAX_TEXT_COMPARISONS) return false;
+    comparisons += count;
+    return true;
+  };
+  const sameSourceAsClaimed = (f) => {
+    const x = textOf(f);
+    if (!x) return false;
+    // Different parsers may describe one raw line with different public fields, so the
+    // private source range is the tie-breaker: only readings grounded in the same raw
+    // region, and carrying the same message, may suppress one another. Text goes first
+    // because comparing it is free, and asking for a range locates every range in the
+    // result. A reading whose lines could not be worked out overlaps nothing, so once
+    // that is known there is nothing left to compare it with.
+    let located;
+    const overlaps = (g) => !quoteDiffers(f, g) && (located ??= !!sourceRange(f)) && rangesOverlap(f, g);
+    // The same message can be every finding in a large run - "Unexpected any" a thousand
+    // times - so even the ones found by looking up are counted against the budget.
+    const same = byText.get(x) ?? [];
+    if (same.length && within(same.length) && same.some(overlaps)) return true;
+    if (located === false || x.length < 4 || !within(searchable.length)) return false;
+    return searchable.some((g) => {
+      const y = textOf(g);
+      return y !== x && (x.includes(y) || y.includes(x)) && overlaps(g);
+    });
+  };
   const others = [];
   for (const ex of EXTRACTORS) {
     if (ex === winner || ex.name === "generic") continue;
     let r = null;
-    try { if (ex.detect(s)) r = addSourceRanges(s, ex.extract(s)); } catch { r = null; }
+    try { if (ex.detect(s)) r = addSourceRanges(s, ex.extract(s), budget); } catch { r = null; }
     if (!r?.failures?.length) continue;
     // A shared location does not prove a shared diagnostic, and missing locations
     // say nothing at all. Compare diagnostic content consistently for the winner and other tools.
     const fresh = dedupeFailures(r.failures
       .filter((f) => !isClaimed(f))
-      .filter((f) => !claimedFailures.some((g) => sameSourceDiagnostic(f, g)))
+      .filter((f) => !sameSourceAsClaimed(f))
       .filter((f) => !(locations.get(JSON.stringify([f.file, f.line])) ?? [])
         .some((g) => sameLocatedDiagnostic(f, g)))
       // A tool's CLI wrapper reports that the tool exited non-zero, and that stack sits
@@ -211,7 +245,7 @@ function otherTools(s, winner, mine, cluster) {
       // log, an unanchored `error: linking with cc failed` is exactly the answer.
       .filter((f) => f.file || f.code || f.subject || f.label));
     if (!fresh.length) continue;
-    for (const f of fresh) { claim(f); claimedFailures.push(f); remember(f); }
+    for (const f of fresh) { claim(f); hold(f); remember(f); }
     others.push({
       tool: r.tool,
       count: fresh.length,
@@ -278,10 +312,10 @@ function ordered(command) {
 }
 
 /** The extractor loop: first parser that claims the text AND finds something owns it. */
-function parse(s, command) {
+function parse(s, command, budget) {
   for (const ex of ordered(command)) {
     let r = null;
-    try { if (ex.detect(s)) r = addSourceRanges(s, ex.extract(s)); } catch { r = null; }
+    try { if (ex.detect(s)) r = addSourceRanges(s, ex.extract(s), budget); } catch { r = null; }
     if (r?.failures?.length) return { extractor: ex, result: r };
   }
   return null;
@@ -364,9 +398,9 @@ function better(candidate, cand, current) {
 const MAX_WRAPPER_LAYERS = 3;   // CI stamps a monorepo runner that stamps a container
 
 /** Peel wrapper prefixes for as long as peeling demonstrably improves the parse. */
-function unwrap(s, command) {
+function unwrap(s, command, budget) {
   let text = s;
-  let hit = parse(text, command);
+  let hit = parse(text, command, budget);
   const wrappers = [];
   // At most one literal strip. Once a wrapper is off, the tool's OWN uniform prefix is
   // the next thing a literal search finds - Maven leads every line with `[INFO] ` - and
@@ -377,7 +411,7 @@ function unwrap(s, command) {
     let found = null;
     for (const c of wrapperCandidates(text)) {
       if (c.kind === "literal" && literalsTaken) continue;
-      const candidate = parse(c.text, command);
+      const candidate = parse(c.text, command, budget);
       if (better(c, candidate, hit)) { found = { ...c, hit: candidate }; break; }
       // Wrappers stack: a monorepo runner relaying a container relaying a test run.
       // Peeling only the outer one is often no improvement by itself, and a strictly
@@ -386,7 +420,7 @@ function unwrap(s, command) {
       if (real(candidate)) continue;
       for (const inner of wrapperCandidates(c.text)) {
         if (inner.kind === "literal" && (literalsTaken || c.kind === "literal")) continue;
-        const deeper = parse(inner.text, command);
+        const deeper = parse(inner.text, command, budget);
         if (better(inner, deeper, hit)) { found = { ...c, text: inner.text, wrapper: c.wrapper, hit: deeper, then: inner.wrapper }; break; }
       }
       if (found) break;
@@ -441,7 +475,8 @@ function analyseWhole(raw, { cluster = true, command = null } = {}) {
   const base = collapseExactRetries(
     stripRedrawnCiPrefix(stripCiPrefix(stripAnsi(raw.replace(/^\uFEFF/, ""))))
       .replace(/\r\n?/g, "\n"));
-  const { text: s, hit, wrappers } = unwrap(base, command);
+  const budget = ownershipBudget();
+  const { text: s, hit, wrappers } = unwrap(base, command, budget);
   if (!hit) return null;
   const r = hit.result;
   // dedupe first: it collapses the SAME diagnostic printed twice, so cluster
@@ -449,7 +484,8 @@ function analyseWhole(raw, { cluster = true, command = null } = {}) {
   const failures = dedupeFailures(r.failures)
     .map((f) => preserveSourceRange(f, { tool: r.tool, category: hit.extractor.category, ...f }));
   const clusters = cluster ? clusterFailures(failures) : null;
-  const others = otherTools(s, hit.extractor, failures, cluster);
+  const others = otherTools(s, hit.extractor, failures, cluster, budget);
+  releaseOwnership(budget);
   const answer = {
     ...r, failures, clusters,
     ...(others.length ? { others } : {}),

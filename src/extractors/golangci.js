@@ -1,4 +1,4 @@
-import { jsonDocuments, xmlAttributes, xmlText } from "../util.js";
+import { elements, jsonDocuments, xmlAttributes, xmlText } from "../util.js";
 // golangci-lint is what a Go CI job usually fails on. Its findings look almost exactly
 // like `go build`'s, and go's parser was claiming them - so a lint run came back as
 // "6 compile errors" from a tool called `go build`, with the linter's name left sitting
@@ -42,6 +42,8 @@ const GO_FILE = /\.go$/;
 const TAB = /^(?:\.[\\/])?(\S+?\.go):(\d+):(\d+)[^\S\n]+([\w-]+)[^\S\n]{2,}(\S.*?)[^\S\n]*$/;
 const CHECKSTYLE_FILE = /<file\b([^>]*)>([\s\S]*?)<\/file>/g;
 const CHECKSTYLE_ERROR = /<error\b([^>]*?)(?:\/>|>[\s\S]*?<\/error>)/g;
+const CHECKSTYLE_FILE_ELEMENT = { open: /<file\b/, close: () => "</file>" };
+const CHECKSTYLE_ERROR_ELEMENT = { open: /<error\b/, close: () => "</error>", selfClosing: true };
 // Neither tag may close itself: bun's JUnit writes `<failure type="AssertionError" />`, and
 // read as an opening tag its body ran on into the next report's first failure.
 // What stands between a case and its failure is not counted on either, only that it is not
@@ -73,10 +75,10 @@ function reported(s, lines) {
     }
   }
   if (tallied && s.includes("<checkstyle")) {
-    for (const f of s.matchAll(CHECKSTYLE_FILE)) {
+    for (const f of elements(s, CHECKSTYLE_FILE, CHECKSTYLE_FILE_ELEMENT)) {
       const file = xmlAttributes(f[1]).name;
       if (!GO_FILE.test(file ?? "")) continue;
-      for (const e of f[2].matchAll(CHECKSTYLE_ERROR)) {
+      for (const e of elements(f[2], CHECKSTYLE_ERROR, CHECKSTYLE_ERROR_ELEMENT)) {
         const a = xmlAttributes(e[1]);
         if (!a.source) continue;
         out.push({ file, line: positive(a.line), col: positive(a.column), code: a.source, message: String(a.message ?? "").trim() });
@@ -84,7 +86,8 @@ function reported(s, lines) {
     }
   }
   if (s.includes("Category: ")) {
-    for (const c of s.matchAll(JUNIT_CASE)) {
+    // The body read is the failure's, so it is the failure's closing tag that has to follow.
+    for (const c of elements(s, JUNIT_CASE, { open: /<testcase\b/, close: () => "</failure>" })) {
       const test = xmlAttributes(c[1]), failure = xmlAttributes(c[2]);
       const where = String(test.classname ?? "").match(JUNIT_WHERE);
       const body = c[3].replace(/^\s*<!\[CDATA\[|\]\]>\s*$/g, "");

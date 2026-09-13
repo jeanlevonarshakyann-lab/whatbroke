@@ -6,7 +6,7 @@ const PARSER = Symbol("whatbroke.parser");
 
 const clean = (value) => String(value ?? "").trim().replace(/\s+/g, " ");
 
-function scoreLine(text, numbers, failure, prepared) {
+function scoreLine(text, lineSet, index, failure, prepared) {
   if (!text) return 0;
   let score = 0;
 
@@ -18,8 +18,8 @@ function scoreLine(text, numbers, failure, prepared) {
   if (prepared.stmt && text.includes(prepared.stmt)) score += 8;
   if (failure.file && text.includes(String(failure.file))) {
     score += 8;
-    if (failure.line && numbers.has(String(failure.line))) score += 6;
-    if (failure.col && numbers.has(String(failure.col))) score += 2;
+    if (failure.line && numbersOn(lineSet, index).has(String(failure.line))) score += 6;
+    if (failure.col && numbersOn(lineSet, index).has(String(failure.col))) score += 2;
   }
   for (const needle of prepared.labels) {
     if (needle.length >= 3 && text.includes(needle)) score += 4;
@@ -37,7 +37,7 @@ function scoreLine(text, numbers, failure, prepared) {
  * without adding a serialised field to its output. A parser may later provide an
  * explicit SOURCE_RANGE; explicit provenance always wins over this compatibility path.
  */
-export function addSourceRanges(text, result) {
+export function addSourceRanges(text, result, budget = ownershipBudget()) {
   if (!result?.failures?.length) return result;
 
   // Deferred, because most runs never ask. Ranges exist so that two parsers describing
@@ -49,7 +49,7 @@ export function addSourceRanges(text, result) {
   // The thunk computes every failure's range in one pass when the first one is asked
   // for, so the shared tie-breaking between them is exactly what it was.
   let ranges = null;
-  const compute = () => (ranges ??= locate(text, result.failures));
+  const compute = () => (ranges ??= locate(text, result.failures, budget));
   const failures = result.failures.map((failure, i) =>
     failure[SOURCE_RANGE] ? failure : lazySourceRange(failure, () => compute()[i]));
   return { ...result, failures };
@@ -62,24 +62,95 @@ function lazySourceRange(failure, get) {
 }
 
 // `path/to/file.ext:12:5`, as a location is written in a stack, a heading or a message.
-const WRITTEN_LOCATION_RE = /[^\s()"'[\]]+\.[A-Za-z]\w*:\d+:\d+/;
+// Only whether a line holds one is ever asked, and for that one character of the path
+// before its extension says as much as all of it. Asking for all of it backtracked through
+// every run of path characters from every position in the run: one 80,000-character run
+// took seven seconds to decide it held no location.
+const WRITTEN_LOCATION_RE = /[^\s()"'[\]]\.[A-Za-z]\w*:\d+:\d+/;
 
-function locate(text, all) {
+// Locating a failure searches every line of the log for it, so the work is the log's
+// length times the distinct failures located - its length, not its lines: an eslint
+// report is one line holding every finding, and 471 KB of table and report took three
+// minutes. At the capture cap it became a hang: 10 MiB holding every fixture took 36
+// seconds, three quarters of them here, spread over 36 tools that each located under
+// any limit one call could set. So the limit is on the whole reading of a log, and past
+// it a range is left unknown. An unknown range overlaps nothing, so the one thing ranges
+// decide - that two tools' readings of the same text are one diagnosis - goes undecided
+// and each tool keeps its own finding. That is the cheaper mistake: a finding shown
+// twice, rather than one suppressed as a copy of something it was never compared with.
+//
+// 90 eslint problems in a 3.4 MB build log - the case that made ranges lazy - is 310
+// million of this, and still located.
+export const LOCATE_BUDGET = 500_000_000;
+
+/** The work one reading of a log may spend locating, and the per-line preparation every
+ *  tool's failures are scored against - the same lines, so prepared once. */
+export function ownershipBudget(limit = LOCATE_BUDGET) {
+  return { limit, spent: 0, text: null, lines: null, cleaned: null, numbers: null, writes: null, naming: null, released: false };
+}
+
+/** The reading is finished: keep what was spent, drop the prepared lines. A range asked
+ *  for afterwards is still answered, from lines prepared for that one call. */
+export function releaseOwnership(budget) {
+  budget.text = budget.lines = budget.cleaned = budget.numbers = budget.writes = budget.naming = null;
+  budget.released = true;
+}
+
+const identityOf = (failure) => JSON.stringify([
+  failure.file ?? null, failure.line ?? null, failure.col ?? null,
+  failure.title ?? "", failure.code ?? null, failure.subject ?? null,
+  failure.label ?? null, failure.message ?? "", failure.stmt ?? null,
+]);
+
+// A line's numbers only matter on a line that names the failure's file, and most lines
+// name none, so each set is made the first time such a line asks for it.
+function preparedLines(text, budget) {
+  if (budget.text === text) return budget;
   const lines = text.split("\n");
   const cleaned = lines.map(clean);
-  const numbers = cleaned.map((line) => new Set(line.match(/\d+/g) ?? []));
+  const lineSet = { lines, cleaned, numbers: new Array(lines.length), writes: new Array(lines.length), naming: new Map() };
+  if (budget.released) return lineSet;
+  Object.assign(budget, { text }, lineSet);
+  return budget;
+}
+
+const numbersOn = (prepared, index) =>
+  (prepared.numbers[index] ??= new Set(prepared.cleaned[index].match(/\d+/g) ?? []));
+
+/** Every line naming `file`, in order - asked once per file however many failures share it. */
+function linesNaming(prepared, file) {
+  let found = prepared.naming.get(file);
+  if (!found) {
+    found = [];
+    prepared.cleaned.forEach((line, index) => { if (line.includes(file)) found.push(index); });
+    prepared.naming.set(file, found);
+  }
+  return found;
+}
+
+/** The first position in ascending `sorted` holding a value at or above `value`. */
+function firstAtOrAfter(sorted, value) {
+  let lo = 0, hi = sorted.length;
+  while (lo < hi) { const mid = (lo + hi) >> 1; if (sorted[mid] < value) lo = mid + 1; else hi = mid; }
+  return lo;
+}
+
+function locate(text, all, budget) {
+  const identities = all.map((failure) => (failure[SOURCE_RANGE] ? null : identityOf(failure)));
+  const distinct = new Set(identities.filter(Boolean)).size;
+  const work = text.length * distinct;
+  if (budget.spent + work > budget.limit) return all.map((failure) => failure[SOURCE_RANGE] ?? null);
+  budget.spent += work;
+  const lineSet = preparedLines(text, budget);
+  const { lines, cleaned } = lineSet;
   const used = new Set();
   const known = new Map();
-  return all.map((failure) => {
+  return all.map((failure, i) => {
     if (failure[SOURCE_RANGE]) return failure[SOURCE_RANGE];
     // Repeated diagnostics are collapsed immediately after parsing. Locate identical
     // copies once rather than rescanning a large log for every repetition (a repeated
     // 90-error eslint block otherwise made this quadratic on Node 18).
-    const identity = JSON.stringify([
-      failure.file ?? null, failure.line ?? null, failure.col ?? null,
-      failure.title ?? "", failure.code ?? null, failure.subject ?? null,
-      failure.label ?? null, failure.message ?? "", failure.stmt ?? null,
-    ]);
+    const identity = identities[i];
     if (known.has(identity)) return known.get(identity);
     const prepared = {
       messageLines: String(failure.message ?? "").split("\n").map(clean).filter((s) => s.length >= 4),
@@ -97,14 +168,13 @@ function locate(text, all) {
       written = failure.line
         ? new RegExp(`${file.replace(/[.*+?^${}()|[\]\\]/g, "\\$&")}:${failure.line}${failure.col ? `:${failure.col}` : ""}(?!\\d)`)
         : null;
-      cleaned.forEach((line, index) => {
-        if (!line.includes(file)) return;
+      for (const index of linesNaming(lineSet, file)) {
         fileLines.push(index);
-        if (failure.line && !numbers[index].has(String(failure.line))) return;
+        if (failure.line && !numbersOn(lineSet, index).has(String(failure.line))) continue;
         lineAnchors.push(index);
-        if (failure.col && numbers[index].has(String(failure.col))) columnAnchors.push(index);
-        if (written?.test(line)) writtenAnchors.push(index);
-      });
+        if (failure.col && numbersOn(lineSet, index).has(String(failure.col))) columnAnchors.push(index);
+        if (written?.test(cleaned[index])) writtenAnchors.push(index);
+      }
     }
     // A line that names the file and holds the right numbers somewhere is a weak anchor,
     // and a machine report written on one line is full of numbers. Two runs each reported
@@ -119,8 +189,11 @@ function locate(text, all) {
     // differently, or counts columns from zero, anchors exactly as it did before.
     const locationAnchors = writtenAnchors.length ? writtenAnchors
       : columnAnchors.length ? columnAnchors : lineAnchors;
-    const scored = cleaned.map((line, index) => ({ index, score: scoreLine(line, numbers[index], failure, prepared) }))
-      .filter((entry) => entry.score > 0);
+    const scored = [];
+    for (let index = 0; index < cleaned.length; index++) {
+      const score = scoreLine(cleaned[index], lineSet, index, failure, prepared);
+      if (score > 0) scored.push({ index, score });
+    }
     if (!scored.length) {
       const range = { start: 0, end: lines.length };
       known.set(identity, range);
@@ -137,14 +210,14 @@ function locate(text, all) {
     // eleven lines under Playwright's `at /app/tests/cart.spec.ts:9:9` for a test of the
     // same name that threw the same TypeError; nearness took Playwright's failure onto
     // mocha's line, and mocha's own failure was suppressed as its copy.
-    const foreign = (index) => !!written && WRITTEN_LOCATION_RE.test(lines[index]) && !written.test(lines[index]);
-    const adjusted = ({ index, score }) => {
-      if (foreign(index)) return score;
-      const distance = locationAnchors.length
-        ? Math.min(...locationAnchors.map((anchor) => Math.abs(anchor - index)))
-        : Infinity;
-      return score + Math.max(0, 32 - distance * 2);
-    };
+    const foreign = (index) => !!written && (lineSet.writes[index] ??= WRITTEN_LOCATION_RE.test(lines[index])) &&
+      !written.test(lines[index]);
+    const distance = locationAnchors.length ? (index) => {
+      const at = firstAtOrAfter(locationAnchors, index);
+      return Math.min(at < locationAnchors.length ? locationAnchors[at] - index : Infinity,
+        at > 0 ? index - locationAnchors[at - 1] : Infinity);
+    } : () => Infinity;
+    const adjusted = ({ index, score }) => (foreign(index) ? score : score + Math.max(0, 32 - distance(index) * 2));
     // Two lines can match a failure equally well on content, and "whichever came first"
     // was the tie-break. That is arbitrary, and it was wrong in a way that lost a failure:
     // eslint's JSON report is one line holding every message in the run, so it ties with
@@ -163,14 +236,17 @@ function locate(text, all) {
     // AFTER its message - they all tie here and the old order stands.
     const UNPLACED = Number.MAX_SAFE_INTEGER;
     const nearFile = (index) => {
-      let best = UNPLACED;
-      for (const line of fileLines) if (line <= index && index - line < best) best = index - line;
-      return best;
+      const after = firstAtOrAfter(fileLines, index + 1);
+      return after > 0 ? index - fileLines[after - 1] : UNPLACED;
     };
-    scored.sort((a, b) => adjusted(b) - adjusted(a) || b.score - a.score ||
-      Number(used.has(a.index)) - Number(used.has(b.index)) ||
-      nearFile(a.index) - nearFile(b.index) || a.index - b.index);
-    const anchor = scored[0].index;
+    // Only the best candidate is taken, so it is picked out in one pass rather than found
+    // by sorting all of them - with every comparison asking its questions again.
+    let best = null;
+    for (const entry of scored) {
+      const c = { index: entry.index, score: entry.score, adjusted: adjusted(entry), used: used.has(entry.index) ? 1 : 0, near: nearFile(entry.index) };
+      if (!best || (c.adjusted - best.adjusted || c.score - best.score || best.used - c.used || best.near - c.near || best.index - c.index) > 0) best = c;
+    }
+    const anchor = best.index;
     const start = anchor;
     const end = anchor + 1;
     for (let i = start; i < end; i++) used.add(i);

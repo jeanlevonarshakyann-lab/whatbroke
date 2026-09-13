@@ -1,4 +1,4 @@
-import { findJsonDocument, xmlAttributes } from "../util.js";
+import { elements, findJsonDocument, xmlAttributes } from "../util.js";
 // shellcheck writes two formats a CI job is likely to produce, and neither was read.
 // Its default is a block per location:
 //
@@ -44,6 +44,7 @@ const comments = (s) => {
 // source attribute: every finding declares `ShellCheck.SC####` as the check that made it.
 const CHECKSTYLE_FILE = /<file\b([^>]*)>([\s\S]*?)<\/file>/g;
 const CHECKSTYLE_ERROR = /<error\b([^>]*?)\/?>/g;
+const CHECKSTYLE_FILE_ELEMENT = { open: /<file\b/, close: () => "</file>" };
 const SHELLCHECK_SOURCE = /^ShellCheck\.(SC\d+)$/;
 
 /** The findings of a run in one of the three machine formats. */
@@ -54,7 +55,7 @@ function machine(s) {
       severity: c.level, message: String(c.message).trim() });
   }
   if (s.includes("ShellCheck.SC")) {
-    for (const doc of s.matchAll(CHECKSTYLE_FILE)) {
+    for (const doc of elements(s, CHECKSTYLE_FILE, CHECKSTYLE_FILE_ELEMENT)) {
       const file = xmlAttributes(doc[1]).name;
       for (const err of doc[2].matchAll(CHECKSTYLE_ERROR)) {
         const a = xmlAttributes(err[1]);

@@ -116,11 +116,22 @@ const swiftText = {
  * The decimal length is bytes, not JavaScript characters. Reading through Buffer is
  * therefore required for a diagnostic containing a non-ASCII source line. Ordinary
  * chatter can sit between records in a combined CI log and is skipped line by line. */
+// JSON's whitespace, as bytes.
+const JSON_SPACE = new Set([0x20, 0x09, 0x0a, 0x0d]);
+
 function parseableRecords(text) {
   const bytes = Buffer.from(text, "utf8");
   const records = [];
   let offset = 0;
   let line = 0;
+  // A header claims how many bytes follow it, and each claim was decoded and parsed to
+  // find out whether it was a record: a log whose every line is a number claiming the
+  // rest of the log decoded the rest of the log once per line. A record is an object, so
+  // a body that does not open with `{` and close with `}` is not decoded at all, and the
+  // bytes spent on bodies that are not records are capped at a few times the log -
+  // swiftc's own records parse, so they never come near it.
+  let refused = 0;
+  const REFUSED_LIMIT = bytes.length * 4;
   while (offset < bytes.length) {
     const newline = bytes.indexOf(10, offset);
     if (newline < 0) break;
@@ -133,9 +144,20 @@ function parseableRecords(text) {
       offset = newline + 1; line++;
       continue;
     }
+    if (refused > REFUSED_LIMIT) { offset = newline + 1; line++; continue; }
+    let first = bodyStart, last = bodyEnd - 1;
+    while (first < bodyEnd && JSON_SPACE.has(bytes[first])) first++;
+    while (last > first && JSON_SPACE.has(bytes[last])) last--;
+    // Whitespace walked past to find the braces is charged too: many headers could claim
+    // bodies that end inside one long run of blank lines.
+    refused += (first - bodyStart) + (bodyEnd - 1 - last);
+    if (bytes[first] !== 0x7b || bytes[last] !== 0x7d) {
+      offset = newline + 1; line++;
+      continue;
+    }
     let value;
     try { value = JSON.parse(bytes.subarray(bodyStart, bodyEnd).toString("utf8")); }
-    catch { offset = newline + 1; line++; continue; }
+    catch { refused += length; offset = newline + 1; line++; continue; }
     if (value && typeof value === "object" && typeof value.kind === "string" &&
         typeof value.name === "string") {
       const newlines = bytes.subarray(offset, bodyEnd).reduce((n, byte) => n + (byte === 10), 0);

@@ -17,7 +17,7 @@
 // Message and Stack Trace blocks. It may also print xUnit's prefixed copy first; the
 // labelled result is the stable cross-framework surface and is the one parsed below.
 import { SOURCE_RANGE } from "../ownership.js";
-import { xmlAttributes, xmlText } from "../util.js";
+import { elements, firstElement, xmlAttributes, xmlText } from "../util.js";
 
 const MTP_FAILED_RE = /^failed[^\S\n]+(\S+)[^\S\n]+\((\d+(?:\.\d+)?)[^\S\n]*m?s\)[^\S\n]*$/;
 // Microsoft.Testing.Platform speaks the SDK's languages too, and translates more than
@@ -111,17 +111,20 @@ const TRX_DOC = /<TestRun\b[^>]*\bxmlns="http:\/\/microsoft\.com\/schemas\/Visua
 const TRX_RESULT_RE = /<UnitTestResult\b([^>]*?)(?:\/>|>([\s\S]*?)<\/UnitTestResult>)/g;
 const TRX_MESSAGE_RE = /<Message>([\s\S]*?)<\/Message>/;
 const TRX_STACK_RE = /<StackTrace>([\s\S]*?)<\/StackTrace>/;
+const TRX_RESULT = { open: /<UnitTestResult\b/, close: () => "</UnitTestResult>", selfClosing: true };
+const TRX_MESSAGE = { open: /<Message>/, close: () => "</Message>" };
+const TRX_STACK = { open: /<StackTrace>/, close: () => "</StackTrace>" };
 const TRX_COUNTERS_RE = /<Counters\b([^>]*?)\/?>/;
 
 /** The failed results of a trx document, or none. */
 function trx(s) {
   if (!TRX_DOC.test(s)) return [];
   const out = [];
-  for (const result of s.matchAll(TRX_RESULT_RE)) {
+  for (const result of elements(s, TRX_RESULT_RE, TRX_RESULT)) {
     const a = xmlAttributes(result[1]);
     if (a.outcome !== "Failed" || !a.testName || !result[2]) continue;
-    const message = result[2].match(TRX_MESSAGE_RE);
-    const stack = result[2].match(TRX_STACK_RE);
+    const message = firstElement(result[2], TRX_MESSAGE_RE, TRX_MESSAGE);
+    const stack = firstElement(result[2], TRX_STACK_RE, TRX_STACK);
     let file, line;
     for (const raw of xmlText(stack?.[1] ?? "").split("\n")) {
       const at = raw.match(AT_RE);
