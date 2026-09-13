@@ -1,4 +1,4 @@
-import { isNoise } from "../util.js";
+import { isNoise, tailFirst } from "../util.js";
 
 // An uncaught Ruby exception names where it was raised, the method it was raised in, the
 // message, and the class - all on one line - and then unwinds:
@@ -10,7 +10,26 @@ import { isNoise } from "../util.js";
 // Ruby 3.4 changed the method quoting from `name' to 'Class#name'. Both are accepted
 // here; only the older form is in the corpus, because that is the ruby this was
 // captured on.
-const RAISE_RE = /^(.+?):(\d+):in [`'](.+?)':[^\S\n]+(.*?)[^\S\n]+\(([A-Z][\w:]*(?:Error|Exception|Interrupt|Signal|Timeout))\)$/;
+// `file:line:in `method': message (Class)` - the pattern
+//   /^(.+?):(\d+):in [`'](.+?)':[^\S\n]+(.*?)[^\S\n]+\(([A-Z][\w:]*(?:Error|Exception|Interrupt|Signal|Timeout))\)$/
+// matched without reading a long line again from every colon in it. The method is lazy
+// too: each `':` after its first character, in turn.
+export const raiseLine = (line) => tailFirst(line, {
+  tail: /\(([A-Z][\w:]*(?:Error|Exception|Interrupt|Signal|Timeout))\)$/, spaceBefore: 1, emptyMessage: true,
+  heads: function* (l, c, clear) {
+    const place = /:(\d+):in [`']/y;
+    for (let p = l.indexOf(":", 1); p !== -1 && p < c; p = l.indexOf(":", p + 1)) {
+      if (!clear(0, p)) continue;
+      place.lastIndex = p;
+      const m = place.exec(l);
+      if (!m) continue;
+      const method = place.lastIndex;
+      for (let k = l.indexOf("':", method + 1); k !== -1 && k < c && clear(method, k); k = l.indexOf("':", k + 1)) {
+        yield { end: k + 2, groups: [l.slice(0, p), m[1], l.slice(method, k)] };
+      }
+    }
+  },
+});
 const FRAME_RE = /^[^\S\n]+from[^\S\n]+(.+?):(\d+):in [`'](.+?)'$/;
 // A file that will not parse never runs, so there is no exception and no unwind - just
 // the line and what the parser expected.
@@ -26,7 +45,7 @@ export default {
   // "file:line:in `method'" is Ruby's alone - no other tool writes the method between
   // the location and the message - so either shape is enough on its own.
   detect: (s) =>
-    RAISE_RE.test(s.split("\n").find((l) => RAISE_RE.test(l)) ?? "") ||
+    s.split("\n").some((l) => raiseLine(l)) ||
     SYNTAX_RE.test(s.split("\n").find((l) => SYNTAX_RE.test(l)) ?? ""),
 
   extract(s) {
@@ -34,7 +53,7 @@ export default {
     const failures = [];
 
     for (let i = 0; i < lines.length; i++) {
-      const raise = lines[i].match(RAISE_RE);
+      const raise = raiseLine(lines[i]);
       if (raise) {
         const frames = [];
         for (let j = i + 1; j < lines.length; j++) {

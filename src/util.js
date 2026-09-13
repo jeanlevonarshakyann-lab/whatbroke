@@ -166,6 +166,65 @@ export function firstElement(text, re, options) {
   return null;
 }
 
+// A line pattern of one shape - a head, whitespace, a lazy message, whitespace, and a tail
+// held to the end of the line - matched as the regex matches it, in time that grows with
+// the line instead of its square.
+//
+// The regex looks for its tail from every place its head could end, one character of
+// message at a time, so a long line that almost matches - many heads, no tail - was read
+// again from each of them. The tail is held to the end, so it can be in only one place:
+// that place is found once, the head is tried where it can end in the order the regex
+// tries it, and the whitespace and message between them are divided the way the regex's
+// greedy separator and lazy message divide them. `test/bounds.js` holds each of these to
+// the regex it stands for.
+const LINE_TERMINATOR = /[\n\r\u2028\u2029]/;
+const INLINE_SPACE = /[^\S\n]/;
+
+/** The match `line` gives a pattern of the shape above, as `line.match(pattern)` gives it.
+ *  tail: the part held to the end, from its first character (not the whitespace before
+ *        it), ending in `$`. Its groups come last in the match.
+ *  spaceBefore: the whitespace the pattern needs between message and tail: 0, 1 or 2.
+ *  emptyMessage: whether the message may be empty - `.*?` - or not - `.+?`.
+ *  heads(line, tailAt, clear): where the head can end, in the order the pattern tries,
+ *        as { end, groups }. `clear(i, j)` says no line terminator lies in [i, j), which
+ *        is what `.` in a head needs. The separator after the head is `[^\S\n]+`. */
+export function tailFirst(line, { tail, spaceBefore, emptyMessage, heads }) {
+  const t = tail.exec(line);
+  if (!t) return null;
+  const c = t.index;
+  let w = c;
+  while (w > 0 && INLINE_SPACE.test(line[w - 1])) w--;
+  const counts = new Int32Array(line.length + 1);
+  for (let i = 0; i < line.length; i++) counts[i + 1] = counts[i] + (LINE_TERMINATOR.test(line[i]) ? 1 : 0);
+  const clear = (i, j) => counts[j] === counts[i];
+  const shortest = emptyMessage ? 0 : 1;
+  for (const head of heads(line, c, clear)) {
+    let r = head.end;
+    while (r < c && INLINE_SPACE.test(line[r])) r++;
+    // The separator gives back one character at a time; the message takes the fewest.
+    for (let s = r; s > head.end; s--) {
+      const e = Math.max(s + shortest, w);
+      if (e > c - spaceBefore || !clear(s, e)) continue;
+      const match = [line, ...head.groups, line.slice(s, e), ...t.slice(1)];
+      match.index = 0;
+      match.input = line;
+      return match;
+    }
+  }
+  return null;
+}
+
+/** The places `line` has `place` (a sticky pattern starting at a `:`) after a head of at
+ *  least `from + 1` characters, left to right, where `ok(p)` accepts the head [from, p). */
+export function* colonPlaces(line, from, limit, place, ok) {
+  for (let p = line.indexOf(":", from + 1); p !== -1 && p < limit; p = line.indexOf(":", p + 1)) {
+    if (!ok(p)) continue;
+    place.lastIndex = p;
+    const m = place.exec(line);
+    if (m) yield { end: place.lastIndex, groups: [line.slice(from, p), ...m.slice(1)] };
+  }
+}
+
 /** Decode XML character data. Numeric references matter as much as the named five:
  *  mocha's xunit reporter writes `&#x3C;anonymous&#x3E;` where node's JUnit writes
  *  `&lt;`, and a parser that knows only the names leaves markup in the message. */

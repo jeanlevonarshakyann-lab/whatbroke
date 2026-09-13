@@ -23,6 +23,11 @@ import { elements, firstElement, xmlAttributes, xmlText } from "../util.js";
 // read elsewhere. What makes a case a JVM test is inside it: a Java stack frame naming
 // the case's own class. That is also where the location comes from - the frame in the
 // test, not the ones in the assertion library above it.
+// A failed test's tally line: `Time elapsed:` and, further along the same line, `<<<
+// FAILURE!` - `/Time elapsed:.*<<<[^\S\n]+(?:FAILURE|ERROR)!/`. Tried from every `Time
+// elapsed:`, a long line of tallies read to its end once per tally. The first one on a
+// line sees everything a later one does.
+export const FAILED_TALLY = /^(?:(?!Time elapsed:)[^\n\r\u2028\u2029])*Time elapsed:.*<<<[^\S\n]+(?:FAILURE|ERROR)!/m;
 const CASE_RE = /<testcase\b([^>]*?)(?:\/>|>([\s\S]*?)<\/testcase>)/g;
 const OUTCOME_RE = /<(failure|error)\b([^>]*?)(?:\/>|>([\s\S]*?)<\/\1>)/;
 const CASE = { open: /<testcase\b/, close: () => "</testcase>", selfClosing: true };
@@ -94,7 +99,7 @@ function xmlCases(s) {
 
 /** The failed tests of a Surefire plain-text report. */
 function txtCases(s) {
-  if (!/Time elapsed:.*<<<[^\S\n]+(?:FAILURE|ERROR)!/.test(s)) return [];
+  if (!FAILED_TALLY.test(s)) return [];
   const lines = s.split("\n");
   const out = [];
   for (let i = 0; i < lines.length; i++) {

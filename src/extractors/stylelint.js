@@ -1,4 +1,4 @@
-import { findJsonDocument } from "../util.js";
+import { colonPlaces, findJsonDocument, tailFirst } from "../util.js";
 // stylelint reports like eslint - the file on its own line, the problems indented under
 // it - but marks severity with a glyph rather than a word:
 //
@@ -18,7 +18,13 @@ const NOISE_RE = /potentially fixable|^\s*$/;
 // --formatter unix: one line per problem, the rule in brackets at the end of the text
 // and the severity after it. The fallback scraped these and left the rule inside the
 // message, with no code to group on and no tool name.
-const UNIX_RE = /^(\S.*?):(\d+):(\d+):[^\S\n]+(.+?)[^\S\n]*\(([\w-]+(?:\/[\w-]+)?)\)[^\S\n]*\[(error|warning)\][^\S\n]*$/;
+// `file:line:col: message (rule) [severity]` - the pattern
+//   /^(\S.*?):(\d+):(\d+):[^\S\n]+(.+?)[^\S\n]*\(([\w-]+(?:\/[\w-]+)?)\)[^\S\n]*\[(error|warning)\][^\S\n]*$/
+// matched without reading a long line again from every colon in it.
+export const unixLine = (line) => tailFirst(line, {
+  tail: /\(([\w-]+(?:\/[\w-]+)?)\)[^\S\n]*\[(error|warning)\][^\S\n]*$/, spaceBefore: 0, emptyMessage: false,
+  heads: (l, c, clear) => /^\S/.test(l) ? colonPlaces(l, 0, c, /:(\d+):(\d+):/y, (p) => clear(0, p)) : [],
+});
 // --formatter compact: `/app/style.css: line 1, col 13, error - Expected ... (color-hex-length)`.
 // eslint's compact formatter writes `Error` with a capital, and deno lint's writes no
 // severity at all; stylelint's word is lower case.
@@ -79,7 +85,7 @@ export default {
   commands: ["stylelint"],
 
   detect: (s) => findJsonDocument(s, JSON_MARK) !== null ||
-    s.split("\n").some((l) => UNIX_RE.test(l) || COMPACT_RE.test(l)) ||
+    s.split("\n").some((l) => unixLine(l) || COMPACT_RE.test(l)) ||
     (/^not ok\b/m.test(s) && tap(s.split("\n")).length > 0) ||
     SUMMARY_RE.test(s) ||
     s.split("\n").some((l) => PROBLEM_RE.test(l)),
@@ -120,7 +126,7 @@ export default {
     const warned = new Set();
     const warn = (file, line, col, rule) => warned.add(`${file}\u0000${line}\u0000${col}\u0000${rule}`);
     for (const line of s.split("\n")) {
-      const u = line.match(UNIX_RE);
+      const u = unixLine(line);
       if (u && u[6] === "error") {
         add({ file: u[1], line: +u[2], col: +u[3], title: u[5], code: u[5], severity: "error", message: u[4] });
       } else if (u) warn(u[1], u[2], u[3], u[5]);

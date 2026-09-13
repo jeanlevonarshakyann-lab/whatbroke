@@ -1,5 +1,11 @@
 import { isNoise } from "../util.js";
 
+// A frame is `at fn (file:line:col)`: `/^[^\S\n]+at .+\(.+:\d+:\d+\)$/m`. As `.+\(.+`, a
+// line holding many parentheses was split at each of them in turn, reading to the end of
+// the line every time. The first parenthesis past the function's first character is as
+// good a split as any later one - a later one leaves less room, never more - so only that
+// one is tried.
+export const FRAME_WITH_CALL = /^[^\S\n]+at .[^(\n\r\u2028\u2029]*\(.+:\d+:\d+\)$/m;
 const ERR_RE = /^(?:Uncaught )?((?:[A-Z]\w*)?(?:Error|Exception)(?:\s\[[\w_]+\])?): ?(.*)$/;
 // ESM reports every path as a file:// URL, which is not something that can be opened -
 // so source context was never shown for a module, and the location read as a URL.
@@ -35,7 +41,7 @@ export default {
   name: "node",
   category: "runtime",
   commands: ["node"],
-  detect: (s) => /^[^\S\n]+at .+\(.+:\d+:\d+\)$/m.test(s) || /^[^\S\n]+at .+:\d+:\d+$/m.test(s),
+  detect: (s) => FRAME_WITH_CALL.test(s) || /^[^\S\n]+at .+:\d+:\d+$/m.test(s),
 
   extract(s) {
     const lines = s.split("\n");

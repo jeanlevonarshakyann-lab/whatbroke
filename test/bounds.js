@@ -18,6 +18,12 @@ import { dirname, join } from "node:path";
 import { fileURLToPath } from "node:url";
 import { analyse } from "../src/index.js";
 import { addSourceRanges, ownershipBudget, SOURCE_RANGE, sourceRange } from "../src/ownership.js";
+import { unixLine } from "../src/extractors/stylelint.js";
+import { issueLine } from "../src/extractors/golangci.js";
+import { gccLine } from "../src/extractors/shellcheck.js";
+import { raiseLine } from "../src/extractors/ruby.js";
+import { FRAME_WITH_CALL } from "../src/extractors/node.js";
+import { FAILED_TALLY } from "../src/extractors/junitjvm.js";
 
 const here = dirname(fileURLToPath(import.meta.url));
 
@@ -187,6 +193,88 @@ test("a location search inside a long unbroken token", () => {
   // characters from each position in it; a fix's 5,000-character token cost that per
   // comparison, per finding.
   nearOrdinary(tableAndReport(51, "x".repeat(5000)));
+});
+
+// ------------------------------------------------------------- one long line
+
+// A line pattern that finds its end by trying every place its start could stop - a lazy
+// file name, then a lazy message, then a tail held to the end of the line - read a long
+// line again from every colon in it. Nothing about the lines that trip it is unusual
+// except that there is one of them and it is long.
+const oneLine = (unit) => (n) => Array(n).fill(unit).join(" ");
+
+test("one long line of stylelint-shaped findings", () => {
+  linear(oneLine("cJSON.c:2600:34: error: too few arguments to function call, single argument hooks was not specified"), 401);
+});
+
+test("one long line of golangci-lint-shaped findings", () => {
+  linear(oneLine("main.go:13:14: printf: fmt.Printf format %d has arg many of wrong type string"), 401);
+});
+
+test("one long line of shellcheck-shaped findings", () => {
+  linear(oneLine("bad.c:4:5: error: call to undeclared function 'undefined_function'; ISO C99 and later do not support it"), 401);
+});
+
+test("one long line of ruby frames", () => {
+  linear(oneLine("\tfrom /usr/lib/ruby/2.6.0/rubygems/core_ext/kernel_require.rb:54:in `require'"), 401);
+});
+
+test("one long line of node frames with calls in them", () => {
+  linear(oneLine("    at Microsoft.VisualStudio.TestTools.UnitTesting.Assert.AreEqual[T](T expected, T actual, IEqualityComparer`1 comparer, String message"), 401);
+});
+
+test("one long line of surefire tallies", () => {
+  linear(oneLine("[INFO] Tests run: 45, Failures: 0, Errors: 0, Skipped: 0, Time elapsed: 0.015 s -- in org.json.junit.JSONParserConfigurationTest"), 401);
+});
+
+// Each replacement answers exactly what its pattern answered - every group, on lines built
+// to nearly match and on lines of loose pieces, including the line terminators `.` refuses
+// to cross.
+let seed = 2027;
+const rand = () => (seed = (seed * 1103515245 + 12345) % 2147483648) / 2147483648;
+const pick = (a) => a[Math.floor(rand() * a.length)];
+const gap = () => pick(["", " ", "  ", "\t", " \t ", "\u2028", "\r", "   "]);
+const junk = () => pick(["", "x", ":", "1", ":1:2:", "(", ")", "[", "]", "'", "`", "':", ".go", "./", ".\\", "\u2028", "\u2029", "\r", " ", "SC", "Error", "a:b", "at ", "<<<", "Time elapsed:"]);
+const agrees = (name, expected, replacement, near) => {
+  const shown = (m) => (m ? JSON.stringify([...m]) : "null");
+  const wrong = [];
+  let matched = 0;
+  for (let k = 0; k < 20000 && wrong.length < 3; k++) {
+    let line = near();
+    if (rand() < 0.5) { const at = Math.floor(rand() * (line.length + 1)); line = line.slice(0, at) + junk() + line.slice(at); }
+    let loose = "";
+    for (let i = 1 + Math.floor(rand() * 10); i > 0; i--) loose += junk();
+    for (const text of [line, loose]) {
+      const want = shown(expected(text)), got = shown(replacement(text));
+      if (want !== "null") matched++;
+      if (want !== got) wrong.push(`${JSON.stringify(text)}: pattern ${want}, replacement ${got}`);
+    }
+  }
+  assert.deepEqual(wrong, [], name);
+  assert.ok(matched > 200, `${name}: only ${matched} lines matched, which tests little`);
+};
+
+const matching = (pattern) => (text) => text.match(pattern);
+const testing = (pattern) => (text) => (pattern.test(text) ? [text] : null);
+
+test("each replacement matches exactly what its pattern matched", () => {
+  agrees("stylelint -f unix", matching(/^(\S.*?):(\d+):(\d+):[^\S\n]+(.+?)[^\S\n]*\(([\w-]+(?:\/[\w-]+)?)\)[^\S\n]*\[(error|warning)\][^\S\n]*$/), unixLine,
+    () => pick(["a.css", "src/x y.scss", "a:b.css", ":1", ""]) + ":" + pick(["1", "12", "x"]) + ":" + pick(["2", "34", ""]) + ":" + gap() +
+      pick(["msg", "m (x)", "", " ", "a:1:2: b"]) + gap() + pick(["(rule)", "(a/b)", "(a/b/c)", "()"]) + gap() + pick(["[error]", "[warning]", "[x]", ""]) + gap());
+  agrees("golangci-lint", matching(/^(?:\.[\\/])?(.+?\.go):(\d+):(\d+):[^\S\n]+(.+?)[^\S\n]+\(([\w-]+)\)[^\S\n]*$/), issueLine,
+    () => pick(["", "./", ".\\", "../"]) + pick(["main.go", "a.go", ".go", "x.gox", "a b.go"]) + ":" + pick(["1", "13", "x"]) + ":" + pick(["14", ""]) + ":" + gap() +
+      pick(["msg", "printf: fmt (x)", "", " "]) + gap() + pick(["(govet)", "(err-check)", "()", "(a b)"]) + gap());
+  agrees("shellcheck -f gcc", matching(/^(.+?):(\d+):(\d+):[^\S\n]+(error|warning|note):[^\S\n]+(.+?)[^\S\n]+\[(SC\d+)\][^\S\n]*$/), gccLine,
+    () => pick(["bad.sh", " a.sh", "a:b.sh", "", "x"]) + ":" + pick(["4", "10"]) + ":" + pick(["5", ""]) + ":" + gap() + pick(["error", "warning", "note", "info"]) + ":" + gap() +
+      pick(["msg", "Use x [y]", "", " "]) + gap() + pick(["[SC2086]", "[SC]", "[SC2086] x"]) + gap());
+  agrees("ruby", matching(/^(.+?):(\d+):in [`'](.+?)':[^\S\n]+(.*?)[^\S\n]+\(([A-Z][\w:]*(?:Error|Exception|Interrupt|Signal|Timeout))\)$/), raiseLine,
+    () => pick(["app.rb", "a b.rb", "x", "", "a:1"]) + ":" + pick(["3", "12", "x"]) + ":in " + pick(["`", "'"]) + pick(["run", "block in run", "it's", "", "a':b"]) + "':" + gap() +
+      pick(["boom", "", " ", "a (b)"]) + gap() + pick(["(RuntimeError)", "(Foo::BarError)", "(Timeout)", "(error)"]));
+  // These two are only ever asked whether they match.
+  agrees("node frame", testing(/^[^\S\n]+at .+\(.+:\d+:\d+\)$/m), testing(FRAME_WITH_CALL),
+    () => pick(["  ", " ", "\n ", "\r "]) + "at " + pick(["f ", "(", "a (b) ", ""]) + pick(["(", "(("]) + pick(["x.js", "", ":1"]) + ":" + pick(["1", "x"]) + ":" + pick(["2", ""]) + ")" + pick(["", "\n", "\u2028", " "]));
+  agrees("surefire tally", testing(/Time elapsed:.*<<<[^\S\n]+(?:FAILURE|ERROR)!/), testing(FAILED_TALLY),
+    () => pick(["", "Tests run: 1, ", "x"]) + "Time elapsed:" + pick([" 0.01 s ", "", "\u2028", "\n"]) + pick(["<<<", "<<", ""]) + gap() + pick(["FAILURE!", "ERROR!", "FAIL"]) + pick(["", " -- in T"]));
 });
 
 // ------------------------------------------------------------- the locating budget
