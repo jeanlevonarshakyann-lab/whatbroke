@@ -301,7 +301,7 @@ them.
 | **yarn** | the failure without the documentation link that follows it |
 | **pip** | the exception a build backend actually raised, not `subprocess-exited-with-error`; resolution failures once rather than twice, without the package index pasted in |
 | **a log stamped by CI** | GitHub Actions and `gh run view --log`, Jenkins' Timestamper, Buildkite `--timestamp-lines`, `docker logs --timestamps`, journald — the stamp comes off before anything reads the log |
-| *anything else* | best-effort: lines that look like errors, including plain unix ones like `curl: (7) Failed to connect`, marked as a guess |
+| *anything else* | best-effort: lines that look like errors, including plain unix ones like `curl: (7) Failed to connect`, marked as a guess. A `warning:` or `note:` is not one, after a location or not — a javac run that only warned is not a failed build |
 
 Unrecognised output is never silently swallowed — you get a labelled guess, or the raw text back.
 

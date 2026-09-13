@@ -32,7 +32,13 @@ const ANNOTATION = /^[^\S\n]*\d*[^\S\n]*\|/;
 // "note: This error originates from a subprocess, and is likely not a problem with pip",
 // which says the opposite of a diagnosis.
 const CONTINUATION = /^[^\S\n]*(?:note|help|hint):/i;
-const NOISE = [/^[^\S\n]*at /, /^npm (notice|warn)/, /^[^\S\n]*$/, /^warning:/i, ANNOTATION, CONTINUATION];
+// A warning is not why a run failed, and `warning:` at the start of a line was already
+// skipped. The same word after a location was not: gcc, clang, javac and go all write
+// `Orders.java:8: warning: [rawtypes] found raw type: List`, and the location shape above
+// claimed it. A javac run that compiled cleanly and warned four times came back as
+// "3 errors". A note or a hint after a location is the same aside, told the same way.
+const LOCATED_ASIDE = /^[^\s:]+:\d+(?::\d+)?:[^\S\n]*(?:warning|note|help|hint)(?:\[[^\]\n]*\])?:/i;
+const NOISE = [/^[^\S\n]*at /, /^npm (notice|warn)/, /^[^\S\n]*$/, /^warning:/i, LOCATED_ASIDE, ANNOTATION, CONTINUATION];
 
 // Almost every runtime prints "something went wrong" and then says where, on the next
 // line or inside the message itself. Reading only the first line finds the right words
