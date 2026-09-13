@@ -524,6 +524,13 @@ const CASES = [
       assert.equal(r.failures[1].message, "TypeError: Cannot read properties of null (reading 'lookup')");
       assert.equal(r.summary, "2 failed");
     } })),
+  // One real flake8 7.3 run, default and --format=pylint. The second went to the generic
+  // reader: the code in the message and no code to group on.
+  { file: "flake8_pylint_fail.txt", tool: "flake8", n: 4, check: (r) => {
+      assert.deepEqual(r.failures.map((f) => [f.line, f.code]), [[1, "F401"], [2, "E302"], [2, "E231"], [3, "F841"]]);
+      assert.equal(r.failures[0].message, "'os' imported but unused");
+      assert.ok(r.failures.every((f) => f.col === undefined), "this format prints no column, and none is invented");
+    } },
   { file: "oxlint_fail.txt", tool: "oxlint", n: 1, check: (r) => {
       assert.equal(r.failures[0].file, "lintme.js");
       assert.equal(r.failures[0].col, 5);
@@ -3247,6 +3254,8 @@ for (const [group, encodings, silentAbout = []] of [
   ["oxlint gitlab", ["oxlint_agent_same_fail.txt", "oxlint_gitlab_fail.txt"], ["col"]],
   ["playwright", ["playwright_list_same_fail.txt", "playwright_dot_fail.txt", "playwright_github_fail.txt",
     "playwright_json_fail.txt", "playwright_junit_fail.txt"]],
+  // flake8's pylint format prints no column.
+  ["flake8 pylint format", ["flake8_default_same_fail.txt", "flake8_pylint_fail.txt"], ["col"]],
   ["deno lint", ["denolint_pretty_fail.txt", "denolint_json_fail.txt"]],
   // --compact prints no hint, so the message is the one field it cannot share.
   ["deno lint compact", ["denolint_pretty_fail.txt", "denolint_compact_fail.txt"], ["message"]],

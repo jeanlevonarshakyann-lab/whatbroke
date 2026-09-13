@@ -532,6 +532,7 @@ const SAME_RUN_TWO_ENCODINGS = [
   new Set(["oxlint_parse_default_fail.txt", "oxlint_parse_json_fail.txt"]),
   new Set(["playwright_list_same_fail.txt", "playwright_dot_fail.txt", "playwright_github_fail.txt",
     "playwright_json_fail.txt", "playwright_junit_fail.txt"]),
+  new Set(["flake8_default_same_fail.txt", "flake8_pylint_fail.txt"]),
   new Set(["cargo_json_fail.txt", "cargo_plain_same_fail.txt"]),
   new Set(["cargo_warnings_human_fail.txt", "cargo_warnings_json_fail.txt"]),
   new Set(["eslint_json_fail.txt", "eslint_json_runner_fail.txt", "eslint_text_same_fail.txt"]),

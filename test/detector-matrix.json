@@ -1305,6 +1305,18 @@
     ],
     "shadow": {}
   },
+  "flake8_default_same_fail.txt": {
+    "winner": "flake8",
+    "parser": "flake8",
+    "failures": 4,
+    "claimants": [
+      "flake8",
+      "generic"
+    ],
+    "shadow": {
+      "generic": 4
+    }
+  },
   "flake8_fail.txt": {
     "winner": "flake8",
     "parser": "flake8",
@@ -1315,6 +1327,18 @@
     ],
     "shadow": {
       "generic": 8
+    }
+  },
+  "flake8_pylint_fail.txt": {
+    "winner": "flake8",
+    "parser": "flake8",
+    "failures": 4,
+    "claimants": [
+      "flake8",
+      "generic"
+    ],
+    "shadow": {
+      "generic": 4
     }
   },
   "gcc_nocolumn_fail.txt": {
