@@ -509,6 +509,21 @@ const CASES = [
     } },
   // Captured with oxlint 1. The whole finding is one line, with the fix suggestion
   // appended to the message rather than kept apart from it.
+  // One real Playwright 1.63 run - two failed tests and one that passed - under its
+  // reporters. The console ones were read; --reporter=json and --reporter=junit, the
+  // documents a CI job keeps, came back with nothing. The github reporter was read with
+  // its own annotation, and the next test's progress line, pasted into the message.
+  ...["list_same", "dot", "github", "json", "junit"].map((form) => ({
+    file: `playwright_${form}_fail.txt`, tool: "playwright", n: 2, check: (r) => {
+      assert.deepEqual(r.failures.map((f) => [f.file.split("/").pop(), f.line, f.col, f.subject, f.stmt]), [
+        ["cart.spec.ts", 4, 17, "totals an invoice", "expect(2 + 2).toBe(6);"],
+        ["cart.spec.ts", 9, 9, "applies a discount", 'table.lookup("SPRING");'],
+      ]);
+      // The JSON report keeps the terminal's colours inside its strings.
+      assert.equal(r.failures[0].message, "Error: expect(received).toBe(expected) // Object.is equality\nExpected: 6\nReceived: 4");
+      assert.equal(r.failures[1].message, "TypeError: Cannot read properties of null (reading 'lookup')");
+      assert.equal(r.summary, "2 failed");
+    } })),
   { file: "oxlint_fail.txt", tool: "oxlint", n: 1, check: (r) => {
       assert.equal(r.failures[0].file, "lintme.js");
       assert.equal(r.failures[0].col, 5);
@@ -3230,6 +3245,8 @@ for (const [group, encodings, silentAbout = []] of [
     "oxlint_checkstyle_fail.txt", "oxlint_junit_fail.txt", "oxlint_sarif_fail.txt"]],
   // GitLab's Code Quality format has nowhere to put a column.
   ["oxlint gitlab", ["oxlint_agent_same_fail.txt", "oxlint_gitlab_fail.txt"], ["col"]],
+  ["playwright", ["playwright_list_same_fail.txt", "playwright_dot_fail.txt", "playwright_github_fail.txt",
+    "playwright_json_fail.txt", "playwright_junit_fail.txt"]],
   ["deno lint", ["denolint_pretty_fail.txt", "denolint_json_fail.txt"]],
   // --compact prints no hint, so the message is the one field it cannot share.
   ["deno lint compact", ["denolint_pretty_fail.txt", "denolint_compact_fail.txt"], ["message"]],

@@ -1,0 +1,45 @@
+
+Running 3 tests using 1 worker
+
+  ✘  1 tests/cart.spec.ts:3:5 › totals an invoice (3ms)
+  ✘  2 tests/cart.spec.ts:7:5 › applies a discount (1ms)
+  ✓  3 tests/cart.spec.ts:12:5 › counts items (2ms)
+
+
+  1) tests/cart.spec.ts:3:5 › totals an invoice ────────────────────────────────────────────────────
+
+    Error: expect(received).toBe(expected) // Object.is equality
+
+    Expected: 6
+    Received: 4
+
+      2 |
+      3 | test("totals an invoice", async () => {
+    > 4 |   expect(2 + 2).toBe(6);
+        |                 ^
+      5 | });
+      6 |
+      7 | test("applies a discount", async () => {
+        at /home/dev/shop/tests/cart.spec.ts:4:17
+
+    Error Context: test-results/cart-totals-an-invoice/error-context.md
+
+  2) tests/cart.spec.ts:7:5 › applies a discount ───────────────────────────────────────────────────
+
+    TypeError: Cannot read properties of null (reading 'lookup')
+
+       7 | test("applies a discount", async () => {
+       8 |   const table: any = null;
+    >  9 |   table.lookup("SPRING");
+         |         ^
+      10 | });
+      11 |
+      12 | test("counts items", async () => {
+        at /home/dev/shop/tests/cart.spec.ts:9:9
+
+    Error Context: test-results/cart-applies-a-discount/error-context.md
+
+  2 failed
+    tests/cart.spec.ts:3:5 › totals an invoice ─────────────────────────────────────────────────────
+    tests/cart.spec.ts:7:5 › applies a discount ────────────────────────────────────────────────────
+  1 passed (573ms)
