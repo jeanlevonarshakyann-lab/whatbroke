@@ -1,0 +1,12 @@
+a.c(2,19): error: expected ';' at end of declaration
+    2 |     int amount = 1
+      |                   ^
+      |                   ;
+1 error generated.
+b.c(1,6): warning: incompatible pointer types initializing 'int *' with an expression of type 'char[6]' [-Wincompatible-pointer-types]
+    1 | int *status = "ready";
+      |      ^        ~~~~~~~
+b.c(4,12): error: use of undeclared identifier 'missing_stock'
+    4 |     return missing_stock;
+      |            ^
+1 warning and 1 error generated.
