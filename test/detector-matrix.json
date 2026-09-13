@@ -3728,6 +3728,16 @@
     ],
     "shadow": {}
   },
+  "stylelint_compact_fail.txt": {
+    "winner": "stylelint",
+    "parser": "stylelint",
+    "failures": 3,
+    "claimants": [
+      "stylelint",
+      "generic"
+    ],
+    "shadow": {}
+  },
   "stylelint_fail.txt": {
     "winner": "stylelint",
     "parser": "stylelint",
@@ -3760,6 +3770,16 @@
     ],
     "shadow": {}
   },
+  "stylelint_tap_fail.txt": {
+    "winner": "stylelint",
+    "parser": "stylelint",
+    "failures": 3,
+    "claimants": [
+      "stylelint",
+      "generic"
+    ],
+    "shadow": {}
+  },
   "stylelint_unix_fail.txt": {
     "winner": "stylelint",
     "parser": "stylelint",
@@ -3771,6 +3791,58 @@
     "shadow": {
       "generic": 3
     }
+  },
+  "stylelint_verbose_fail.txt": {
+    "winner": "stylelint",
+    "parser": "stylelint",
+    "failures": 3,
+    "claimants": [
+      "eslint",
+      "stylelint",
+      "generic"
+    ],
+    "shadow": {}
+  },
+  "stylelint_warn_compact_fail.txt": {
+    "winner": "stylelint",
+    "parser": "stylelint",
+    "failures": 2,
+    "claimants": [
+      "stylelint",
+      "generic"
+    ],
+    "shadow": {}
+  },
+  "stylelint_warn_json_fail.txt": {
+    "winner": "stylelint",
+    "parser": "stylelint",
+    "failures": 2,
+    "claimants": [
+      "stylelint",
+      "generic"
+    ],
+    "shadow": {}
+  },
+  "stylelint_warn_string_fail.txt": {
+    "winner": "stylelint",
+    "parser": "stylelint",
+    "failures": 2,
+    "claimants": [
+      "eslint",
+      "stylelint",
+      "generic"
+    ],
+    "shadow": {}
+  },
+  "stylelint_warn_tap_fail.txt": {
+    "winner": "stylelint",
+    "parser": "stylelint",
+    "failures": 2,
+    "claimants": [
+      "stylelint",
+      "generic"
+    ],
+    "shadow": {}
   },
   "swc_fail.txt": {
     "winner": "swc",

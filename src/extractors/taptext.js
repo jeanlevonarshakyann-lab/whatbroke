@@ -147,7 +147,13 @@ function namedDiagnostics(lines) {
 function structured(lines, i) {
   for (let j = i + 1; j < lines.length; j++) {
     if (!lines[j].trim()) continue;
-    return YAML_OPEN_RE.test(lines[j]);
+    if (YAML_OPEN_RE.test(lines[j])) return true;
+    // A line at column zero that is not TAP's is somebody else writing to the same log.
+    // Stopping at it took a structured result for a bare one whenever such a line landed
+    // between `not ok` and its `---`, and read stylelint's report as one empty failure.
+    if (!BLOCK_LINE_RE.test(lines[j]) && !NOT_OK_RE.test(lines[j]) && !OK_RE.test(lines[j]) &&
+      !PLAN_LINE_RE.test(lines[j])) continue;
+    return false;
   }
   return false;
 }
