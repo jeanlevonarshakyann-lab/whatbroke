@@ -5094,6 +5094,22 @@ try {
   pass++;
 } catch (e) { console.log(`  FAIL cargo hidden warnings\n       ${e.message}`); fail++; }
 
+// javac compiled both classes and warned four times, and exited 0. The generic reader
+// already skipped a line that starts with `warning:`, but not the same word after a
+// location - `Orders.java:8: warning: [rawtypes] found raw type: List` - and said
+// "3 errors (no parser for this tool - best guess)" about a build that worked.
+try {
+  const r = analyse(fx("javac_warnings_only.txt"));
+  assert.ok(!r?.failures?.length, `a clean compile was read as ${r?.summary ?? r?.failures?.length}`);
+  // ...and the rule is about the word after the location, not about the location: the
+  // same shape saying `error:` is still a diagnosis.
+  const broke = analyse(fx("javac_warnings_only.txt").replace("Checkout.java:3: warning:", "Checkout.java:3: error:"));
+  assert.ok(broke.failures.some((f) => f.file === "Checkout.java" && f.line === 3), "an error after a location went unread");
+  assert.ok(!broke.failures.some((f) => /warning/.test(f.message)), "a warning came back as a failure beside the error");
+  console.log("  ok   a warning after a location is not a failure");
+  pass++;
+} catch (e) { console.log(`  FAIL located warnings\n       ${e.message}`); fail++; }
+
 // A flag that changes how a diagnostic is printed must not change what is read from it.
 try {
   const same = (a, b, what) => {

@@ -1,0 +1,21 @@
+Orders.java:8: warning: [rawtypes] found raw type: List
+        List items = new ArrayList();
+        ^
+  missing type arguments for generic class List<E>
+  where E is a type-variable:
+    E extends Object declared in interface List
+Orders.java:8: warning: [rawtypes] found raw type: ArrayList
+        List items = new ArrayList();
+                         ^
+  missing type arguments for generic class ArrayList<E>
+  where E is a type-variable:
+    E extends Object declared in class ArrayList
+Orders.java:9: warning: [unchecked] unchecked call to add(E) as a member of the raw type List
+        items.add("widget");
+                 ^
+  where E is a type-variable:
+    E extends Object declared in interface List
+Checkout.java:3: warning: [deprecation] legacyTotal() in Orders has been deprecated
+        System.out.println(Orders.legacyTotal());
+                                 ^
+4 warnings

@@ -391,7 +391,7 @@
       "generic"
     ],
     "shadow": {
-      "generic": 4
+      "generic": 3
     }
   },
   "cargobuild_fail.txt": {
@@ -464,7 +464,7 @@
       "generic"
     ],
     "shadow": {
-      "generic": 3
+      "generic": 2
     }
   },
   "clang_format_msvc_fail.txt": {
@@ -488,7 +488,7 @@
       "generic"
     ],
     "shadow": {
-      "generic": 3
+      "generic": 2
     }
   },
   "clang_format_vi_fail.txt": {
@@ -522,7 +522,7 @@
       "generic"
     ],
     "shadow": {
-      "generic": 3
+      "generic": 2
     }
   },
   "clippy_fail.txt": {
@@ -1338,7 +1338,7 @@
       "generic"
     ],
     "shadow": {
-      "generic": 4
+      "generic": 3
     }
   },
   "git_conflict_fail.txt": {
@@ -1755,7 +1755,7 @@
       "generic"
     ],
     "shadow": {
-      "generic": 5
+      "generic": 4
     }
   },
   "jasmine_fail.txt": {
@@ -1778,7 +1778,7 @@
       "generic"
     ],
     "shadow": {
-      "generic": 2
+      "generic": 1
     }
   },
   "javac_locale_de_fail.txt": {
@@ -1828,6 +1828,16 @@
     "shadow": {
       "generic": 2
     }
+  },
+  "javac_warnings_only.txt": {
+    "winner": null,
+    "parser": null,
+    "failures": 0,
+    "claimants": [
+      "jvm",
+      "generic"
+    ],
+    "shadow": {}
   },
   "jest_fail.txt": {
     "winner": "jest",
@@ -2068,7 +2078,7 @@
       "generic"
     ],
     "shadow": {
-      "generic": 3
+      "generic": 2
     }
   },
   "make_norule_bsdquote_fail.txt": {
@@ -3417,7 +3427,7 @@
       "generic"
     ],
     "shadow": {
-      "generic": 7
+      "generic": 1
     }
   },
   "shellcheck_gcc_same_fail.txt": {
@@ -3429,7 +3439,7 @@
       "generic"
     ],
     "shadow": {
-      "generic": 10
+      "generic": 2
     }
   },
   "shellcheck_json1_fail.txt": {
@@ -3575,7 +3585,7 @@
       "generic"
     ],
     "shadow": {
-      "generic": 3
+      "generic": 2
     }
   },
   "swiftc_parseable_fail.txt": {
