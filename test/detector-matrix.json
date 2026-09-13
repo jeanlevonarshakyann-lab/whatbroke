@@ -3099,6 +3099,30 @@
     ],
     "shadow": {}
   },
+  "phpunit_teamcity_fail.txt": {
+    "winner": "phpunit",
+    "parser": "phpunit",
+    "failures": 3,
+    "claimants": [
+      "phpunit",
+      "generic"
+    ],
+    "shadow": {}
+  },
+  "phpunit_teamcity_text_fail.txt": {
+    "winner": "phpunit",
+    "parser": "phpunit",
+    "failures": 3,
+    "claimants": [
+      "jest",
+      "phpunit",
+      "go",
+      "generic"
+    ],
+    "shadow": {
+      "generic": 2
+    }
+  },
   "phpunit_testdox_fail.txt": {
     "winner": "phpunit",
     "parser": "phpunit",
