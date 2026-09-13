@@ -531,6 +531,13 @@ const SAME_RUN_TWO_ENCODINGS = [
   // way; the document keeps the full stop its own rules write and the table trims it,
   // which is eslint's doing and does not make a second problem.
   new Set(["eslint_warnings_text_same_fail.txt", "eslint_warnings_json_fail.txt"]),
+  // One Maven run as its console printed it and as Surefire's two reports. The console
+  // abbreviates the exception - "IllegalState fixture exploded" - so one of the two
+  // failures deduplicates across them and the other does not.
+  new Set(["maven_tests_batch_same_fail.txt", "maven_surefire_xml_fail.txt", "maven_surefire_txt_fail.txt"]),
+  // One Gradle run in its full console format and its XML report: same tests, same
+  // lines, same messages, named by the console and by the XML each in its own way.
+  new Set(["gradle_tests_full_fail.txt", "gradle_junit_xml_fail.txt"]),
   new Set(["jest_json_statuses_fail.txt", "jest_text_statuses_fail.txt"]),
   new Set(["jest_json_suite_fail.txt", "jest_text_suite_same_fail.txt"]),
   // mocha: one run of test_shop.cjs, captured in three of its reporters. They

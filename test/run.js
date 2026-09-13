@@ -2076,6 +2076,43 @@ const CASES = [
       assert.equal(r.failures[0].col, 20);
       assert.match(r.failures[1].message, /cannot find symbol/);
     } },
+  // One Gradle run of a test suite with two failing tests, printed four ways. Gradle names
+  // each failed test and where it broke, and nothing read that: what came back was the
+  // consequence - "Execution failed for task ':test'" - labelled a build script error,
+  // with no test, no file and no line.
+  { file: "gradle_tests_plain_fail.txt", tool: "gradle", n: 2, check: (r) => {
+      assert.deepEqual(r.failures.map((f) => f.subject),
+        ["InvoiceTest > roundsTaxToTheNearestCent()", "RefundTest > refundsANegativeInvoice()"]);
+      assert.deepEqual(r.failures.map((f) => `${f.file}:${f.line}`), ["InvoiceTest.java:11", "RefundTest.java:8"]);
+      // the short format says which exception and where, and nothing about why
+      assert.equal(r.failures[0].message, "org.opentest4j.AssertionFailedError");
+      for (const f of r.failures) assert.equal(f.category, "test");
+      assert.equal(r.summary, "3 tests completed, 2 failed");
+      assert.doesNotMatch(JSON.stringify(r.failures), /build script|Execution failed for task/);
+    } },
+  // exceptionFormat FULL gives the message and the stack. The first frames are JUnit's
+  // assertion builder, behind Gradle's `app//` classloader prefix; the location is the
+  // frame in the test's own class.
+  { file: "gradle_tests_full_fail.txt", tool: "gradle", n: 2, check: (r) => {
+      assert.deepEqual(r.failures.map((f) => `${f.file}:${f.line}`), ["InvoiceTest.java:11", "RefundTest.java:8"]);
+      assert.equal(r.failures[0].message, "org.opentest4j.AssertionFailedError: expected: <1238> but was: <1237>");
+      // it threw inside the code under test, and the location is still the test's own
+      // frame - the same line Gradle's short format and Surefire's console both give
+      assert.equal(r.failures[1].message, "java.lang.IllegalArgumentException: net amount is negative");
+      assert.doesNotMatch(JSON.stringify(r.failures), /AssertionFailureBuilder/);
+    } },
+  // --console=rich colours FAILED, and it is the same block underneath.
+  { file: "gradle_tests_rich_fail.txt", tool: "gradle", n: 2, check: (r) => {
+      assert.deepEqual(r.failures.map((f) => `${f.file}:${f.line}`), ["InvoiceTest.java:11", "RefundTest.java:8"]);
+    } },
+  // -q prints no test names at all - only the tally and "There were failing tests". That
+  // is a test failure whose tests are not in the log, not a build script that failed.
+  { file: "gradle_tests_quiet_fail.txt", tool: "gradle", n: 1, check: (r) => {
+      assert.equal(r.failures[0].label, "tests failed");
+      assert.equal(r.failures[0].category, "test");
+      assert.match(r.failures[0].message, /^3 tests completed, 2 failed\n/);
+      assert.equal(r.summary, "3 tests completed, 2 failed");
+    } },
   { file: "gradle_fail.txt", tool: "gradle", n: 2, check: (r) => {
       // real gradle javac output, printed once plainly and once indented under
       // "What went wrong" - both copies must collapse to two failures
@@ -2198,6 +2235,36 @@ const CASES = [
       assert.match(r.failures[0].message, /- Usage:/, "the removed line must be shown");
       assert.match(r.failures[0].message, /\+ Syntax:/, "the added line must be shown");
       assert.match(r.failures[0].file, /conflicts\.rs$|app_settings\.rs$|subcommands\.rs$/);
+    } },
+  // The same test suite under Maven, as its console printed it and as the two reports
+  // Surefire leaves behind. The console was read; the reports were not, and the generic
+  // reader's one location was a line inside JUnit's assertion builder.
+  { file: "maven_tests_batch_same_fail.txt", tool: "maven", n: 2, check: (r) => {
+      assert.deepEqual(r.failures.map((f) => `${f.file}:${f.line}`), ["CartTest.java:9", "ShippingTest.java:8"]);
+    } },
+  // JUnit's XML is a shape every runner writes. What makes a case a JVM test is inside
+  // it: a Java stack frame naming the case's own class - which is also where the location
+  // comes from.
+  { file: "maven_surefire_xml_fail.txt", tool: "maven", n: 2, check: (r) => {
+      assert.deepEqual(r.failures.map((f) => f.subject), ["CartTest.totalsAnInvoice", "ShippingTest.quotesShipping"]);
+      assert.deepEqual(r.failures.map((f) => `${f.file}:${f.line}`), ["CartTest.java:9", "ShippingTest.java:8"]);
+      assert.equal(r.failures[0].message, "org.opentest4j.AssertionFailedError: expected: <6> but was: <4>");
+      // the CDATA markers and the stack are not the message
+      assert.doesNotMatch(JSON.stringify(r.failures), /CDATA|AssertionFailureBuilder/);
+      for (const f of r.failures) assert.equal(f.category, "test");
+    } },
+  { file: "maven_surefire_txt_fail.txt", tool: "maven", n: 2, check: (r) => {
+      assert.deepEqual(r.failures.map((f) => f.subject), ["CartTest.totalsAnInvoice", "ShippingTest.quotesShipping"]);
+      assert.deepEqual(r.failures.map((f) => `${f.file}:${f.line}`), ["CartTest.java:9", "ShippingTest.java:8"]);
+      assert.equal(r.failures[1].message, "java.lang.IllegalStateException: fixture exploded");
+    } },
+  // Gradle writes the same XML without the CDATA, with `()` after the method, and with
+  // nothing in it that says which build tool wrote it - so it is named for what it is.
+  { file: "gradle_junit_xml_fail.txt", tool: "junit", n: 2, check: (r) => {
+      assert.deepEqual(r.failures.map((f) => f.subject),
+        ["InvoiceTest.roundsTaxToTheNearestCent", "RefundTest.refundsANegativeInvoice"]);
+      assert.deepEqual(r.failures.map((f) => `${f.file}:${f.line}`), ["InvoiceTest.java:11", "RefundTest.java:8"]);
+      assert.equal(r.failures[0].message, "org.opentest4j.AssertionFailedError: expected: <1238> but was: <1237>");
     } },
   { file: "maven_test_fail.txt", tool: "maven", n: 1, check: (r) => {
       // real `mvn test` on stleary/JSON-java after changing one exception message.
@@ -2946,6 +3013,17 @@ for (const [group, encodings, silentAbout = []] of [
   ["deno test", ["denotest_junit_text_same_fail.txt", "denotest_junit_multiline_fail.txt"]],
   // Colour changes how bun marks a failure, not which tests failed.
   ["bun colour", ["bun_color_plain_same_fail.txt", "bun_color_fail.txt"]],
+  ["gradle console", ["gradle_tests_plain_fail.txt", "gradle_tests_rich_fail.txt"]],
+  // The short exception format names the exception and not its message.
+  ["gradle exception format", ["gradle_tests_plain_fail.txt", "gradle_tests_full_fail.txt"], ["message"]],
+  // Surefire's two reports of one run agree test for test.
+  ["surefire reports", ["maven_surefire_xml_fail.txt", "maven_surefire_txt_fail.txt"]],
+  // Gradle's XML and its full console format carry the same message and location; the
+  // name is Gradle's own rendering in the console and the class and method in the XML.
+  ["gradle report", ["gradle_tests_full_fail.txt", "gradle_junit_xml_fail.txt"], ["subject"]],
+  // Maven's console abbreviates the exception - "IllegalState fixture exploded" - where
+  // its reports keep the class whole.
+  ["maven console", ["maven_tests_batch_same_fail.txt", "maven_surefire_xml_fail.txt"], ["message"]],
 ]) {
   try {
     // The path is the other legitimate difference: a formatter that writes a machine

@@ -1,0 +1,32 @@
+To honour the JVM settings for this build a single-use Daemon process will be forked. For more on this, please refer to https://docs.gradle.org/9.7.1/userguide/gradle_daemon.html#sec:disabling_the_daemon in the Gradle documentation.
+
+
+[2A[1B[1m> Starting Daemon[m[17D[1B[2ADaemon will be stopped at the end of the build 
+[1B[0K
+[2A[0K[1B> IDLE[6D[1B[2A[1m[[0;1m...............] 0% INITIALIZING [91ms][m[40D[2B[2A[1m[[0;1m...............] 0% INITIALIZING [191ms][m[41D[2B[2A[1m[[0;1m...............] 0% INITIALIZING [291ms][m[41D[1B[1m> Evaluating settings[m[21D[1B[2A[1m[[0;1m...............] 0% INITIALIZING [388ms][m[41D[2B[2A[1m[[0;1m...............] 0% INITIALIZING [489ms][m[41D[2B[2A[1m[[0;1m...............] 0% CONFIGURING [591ms][m[0K[40D[1B[1m> Loading projects[m[0K[18D[1B[2A[1m[[0;1m...............] 0% CONFIGURING [691ms][m[40D[1B[1m> root project[m[0K[14D[1B[2A[1m[[0;1m...............] 0% CONFIGURING [791ms][m[40D[2B[2A[1m[[0;1m...............] 0% CONFIGURING [891ms][m[40D[2B[2A[1m[[0;32;1m###############[0;39;1m] 100% CONFIGURING [991ms][m[42D[1B[1m> Building task graph of root build[m[35D[1B[2A[1m[[0;1m...............] 0% EXECUTING [1s][m[0K[35D[1B[1m> :compileJava[m[0K[14D[1B[2A[1m[[0;32;1m######[0;39;1m.........] 42% EXECUTING [1s][m[36D[1B[1m> :compileTestJava > Resolve dependencies of :testCompileClasspath[m[66D[1B[2A[1m[[0;32;1m############[0;39;1m...] 85% EXECUTING [1s][m[36D[1B[1m> :test[m[0K[7D[1B[1A[1m> :test > 0 tests completed[m[27D[1B
+[2A[1m> :test > 1 test completed[m[0K[26D[1B[1m> :test > Executing test shop.InvoiceTest[m[41D[1B
+3 tests completed, 2 failed
+
+[31mFAILURE: [39m[31mBuild failed with an exception.[39m
+
+* What went wrong:
+Execution failed for task ':test'.
+[33m> [39m[3A[0K
+[31;1m> Task :test[0;39m[31m FAILED[39m[0K
+[0K
+InvoiceTest > roundsTaxToTheNearestCent() [31mFAILED[39m
+    org.opentest4j.AssertionFailedError at InvoiceTest.java:11
+
+RefundTest > refundsANegativeInvoice() [31mFAILED[39m
+    java.lang.IllegalArgumentException at RefundTest.java:8
+3 actionable tasks: 3 executed
+[0K
+[0K
+[0K
+[3A[1m[[0;1m...............] 0% WAITING[m[28D[1B[1m> :test > 1 test completed[m[26D[1B[1m> :test > Executing test shop.InvoiceTest[m[41D[1BThere were failing tests. See the report at: file:///home/dev/shop/build/reports/tests/test/index.html
+
+* Try:
+[33m> [39mRun with [1m--scan[m to get full insights from a Build Scan (powered by Develocity).
+
+[31;1mBUILD FAILED[0;39m in 2s
+[3A[2K[1B[2K[1B[2K[1B[2K[3A

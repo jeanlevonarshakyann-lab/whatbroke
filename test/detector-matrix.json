@@ -1388,6 +1388,18 @@
       "generic": 5
     }
   },
+  "gradle_junit_xml_fail.txt": {
+    "winner": "junit",
+    "parser": "junit jvm",
+    "failures": 2,
+    "claimants": [
+      "junit jvm",
+      "generic"
+    ],
+    "shadow": {
+      "generic": 1
+    }
+  },
   "gradle_rich_console_fail.txt": {
     "winner": "gradle",
     "parser": "jvm",
@@ -1404,6 +1416,54 @@
     "winner": "gradle",
     "parser": "jvm",
     "failures": 1,
+    "claimants": [
+      "jvm",
+      "generic"
+    ],
+    "shadow": {
+      "generic": 1
+    }
+  },
+  "gradle_tests_full_fail.txt": {
+    "winner": "gradle",
+    "parser": "jvm",
+    "failures": 2,
+    "claimants": [
+      "jvm",
+      "generic"
+    ],
+    "shadow": {
+      "generic": 2
+    }
+  },
+  "gradle_tests_plain_fail.txt": {
+    "winner": "gradle",
+    "parser": "jvm",
+    "failures": 2,
+    "claimants": [
+      "jvm",
+      "generic"
+    ],
+    "shadow": {
+      "generic": 1
+    }
+  },
+  "gradle_tests_quiet_fail.txt": {
+    "winner": "gradle",
+    "parser": "jvm",
+    "failures": 1,
+    "claimants": [
+      "jvm",
+      "generic"
+    ],
+    "shadow": {
+      "generic": 1
+    }
+  },
+  "gradle_tests_rich_fail.txt": {
+    "winner": "gradle",
+    "parser": "jvm",
+    "failures": 2,
     "claimants": [
       "jvm",
       "generic"
@@ -1789,10 +1849,46 @@
       "generic": 1
     }
   },
+  "maven_surefire_txt_fail.txt": {
+    "winner": "maven",
+    "parser": "junit jvm",
+    "failures": 2,
+    "claimants": [
+      "junit jvm",
+      "generic"
+    ],
+    "shadow": {
+      "generic": 1
+    }
+  },
+  "maven_surefire_xml_fail.txt": {
+    "winner": "maven",
+    "parser": "junit jvm",
+    "failures": 2,
+    "claimants": [
+      "junit jvm",
+      "generic"
+    ],
+    "shadow": {
+      "generic": 1
+    }
+  },
   "maven_test_fail.txt": {
     "winner": "maven",
     "parser": "jvm",
     "failures": 1,
+    "claimants": [
+      "jvm",
+      "generic"
+    ],
+    "shadow": {
+      "generic": 1
+    }
+  },
+  "maven_tests_batch_same_fail.txt": {
+    "winner": "maven",
+    "parser": "jvm",
+    "failures": 2,
     "claimants": [
       "jvm",
       "generic"

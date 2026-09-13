@@ -7,6 +7,78 @@ const MAVEN_RE = /^\[ERROR\][^\S\n]+(.+?):\[(\d+),(\d+)\][^\S\n]+(.+)$/;
 const JVM_SRC = /\.(?:java|kt|kts|groovy|scala|gradle)$/;
 const GRADLE_RE = /^(e: )?(.+?):(\d+):(\d+):[^\S\n]+(?:(error|warning):[^\S\n]+)?(.+)$/;
 const JAVA_RE = /^(.+?\.java):(\d+):[^\S\n]+(error|warning):[^\S\n]+(.+)$/m;
+// Gradle's own test logging names each failed test and says where it broke:
+//
+//   CartTest > totalsAnInvoice() FAILED
+//       org.opentest4j.AssertionFailedError at CartTest.java:9
+//
+// and under exceptionFormat FULL, or --info, gives the message and the stack instead:
+//
+//   ShippingTest > quotesShipping() FAILED
+//       java.lang.IllegalStateException: fixture exploded
+//           at shop.ShippingTest.quotesShipping(ShippingTest.java:8)
+//
+// Nothing read either. What came back was the consequence - "Execution failed for task
+// ':test'" under "* What went wrong:" - labelled a build script error, with no test, no
+// file and no line, from a log that named both failing tests and where each one broke.
+//
+// A nested class is written `Outer > Inner > method() FAILED`. The class comes first and
+// starts like a Java name, which `> Task :test FAILED` does not.
+const GRADLE_TEST_RE = /^([A-Za-z_$][\w.$]*(?:[^\S\n]+>[^\S\n]+.+?)+)[^\S\n]+FAILED[^\S\n]*$/;
+const GRADLE_SHORT_RE = /^[^\S\n]+([\w.$]+)[^\S\n]+at[^\S\n]+([^\s:]+\.(?:java|kt|groovy|scala)):(\d+)[^\S\n]*$/;
+const GRADLE_FRAME_RE = /^[^\S\n]+at[^\S\n]+(?:[\w.-]+\/\/)?([\w.$]+)\.([\w$<>-]+)\(([^:()\s]+\.(?:java|kt|groovy|scala)):(\d+)\)[^\S\n]*$/;
+
+/** The failed tests in Gradle's own test logging. */
+function gradleTests(s) {
+  const lines = s.split("\n");
+  const out = [];
+  // Gradle's own tally, which says a test run happened at all.
+  const tallied = /^[^\S\n]*\d+ tests? completed, \d+ failed/m.test(s);
+  for (let i = 0; i < lines.length; i++) {
+    const head = lines[i].match(GRADLE_TEST_RE);
+    if (!head) continue;
+    const parts = head[1].split(/[^\S\n]+>[^\S\n]+/);
+    const cls = parts[0];
+    const method = parts.at(-1).replace(/\(.*\)$/, "");
+    // The block is everything indented under the header, and ends at the first line
+    // that is not - which is where Gradle's next test, or its tally, begins.
+    const block = [];
+    for (let j = i + 1; j < lines.length && /^[^\S\n]+\S/.test(lines[j]); j++) block.push(lines[j]);
+    // A header whose detail is not under it - another stream's line landed between
+    // them, or the capture was cut - is still Gradle saying this test failed. With
+    // Gradle's tally in the same log to say a test run happened, it is reported; the
+    // log simply does not say where or why.
+    if (!block.length) {
+      if (!tallied) continue;
+      const name = head[1].trim();
+      out.push({
+        title: name, subject: name, category: "test", severity: "error",
+        message: "Gradle reported this test as failed; its detail is not in this log",
+      });
+      continue;
+    }
+    let file, line, message;
+    const short = block[0].match(GRADLE_SHORT_RE);
+    if (short) {
+      // The short format says which exception and where, and nothing about why.
+      [, message, file, line] = short;
+    } else {
+      message = block.find((l) => !GRADLE_FRAME_RE.test(l))?.trim();
+      const frames = block.map((l) => l.match(GRADLE_FRAME_RE)).filter(Boolean);
+      // The frame in the test's own class, not the assertion library's above it.
+      const own = frames.filter((f) => f[1].split(/[.$]/).includes(cls));
+      const at = own.find((f) => f[2] === method) ?? own[0];
+      if (at) { file = at[3]; line = at[4]; }
+    }
+    if (!message) continue;
+    const name = head[1].trim();
+    out.push({
+      file, line: line === undefined ? undefined : +line,
+      title: name, subject: name, category: "test", severity: "error", message,
+    });
+  }
+  return out;
+}
 
 export default {
   name: "jvm",
@@ -45,6 +117,16 @@ export default {
       const { severity, ...failure } = match;
       failures.push({ ...failure, title: "compile error", label: "compile error", severity: "error" });
     }
+    // Gradle's test failures are read whatever else is in the log. The branches below
+    // are fallbacks - what to say when nothing more specific was found - but a test that
+    // failed is not a fallback for a compile error, and a log holding one Gradle run that
+    // would not compile and another whose tests failed lost the second run whole.
+    for (const t of gradleTests(s)) {
+      const key = JSON.stringify([t.subject, t.file, t.line]);
+      if (seen.has(key)) continue;
+      seen.add(key);
+      failures.push(t);
+    }
     if (!failures.length) {
       // Surefire lists each failed test once, compactly:
       //   [ERROR]   ClassTest.methodName:1055 expected:<...> but was:<...>
@@ -68,9 +150,16 @@ export default {
         if (wrong) {
           const detail = wrong[1].split("\n").map((l) => l.trim())
             .filter(Boolean).map((l) => l.replace(/^>[^\S\n]*/, "")).slice(0, 3);
+          // Under -q Gradle prints no test names at all - only its tally and "There were
+          // failing tests" under the consequence. That is a test failure whose tests are
+          // not in the log, not a build script that would not evaluate.
+          const tests = /There were failing tests/.test(wrong[1]);
+          const tally = s.match(/^[^\S\n]*(\d+ tests? completed, \d+ failed.*?)[^\S\n]*$/m);
           failures.push({
             file: where?.[1], line: where ? +where[2] : undefined,
-            title: "build script", label: "build script", category: "build", severity: "error", message: detail.join("\n"),
+            title: tests ? "tests failed" : "build script", label: tests ? "tests failed" : "build script",
+            category: tests ? "test" : "build", severity: "error",
+            message: (tests && tally ? [tally[1], ...detail] : detail).join("\n"),
           });
         }
       }
@@ -112,7 +201,10 @@ export default {
     // The last one is the run total; the first is whichever class failed first.
     const totals = [...s.matchAll(/^\[ERROR\][^\S\n]+Tests run:[^\S\n]*(.+?)(?:,[^\S\n]*Time elapsed.*)?$/gm)].at(-1);
     const isTestRun = failures.some((f) => f.title?.includes(".") && /\.java$/.test(f.file ?? ""));
-    const summary = totals && isTestRun ? `Tests run: ${totals[1]}` : "build failed";
+    const gradleTally = s.match(/^[^\S\n]*(\d+ tests? completed, \d+ failed.*?)[^\S\n]*$/m);
+    const summary = totals && isTestRun ? `Tests run: ${totals[1]}`
+      : gradleTally && failures.some((f) => f.category === "test") ? gradleTally[1]
+      : "build failed";
     return { tool: isGradle ? "gradle" : isJavac ? "jvm" : "maven", summary, failures };
   },
 };
