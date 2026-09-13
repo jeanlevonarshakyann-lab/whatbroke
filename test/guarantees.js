@@ -9,7 +9,7 @@
 // is worse than no tool, because it is believed.
 import { fileURLToPath } from "node:url";
 import { dirname, join } from "node:path";
-import { mkdtempSync, rmSync } from "node:fs";
+import { mkdirSync, mkdtempSync, readdirSync, readFileSync, rmSync, statSync, writeFileSync } from "node:fs";
 import { tmpdir } from "node:os";
 import { spawnSync } from "node:child_process";
 import assert from "node:assert/strict";
@@ -161,6 +161,60 @@ test("the headline guard catches the wordings it was written for", () => {
     // "error" - kubectl says a connection was refused and never uses the word.
     "The connection to the server localhost:8080 was refused"]) {
     assert.ok(!misleading(now), `${JSON.stringify(now)} should pass`);
+  }
+});
+
+// ------------------------------------------------------------- the project
+
+// Everything whatbroke writes goes somewhere you asked for: its cache under --since-last,
+// the step summary GitHub Actions names. The directory it runs in is only ever read - for
+// the source lines around a failure - so a run in every mode, over a log that names the
+// project's own files, leaves every file in it byte for byte and every timestamp as it was.
+test("the directory it runs in is never written to, in any mode", () => {
+  const project = mkdtempSync(join(tmpdir(), "wb-project-"));
+  const outside = mkdtempSync(join(tmpdir(), "wb-outside-"));
+  try {
+    mkdirSync(join(project, "tests"));
+    writeFileSync(join(project, "tests", "test_cart.py"), "def test_total():\n    assert 1 + 1 == 3\n");
+    writeFileSync(join(project, "cart.js"), "const total = 1;\ndebugger;\n");
+    const snapshot = () => {
+      const seen = {};
+      const walk = (dir) => {
+        for (const entry of readdirSync(dir, { withFileTypes: true })) {
+          const path = join(dir, entry.name);
+          if (entry.isDirectory()) { seen[path] = "dir"; walk(path); continue; }
+          const { size, mtimeMs } = statSync(path);
+          seen[path] = [size, mtimeMs, readFileSync(path, "base64")];
+        }
+      };
+      walk(project);
+      return seen;
+    };
+    const before = snapshot();
+    // A pytest failure that names the project's own test file, so source is looked up.
+    const log = [
+      "=================================== FAILURES ===================================",
+      "_________________________________ test_total __________________________________",
+      "",
+      "    def test_total():",
+      ">       assert 1 + 1 == 3",
+      "E       assert (1 + 1) == 3",
+      "",
+      "tests/test_cart.py:2: AssertionError",
+      "=========================== short test summary info ============================",
+      "FAILED tests/test_cart.py::test_total - assert (1 + 1) == 3",
+      "============================== 1 failed in 0.01s ===============================",
+    ].join("\n");
+    const failing = ["node", "-e", `process.stdout.write(${JSON.stringify(log + "\n")}); process.exit(1)`];
+    for (const mode of MODES) {
+      const env = { ...process.env, NO_COLOR: "1", WHATBROKE_CACHE_DIR: join(outside, "cache"), GITHUB_STEP_SUMMARY: join(outside, "summary.md") };
+      spawnSync(process.execPath, [cli, ...mode, ...failing], { cwd: project, encoding: "utf8", timeout: 20000, env });
+      spawnSync(process.execPath, [cli, ...mode], { cwd: project, input: log, encoding: "utf8", timeout: 20000, env });
+    }
+    assert.deepEqual(snapshot(), before);
+  } finally {
+    rmSync(project, { recursive: true, force: true });
+    rmSync(outside, { recursive: true, force: true });
   }
 });
 
