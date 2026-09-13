@@ -1,0 +1,5 @@
+["start",{"total":3}]
+["fail",{"title":"totals an invoice","fullTitle":"cart totals an invoice","file":"/home/dev/shop/test/cart.test.js","duration":1,"currentRetry":0,"err":"Expected values to be strictly equal:\n\n4 !== 6\n","stack":"AssertionError [ERR_ASSERTION]: Expected values to be strictly equal:\n\n4 !== 6\n\n    at Context.<anonymous> (test/cart.test.js:5:12)\n    at process.processImmediate (node:internal/timers:484:21)"}]
+["fail",{"title":"applies a discount","fullTitle":"cart applies a discount","file":"/home/dev/shop/test/cart.test.js","duration":0,"currentRetry":0,"err":"Cannot read properties of null (reading 'lookup')","stack":"TypeError: Cannot read properties of null (reading 'lookup')\n    at Context.<anonymous> (test/cart.test.js:10:11)\n    at process.processImmediate (node:internal/timers:484:21)"}]
+["pass",{"title":"counts items","fullTitle":"cart counts items","file":"/home/dev/shop/test/cart.test.js","duration":0,"currentRetry":0,"speed":"fast"}]
+["end",{"suites":1,"tests":3,"passes":1,"pending":0,"failures":2,"start":"2026-09-13T08:03:27.430Z","end":"2026-09-13T08:03:27.432Z","duration":2}]

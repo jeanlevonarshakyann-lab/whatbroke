@@ -1,0 +1,30 @@
+
+
+  !!.
+
+  1 passing (2ms)
+  2 failing
+
+  1) cart
+       totals an invoice:
+
+      AssertionError [ERR_ASSERTION]: Expected values to be strictly equal:
+
+4 !== 6
+
+      + expected - actual
+
+      -4
+      +6
+      
+      at Context.<anonymous> (test/cart.test.js:5:12)
+      at process.processImmediate (node:internal/timers:484:21)
+
+  2) cart
+       applies a discount:
+     TypeError: Cannot read properties of null (reading 'lookup')
+      at Context.<anonymous> (test/cart.test.js:10:11)
+      at process.processImmediate (node:internal/timers:484:21)
+
+
+

@@ -546,6 +546,7 @@ const SAME_RUN_TWO_ENCODINGS = [
   new Set(["ruff_full_same_fail.txt", "ruff_concise_fail.txt", "ruff_grouped_fail.txt", "ruff_github_fail.txt",
     "ruff_json_fail.txt", "ruff_json_lines_fail.txt", "ruff_junit_fail.txt", "ruff_gitlab_fail.txt",
     "ruff_rdjson_fail.txt", "ruff_azure_fail.txt", "ruff_sarif_fail.txt"]),
+  new Set(["mocha_spec_same_fail.txt", "mocha_dot_fail.txt", "mocha_json_same_fail.txt", "mocha_json_stream_fail.txt"]),
   new Set(["pyright_text_same_fail.txt", "pyright_json_fail.txt"]),
   new Set(["oxlint_agent_same_fail.txt", "oxlint_default_fail.txt", "oxlint_default_tty_fail.txt",
     "oxlint_unix_fail.txt", "oxlint_github_fail.txt", "oxlint_stylish_fail.txt", "oxlint_json_fail.txt",

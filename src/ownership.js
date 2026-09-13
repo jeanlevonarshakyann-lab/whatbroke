@@ -61,6 +61,9 @@ function lazySourceRange(failure, get) {
   return copy;
 }
 
+// `path/to/file.ext:12:5`, as a location is written in a stack, a heading or a message.
+const WRITTEN_LOCATION_RE = /[^\s()"'[\]]+\.[A-Za-z]\w*:\d+:\d+/;
+
 function locate(text, all) {
   const lines = text.split("\n");
   const cleaned = lines.map(clean);
@@ -88,9 +91,10 @@ function locate(text, all) {
     // carries its line number. The subset is a strong anchor and adjusts the score; the
     // whole set is only ever used to break a tie (below).
     const fileLines = [], lineAnchors = [], columnAnchors = [], writtenAnchors = [];
+    let written = null;
     if (failure.file) {
       const file = String(failure.file);
-      const written = failure.line
+      written = failure.line
         ? new RegExp(`${file.replace(/[.*+?^${}()|[\]\\]/g, "\\$&")}:${failure.line}${failure.col ? `:${failure.col}` : ""}(?!\\d)`)
         : null;
       cleaned.forEach((line, index) => {
@@ -126,7 +130,16 @@ function locate(text, all) {
     // Identical assertion text is common across tool runs. Prefer the occurrence close
     // to this failure's own file/line instead of assigning both parsers to whichever
     // copy appeared first in the combined log.
+    //
+    // Close is not the same as about. A line that writes a location of its own - and not
+    // this one - is saying where something ELSE happened, however near it sits. mocha's
+    // json-stream wrote "applies a discount" with its stack, `(test/cart.test.js:10:11)`,
+    // eleven lines under Playwright's `at /app/tests/cart.spec.ts:9:9` for a test of the
+    // same name that threw the same TypeError; nearness took Playwright's failure onto
+    // mocha's line, and mocha's own failure was suppressed as its copy.
+    const foreign = (index) => !!written && WRITTEN_LOCATION_RE.test(lines[index]) && !written.test(lines[index]);
     const adjusted = ({ index, score }) => {
+      if (foreign(index)) return score;
       const distance = locationAnchors.length
         ? Math.min(...locationAnchors.map((anchor) => Math.abs(anchor - index)))
         : Infinity;
