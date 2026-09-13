@@ -1,0 +1,9 @@
+A.java:3: エラー: 不適合な型: Stringをintに変換できません:
+    int x = "s";
+            ^
+A.java:4: エラー: シンボルを見つけられません
+    undefinedCall();
+    ^
+  シンボル:   メソッド undefinedCall()
+  場所: クラス A
+エラー2個

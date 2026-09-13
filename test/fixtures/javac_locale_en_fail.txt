@@ -1,0 +1,9 @@
+A.java:3: error: incompatible types: String cannot be converted to int
+    int x = "s";
+            ^
+A.java:4: error: cannot find symbol
+    undefinedCall();
+    ^
+  symbol:   method undefinedCall()
+  location: class A
+2 errors

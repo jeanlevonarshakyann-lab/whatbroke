@@ -1,0 +1,37 @@
+  Wiederherzustellende Projekte werden ermittelt...
+  Alle Projekte sind für die Wiederherstellung auf dem neuesten Stand.
+  shoptests -> /home/dev/shop/bin/Debug/net10.0/shoptests.dll
+Testlauf für "/home/dev/shop/bin/Debug/net10.0/shoptests.dll" (.NETCoreApp,Version=v10.0)
+Insgesamt 1 Testdateien stimmten mit dem angegebenen Muster überein.
+[xUnit.net 00:00:00.06]     ArithmeticTests.Crash [FAIL]
+[xUnit.net 00:00:00.07]     ArithmeticTests.Addition [FAIL]
+[xUnit.net 00:00:00.07]     ArithmeticTests.Greeting [FAIL]
+  Fehler ArithmeticTests.Crash [< 1 ms]
+  Fehlermeldung:
+   System.InvalidOperationException : fixture exploded
+  Stapelverfolgung:
+     at ArithmeticTests.Crash() in /home/dev/shop/UnitTest1.cs:line 12
+   at System.Reflection.MethodBaseInvoker.InterpretedInvoke_Method(Object obj, IntPtr* args)
+   at System.Reflection.MethodBaseInvoker.InvokeWithNoArgs(Object obj, BindingFlags invokeAttr)
+  Fehler ArithmeticTests.Addition [2 ms]
+  Fehlermeldung:
+   Assert.Equal() Failure: Values differ
+Expected: 5
+Actual:   4
+  Stapelverfolgung:
+     at ArithmeticTests.Addition() in /home/dev/shop/UnitTest1.cs:line 6
+   at System.Reflection.MethodBaseInvoker.InterpretedInvoke_Method(Object obj, IntPtr* args)
+   at System.Reflection.MethodBaseInvoker.InvokeWithNoArgs(Object obj, BindingFlags invokeAttr)
+  Fehler ArithmeticTests.Greeting [1 ms]
+  Fehlermeldung:
+   Assert.Equal() Failure: Strings differ
+           ↓ (pos 0)
+Expected: "hello world"
+Actual:   "goodbye world"
+           ↑ (pos 0)
+  Stapelverfolgung:
+     at ArithmeticTests.Greeting() in /home/dev/shop/UnitTest1.cs:line 9
+   at System.Reflection.MethodBaseInvoker.InterpretedInvoke_Method(Object obj, IntPtr* args)
+   at System.Reflection.MethodBaseInvoker.InvokeWithNoArgs(Object obj, BindingFlags invokeAttr)
+
+Fehler!      : Fehler:     3, erfolgreich:     0, übersprungen:     0, gesamt:     3, Dauer: 10 ms - shoptests.dll (net10.0)

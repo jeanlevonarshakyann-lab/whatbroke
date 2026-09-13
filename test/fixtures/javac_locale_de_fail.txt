@@ -1,0 +1,9 @@
+A.java:3: Fehler: Inkompatible Typen: String kann nicht in int konvertiert werden
+    int x = "s";
+            ^
+A.java:4: Fehler: Symbol nicht gefunden
+    undefinedCall();
+    ^
+  Symbol: Methode undefinedCall()
+  Ort: Klasse A
+2 Fehler
