@@ -1,0 +1,18 @@
+<?xml version="1.0" encoding="UTF-8"?>
+
+<checkstyle version="5.0">
+  <file name="main.go">
+    <error column="15" line="10" message="Error return value of `f.Close` is not checked" severity="error" source="errcheck"></error>
+    <error column="14" line="13" message="printf: fmt.Printf format %d has arg &#34;many&#34; of wrong type string" severity="error" source="govet"></error>
+    <error column="2" line="11" message="ineffectual assignment to total" severity="error" source="ineffassign"></error>
+  </file>
+  <file name="store/store.go">
+    <error column="11" line="6" message="Error return value of `os.Remove` is not checked" severity="error" source="errcheck"></error>
+    <error column="6" line="9" message="func unusedHelper is unused" severity="error" source="unused"></error>
+  </file>
+</checkstyle>
+5 issues:
+* errcheck: 2
+* govet: 1
+* ineffassign: 1
+* unused: 1

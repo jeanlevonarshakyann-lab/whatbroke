@@ -555,6 +555,21 @@ const CASES = [
       ]);
       assert.equal(r.summary, "6 problems", "rubocop's own count");
     } },
+  // One real golangci-lint 2.13 run - five issues from four linters over two files - in
+  // each output it has. The text form was read. tab, checkstyle, code-climate, teamcity,
+  // json and sarif came back with nothing, and junit-xml as five failures called
+  // "Details:".
+  ...["text_same", "tab", "checkstyle", "codeclimate", "junit", "teamcity", "json", "sarif"].map((form) => ({
+    file: `golangci_${form}_fail.txt`, tool: "golangci-lint", n: 5, check: (r) => {
+      assert.deepEqual(r.failures.map((f) => [f.file, f.line, f.code, f.message]).sort(), [
+        ["main.go", 10, "errcheck", "Error return value of `f.Close` is not checked"],
+        ["main.go", 11, "ineffassign", "ineffectual assignment to total"],
+        ["main.go", 13, "govet", 'printf: fmt.Printf format %d has arg "many" of wrong type string'],
+        ["store/store.go", 6, "errcheck", "Error return value of `os.Remove` is not checked"],
+        ["store/store.go", 9, "unused", "func unusedHelper is unused"],
+      ]);
+      assert.equal(r.summary, "5 problems");
+    } })),
   { file: "oxlint_fail.txt", tool: "oxlint", n: 1, check: (r) => {
       assert.equal(r.failures[0].file, "lintme.js");
       assert.equal(r.failures[0].col, 5);
@@ -3305,6 +3320,11 @@ for (const [group, encodings, silentAbout = []] of [
   ["rubocop machine", ["rubocop_emacs_fail.txt", "rubocop_json_fail.txt", "rubocop_junit_fail.txt",
     "rubocop_github_fail.txt"]],
   ["rubocop text and machine", ["rubocop_progress_same_fail.txt", "rubocop_json_fail.txt"], ["message"]],
+  ["golangci-lint", ["golangci_text_same_fail.txt", "golangci_tab_fail.txt", "golangci_checkstyle_fail.txt",
+    "golangci_junit_fail.txt", "golangci_json_fail.txt", "golangci_sarif_fail.txt"]],
+  // Code Climate and TeamCity have nowhere to put a column.
+  ["golangci-lint no column", ["golangci_text_same_fail.txt", "golangci_codeclimate_fail.txt",
+    "golangci_teamcity_fail.txt"], ["col"]],
   ["deno lint", ["denolint_pretty_fail.txt", "denolint_json_fail.txt"]],
   // --compact prints no hint, so the message is the one field it cannot share.
   ["deno lint compact", ["denolint_pretty_fail.txt", "denolint_compact_fail.txt"], ["message"]],

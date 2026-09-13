@@ -1,0 +1,20 @@
+main.go:10:15: Error return value of `f.Close` is not checked (errcheck)
+	defer f.Close()
+	             ^
+store/store.go:6:11: Error return value of `os.Remove` is not checked (errcheck)
+	os.Remove(path)
+	         ^
+main.go:13:14: printf: fmt.Printf format %d has arg "many" of wrong type string (govet)
+	fmt.Printf("%d orders\n", "many")
+	            ^
+main.go:11:2: ineffectual assignment to total (ineffassign)
+	total := 1
+	^
+store/store.go:9:6: func unusedHelper is unused (unused)
+func unusedHelper() {}
+     ^
+5 issues:
+* errcheck: 2
+* govet: 1
+* ineffassign: 1
+* unused: 1

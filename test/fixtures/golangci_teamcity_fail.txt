@@ -1,0 +1,14 @@
+##teamcity[inspectionType id='errcheck' name='errcheck' description='errcheck' category='Golangci-lint reports']
+##teamcity[inspection typeId='errcheck' message='Error return value of `f.Close` is not checked' file='main.go' line='10' SEVERITY='ERROR']
+##teamcity[inspection typeId='errcheck' message='Error return value of `os.Remove` is not checked' file='store/store.go' line='6' SEVERITY='ERROR']
+##teamcity[inspectionType id='govet' name='govet' description='govet' category='Golangci-lint reports']
+##teamcity[inspection typeId='govet' message='printf: fmt.Printf format %d has arg "many" of wrong type string' file='main.go' line='13' SEVERITY='ERROR']
+##teamcity[inspectionType id='ineffassign' name='ineffassign' description='ineffassign' category='Golangci-lint reports']
+##teamcity[inspection typeId='ineffassign' message='ineffectual assignment to total' file='main.go' line='11' SEVERITY='ERROR']
+##teamcity[inspectionType id='unused' name='unused' description='unused' category='Golangci-lint reports']
+##teamcity[inspection typeId='unused' message='func unusedHelper is unused' file='store/store.go' line='9' SEVERITY='ERROR']
+5 issues:
+* errcheck: 2
+* govet: 1
+* ineffassign: 1
+* unused: 1

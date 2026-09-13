@@ -1,0 +1,45 @@
+<testsuites>
+  <testsuite name="main.go" tests="3" errors="0" failures="3">
+    <testcase name="errcheck" classname="main.go:10:15">
+      <failure message="main.go:10:15: Error return value of `f.Close` is not checked" type=""><![CDATA[: Error return value of `f.Close` is not checked
+Category: errcheck
+File: main.go
+Line: 10
+Details: 	defer f.Close()]]></failure>
+    </testcase>
+    <testcase name="govet" classname="main.go:13:14">
+      <failure message="main.go:13:14: printf: fmt.Printf format %d has arg &#34;many&#34; of wrong type string" type=""><![CDATA[: printf: fmt.Printf format %d has arg "many" of wrong type string
+Category: govet
+File: main.go
+Line: 13
+Details: 	fmt.Printf("%d orders\n", "many")]]></failure>
+    </testcase>
+    <testcase name="ineffassign" classname="main.go:11:2">
+      <failure message="main.go:11:2: ineffectual assignment to total" type=""><![CDATA[: ineffectual assignment to total
+Category: ineffassign
+File: main.go
+Line: 11
+Details: 	total := 1]]></failure>
+    </testcase>
+  </testsuite>
+  <testsuite name="store/store.go" tests="2" errors="0" failures="2">
+    <testcase name="errcheck" classname="store/store.go:6:11">
+      <failure message="store/store.go:6:11: Error return value of `os.Remove` is not checked" type=""><![CDATA[: Error return value of `os.Remove` is not checked
+Category: errcheck
+File: store/store.go
+Line: 6
+Details: 	os.Remove(path)]]></failure>
+    </testcase>
+    <testcase name="unused" classname="store/store.go:9:6">
+      <failure message="store/store.go:9:6: func unusedHelper is unused" type=""><![CDATA[: func unusedHelper is unused
+Category: unused
+File: store/store.go
+Line: 9
+Details: func unusedHelper() {}]]></failure>
+    </testcase>
+  </testsuite>
+</testsuites>5 issues:
+* errcheck: 2
+* govet: 1
+* ineffassign: 1
+* unused: 1

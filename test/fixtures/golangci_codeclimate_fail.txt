@@ -1,0 +1,6 @@
+[{"description":"errcheck: Error return value of `f.Close` is not checked","check_name":"errcheck","severity":"critical","fingerprint":"11DFBDC9C81A8982C27709E6F0853F61","location":{"path":"main.go","lines":{"begin":10}}},{"description":"errcheck: Error return value of `os.Remove` is not checked","check_name":"errcheck","severity":"critical","fingerprint":"671A197BA318775BB5CBC7998ED0AC9A","location":{"path":"store/store.go","lines":{"begin":6}}},{"description":"govet: printf: fmt.Printf format %d has arg \"many\" of wrong type string","check_name":"govet","severity":"critical","fingerprint":"E47F4AD4C0C2E4A3FDDE9413C403F3C6","location":{"path":"main.go","lines":{"begin":13}}},{"description":"ineffassign: ineffectual assignment to total","check_name":"ineffassign","severity":"critical","fingerprint":"CACF2F225362744F283F6BAD8446CE35","location":{"path":"main.go","lines":{"begin":11}}},{"description":"unused: func unusedHelper is unused","check_name":"unused","severity":"critical","fingerprint":"6707047D77681F03F694356CD0017855","location":{"path":"store/store.go","lines":{"begin":9}}}]
+5 issues:
+* errcheck: 2
+* govet: 1
+* ineffassign: 1
+* unused: 1

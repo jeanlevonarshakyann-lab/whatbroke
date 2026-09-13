@@ -1,3 +1,4 @@
+import { jsonDocuments, xmlAttributes, xmlText } from "../util.js";
 // golangci-lint is what a Go CI job usually fails on. Its findings look almost exactly
 // like `go build`'s, and go's parser was claiming them - so a lint run came back as
 // "6 compile errors" from a tool called `go build`, with the linter's name left sitting
@@ -22,6 +23,115 @@ const ISSUE = /^(?:\.[\\/])?(.+?\.go):(\d+):(\d+):[^\S\n]+(.+?)[^\S\n]+\(([\w-]+
 const CARETS = /^[^\S\n]*\^[^\S\n]*$/;
 // golangci-lint ends with its own count and a breakdown by linter.
 const TALLY = /^(\d+) issues?:[^\S\n]*$/m;
+const BREAKDOWN = /^\* [\w-]+: \d+[^\S\n]*$/m;
+
+// Every other output golangci-lint writes read as nothing, and its JUnit report came back
+// as five failures called "Details:". They all hold the same issues:
+//
+//   --output.tab         main.go:10:15        errcheck     Error return value of ...
+//   --output.checkstyle  <error column="15" line="10" message="..." source="errcheck">
+//   --output.code-climate  {"description":"errcheck: Error return value ...","check_name":"errcheck", ...}
+//   --output.junit-xml   <failure message="main.go:10:15: Error ..."><![CDATA[... Category: errcheck ...
+//   --output.teamcity    ##teamcity[inspection typeId='errcheck' message='...' file='main.go' line='10' ...]
+//   --output.json        {"Issues":[{"FromLinter":"errcheck","Text":"...","Pos":{...}}], "Report": ...}
+//   --output.sarif       {"runs":[{"tool":{"driver":{"name":"golangci-lint"}}, "results": [...]}]}
+//
+// The ones that name no tool are Go's by their files, and golangci-lint's by the tally it
+// prints after any of them.
+const GO_FILE = /\.go$/;
+const TAB = /^(?:\.[\\/])?(\S+?\.go):(\d+):(\d+)[^\S\n]+([\w-]+)[^\S\n]{2,}(\S.*?)[^\S\n]*$/;
+const CHECKSTYLE_FILE = /<file\b([^>]*)>([\s\S]*?)<\/file>/g;
+const CHECKSTYLE_ERROR = /<error\b([^>]*?)(?:\/>|>[\s\S]*?<\/error>)/g;
+// Neither tag may close itself: bun's JUnit writes `<failure type="AssertionError" />`, and
+// read as an opening tag its body ran on into the next report's first failure.
+// What stands between a case and its failure is not counted on either, only that it is not
+// another case - a log another tool writes to can put a line of its own there.
+const JUNIT_CASE = /<testcase\b([^>]*?)(?<!\/)>(?:(?!<\/?testcase\b)[\s\S])*?<failure\b([^>]*?)(?<!\/)>([\s\S]*?)<\/failure>/g;
+const JUNIT_WHERE = /^(.+\.go):(\d+):(\d+)$/;
+const TEAMCITY = /^##teamcity\[inspection\b(.*)\][^\S\n]*$/;
+const TEAMCITY_ATTR = /(\w+)='((?:\|.|[^|'])*)'/g;
+const TEAMCITY_OWN = /^##teamcity\[inspectionType\b[^\n]*category='Golangci-lint reports'/m;
+// TeamCity escapes with a bar: |' |n |r || |[ |]
+const teamcity = (v) => v.replace(/\|(.)/g, (_, c) => ({ n: "\n", r: "\r" })[c] ?? c);
+const JSON_MARK = (v) => !!v && typeof v === "object" && Array.isArray(v.Issues) && !!v.Report &&
+  v.Issues.every((i) => typeof i?.FromLinter === "string" && typeof i.Pos?.Filename === "string");
+const CLIMATE_MARK = (v) => Array.isArray(v) && v.length > 0 && v.every((d) =>
+  typeof d?.check_name === "string" && typeof d.location?.path === "string" && GO_FILE.test(d.location.path) &&
+  String(d.description ?? "").startsWith(`${d.check_name}: `));
+const SARIF_MARK = (v) => !!v && typeof v === "object" && Array.isArray(v.runs) &&
+  v.runs.some((r) => r?.tool?.driver?.name === "golangci-lint");
+const positive = (n) => (Number.isInteger(+n) && +n > 0 ? +n : undefined);
+
+/** The issues of every machine format golangci-lint writes, in `s`. */
+function reported(s, lines) {
+  const out = [];
+  const tallied = TALLY.test(s) && BREAKDOWN.test(s);
+  if (tallied) {
+    for (const line of lines) {
+      const m = line.match(TAB);
+      if (m) out.push({ file: m[1], line: +m[2], col: +m[3], code: m[4], message: m[5] });
+    }
+  }
+  if (tallied && s.includes("<checkstyle")) {
+    for (const f of s.matchAll(CHECKSTYLE_FILE)) {
+      const file = xmlAttributes(f[1]).name;
+      if (!GO_FILE.test(file ?? "")) continue;
+      for (const e of f[2].matchAll(CHECKSTYLE_ERROR)) {
+        const a = xmlAttributes(e[1]);
+        if (!a.source) continue;
+        out.push({ file, line: positive(a.line), col: positive(a.column), code: a.source, message: String(a.message ?? "").trim() });
+      }
+    }
+  }
+  if (s.includes("Category: ")) {
+    for (const c of s.matchAll(JUNIT_CASE)) {
+      const test = xmlAttributes(c[1]), failure = xmlAttributes(c[2]);
+      const where = String(test.classname ?? "").match(JUNIT_WHERE);
+      const body = c[3].replace(/^\s*<!\[CDATA\[|\]\]>\s*$/g, "");
+      // The body is golangci-lint's own layout: the message, then Category, File, Line and
+      // Details, the last being the source line.
+      if (!where || !test.name || !new RegExp(`^Category: ${test.name}$`, "m").test(body)) continue;
+      const said = `${where[1]}:${where[2]}:${where[3]}: `;
+      const message = String(failure.message ?? "");
+      const stmt = body.match(/^Details: (.*)$/m)?.[1].trim();
+      out.push({ file: where[1], line: +where[2], col: +where[3], code: test.name,
+        message: (message.startsWith(said) ? message.slice(said.length) : message).trim(), ...(stmt ? { stmt } : {}) });
+    }
+  }
+  if (TEAMCITY_OWN.test(s)) {
+    for (const line of lines) {
+      const m = line.match(TEAMCITY);
+      if (!m) continue;
+      const a = Object.fromEntries([...m[1].matchAll(TEAMCITY_ATTR)].map(([, k, v]) => [k, teamcity(v)]));
+      if (!a.typeId || !a.file) continue;
+      out.push({ file: a.file, line: positive(a.line), code: a.typeId, message: String(a.message ?? "").trim() });
+    }
+  }
+  for (const doc of s.includes('"Issues"') ? jsonDocuments(s, JSON_MARK) : []) {
+    for (const i of doc.Issues) {
+      const stmt = typeof i.SourceLines?.[0] === "string" ? i.SourceLines[0].trim() : undefined;
+      out.push({ file: i.Pos.Filename, line: positive(i.Pos.Line), col: positive(i.Pos.Column), code: i.FromLinter,
+        message: String(i.Text ?? "").trim(), ...(stmt ? { stmt } : {}) });
+    }
+  }
+  for (const doc of s.includes('"check_name"') ? jsonDocuments(s, CLIMATE_MARK) : []) {
+    for (const d of doc) {
+      out.push({ file: d.location.path, line: positive(d.location.lines?.begin), code: d.check_name,
+        message: d.description.slice(d.check_name.length + 2).trim() });
+    }
+  }
+  for (const doc of s.includes('"golangci-lint"') ? jsonDocuments(s, SARIF_MARK) : []) {
+    for (const run of doc.runs.filter((r) => r?.tool?.driver?.name === "golangci-lint")) {
+      for (const r of run.results ?? []) {
+        const at = r?.locations?.[0]?.physicalLocation;
+        if (typeof at?.artifactLocation?.uri !== "string" || typeof r.ruleId !== "string") continue;
+        out.push({ file: at.artifactLocation.uri, line: positive(at.region?.startLine), col: positive(at.region?.startColumn),
+          code: r.ruleId, message: String(r.message?.text ?? "").trim() });
+      }
+    }
+  }
+  return out;
+}
 
 export default {
   name: "golangci-lint",
@@ -33,6 +143,7 @@ export default {
   // source line. Either is enough; both are absent from every go build log.
   detect(s) {
     const lines = s.split("\n");
+    if (reported(s, lines).length) return true;
     if (!lines.some((l) => ISSUE.test(l))) return false;
     return TALLY.test(s) || lines.some((l, i) => ISSUE.test(l) && CARETS.test(lines[i + 2] ?? ""));
   },
@@ -50,6 +161,12 @@ export default {
         // findings into one thing to fix.
         title: m[5], code: m[5], severity: "error", message: m[4],
         ...(stmt ? { stmt } : {}),
+      });
+    }
+    for (const f of reported(s, lines)) {
+      failures.push({
+        file: f.file, line: f.line, ...(f.col ? { col: f.col } : {}),
+        title: f.code, code: f.code, severity: "error", message: f.message, ...(f.stmt ? { stmt: f.stmt } : {}),
       });
     }
     if (!failures.length) return null;
