@@ -531,6 +531,30 @@ const CASES = [
       assert.equal(r.failures[0].message, "'os' imported but unused");
       assert.ok(r.failures.every((f) => f.col === undefined), "this format prints no column, and none is invented");
     } },
+  // One real rubocop 1.50 run - six offenses over two files, none of them an error - in
+  // ten formats. progress, clang and emacs were read. simple, quiet, json, junit, github
+  // and markdown came back with nothing, and tap was claimed by the TAP parser as two
+  // failures named after the files, with nothing in them.
+  ...["progress_same", "clang", "emacs", "simple", "quiet", "tap", "json", "junit", "github"].map((form) => ({
+    file: `rubocop_${form}_fail.txt`, tool: "rubocop", n: 6, check: (r) => {
+      assert.deepEqual(r.failures.map((f) => [f.file.split("/").pop(), f.line, f.col, f.code]).sort(), [
+        ["cart.rb", 3, 11, "Layout/SpaceInsideParens"], ["cart.rb", 3, 17, "Layout/SpaceInsideParens"],
+        ["cart.rb", 4, 13, "Style/SymbolProc"], ["cart.rb", 7, 21, "Style/NilComparison"],
+        ["checkout.rb", 4, 13, "Lint/AssignmentInCondition"], ["checkout.rb", 6, 3, "Layout/EmptyLineAfterGuardClause"],
+      ].sort());
+      // The machine formats put the cop in front of the message, where the text puts it in
+      // its own place.
+      assert.ok(r.failures.every((f) => !f.message.startsWith(f.code)), JSON.stringify(r.failures[0]));
+      assert.equal(r.summary, "6 problems");
+    } })),
+  // markdown prints no column, so the two offenses on line 3 are one line saying one thing.
+  { file: "rubocop_markdown_fail.txt", tool: "rubocop", n: 5, check: (r) => {
+      assert.deepEqual(r.failures.map((f) => [f.line, f.col, f.code]), [
+        [3, undefined, "Layout/SpaceInsideParens"], [4, undefined, "Style/SymbolProc"], [7, undefined, "Style/NilComparison"],
+        [4, undefined, "Lint/AssignmentInCondition"], [6, undefined, "Layout/EmptyLineAfterGuardClause"],
+      ]);
+      assert.equal(r.summary, "6 problems", "rubocop's own count");
+    } },
   { file: "oxlint_fail.txt", tool: "oxlint", n: 1, check: (r) => {
       assert.equal(r.failures[0].file, "lintme.js");
       assert.equal(r.failures[0].col, 5);
@@ -3274,6 +3298,13 @@ for (const [group, encodings, silentAbout = []] of [
     "playwright_json_fail.txt", "playwright_junit_fail.txt"]],
   // flake8's pylint format prints no column.
   ["flake8 pylint format", ["flake8_default_same_fail.txt", "flake8_pylint_fail.txt"], ["col"]],
+  // rubocop's text formats print a message without the backticks its machine formats keep:
+  // "Pass &:price as an argument to sum" against "Pass `&:price` as an argument to `sum`".
+  ["rubocop text", ["rubocop_progress_same_fail.txt", "rubocop_clang_fail.txt", "rubocop_simple_fail.txt",
+    "rubocop_quiet_fail.txt", "rubocop_tap_fail.txt"]],
+  ["rubocop machine", ["rubocop_emacs_fail.txt", "rubocop_json_fail.txt", "rubocop_junit_fail.txt",
+    "rubocop_github_fail.txt"]],
+  ["rubocop text and machine", ["rubocop_progress_same_fail.txt", "rubocop_json_fail.txt"], ["message"]],
   ["deno lint", ["denolint_pretty_fail.txt", "denolint_json_fail.txt"]],
   // --compact prints no hint, so the message is the one field it cannot share.
   ["deno lint compact", ["denolint_pretty_fail.txt", "denolint_compact_fail.txt"], ["message"]],
@@ -4234,6 +4265,10 @@ try {
     // option. A ruff run with nothing fixable in it really is indistinguishable, and
     // flake8 reads it identically anyway.
     "ruff_concise_fail.txt": ["ruff", "flake8"],
+    // rubocop --format tap is a TAP document, and its failures are rubocop's offenses
+    // written as comments under a `not ok` per file. The TAP reading is two failures named
+    // after the files; rubocop is asked first, and reads the six offenses in them.
+    "rubocop_tap_fail.txt": ["rubocop", "tap-text"],
     // esbuild's CLI wrapper crashes after esbuild exits non-zero, so the log carries a
     // real diagnostic AND a Node stack. Both parsers match by design; esbuild is listed
     // first and wins, and the wrapper's stack is filtered out of the mixed-log path

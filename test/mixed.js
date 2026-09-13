@@ -537,6 +537,9 @@ const SAME_RUN_TWO_ENCODINGS = [
   new Set(["playwright_list_same_fail.txt", "playwright_dot_fail.txt", "playwright_github_fail.txt",
     "playwright_json_fail.txt", "playwright_junit_fail.txt"]),
   new Set(["flake8_default_same_fail.txt", "flake8_pylint_fail.txt"]),
+  new Set(["rubocop_progress_same_fail.txt", "rubocop_clang_fail.txt", "rubocop_emacs_fail.txt",
+    "rubocop_simple_fail.txt", "rubocop_quiet_fail.txt", "rubocop_tap_fail.txt", "rubocop_json_fail.txt",
+    "rubocop_junit_fail.txt", "rubocop_github_fail.txt", "rubocop_markdown_fail.txt"]),
   new Set(["cargo_json_fail.txt", "cargo_plain_same_fail.txt"]),
   new Set(["cargo_warnings_human_fail.txt", "cargo_warnings_json_fail.txt"]),
   new Set(["eslint_json_fail.txt", "eslint_json_runner_fail.txt", "eslint_text_same_fail.txt"]),
@@ -736,6 +739,22 @@ test("rustc's source line is the one with rustc's marks under it", () => {
   const woven = [...run.slice(0, at + 2), other, ...run.slice(at + 2)].join("\n");
   const e0308 = analyse(woven).failures.find((f) => f.code === "E0308");
   assert.equal(e0308.stmt.trim(), 'let total: i32 = "not a number";');
+});
+
+test("a rubocop offense quotes the source its carets start under", () => {
+  // Two captures of one rubocop run woven line by line. Another offense's source and
+  // carets - `def total( items )`, marked at column 11 - landed straight under the
+  // Style/SymbolProc offense at column 13, which quoted them. Its two readings then quoted
+  // different lines, and one offense was reported twice.
+  const progress = fx("rubocop_progress_same_fail.txt").split("\n");
+  const clang = fx("rubocop_clang_fail.txt").split("\n");
+  const at = progress.findIndex((l) => l.includes("Style/SymbolProc"));
+  const other = clang.findIndex((l) => l.startsWith("def total( items )"));
+  const woven = [...progress.slice(0, at + 1), clang[other], clang[other + 1], ...progress.slice(at + 1)].join("\n");
+  const symbolProc = analyse(woven).failures.find((f) => f.code === "Style/SymbolProc");
+  assert.notEqual(symbolProc.stmt, "def total( items )");
+  const both = allFailures(analyse(`${woven}\n${clang.join("\n")}`)).filter((f) => f.code === "Style/SymbolProc");
+  assert.equal(both.length, 1, "one offense, read from two captures, was reported twice");
 });
 
 test("two tools writing into one pipe never crash it or double a diagnosis", () => {

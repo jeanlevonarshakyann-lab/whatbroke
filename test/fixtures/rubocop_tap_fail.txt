@@ -1,0 +1,23 @@
+1..2
+not ok 1 - app/cart.rb
+# app/cart.rb:3:11: C: [Correctable] Layout/SpaceInsideParens: Space inside parentheses detected.
+# def total( items )
+#           ^
+# app/cart.rb:3:17: C: [Correctable] Layout/SpaceInsideParens: Space inside parentheses detected.
+# def total( items )
+#                 ^
+# app/cart.rb:4:13: C: [Correctable] Style/SymbolProc: Pass &:price as an argument to sum instead of a block.
+#   items.sum { |i| i.price }
+#             ^^^^^^^^^^^^^^^
+# app/cart.rb:7:21: C: [Correctable] Style/NilComparison: Prefer the use of the nil? predicate.
+# puts undefined_rate == nil
+#                     ^^
+not ok 2 - app/checkout.rb
+# app/checkout.rb:4:13: W: [Correctable] Lint/AssignmentInCondition: Use == if you meant to do a comparison or wrap the expression in parentheses to indicate you meant to assign in a condition.
+#   if amount = 0
+#             ^
+# app/checkout.rb:6:3: C: [Correctable] Layout/EmptyLineAfterGuardClause: Add empty line after guard clause.
+#   end
+#   ^^^
+
+2 files inspected, 6 offenses detected, 6 offenses autocorrectable

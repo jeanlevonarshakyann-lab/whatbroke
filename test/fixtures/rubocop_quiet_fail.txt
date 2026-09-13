@@ -1,0 +1,10 @@
+== app/cart.rb ==
+C:  3: 11: [Correctable] Layout/SpaceInsideParens: Space inside parentheses detected.
+C:  3: 17: [Correctable] Layout/SpaceInsideParens: Space inside parentheses detected.
+C:  4: 13: [Correctable] Style/SymbolProc: Pass &:price as an argument to sum instead of a block.
+C:  7: 21: [Correctable] Style/NilComparison: Prefer the use of the nil? predicate.
+== app/checkout.rb ==
+W:  4: 13: [Correctable] Lint/AssignmentInCondition: Use == if you meant to do a comparison or wrap the expression in parentheses to indicate you meant to assign in a condition.
+C:  6:  3: [Correctable] Layout/EmptyLineAfterGuardClause: Add empty line after guard clause.
+
+2 files inspected, 6 offenses detected, 6 offenses autocorrectable
