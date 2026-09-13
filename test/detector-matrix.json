@@ -358,6 +358,42 @@
       "generic": 3
     }
   },
+  "cargo_warnings_human_fail.txt": {
+    "winner": "cargo",
+    "parser": "cargo",
+    "failures": 2,
+    "claimants": [
+      "cargo",
+      "generic"
+    ],
+    "shadow": {
+      "generic": 3
+    }
+  },
+  "cargo_warnings_json_fail.txt": {
+    "winner": "cargo",
+    "parser": "cargo --message-format=json",
+    "failures": 2,
+    "claimants": [
+      "cargo --message-format=json",
+      "generic"
+    ],
+    "shadow": {
+      "generic": 3
+    }
+  },
+  "cargo_warnings_short_fail.txt": {
+    "winner": "cargo",
+    "parser": "cargo",
+    "failures": 2,
+    "claimants": [
+      "cargo",
+      "generic"
+    ],
+    "shadow": {
+      "generic": 4
+    }
+  },
   "cargobuild_fail.txt": {
     "winner": "cargo",
     "parser": "cargo",

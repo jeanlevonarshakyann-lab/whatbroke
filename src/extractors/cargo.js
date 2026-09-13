@@ -28,6 +28,41 @@ const STDLIB = /\/rustlib\/|\/\.cargo\/registry\//;
 // codes to group on. The file has to be a Rust source: without that the shape is just
 // `file:line:col: error:`, which is half the tools in the corpus.
 const SHORT_RE = /^(.+?\.rs):(\d+):(\d+):[^\S\n]+(error|warning)(?:\[(E\d+)\])?:[^\S\n]*(.*?)[^\S\n]*$/;
+// A warning does not fail the build, and it is not reported as a failure - but the JSON
+// form has always said how many there were, "2 errors - 1 warning hidden", and the text
+// form of the same run said "2 errors". rustc writes a warning as it writes an error:
+//
+//   warning: unnecessary parentheses around assigned value
+//    --> src/lib.rs:2:16
+//   warning[E0602]: unknown lint: `no_such_lint`
+//     |
+//
+// cargo writes its own warnings the same way - `warning: build failed, waiting for other
+// jobs to finish...`, `warning: `shop` (lib) generated 1 warning` - with nothing under
+// them. So a warning counts when rustc's location or gutter follows it, or when it
+// carries an error code, which cargo's own never do. --message-format=short keeps the
+// location on the line and drops the gutter; a warning with neither a location nor a code
+// is, in that format, the one thing indistinguishable from cargo's own chatter.
+const WARNING_RE = /^warning(?:\[(E\d+)\])?:[^\S\n]+(.+?)[^\S\n]*$/;
+const GUTTER_RE = /^[^\S\n]*\|[^\S\n]*$/;
+
+/** The distinct compiler warnings a text log shows. */
+function warningsShown(lines) {
+  const seen = new Set();
+  for (let i = 0; i < lines.length; i++) {
+    const short = lines[i].match(SHORT_RE);
+    if (short) {
+      if (short[4] === "warning") seen.add([short[6], short[1], short[2], short[3]].join("|"));
+      continue;
+    }
+    const m = lines[i].match(WARNING_RE);
+    if (!m) continue;
+    const at = lines[i + 1]?.match(ARROW_RE);
+    if (!at && !m[1] && !GUTTER_RE.test(lines[i + 1] ?? "")) continue;
+    seen.add(at ? [m[2], at[1], at[2], at[3]].join("|") : m[2]);
+  }
+  return seen.size;
+}
 // "could not compile ... due to N previous errors" is a tally, not a distinct error
 // Cargo's own report of a failure that was already printed above it. "failed to run
 // custom build command" belongs here with the rest: it is what cargo says after a build
@@ -173,6 +208,12 @@ export default {
       return { tool: "cargo test", summary: (summary ? summary + also : also.trim()) || undefined, failures };
     }
     const n = failures.length;
-    return { tool: "cargo", summary: `${n} error${n > 1 ? "s" : ""}`, failures };
+    const warnings = warningsShown(lines);
+    return {
+      tool: "cargo",
+      summary: `${n} error${n > 1 ? "s" : ""}` +
+        (warnings ? ` — ${warnings} warning${warnings > 1 ? "s" : ""} hidden` : ""),
+      failures,
+    };
   },
 };

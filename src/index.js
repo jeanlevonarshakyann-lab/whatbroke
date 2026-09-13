@@ -75,6 +75,20 @@ import { addSourceRanges, preserveSourceRange, rangesOverlap, setParser } from "
 // order matters: most specific first, generic last
 export const EXTRACTORS = [pytest, nodetest, bun, bunRuntime, deno, denoRuntime, denoLint, denoFmt, playwright, jestjson, jest, mochajson, mochaxunit, mocha, ava, jasmine, tap, taptext, vitest, unittest, traceback, eslintjson, eslint, ruff, pylint, flake8, rubocop, golangci, markdownlint, stylelint, shellcheck, yamllint, biome, oxlint, black, prettier, sass, less, webpack, babel, swc, pyright, mypy, cmake, terraform, swift, clang, ruby, perl, php, rspec, junitjvm, jvm, dotnettest, dotnet, phpunit, cargojson, cargo, govetjson, gojson, gotest, esbuild, vite, node, tsc, git, kubectl, docker, make, npm, pnpm, yarn, pip, generic];
 
+/** Whether two readings each quote the offending source line, and quote different ones.
+ *
+ *  A quoted line is optional - one reporter keeps it and another of the same run does
+ *  not - so its absence proves nothing and every comparison below ignores it. Its
+ *  presence on both sides does prove something. Two cargo runs in one log each said
+ *  "mismatched types" at src/main.rs:2:22, one under `let total: i32 = "not a number";`
+ *  and one under `let count: i32 = "several";`, and they were reported as one: file,
+ *  line, column, code and message all matched, and the one field that told them apart
+ *  was the one nothing compared. */
+function quoteDiffers(a, b) {
+  const quote = (f) => String(f.stmt ?? "").trim().replace(/\s+/g, " ");
+  return !!quote(a) && !!quote(b) && quote(a) !== quote(b);
+}
+
 function dedupeFailures(failures) {
   // Collapsing here rather than in each parser puts it on every failure that reaches the
   // reader, from every parser, and it happens before the key is built - so two failures
@@ -93,9 +107,10 @@ function dedupeFailures(failures) {
       failure.file ?? null, failure.line ?? null, failure.col ?? null,
       failure.title ?? "", failure.message ?? "",
     ]);
-    const index = seen.get(key);
+    const candidates = seen.get(key) ?? [];
+    const index = candidates.find((i) => !quoteDiffers(unique[i], failure));
     if (index === undefined) {
-      seen.set(key, unique.length);
+      seen.set(key, [...candidates, unique.length]);
       unique.push(failure);
     } else if (!unique[index].stmt && failure.stmt) {
       unique[index] = failure;
@@ -110,6 +125,7 @@ function sameLocatedDiagnostic(a, b) {
   if (!a.file || !a.line || a.file !== b.file || a.line !== b.line) return false;
   if (a.col && b.col && a.col !== b.col) return false;
   if (a.code && b.code && a.code !== b.code) return false;
+  if (quoteDiffers(a, b)) return false;
   const message = (f) => {
     let text = String(f.message ?? "").trim();
     for (const code of [a.code, b.code].filter(Boolean)) {
@@ -135,7 +151,7 @@ function sameSourceDiagnostic(a, b) {
   const y = String(b.message ?? "").trim();
   if (!x || !y) return false;
   const sameText = x === y || (Math.min(x.length, y.length) >= 4 && (x.includes(y) || y.includes(x)));
-  return sameText && rangesOverlap(a, b);
+  return sameText && !quoteDiffers(a, b) && rangesOverlap(a, b);
 }
 
 /** A CI log often holds a lint run, a typecheck and a test run one after another.
@@ -150,7 +166,10 @@ function sameSourceDiagnostic(a, b) {
  *  reads it sees a different shape. Everything else arrives here, attributed. */
 function otherTools(s, winner, mine, cluster) {
   const exact = (f) => JSON.stringify([f.file ?? null, f.line ?? null, f.col ?? null, f.title ?? "", f.message ?? ""]);
-  const claimed = new Set(mine.map(exact));
+  const claimed = new Map();
+  const claim = (f) => claimed.set(exact(f), [...(claimed.get(exact(f)) ?? []), f]);
+  const isClaimed = (f) => (claimed.get(exact(f)) ?? []).some((g) => !quoteDiffers(f, g));
+  mine.forEach(claim);
   const locations = new Map();
   const remember = (f) => {
     if (!f.file || !f.line) return;
@@ -170,7 +189,7 @@ function otherTools(s, winner, mine, cluster) {
     // A shared location does not prove a shared diagnostic, and missing locations
     // say nothing at all. Compare diagnostic content consistently for the winner and other tools.
     const fresh = dedupeFailures(r.failures
-      .filter((f) => !claimed.has(exact(f)))
+      .filter((f) => !isClaimed(f))
       .filter((f) => !claimedFailures.some((g) => sameSourceDiagnostic(f, g)))
       .filter((f) => !(locations.get(JSON.stringify([f.file, f.line])) ?? [])
         .some((g) => sameLocatedDiagnostic(f, g)))
@@ -192,7 +211,7 @@ function otherTools(s, winner, mine, cluster) {
       // log, an unanchored `error: linking with cc failed` is exactly the answer.
       .filter((f) => f.file || f.code || f.subject || f.label));
     if (!fresh.length) continue;
-    for (const f of fresh) { claimed.add(exact(f)); claimedFailures.push(f); remember(f); }
+    for (const f of fresh) { claim(f); claimedFailures.push(f); remember(f); }
     others.push({
       tool: r.tool,
       count: fresh.length,

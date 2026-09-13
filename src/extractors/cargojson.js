@@ -41,8 +41,19 @@ export default {
   extract(s) {
     const failures = [];
     let warnings = 0;
+    const seen = new Set();
     for (const m of diagnostics(s)) {
       if (NOTE_LEVELS.has(m.level)) continue;
+      // cargo compiles a crate once per target that includes it - the binary and its
+      // tests, under --all-targets or `cargo test` - and the stream carries one record
+      // per compilation. The same two errors arrived four times and the same warning
+      // twice, and the summary said "4 errors - 2 warnings hidden" above the two failures
+      // that survived. The text form prints each diagnostic once and says "(1 duplicate)"
+      // for the rest: two records with the same rendered text are one diagnostic.
+      const identity = typeof m.rendered === "string" ? m.rendered
+        : JSON.stringify([m.level, m.code?.code, m.message, m.spans.map((sp) => [sp.file_name, sp.line_start, sp.column_start])]);
+      if (seen.has(identity)) continue;
+      seen.add(identity);
       if (m.level === "warning") { warnings++; continue; }
       if (m.level !== "error") continue;
       // rustc marks exactly one span as primary: the place it wants you to look. The

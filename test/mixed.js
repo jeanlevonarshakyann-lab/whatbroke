@@ -526,6 +526,7 @@ const indistinguishable = (a, b) => SAME_SYNTAX.some((g) => g.has(a) && g.has(b)
 // table are identical and the joined log holds exactly one copy of them.
 const SAME_RUN_TWO_ENCODINGS = [
   new Set(["cargo_json_fail.txt", "cargo_plain_same_fail.txt"]),
+  new Set(["cargo_warnings_human_fail.txt", "cargo_warnings_json_fail.txt"]),
   new Set(["eslint_json_fail.txt", "eslint_json_runner_fail.txt", "eslint_text_same_fail.txt"]),
   // ...and a second run, one with warnings among its errors. Same four failures either
   // way; the document keeps the full stop its own rules write and the table trims it,
@@ -731,11 +732,28 @@ test("two tools writing into one pipe never crash it or double a diagnosis", () 
       try { r = analyse(weave(fx(names[x]), fx(names[y]))); }
       catch (e) { threw.push(`${names[x]} + ${names[y]}: ${e.message}`); continue; }
       if (!r) continue;
-      const seen = new Set();
+      const seen = new Map();
+      // Two runs can say the same thing at the same place, and the source line each one
+      // quotes is what tells them apart. That is only evidence when each quote is really
+      // one log's own - a line borrowed from the other log in the weave is not - so a
+      // pair counts as two diagnoses when their quotes come one from each side.
+      const logs = [fx(names[x]), fx(names[y])];
+      const side = (q) => {
+        const [a, b] = logs.map((t) => t.includes(q) || t.includes(JSON.stringify(q).slice(1, -1)));
+        return a === b ? null : a ? 0 : 1;
+      };
+      const apart = (f, g) => {
+        const [p, q] = [f, g].map((v) => String(v.stmt ?? "").trim());
+        return !!p && !!q && p !== q && side(p) !== null && side(q) !== null && side(p) !== side(q);
+      };
       for (const f of [...r.failures, ...(r.others ?? []).flatMap((o) => o.failures)]) {
         const k = JSON.stringify([f.file ?? null, f.line ?? null, f.col ?? null, f.title ?? "", f.message ?? ""]);
-        if (seen.has(k)) { doubled.push(`${names[x]} + ${names[y]} (${r.tool}): ${f.file}:${f.line} ${f.title}`); break; }
-        seen.add(k);
+        const earlier = seen.get(k) ?? [];
+        if (earlier.some((g) => !apart(f, g))) {
+          doubled.push(`${names[x]} + ${names[y]} (${r.tool}): ${f.file}:${f.line} ${f.title}`);
+          break;
+        }
+        seen.set(k, [...earlier, f]);
       }
     }
   }
@@ -806,6 +824,18 @@ test("a one-line report does not swallow another run's failure that shares its m
     assert.equal(got.length, apart, `${label}: ${got.length} failures where the two runs hold ${apart}`);
     assert.ok(got.some((f) => String(f.file).endsWith("messy.js") && f.line === 1 && f.code === "no-unused-vars"),
       `${label}: messy.js:1 was taken for a copy of a.js:3 because both say "is assigned a value but never used"`);
+  }
+});
+
+test("two runs that say the same thing at the same place are two failures", () => {
+  // Both cargo runs report E0308 "mismatched types, expected `i32`, found `&str`" at
+  // src/main.rs:2:22 - different crates, different code on that line. File, line,
+  // column, code and message all match; the quoted source line does not.
+  const text = fx("cargo_human_same_fail.txt"), json = fx("cargo_warnings_json_fail.txt");
+  for (const [label, joined] of [["text first", `${text}\n${json}`], ["json first", `${json}\n${text}`]]) {
+    const at = allFailures(analyse(joined)).filter((f) => f.file === "src/main.rs" && f.line === 2 && f.code === "E0308");
+    assert.deepEqual(at.map((f) => f.stmt.trim()).sort(), ['let count: i32 = "several";', 'let total: i32 = "not a number";'],
+      `${label}: the two runs' mismatched types were reported as one`);
   }
 });
 
