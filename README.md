@@ -203,6 +203,7 @@ them.
 | **unittest** | same, with the deepest *your-code* frame — not the harness |
 | **Python tracebacks** | the frame in your code, not the 9 in site-packages |
 | **deno test** | test name and `file:line` from the header, without the assert-library frames |
+| **deno lint / deno fmt --check** | deno's linter in all three of its formats — the default, `--compact` and `--json` — and its formatter's check. The default is laid out exactly as rustc lays out a compile error, so each finding has to show it is deno's: a lowercase kebab-case rule, not `E` and four digits, on a JavaScript or TypeScript file. The rule's hint stays with the finding. `--json` counts columns from zero where the other two count from one, and is read so that all three agree. `deno fmt --check` names the files it would rewrite |
 | **deno test `--reporter=junit`** | an attribute value may contain newlines, and deno's does — it puts the whole assertion, diff and all, in the failure's `message`. A reader that wanted the start tag on one line found no tag there, so the first failure of every run was skipped and only the ones whose message happened to fit on one line were read. The document is now read by the same rule the pretty reporter is, diff included |
 | **deno run** | the exception class, `file:line:col` and your frames — the message without `error:` and without the `file://` scheme |
 | **deno check** | the `TS` code, the explanation and the location — not the `error: Type checking failed.` tally underneath them |

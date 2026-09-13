@@ -1,0 +1,13 @@
+
+from /home/dev/shop/orders.ts:
+3 | -console.log(order,quantity);
+3 | +console.log(order, quantity);
+
+
+from /home/dev/shop/customer.ts:
+1 | -function customerLabel(customer: any): string {return customer;}
+1 | +function customerLabel(customer: any): string {
+2 | +  return customer;
+3 | +}
+
+error: Found 2 not formatted files in 2 files
