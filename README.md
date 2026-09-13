@@ -235,9 +235,9 @@ them.
 | **go vet** | the location, which sits inside the message when vet reports a package that will not compile |
 | **go vet `-json`** | the one form that says which analyzer spoke: plain `go vet` writes `file:line:col: message`, which is a compile error's shape exactly, and nothing in the line says an analyzer produced it. Here `printf` or `copylocks` is the code. It is one document per package, concatenated with nothing between them, so every document is read rather than the first |
 | **cargo test** | test name, `file:line`, the assertion and its left/right values |
-| **cargo build** | error code and the inline annotation — not the 25 lines of trait impls — and `--message-format=short`, which puts the whole diagnostic on one line with no `-->` beneath it |
+| **cargo build** | error code and the inline annotation — not the 25 lines of trait impls — and `--message-format=short`, which puts the whole diagnostic on one line with no `-->` beneath it. The warnings it hid are counted as cargo counts them, a duplicate once, in every format |
 | **cargo clippy** | the lint name as the title, so you know what to fix or allow |
-| **cargo `--message-format=json`** | the same failures, read from the schema rather than the rendered text — `rustc --error-format=json` too. The primary span is the location, and the source line it carries is what gets quoted |
+| **cargo `--message-format=json`** | the same failures, read from the schema rather than the rendered text — `rustc --error-format=json` too. The primary span is the location, and the source line it carries is what gets quoted. cargo compiles a crate once per target that includes it and the stream carries every copy; each diagnostic counts once, as the text form prints it |
 | **less** | the class, message, `file:line:col` and the offending line — lessc puts all of it on one line, with the location as prose at the end |
 | **swc** | the message and location miette drew, not the `Failed to compile 1 file with swc.` tally underneath them |
 | **babel** | the file out of the middle of the message and the marked line of its code frame — not the twenty `@babel/parser` frames underneath |

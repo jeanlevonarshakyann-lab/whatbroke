@@ -2606,6 +2606,9 @@ const CASES = [
       // lint name is the handle you actually want - it is what you search for and
       // what goes in an #[allow(...)].
       assert.equal(r.failures.filter((f) => !f.title).length, 0, "every clippy error must name its lint");
+      // `warning: lint `clippy::from_iter_instead_of_collect` has been removed` - once,
+      // and once more for clap_builder, which cargo counts as "(1 duplicate)".
+      assert.equal(r.summary, "15 errors — 1 warning hidden");
       const lints = new Set(r.failures.map((f) => f.title));
       assert.ok(lints.has("clippy::needless_return"), [...lints].join(","));
       assert.ok(lints.has("clippy::ptr_arg"));
@@ -3016,6 +3019,24 @@ const CASES = [
       assert.doesNotMatch(JSON.stringify(r.failures), /could not compile/,
         "the tally is not a third error");
     } },
+  // One real `cargo build --all-targets` in each --message-format: two errors, a warning
+  // with a location, and a warning with none (`-W no_such_lint`). The library and the
+  // binary are each compiled twice, once for their tests, so every diagnostic is emitted
+  // twice. The text forms print each once and say "(1 duplicate)"; the JSON stream
+  // carries every copy.
+  { file: "cargo_warnings_human_fail.txt", tool: "cargo", n: 2, check: (r) => {
+      assert.equal(r.summary, "2 errors — 2 warnings hidden");
+    } },
+  { file: "cargo_warnings_short_fail.txt", tool: "cargo", n: 2, check: (r) => {
+      assert.equal(r.summary, "2 errors — 2 warnings hidden");
+    } },
+  { file: "cargo_warnings_json_fail.txt", tool: "cargo", n: 2, check: (r) => {
+      // It said "4 errors - 6 warnings hidden" above the two failures that survived.
+      const records = fx("cargo_warnings_json_fail.txt").split("\n").filter((l) => l.startsWith("{"))
+        .map((l) => JSON.parse(l)).filter((x) => x.reason === "compiler-message");
+      assert.equal(records.filter((x) => x.message.level === "error").length, 4, "the fixture repeats each error");
+      assert.equal(r.summary, "2 errors — 2 warnings hidden");
+    } },
   // One real ruff run in five of its --output-format settings. Only the default was read:
   // `concise` and `grouped` were claimed by flake8, whose `file:line:col: CODE message`
   // is the same shape; `github` was mangled by it into a file called
@@ -3136,6 +3157,9 @@ for (const [group, encodings, silentAbout = []] of [
   ["deno test", ["denotest_junit_text_same_fail.txt", "denotest_junit_multiline_fail.txt"]],
   ["clang formats", ["clang_format_default_fail.txt", "clang_format_msvc_fail.txt",
     "clang_format_vi_fail.txt", "clang_format_nocaret_fail.txt"]],
+  ["cargo warnings", ["cargo_warnings_human_fail.txt", "cargo_warnings_json_fail.txt"]],
+  // --message-format=short joins the label onto the message with a colon.
+  ["cargo warnings short", ["cargo_warnings_human_fail.txt", "cargo_warnings_short_fail.txt"], ["message"]],
   ["deno lint", ["denolint_pretty_fail.txt", "denolint_json_fail.txt"]],
   // --compact prints no hint, so the message is the one field it cannot share.
   ["deno lint compact", ["denolint_pretty_fail.txt", "denolint_compact_fail.txt"], ["message"]],
@@ -5018,6 +5042,23 @@ try {
   console.log("  ok   every pytest traceback style names the same failures");
   pass++;
 } catch (e) { console.log(`  FAIL pytest traceback styles\n       ${e.message}`); fail++; }
+
+// How many warnings a cargo run hid is cargo's own number, whichever format printed it.
+// cargo ends each crate with "`shop` (lib) generated 2 warnings (1 duplicate)", and the
+// ones it did not print again are the duplicates - so the warnings shown are the sum of
+// the one less the other. The JSON stream prints no such line, and has to agree anyway.
+try {
+  const tallied = (name) => [...fx(name).matchAll(/generated (\d+) warnings?(?: \((\d+) duplicates?\))?/g)]
+    .reduce((n, m) => n + +m[1] - +(m[2] ?? 0), 0);
+  const hidden = (name) => +(analyse(fx(name)).summary.match(/(\d+) warnings? hidden/)?.[1] ?? 0);
+  for (const name of ["cargo_warnings_human_fail.txt", "cargo_warnings_short_fail.txt", "clippy_fail.txt"]) {
+    assert.ok(tallied(name) > 0, `${name}: cargo tallied no warnings`);
+    assert.equal(hidden(name), tallied(name), `${name}: the summary disagrees with cargo's own tally`);
+  }
+  assert.equal(hidden("cargo_warnings_json_fail.txt"), hidden("cargo_warnings_human_fail.txt"));
+  console.log("  ok   cargo's hidden warnings are cargo's own count, in every format");
+  pass++;
+} catch (e) { console.log(`  FAIL cargo hidden warnings\n       ${e.message}`); fail++; }
 
 // A flag that changes how a diagnostic is printed must not change what is read from it.
 try {
