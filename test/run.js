@@ -119,6 +119,23 @@ const CASES = [
       // the rule name belongs in the code, not trailing the message
       assert.doesNotMatch(JSON.stringify(r.failures), /\(report[A-Za-z]+\)/);
     } },
+  // One real pyright 1.1.414 run, as text and as --outputjson: three errors and a warning.
+  { file: "pyright_text_same_fail.txt", tool: "pyright", n: 3, check: (r) => {
+      assert.equal(r.summary, "3 errors — 1 warning hidden");
+    } },
+  { file: "pyright_json_fail.txt", tool: "pyright", n: 3, check: (r) => {
+      // It was read as nothing at all.
+      assert.deepEqual(r.failures.map((f) => [f.line, f.col, f.code]),
+        [[2, 12, "reportReturnType"], [7, 25, "reportUndefinedVariable"], [10, 7, "reportArgumentType"]],
+        "the document counts lines and characters from zero");
+      assert.equal(r.failures[0].message, 'Type "int" is not assignable to return type "str"\n"int" is not assignable to "str"');
+      assert.equal(r.summary, "3 errors — 1 warning hidden", "the document's own counts");
+      // A job that runs pyright once per package writes one document per package.
+      const doc = fx("pyright_json_fail.txt");
+      const both = analyse(`${doc}\n${doc.replaceAll("/home/dev/shop/app/", "/home/dev/billing/app/")}`);
+      assert.equal(both.failures.length, 6, "only the first package's document was read");
+      assert.equal(both.summary, "6 errors — 2 warnings hidden");
+    } },
   // Build tools fail in ways that have nothing to do with a compiler, and none of these
   // carries a file position for a diagnostic pattern to find.
   { file: "dotnet_noproject_fail.txt", tool: "dotnet", n: 1, check: (r) => {
@@ -3189,6 +3206,7 @@ for (const [group, encodings, silentAbout = []] of [
   ["cargo warnings", ["cargo_warnings_human_fail.txt", "cargo_warnings_json_fail.txt"]],
   // --message-format=short joins the label onto the message with a colon.
   ["cargo warnings short", ["cargo_warnings_human_fail.txt", "cargo_warnings_short_fail.txt"], ["message"]],
+  ["pyright", ["pyright_text_same_fail.txt", "pyright_json_fail.txt"]],
   ["deno lint", ["denolint_pretty_fail.txt", "denolint_json_fail.txt"]],
   // --compact prints no hint, so the message is the one field it cannot share.
   ["deno lint compact", ["denolint_pretty_fail.txt", "denolint_compact_fail.txt"], ["message"]],
