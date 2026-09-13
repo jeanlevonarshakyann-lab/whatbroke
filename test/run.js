@@ -2546,6 +2546,17 @@ const CASES = [
       // the document prints no tally line, but it counts the same things
       assert.equal(r.summary, "2 fail");
     } },
+  // The same bun run with FORCE_COLOR set. bun draws a cross where it writes "(fail)"
+  // without colour, and reading only the word found no failure at all: the generic
+  // reader took over, kept "error:" in each message, and named no test.
+  { file: "bun_color_fail.txt", tool: "bun test", n: 2, check: (r) => {
+      assert.deepEqual(r.failures.map((f) => f.subject), ["cart > totals an invoice", "raises unexpectedly"]);
+      assert.deepEqual(r.failures.map((f) => f.line), [5, 10]);
+      assert.equal(r.failures[1].message, "fixture exploded");
+    } },
+  { file: "bun_color_plain_same_fail.txt", tool: "bun test", n: 2, check: (r) => {
+      assert.deepEqual(r.failures.map((f) => f.subject), ["cart > totals an invoice", "raises unexpectedly"]);
+    } },
   { file: "bun_order_fail.txt", tool: "bun test", n: 2, check: (r) => {
       assert.deepEqual(r.failures.map((f) => f.subject),
         ["cart > totals an invoice", "raises unexpectedly"]);
@@ -2933,6 +2944,8 @@ for (const [group, encodings, silentAbout = []] of [
   ["eslint", ["eslint_warnings_text_same_fail.txt", "eslint_warnings_json_fail.txt"], ["message"]],
   ["npm", ["npm_404_text_same_fail.txt", "npm_404_json_fail.txt"]],
   ["deno test", ["denotest_junit_text_same_fail.txt", "denotest_junit_multiline_fail.txt"]],
+  // Colour changes how bun marks a failure, not which tests failed.
+  ["bun colour", ["bun_color_plain_same_fail.txt", "bun_color_fail.txt"]],
 ]) {
   try {
     // The path is the other legitimate difference: a formatter that writes a machine

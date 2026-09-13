@@ -31,7 +31,16 @@ const unfile = (p) => (p.startsWith("file://") ? decodeURIComponent(p.slice(7)) 
 //
 // Note bun writes "error:" at the start of a line, which the cargo parser also
 // looks for - so this must be registered ahead of it.
-const FAIL_RE = /^\(fail\)[^\S\n]+(.+?)(?:[^\S\n]+\[[\d.]+m?s\])?[^\S\n]*$/;
+// With colour on, bun draws a cross where it writes "(fail)" without it - the same
+// line, the same name, the same timing. Reading only the word meant a run with
+// FORCE_COLOR set, or a terminal-emulating CI, produced no bun failure at all and fell to
+// the generic reader, which kept "error:" in each message and named no test.
+//
+// The cross is not bun's alone: vite ends a failed build with "✗ Build failed in 26ms".
+// What bun's line always carries and vite's never does is the timing in brackets at the
+// end, so for the cross that bracket is required.
+const FAIL_RE = /^(?:\(fail\)[^\S\n]+(.+?)(?:[^\S\n]+\[[\d.]+m?s\])?|\u2717[^\S\n]+(.+?)[^\S\n]+\[[\d.]+m?s\])[^\S\n]*$/;
+const FAIL_ANY = /^(?:\(fail\)[^\S\n]+|\u2717[^\S\n]+.+?[^\S\n]+\[[\d.]+m?s\][^\S\n]*$)/m;
 const ERROR_RE = /^error:[^\S\n]*(.+)$/;
 const AT_RE = /^[^\S\n]*at[^\S\n]+.*?\((.+?):(\d+):(\d+)\)[^\S\n]*$/;
 const SOURCE_RE = /^[^\S\n]*\d+[^\S\n]*\|/;              // bun's echoed source context
@@ -90,7 +99,7 @@ export default {
   name: "bun test",
   category: "test",
   commands: ["bun"],
-  detect: (s) => (/^\(fail\)[^\S\n]+/m.test(s) &&
+  detect: (s) => (FAIL_ANY.test(s) &&
     (/^Ran \d+ tests? across/m.test(s) || /^[^\S\n]*\d+ fail[^\S\n]*$/m.test(s))) ||
     junitCases(s).length > 0,
 
@@ -149,7 +158,7 @@ export default {
       }
       from = i + 1;
       failures.push({
-        file, line, col, title: head[1], subject: head[1], severity: "error",
+        file, line, col, title: (head[1] ?? head[2]), subject: (head[1] ?? head[2]), severity: "error",
         // A failure whose block is not in the log still happened. Saying so is the
         // whole of what the log supports; taking the next test's block is not.
         message: msg.length ? msg.join("\n") : NO_BLOCK,
