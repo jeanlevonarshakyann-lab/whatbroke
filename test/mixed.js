@@ -706,6 +706,21 @@ test("interleaved Node reporters keep one rich copy of a diagnosis", () => {
     "de-duplication kept the poorer reporter copy");
 });
 
+test("a Playwright block quotes its own source line, not the other capture's", () => {
+  // Two captures of one run - the dot and list reporters - woven line by line. A marked
+  // line from the list capture's first failure landed inside the dot capture's second
+  // block, ahead of that block's own; the block quoted it, the two readings of "applies a
+  // discount" then quoted different source lines, and the failure was reported twice.
+  const dot = fx("playwright_dot_fail.txt").split("\n");
+  const list = fx("playwright_list_same_fail.txt").split("\n");
+  const heading = dot.findIndex((l) => /^\s*2\) .*applies a discount/.test(l));
+  const foreign = list.find((l) => /^\s*> 4 \|/.test(l));
+  const woven = [...dot.slice(0, heading + 1), foreign, ...dot.slice(heading + 1)].join("\n");
+  assert.equal(analyse(woven).failures[1].stmt, 'table.lookup("SPRING");');
+  const both = allFailures(analyse(`${woven}\n${list.join("\n")}`)).filter((f) => f.subject === "applies a discount");
+  assert.equal(both.length, 1, "one failure, read from two captures, was reported twice");
+});
+
 test("two tools writing into one pipe never crash it or double a diagnosis", () => {
   let seed = 20260910;
   const rnd = () => (seed = (seed * 1103515245 + 12345) & 0x7fffffff) / 0x7fffffff;
