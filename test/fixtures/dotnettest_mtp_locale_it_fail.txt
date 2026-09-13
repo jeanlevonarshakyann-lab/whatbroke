@@ -1,0 +1,32 @@
+Esecuzione di test da /home/dev/shop/ShopTests/bin/Debug/net10.0/ShopTests.dll (net10.0|arm64)
+operazione non riuscita AppliesDiscount (7ms)
+  Test method ShopTests.CartTests.AppliesDiscount threw exception:
+System.InvalidOperationException: discount table missing
+  da /home/dev/shop/ShopTests/bin/Debug/net10.0/ShopTests.dll (net10.0|arm64)
+  Test method ShopTests.CartTests.AppliesDiscount threw exception:
+  System.InvalidOperationException: discount table missing
+    a ShopTests.CartTests.AppliesDiscount() in /home/dev/shop/ShopTests/Test1.cs:15
+    a System.Reflection.MethodBaseInvoker.InterpretedInvoke_Method(Object obj, IntPtr* args)
+    a System.Reflection.MethodBaseInvoker.InvokeWithNoArgs(Object obj, BindingFlags invokeAttr)
+    
+operazione non riuscita TotalsAnInvoice (8ms)
+  Assert.AreEqual non riuscita. Previsto:<6>. Effettivo:<4>. Espressione 'expected': '6', espressione 'actual': '2 + 2'.
+  da /home/dev/shop/ShopTests/bin/Debug/net10.0/ShopTests.dll (net10.0|arm64)
+  Assert.AreEqual non riuscita. Previsto:<6>. Effettivo:<4>. Espressione 'expected': '6', espressione 'actual': '2 + 2'.
+    a Microsoft.VisualStudio.TestTools.UnitTesting.Assert.ThrowAssertAreEqualFailed(Object expected, Object actual, String userMessage) in /_/src/TestFramework/TestFramework/Assertions/Assert.AreEqual.cs:665
+    a Microsoft.VisualStudio.TestTools.UnitTesting.Assert.AreEqual[T](T expected, T actual, IEqualityComparer`1 comparer, String message, String expectedExpression, String actualExpression) in /_/src/TestFramework/TestFramework/Assertions/Assert.AreEqual.cs:492
+    a Microsoft.VisualStudio.TestTools.UnitTesting.Assert.AreEqual[T](T expected, T actual, String message, String expectedExpression, String actualExpression) in /_/src/TestFramework/TestFramework/Assertions/Assert.AreEqual.cs:405
+    a ShopTests.CartTests.TotalsAnInvoice() in /home/dev/shop/ShopTests/Test1.cs:9
+    a System.Reflection.MethodBaseInvoker.InterpretedInvoke_Method(Object obj, IntPtr* args)
+    a System.Reflection.MethodBaseInvoker.InvokeWithNoArgs(Object obj, BindingFlags invokeAttr)
+/home/dev/shop/ShopTests/bin/Debug/net10.0/ShopTests.dll (net10.0|arm64) non riuscito con 2 errori (100ms)
+Codice di uscita: 2
+  Output standard: Test Parallelization enabled for /home/dev/shop/ShopTests/bin/Debug/net10.0/ShopTests.dll (Workers: 8, Scope: MethodLevel)
+
+Riepilogo esecuzione test: Non superato!
+  totale: 3
+  non riuscito: 2
+  operazione completata: 1
+  ignorato: 0
+  durata: 207ms
+Esecuzione del test completata con codice di uscita non riuscito: 2 (vedi: https://aka.ms/testingplatform/exitcodes)

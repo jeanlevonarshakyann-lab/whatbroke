@@ -1008,6 +1008,90 @@
     ],
     "shadow": {}
   },
+  "dotnettest_mtp_detailed_de_fail.txt": {
+    "winner": "dotnet test",
+    "parser": "dotnet test",
+    "failures": 2,
+    "claimants": [
+      "dotnet test",
+      "generic"
+    ],
+    "shadow": {
+      "generic": 3
+    }
+  },
+  "dotnettest_mtp_locale_de_fail.txt": {
+    "winner": "dotnet test",
+    "parser": "dotnet test",
+    "failures": 2,
+    "claimants": [
+      "dotnet test",
+      "generic"
+    ],
+    "shadow": {
+      "generic": 3
+    }
+  },
+  "dotnettest_mtp_locale_en_fail.txt": {
+    "winner": "dotnet test",
+    "parser": "dotnet test",
+    "failures": 2,
+    "claimants": [
+      "dotnet test",
+      "generic"
+    ],
+    "shadow": {
+      "generic": 3
+    }
+  },
+  "dotnettest_mtp_locale_es_fail.txt": {
+    "winner": "dotnet test",
+    "parser": "dotnet test",
+    "failures": 2,
+    "claimants": [
+      "dotnet test",
+      "generic"
+    ],
+    "shadow": {
+      "generic": 6
+    }
+  },
+  "dotnettest_mtp_locale_it_fail.txt": {
+    "winner": "dotnet test",
+    "parser": "dotnet test",
+    "failures": 2,
+    "claimants": [
+      "dotnet test",
+      "generic"
+    ],
+    "shadow": {
+      "generic": 3
+    }
+  },
+  "dotnettest_mtp_locale_ja_fail.txt": {
+    "winner": "dotnet test",
+    "parser": "dotnet test",
+    "failures": 2,
+    "claimants": [
+      "dotnet test",
+      "generic"
+    ],
+    "shadow": {
+      "generic": 3
+    }
+  },
+  "dotnettest_mtp_locale_zh_hant_fail.txt": {
+    "winner": "dotnet test",
+    "parser": "dotnet test",
+    "failures": 2,
+    "claimants": [
+      "dotnet test",
+      "generic"
+    ],
+    "shadow": {
+      "generic": 3
+    }
+  },
   "dotnettest_text_same_fail.txt": {
     "winner": "dotnet test",
     "parser": "dotnet test",

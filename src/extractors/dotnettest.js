@@ -20,6 +20,56 @@ import { SOURCE_RANGE } from "../ownership.js";
 import { xmlAttributes, xmlText } from "../util.js";
 
 const MTP_FAILED_RE = /^failed[^\S\n]+(\S+)[^\S\n]+\((\d+(?:\.\d+)?)[^\S\n]*m?s\)[^\S\n]*$/;
+// Microsoft.Testing.Platform speaks the SDK's languages too, and translates more than
+// VSTest does - the outcome, the line naming the assembly, the summary, and the stack
+// frames themselves:
+//
+//   failed TotalsAnInvoice (11ms)                  fehlerhaft TotalsAnInvoice (7ms)
+//     from /app/ShopTests.dll (net10.0|arm64)        von /app/ShopTests.dll (net10.0|arm64)
+//       at ShopTests.CartTests.TotalsAnInvoice() in /app/Test1.cs:9
+//                                                    um ShopTests.CartTests.TotalsAnInvoice() in /app/Test1.cs:9
+//   Test run summary: Failed!                      Testlaufzusammenfassung: Fehler!
+//
+// and "operazione non riuscita", "場所: ... 場所: /app/Test1.cs:9", "şu yöntemle: ...
+// şu dosyada: ...". Only the English words were read, so a failed run in any of the other
+// thirteen came back with nothing at all.
+//
+// What no language changes is the assembly line under a result: two spaces, a word or
+// two, the path to a .dll and its target framework and architecture in brackets. That
+// says the heading is a result - and under --output detailed a passing test has one too,
+// so it does not say which. What only a failure has is a stack. A heading with both under
+// it is a failure, and its first words are the outcome in the run's language - which
+// then reads every other heading that uses them.
+const MTP_ANY_HEAD_RE = /^([^\s/\\()]+(?:[^\S\n]+[^\s/\\()]+){0,2})[^\S\n]+(\S+)[^\S\n]+\((\d+(?:\.\d+)?)[^\S\n]*m?s\)[^\S\n]*$/;
+const MTP_FROM_RE = /^[^\S\n]{2}\S[^\n]*\.dll[^\S\n]+\([^()|\n]+\|[^()\n]+\)[^\S\n]*$/;
+// A frame in any language: four spaces, a word or two, the method and its arguments, a
+// word or two, and the absolute path and line.
+const MTP_FRAME_RE = /^[^\S\n]{4}(?:[^\s(]+[^\S\n]+){1,2}([^\s(]+)\([^\n]*\)[^\S\n]+(?:[^\s(]+[^\S\n]+){1,2}((?:\/|[A-Za-z]:[\\/])[^\n]*?):(\d+)[^\S\n]*$/;
+// "Test run summary: Failed!", then the counts one to a line - total, failed, succeeded,
+// skipped - in that order in every language.
+const MTP_TALLY_RE = /^\S[^\n]*[:\uFF1A][^\S\n]*\S[^\n]*![^\S\n]*\n((?:[^\S\n]{2}\S[^\n]*?[:\uFF1A][^\S\n]*\d+[^\S\n]*\n){4})/m;
+
+/** The outcome words that head a failure in this log, in whatever languages it holds. */
+function mtpFailWords(lines) {
+  const words = new Set(["failed"]);
+  for (let i = 0; i < lines.length; i++) {
+    const head = lines[i].match(MTP_ANY_HEAD_RE);
+    if (!head || words.has(head[1])) continue;
+    let from = false, frame = false;
+    for (let j = i + 1; j < lines.length && !MTP_ANY_HEAD_RE.test(lines[j]); j++) {
+      from ||= MTP_FROM_RE.test(lines[j]);
+      frame ||= MTP_FRAME_RE.test(lines[j]) || AT_RE.test(lines[j]);
+      if (from && frame) { words.add(head[1]); break; }
+    }
+  }
+  return words;
+}
+
+/** The heading of a failed test, in any of the log's languages, or null. */
+const mtpHead = (line, words) => {
+  const head = line.match(MTP_ANY_HEAD_RE);
+  return head && words.has(head[1]) ? [head[0], head[2], head[3]] : null;
+};
 const VSTEST_FAILED_RE = /^[^\S\n]+Failed[^\S\n]+(.+?)[^\S\n]+\[(?:<[^\S\n]+)?\d+(?:\.\d+)?[^\S\n]*(?:ms|s)\][^\S\n]*$/;
 const VSTEST_RESULT_RE = /^[^\S\n]+(?:Failed|Passed|Skipped)[^\S\n]+.+?[^\S\n]+\[(?:<[^\S\n]+)?\d+(?:\.\d+)?[^\S\n]*(?:ms|s)\][^\S\n]*$/;
 const VSTEST_END_RE = /^(?:Test Run Failed\.|Failed![^\n]*\bFailed:[^\S\n]*\d+)/m;
@@ -176,26 +226,42 @@ function tallied(tally) {
   return bits.length ? `${bits.join(", ")} (${total})` : undefined;
 }
 
+/** Whether `s` holds a Testing Platform run in a language other than English: a failure
+ *  heading with its assembly line and a stack under it.
+ *
+ *  The English reading also asks for "Test run summary:". This does not ask for the
+ *  translated summary, because a long log capped to its interesting lines keeps the
+ *  failures and loses the counts under the summary - they are a label and a number, which
+ *  is all a build prints - and the assembly line's `(net10.0|arm64)` is Testing
+ *  Platform's alone already. What goes missing then is the summary, not the failures. */
+function mtpTranslated(s) {
+  if (!s.includes(".dll")) return false;
+  const lines = s.split("\n");
+  const words = mtpFailWords(lines);
+  return words.size > 1 && lines.some((l) => mtpHead(l, words));
+}
+
 export default {
   name: "dotnet test",
   category: "test",
   commands: ["dotnet"],
   detect: (s) => (MTP_FAILED_RE.test(s.split("\n").find((l) => MTP_FAILED_RE.test(l)) ?? "") &&
-    /^[^\S\n]*Test run summary:/m.test(s)) || !!vstest(s) || trx(s).length > 0,
+    /^[^\S\n]*Test run summary:/m.test(s)) || mtpTranslated(s) || !!vstest(s) || trx(s).length > 0,
 
   extract(s) {
     const vs = vstest(s);
     const lines = s.split("\n");
     const failures = [];
 
+    const words = mtpFailWords(lines);
     for (let i = 0; i < lines.length; i++) {
-      const head = lines[i].match(MTP_FAILED_RE);
+      const head = mtpHead(lines[i], words);
       if (!head) continue;
 
       const msg = [];
       let file, line, repeated = false;
-      for (let j = i + 1; j < lines.length && !MTP_FAILED_RE.test(lines[j]); j++) {
-        const at = lines[j].match(AT_RE);
+      for (let j = i + 1; j < lines.length && !mtpHead(lines[j], words); j++) {
+        const at = lines[j].match(AT_RE) ?? lines[j].match(MTP_FRAME_RE);
         if (at) {
           // the first frame in the user's own code wins; the rest is the runner
           if (!file && !FRAMEWORK.test(at[1])) { file = at[2]; line = +at[3]; }
@@ -204,7 +270,7 @@ export default {
         // `from <dll>` closes the first copy of the message. Everything after it is
         // the same text re-indented, so stop collecting - but keep scanning, because
         // the stack frames that carry the location come after the repeat.
-        if (/^[^\S\n]*from[^\S\n]+\S+\.dll/.test(lines[j])) { repeated = true; continue; }
+        if (/^[^\S\n]*from[^\S\n]+\S+\.dll/.test(lines[j]) || MTP_FROM_RE.test(lines[j])) { repeated = true; continue; }
         const t = lines[j].trim();
         if (repeated || !t || msg.length >= MAX_MESSAGE_LINES) continue;
         if (/^Standard output:/.test(t) || /^Test run summary:/.test(t) || /^Exit code:/.test(t)) break;
@@ -254,7 +320,12 @@ export default {
       const m = s.match(new RegExp(String.raw`^[^\S\n]*${k}:[^\S\n]*(\d+)[^\S\n]*$`, "m"));
       return m ? +m[1] : null;
     };
-    const [total, failed, ok, skipped] = ["total", "failed", "succeeded", "skipped"].map(num);
+    // The labels are translated and their order is not, so the counts are read by
+    // position - in English too. Reading the English labels first, and positions only
+    // when none was found, lost the summary of a Spanish and a Portuguese run: both call
+    // the first count "total", which matched, and nothing else did.
+    const counts = s.match(MTP_TALLY_RE)?.[1].match(/\d+(?=[^\S\n]*\n)/g)?.map(Number);
+    const [total, failed, ok, skipped] = counts ?? ["total", "failed", "succeeded", "skipped"].map(num);
     const bits = [];
     if (failed) bits.push(`${failed} failed`);
     if (ok) bits.push(`${ok} passed`);

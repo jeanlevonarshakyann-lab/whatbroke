@@ -1,0 +1,32 @@
+正從下列位置執行測試 /home/dev/shop/ShopTests/bin/Debug/net10.0/ShopTests.dll (net10.0|arm64)
+已失敗 AppliesDiscount (7ms)
+  Test method ShopTests.CartTests.AppliesDiscount threw exception:
+System.InvalidOperationException: discount table missing
+  來自 /home/dev/shop/ShopTests/bin/Debug/net10.0/ShopTests.dll (net10.0|arm64)
+  Test method ShopTests.CartTests.AppliesDiscount threw exception:
+  System.InvalidOperationException: discount table missing
+    於 ShopTests.CartTests.AppliesDiscount() 在 /home/dev/shop/ShopTests/Test1.cs:15
+    於 System.Reflection.MethodBaseInvoker.InterpretedInvoke_Method(Object obj, IntPtr* args)
+    於 System.Reflection.MethodBaseInvoker.InvokeWithNoArgs(Object obj, BindingFlags invokeAttr)
+    
+已失敗 TotalsAnInvoice (8ms)
+  Assert.AreEqual 失敗。 預期: <6>。實際: <4>。'expected' 運算式: '6'，'actual' 運算式: '2 + 2'。
+  來自 /home/dev/shop/ShopTests/bin/Debug/net10.0/ShopTests.dll (net10.0|arm64)
+  Assert.AreEqual 失敗。 預期: <6>。實際: <4>。'expected' 運算式: '6'，'actual' 運算式: '2 + 2'。
+    於 Microsoft.VisualStudio.TestTools.UnitTesting.Assert.ThrowAssertAreEqualFailed(Object expected, Object actual, String userMessage) 在 /_/src/TestFramework/TestFramework/Assertions/Assert.AreEqual.cs:665
+    於 Microsoft.VisualStudio.TestTools.UnitTesting.Assert.AreEqual[T](T expected, T actual, IEqualityComparer`1 comparer, String message, String expectedExpression, String actualExpression) 在 /_/src/TestFramework/TestFramework/Assertions/Assert.AreEqual.cs:492
+    於 Microsoft.VisualStudio.TestTools.UnitTesting.Assert.AreEqual[T](T expected, T actual, String message, String expectedExpression, String actualExpression) 在 /_/src/TestFramework/TestFramework/Assertions/Assert.AreEqual.cs:405
+    於 ShopTests.CartTests.TotalsAnInvoice() 在 /home/dev/shop/ShopTests/Test1.cs:9
+    於 System.Reflection.MethodBaseInvoker.InterpretedInvoke_Method(Object obj, IntPtr* args)
+    於 System.Reflection.MethodBaseInvoker.InvokeWithNoArgs(Object obj, BindingFlags invokeAttr)
+/home/dev/shop/ShopTests/bin/Debug/net10.0/ShopTests.dll (net10.0|arm64) 失敗，有 2 個錯誤 (260ms)
+結束代碼: 2
+  標準輸出: Test Parallelization enabled for /home/dev/shop/ShopTests/bin/Debug/net10.0/ShopTests.dll (Workers: 8, Scope: MethodLevel)
+
+測試回合摘要： 失敗!
+  總計: 3
+  失敗: 2
+  已成功: 1
+  已略過: 0
+  期間: 372ms
+測試執行已完成，未成功的結束代碼為: 2 (請參閱: https://aka.ms/testingplatform/exitcodes)
