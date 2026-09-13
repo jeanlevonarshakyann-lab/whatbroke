@@ -1,0 +1,37 @@
+  Identification des projets à restaurer...
+  Tous les projets sont à jour pour la restauration.
+  shoptests -> /home/dev/shop/bin/Debug/net10.0/shoptests.dll
+Série de tests pour /home/dev/shop/bin/Debug/net10.0/shoptests.dll (.NETCoreApp,Version=v10.0)
+Au total, 1 fichiers de test ont correspondu au modèle spécifié.
+[xUnit.net 00:00:00.06]     ArithmeticTests.Crash [FAIL]
+[xUnit.net 00:00:00.07]     ArithmeticTests.Addition [FAIL]
+[xUnit.net 00:00:00.07]     ArithmeticTests.Greeting [FAIL]
+  Échoué ArithmeticTests.Crash [< 1 ms]
+  Message d'erreur :
+   System.InvalidOperationException : fixture exploded
+  Arborescence des appels de procédure :
+     at ArithmeticTests.Crash() in /home/dev/shop/UnitTest1.cs:line 12
+   at System.Reflection.MethodBaseInvoker.InterpretedInvoke_Method(Object obj, IntPtr* args)
+   at System.Reflection.MethodBaseInvoker.InvokeWithNoArgs(Object obj, BindingFlags invokeAttr)
+  Échoué ArithmeticTests.Addition [3 ms]
+  Message d'erreur :
+   Assert.Equal() Failure: Values differ
+Expected: 5
+Actual:   4
+  Arborescence des appels de procédure :
+     at ArithmeticTests.Addition() in /home/dev/shop/UnitTest1.cs:line 6
+   at System.Reflection.MethodBaseInvoker.InterpretedInvoke_Method(Object obj, IntPtr* args)
+   at System.Reflection.MethodBaseInvoker.InvokeWithNoArgs(Object obj, BindingFlags invokeAttr)
+  Échoué ArithmeticTests.Greeting [1 ms]
+  Message d'erreur :
+   Assert.Equal() Failure: Strings differ
+           ↓ (pos 0)
+Expected: "hello world"
+Actual:   "goodbye world"
+           ↑ (pos 0)
+  Arborescence des appels de procédure :
+     at ArithmeticTests.Greeting() in /home/dev/shop/UnitTest1.cs:line 9
+   at System.Reflection.MethodBaseInvoker.InterpretedInvoke_Method(Object obj, IntPtr* args)
+   at System.Reflection.MethodBaseInvoker.InvokeWithNoArgs(Object obj, BindingFlags invokeAttr)
+
+Échoué!  - échec :     3, réussite :     0, ignorée(s) :     0, total :     3, durée : 11 ms - shoptests.dll (net10.0)

@@ -1,0 +1,37 @@
+  復元対象のプロジェクトを決定しています...
+  復元対象のすべてのプロジェクトは最新です。
+  shoptests -> /home/dev/shop/bin/Debug/net10.0/shoptests.dll
+/home/dev/shop/bin/Debug/net10.0/shoptests.dll (.NETCoreApp,Version=v10.0) のテスト実行
+合計 1 個のテスト ファイルが指定されたパターンと一致しました。
+[xUnit.net 00:00:00.06]     ArithmeticTests.Crash [FAIL]
+[xUnit.net 00:00:00.07]     ArithmeticTests.Addition [FAIL]
+[xUnit.net 00:00:00.07]     ArithmeticTests.Greeting [FAIL]
+  失敗 ArithmeticTests.Crash [< 1 ms]
+  エラー メッセージ:
+   System.InvalidOperationException : fixture exploded
+  スタック トレース:
+     at ArithmeticTests.Crash() in /home/dev/shop/UnitTest1.cs:line 12
+   at System.Reflection.MethodBaseInvoker.InterpretedInvoke_Method(Object obj, IntPtr* args)
+   at System.Reflection.MethodBaseInvoker.InvokeWithNoArgs(Object obj, BindingFlags invokeAttr)
+  失敗 ArithmeticTests.Addition [2 ms]
+  エラー メッセージ:
+   Assert.Equal() Failure: Values differ
+Expected: 5
+Actual:   4
+  スタック トレース:
+     at ArithmeticTests.Addition() in /home/dev/shop/UnitTest1.cs:line 6
+   at System.Reflection.MethodBaseInvoker.InterpretedInvoke_Method(Object obj, IntPtr* args)
+   at System.Reflection.MethodBaseInvoker.InvokeWithNoArgs(Object obj, BindingFlags invokeAttr)
+  失敗 ArithmeticTests.Greeting [1 ms]
+  エラー メッセージ:
+   Assert.Equal() Failure: Strings differ
+           ↓ (pos 0)
+Expected: "hello world"
+Actual:   "goodbye world"
+           ↑ (pos 0)
+  スタック トレース:
+     at ArithmeticTests.Greeting() in /home/dev/shop/UnitTest1.cs:line 9
+   at System.Reflection.MethodBaseInvoker.InterpretedInvoke_Method(Object obj, IntPtr* args)
+   at System.Reflection.MethodBaseInvoker.InvokeWithNoArgs(Object obj, BindingFlags invokeAttr)
+
+失敗!   -失敗:     3、合格:     0、スキップ:     0、合計:     3、期間: 10 ms - shoptests.dll (net10.0)

@@ -818,6 +818,68 @@
       "generic": 8
     }
   },
+  "dotnettest_locale_de_fail.txt": {
+    "winner": "dotnet test",
+    "parser": "dotnet test",
+    "failures": 3,
+    "claimants": [
+      "dotnet test",
+      "generic"
+    ],
+    "shadow": {}
+  },
+  "dotnettest_locale_en_fail.txt": {
+    "winner": "dotnet test",
+    "parser": "dotnet test",
+    "failures": 3,
+    "claimants": [
+      "dotnet test",
+      "generic"
+    ],
+    "shadow": {
+      "generic": 3
+    }
+  },
+  "dotnettest_locale_fr_fail.txt": {
+    "winner": "dotnet test",
+    "parser": "dotnet test",
+    "failures": 3,
+    "claimants": [
+      "dotnet test",
+      "generic"
+    ],
+    "shadow": {}
+  },
+  "dotnettest_locale_ja_fail.txt": {
+    "winner": "dotnet test",
+    "parser": "dotnet test",
+    "failures": 3,
+    "claimants": [
+      "dotnet test",
+      "generic"
+    ],
+    "shadow": {}
+  },
+  "dotnettest_locale_pt_br_fail.txt": {
+    "winner": "dotnet test",
+    "parser": "dotnet test",
+    "failures": 3,
+    "claimants": [
+      "dotnet test",
+      "generic"
+    ],
+    "shadow": {}
+  },
+  "dotnettest_locale_ru_fail.txt": {
+    "winner": "dotnet test",
+    "parser": "dotnet test",
+    "failures": 3,
+    "claimants": [
+      "dotnet test",
+      "generic"
+    ],
+    "shadow": {}
+  },
   "dotnettest_text_same_fail.txt": {
     "winner": "dotnet test",
     "parser": "dotnet test",
@@ -1499,6 +1561,54 @@
     "winner": "jvm",
     "parser": "jvm",
     "failures": 1,
+    "claimants": [
+      "jvm",
+      "generic"
+    ],
+    "shadow": {
+      "generic": 2
+    }
+  },
+  "javac_locale_de_fail.txt": {
+    "winner": "jvm",
+    "parser": "jvm",
+    "failures": 2,
+    "claimants": [
+      "jvm",
+      "generic"
+    ],
+    "shadow": {
+      "generic": 2
+    }
+  },
+  "javac_locale_en_fail.txt": {
+    "winner": "jvm",
+    "parser": "jvm",
+    "failures": 2,
+    "claimants": [
+      "jvm",
+      "generic"
+    ],
+    "shadow": {
+      "generic": 2
+    }
+  },
+  "javac_locale_ja_fail.txt": {
+    "winner": "jvm",
+    "parser": "jvm",
+    "failures": 2,
+    "claimants": [
+      "jvm",
+      "generic"
+    ],
+    "shadow": {
+      "generic": 2
+    }
+  },
+  "javac_locale_zh_fail.txt": {
+    "winner": "jvm",
+    "parser": "jvm",
+    "failures": 2,
     "claimants": [
       "jvm",
       "generic"

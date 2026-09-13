@@ -1184,6 +1184,24 @@ const CASES = [
     } },
   // Captured with javac 26.0.2.1 (-Xlint:unchecked), Gradle 9.7.1 (Java plugin
   // with the same flag), and mypy 2.3.1 (--no-error-summary, with/without columns).
+  // javac translates its severity into the three languages it ships, and nothing else:
+  // `Fehler:`, `エラー:`, `错误:`. The set is javac's own and it is closed, so it is named.
+  { file: "javac_locale_en_fail.txt", tool: "jvm", n: 2, check: (r) => {
+      assert.deepEqual(r.failures.map((f) => `${f.file}:${f.line}`), ["A.java:3", "A.java:4"]);
+      for (const f of r.failures) assert.equal(f.label, "compile error");
+    } },
+  { file: "javac_locale_de_fail.txt", tool: "jvm", n: 2, check: (r) => {
+      assert.deepEqual(r.failures.map((f) => `${f.file}:${f.line}`), ["A.java:3", "A.java:4"]);
+      for (const f of r.failures) assert.equal(f.label, "compile error");
+    } },
+  { file: "javac_locale_ja_fail.txt", tool: "jvm", n: 2, check: (r) => {
+      assert.deepEqual(r.failures.map((f) => `${f.file}:${f.line}`), ["A.java:3", "A.java:4"]);
+      for (const f of r.failures) assert.equal(f.label, "compile error");
+    } },
+  { file: "javac_locale_zh_fail.txt", tool: "jvm", n: 2, check: (r) => {
+      assert.deepEqual(r.failures.map((f) => `${f.file}:${f.line}`), ["A.java:3", "A.java:4"]);
+      for (const f of r.failures) assert.equal(f.label, "compile error");
+    } },
   { file: "javac_fail.txt", tool: "jvm", n: 1, check: (r) => {
       assert.equal(r.failures[0].file, "Main.java");
       assert.equal(r.failures[0].line, 5);
@@ -2282,6 +2300,58 @@ const CASES = [
   // One `dotnet test` run, in its console output and in the trx document a .NET CI job
   // keeps beside it. The document was not read at all. A <TestRun> element on its own is
   // not evidence of anything, so what is required is the namespace it declares.
+  // One `dotnet test` run under the SDK's UI languages. Every word VSTest's console writes
+  // is translated - "Failed" is "Fehler", "失敗", "Не пройден", "Com falha" - and reading
+  // only the English words sent every other language to no diagnosis at all. The failure
+  // word is read from the run's own tally instead, and the labels by where they stand.
+  // English, the control
+  { file: "dotnettest_locale_en_fail.txt", tool: "dotnet test", n: 3, check: (r) => {
+      assert.deepEqual(r.failures.map((f) => f.subject),
+        ["ArithmeticTests.Crash", "ArithmeticTests.Addition", "ArithmeticTests.Greeting"]);
+      assert.deepEqual(r.failures.map((f) => f.line), [12, 6, 9]);
+      assert.equal(r.failures[0].message, "System.InvalidOperationException : fixture exploded");
+      assert.equal(r.summary, "3 failed (3)");
+    } },
+  // German
+  { file: "dotnettest_locale_de_fail.txt", tool: "dotnet test", n: 3, check: (r) => {
+      assert.deepEqual(r.failures.map((f) => f.subject),
+        ["ArithmeticTests.Crash", "ArithmeticTests.Addition", "ArithmeticTests.Greeting"]);
+      assert.deepEqual(r.failures.map((f) => f.line), [12, 6, 9]);
+      assert.equal(r.failures[0].message, "System.InvalidOperationException : fixture exploded");
+      assert.equal(r.summary, "3 failed (3)");
+    } },
+  // Japanese: the tally separates its counts with an ideographic comma
+  { file: "dotnettest_locale_ja_fail.txt", tool: "dotnet test", n: 3, check: (r) => {
+      assert.deepEqual(r.failures.map((f) => f.subject),
+        ["ArithmeticTests.Crash", "ArithmeticTests.Addition", "ArithmeticTests.Greeting"]);
+      assert.deepEqual(r.failures.map((f) => f.line), [12, 6, 9]);
+      assert.equal(r.failures[0].message, "System.InvalidOperationException : fixture exploded");
+      assert.equal(r.summary, "3 failed (3)");
+    } },
+  // French: a no-break space before each label's colon
+  { file: "dotnettest_locale_fr_fail.txt", tool: "dotnet test", n: 3, check: (r) => {
+      assert.deepEqual(r.failures.map((f) => f.subject),
+        ["ArithmeticTests.Crash", "ArithmeticTests.Addition", "ArithmeticTests.Greeting"]);
+      assert.deepEqual(r.failures.map((f) => f.line), [12, 6, 9]);
+      assert.equal(r.failures[0].message, "System.InvalidOperationException : fixture exploded");
+      assert.equal(r.summary, "3 failed (3)");
+    } },
+  // Russian: a failure word of two words, and counts with no colon before them
+  { file: "dotnettest_locale_ru_fail.txt", tool: "dotnet test", n: 3, check: (r) => {
+      assert.deepEqual(r.failures.map((f) => f.subject),
+        ["ArithmeticTests.Crash", "ArithmeticTests.Addition", "ArithmeticTests.Greeting"]);
+      assert.deepEqual(r.failures.map((f) => f.line), [12, 6, 9]);
+      assert.equal(r.failures[0].message, "System.InvalidOperationException : fixture exploded");
+      assert.equal(r.summary, "3 failed (3)");
+    } },
+  // Portuguese: a two-word failure word, and an en dash after it
+  { file: "dotnettest_locale_pt_br_fail.txt", tool: "dotnet test", n: 3, check: (r) => {
+      assert.deepEqual(r.failures.map((f) => f.subject),
+        ["ArithmeticTests.Crash", "ArithmeticTests.Addition", "ArithmeticTests.Greeting"]);
+      assert.deepEqual(r.failures.map((f) => f.line), [12, 6, 9]);
+      assert.equal(r.failures[0].message, "System.InvalidOperationException : fixture exploded");
+      assert.equal(r.summary, "3 failed (3)");
+    } },
   { file: "dotnettest_text_same_fail.txt", tool: "dotnet test", n: 3, check: (r) => {
       assert.deepEqual(r.failures.map((f) => f.subject),
         ["ArithmeticTests.Crash", "ArithmeticTests.Addition", "ArithmeticTests.Greeting"]);
@@ -3013,6 +3083,15 @@ for (const [group, encodings, silentAbout = []] of [
   ["deno test", ["denotest_junit_text_same_fail.txt", "denotest_junit_multiline_fail.txt"]],
   // Colour changes how bun marks a failure, not which tests failed.
   ["bun colour", ["bun_color_plain_same_fail.txt", "bun_color_fail.txt"]],
+  // What the run said does not change with the language it was said in - only the words
+  // around it. The assertion messages are the test framework's and are not translated.
+  ["dotnet test languages", ["dotnettest_locale_en_fail.txt", "dotnettest_locale_de_fail.txt",
+    "dotnettest_locale_ja_fail.txt", "dotnettest_locale_fr_fail.txt", "dotnettest_locale_ru_fail.txt",
+    "dotnettest_locale_pt_br_fail.txt"]],
+  // javac's messages ARE translated, so the message is the one thing its languages do not
+  // share; the file and the line always are.
+  ["javac languages", ["javac_locale_en_fail.txt", "javac_locale_de_fail.txt",
+    "javac_locale_ja_fail.txt", "javac_locale_zh_fail.txt"], ["message"]],
   ["gradle console", ["gradle_tests_plain_fail.txt", "gradle_tests_rich_fail.txt"]],
   // The short exception format names the exception and not its message.
   ["gradle exception format", ["gradle_tests_plain_fail.txt", "gradle_tests_full_fail.txt"], ["message"]],

@@ -6,7 +6,14 @@ const MAVEN_RE = /^\[ERROR\][^\S\n]+(.+?):\[(\d+),(\d+)\][^\S\n]+(.+)$/;
 // either Kotlin's "e: " severity prefix or a JVM source file at the front of it.
 const JVM_SRC = /\.(?:java|kt|kts|groovy|scala|gradle)$/;
 const GRADLE_RE = /^(e: )?(.+?):(\d+):(\d+):[^\S\n]+(?:(error|warning):[^\S\n]+)?(.+)$/;
-const JAVA_RE = /^(.+?\.java):(\d+):[^\S\n]+(error|warning):[^\S\n]+(.+)$/m;
+// javac translates its severity into the three languages it ships: German, Japanese and
+// Simplified Chinese. `A.java:3: Fehler: Inkompatible Typen` is the same diagnostic as
+// `A.java:3: error: incompatible types`, and reading only the English word sent a German
+// or Japanese build to the generic reader. The set is javac's own and it is closed.
+const JAVAC_ERROR = "error|Fehler|\u30a8\u30e9\u30fc|\u9519\u8bef";
+const JAVAC_WARNING = "warning|Warnung|\u8b66\u544a";
+const JAVA_RE = new RegExp(`^(.+?\\.java):(\\d+):[^\\S\\n]+(${JAVAC_ERROR}|${JAVAC_WARNING}):[^\\S\\n]+(.+)$`, "m");
+const javacSeverity = (word) => new RegExp(`^(?:${JAVAC_WARNING})$`).test(word) ? "warning" : "error";
 // Gradle's own test logging names each failed test and says where it broke:
 //
 //   CartTest > totalsAnInvoice() FAILED
@@ -104,7 +111,7 @@ export default {
         : gradle
           ? { file: gradle[2], line: +gradle[3], col: +gradle[4], severity: gradle[5], message: gradle[6] }
           : java
-            ? { file: java[1], line: +java[2], severity: java[3], message: java[4] }
+            ? { file: java[1], line: +java[2], severity: javacSeverity(java[3]), message: java[4] }
           : null;
       if (!match || /^(?:https?|file):\/\//.test(match.file)) continue;
       if (match.severity === "warning") continue;

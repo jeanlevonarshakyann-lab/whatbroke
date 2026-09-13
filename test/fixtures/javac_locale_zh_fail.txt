@@ -1,0 +1,9 @@
+A.java:3: 错误: 不兼容的类型: String无法转换为int
+    int x = "s";
+            ^
+A.java:4: 错误: 找不到符号
+    undefinedCall();
+    ^
+  符号:   方法 undefinedCall()
+  位置: 类 A
+2 个错误
