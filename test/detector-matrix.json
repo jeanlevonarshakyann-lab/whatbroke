@@ -419,6 +419,54 @@
       "generic": 2
     }
   },
+  "clang_format_default_fail.txt": {
+    "winner": "clang",
+    "parser": "clang",
+    "failures": 2,
+    "claimants": [
+      "clang",
+      "generic"
+    ],
+    "shadow": {
+      "generic": 3
+    }
+  },
+  "clang_format_msvc_fail.txt": {
+    "winner": "clang",
+    "parser": "clang",
+    "failures": 2,
+    "claimants": [
+      "clang",
+      "generic"
+    ],
+    "shadow": {
+      "generic": 2
+    }
+  },
+  "clang_format_nocaret_fail.txt": {
+    "winner": "clang",
+    "parser": "clang",
+    "failures": 2,
+    "claimants": [
+      "clang",
+      "generic"
+    ],
+    "shadow": {
+      "generic": 3
+    }
+  },
+  "clang_format_vi_fail.txt": {
+    "winner": "clang",
+    "parser": "clang",
+    "failures": 2,
+    "claimants": [
+      "clang",
+      "generic"
+    ],
+    "shadow": {
+      "generic": 2
+    }
+  },
   "clang_sarif_fail.txt": {
     "winner": "clang",
     "parser": "clang",

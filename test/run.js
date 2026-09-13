@@ -1565,6 +1565,26 @@ const CASES = [
       assert.match(r.failures[2].message, /Argument 1 to "total"/);
       assert.ok(!r.failures.some((f) => /note:/.test(f.message)), "notes are not errors");
     } },
+  // One clang run over two files, printed in four of its diagnostic formats. msvc and vi
+  // move the location out of the colon shape - `a.c(2,19):` and `a.c +2:19:` - and nothing
+  // read either: two errors came back from the generic reader with no file and no line.
+  { file: "clang_format_default_fail.txt", tool: "clang", n: 2, check: (r) => {
+      assert.deepEqual(r.failures.map((f) => `${f.file}:${f.line}:${f.col}`), ["a.c:2:19", "b.c:4:12"]);
+      assert.match(r.summary, /1 warning hidden/);
+    } },
+  { file: "clang_format_msvc_fail.txt", tool: "clang", n: 2, check: (r) => {
+      assert.deepEqual(r.failures.map((f) => `${f.file}:${f.line}:${f.col}`), ["a.c:2:19", "b.c:4:12"]);
+      assert.equal(r.failures[1].message, "use of undeclared identifier 'missing_stock'");
+      assert.match(r.summary, /1 warning hidden/);
+    } },
+  // `a.c +2:19: error:` also fits the colon shape - as a file called "a.c +2" - and that
+  // reading was refused for not naming a C source, which left the line read by nothing.
+  { file: "clang_format_vi_fail.txt", tool: "clang", n: 2, check: (r) => {
+      assert.deepEqual(r.failures.map((f) => `${f.file}:${f.line}:${f.col}`), ["a.c:2:19", "b.c:4:12"]);
+    } },
+  { file: "clang_format_nocaret_fail.txt", tool: "clang", n: 2, check: (r) => {
+      assert.deepEqual(r.failures.map((f) => `${f.file}:${f.line}:${f.col}`), ["a.c:2:19", "b.c:4:12"]);
+    } },
   { file: "clang_fail.txt", tool: "clang", n: 2, check: (r) => {
       assert.equal(r.failures[0].title, "-Wint-conversion");
       assert.equal(r.failures[0].col, 17);
@@ -3081,6 +3101,8 @@ for (const [group, encodings, silentAbout = []] of [
   ["eslint", ["eslint_warnings_text_same_fail.txt", "eslint_warnings_json_fail.txt"], ["message"]],
   ["npm", ["npm_404_text_same_fail.txt", "npm_404_json_fail.txt"]],
   ["deno test", ["denotest_junit_text_same_fail.txt", "denotest_junit_multiline_fail.txt"]],
+  ["clang formats", ["clang_format_default_fail.txt", "clang_format_msvc_fail.txt",
+    "clang_format_vi_fail.txt", "clang_format_nocaret_fail.txt"]],
   // Colour changes how bun marks a failure, not which tests failed.
   ["bun colour", ["bun_color_plain_same_fail.txt", "bun_color_fail.txt"]],
   // What the run said does not change with the language it was said in - only the words
@@ -4656,7 +4678,7 @@ try {
   let checked = 0;
   for (const file of readdirSync(join(here, "fixtures"))) {
     const raw = fx(file);
-    const declared = [...raw.matchAll(/^(\d+) errors? generated\.$/gm)]
+    const declared = [...raw.matchAll(/^(?:\d+ warnings? and )?(\d+) errors? generated\.$/gm)]
       .reduce((n, m) => n + Number(m[1]), 0);
     if (!declared) continue;
     const r = analyse(raw);
@@ -4669,6 +4691,12 @@ try {
       `${file}: read ${r.failures.length} of ${declared} and the headline does not say so`);
   }
   assert.ok(checked >= 4, `only ${checked} logs carry a clang count`);
+  // ...and the count is read from the line clang writes when a file has warnings too,
+  // "1 warning and 1 error generated.", which the pattern once did not know. A real
+  // capture with one of its two errors lost - as a damaged log loses one - has to say so.
+  const damaged = fx("clang_format_default_fail.txt").split("\n")
+    .filter((l) => !/^b\.c:4:12: error:/.test(l)).join("\n");
+  assert.equal(analyse(damaged).summary, "1 of the 2 errors clang reported — 1 warning hidden");
   console.log(`  ok   clang's own error count is never quietly contradicted (${checked} logs)`);
   pass++;
 } catch (e) { console.log(`  FAIL clang count\n       ${e.message}`); fail++; }

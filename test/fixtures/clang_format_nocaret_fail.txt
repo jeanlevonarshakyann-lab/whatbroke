@@ -1,0 +1,3 @@
+a.c:2:19: error: expected ';' at end of declaration
+b.c:1:6: warning: incompatible pointer types initializing 'int *' with an expression of type 'char[6]' [-Wincompatible-pointer-types]
+b.c:4:12: error: use of undeclared identifier 'missing_stock'

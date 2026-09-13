@@ -14,6 +14,26 @@ import { uniqueFailures } from "../util.js";
 const DIAGNOSTIC_RE = /^(.+?):(\d+):(?:(\d+):)?[^\S\n]+(error|fatal error|warning|note):[^\S\n]+(.+)$/;
 const C_FAMILY = /\.(?:c|cc|cp|cxx|cpp|c\+\+|m|mm|h|hh|hp|hpp|hxx|h\+\+|tcc|i|ii|s|sx)$/i;
 const CODE_RE = /[^\S\n]+\[(-W[\w-]+)\]$/;
+// -fdiagnostics-format=msvc and =vi move the location out of the colon shape - `a.c(2,19):`
+// for Visual Studio, `a.c +2:19:` for vi - and nothing read either: two errors came back
+// from the generic reader with no file and no line. MSBuild writes the msvc shape too, for
+// C# and every other language it builds, so a C-family source is required here as well.
+const MSVC_RE = /^(.+?)\((\d+),(\d+)\):[^\S\n]+(error|fatal error|warning|note):[^\S\n]+(.+)$/;
+const VI_RE = /^(.+?)[^\S\n]+\+(\d+):(\d+):[^\S\n]+(error|fatal error|warning|note):[^\S\n]+(.+)$/;
+
+/** A diagnostic in whichever of clang's location shapes it was printed, as the same five
+ *  fields the colon shape gives: file, line, column, severity, message. */
+function diagnostic(line) {
+  // vi's shape is tried first. `a.c +2:19: error:` also fits the colon shape, with a
+  // file called "a.c +2", line 19 and no column - and that reading is then rightly
+  // refused for not naming a C source, which left the line read by nothing at all.
+  const vi = line.match(VI_RE);
+  if (vi && C_FAMILY.test(vi[1])) return vi;
+  const colon = line.match(DIAGNOSTIC_RE);
+  if (colon) return colon;
+  const msvc = line.match(MSVC_RE);
+  return msvc && C_FAMILY.test(msvc[1]) ? msvc : null;
+}
 // The driver speaks for itself when there is no source to point at: a missing input, an
 // unknown flag, a failed link. These carry no file:line, so the pattern above never sees
 // them and a `make` run that could not even start compiling fell through to a guess.
@@ -76,7 +96,8 @@ export default {
     (/^\S.+:\d+(?::\d+)?:[^\S\n]+(?:error|fatal error|warning|note):[^\S\n]+/m.test(s) &&
      /(?:clang|gcc|g\+\+|cc1|ld:|[\w.-]+\.(?:c|cc|cpp|cxx|h|hpp|m|mm):)/i.test(s)) ||
     // A driver error names the driver, which is as specific as the pattern above.
-    DRIVER_RE.test(s.split("\n").find((l) => DRIVER_RE.test(l)) ?? ""),
+    DRIVER_RE.test(s.split("\n").find((l) => DRIVER_RE.test(l)) ?? "") ||
+    s.split("\n").some((l) => { const m = l.match(MSVC_RE) ?? l.match(VI_RE); return !!m && C_FAMILY.test(m[1]); }),
 
   extract(s) {
     const sarif = clangSarif(s);
@@ -91,7 +112,7 @@ export default {
         }
         continue;
       }
-      const match = line.match(DIAGNOSTIC_RE);
+      const match = diagnostic(line);
       if (!match || match[4] === "note") continue;
       if (!match[3] && !C_FAMILY.test(match[1])) continue;
       const code = match[5].match(CODE_RE);
@@ -118,7 +139,11 @@ export default {
     // foreign, and this does not try. What it will not do any more is report "1 error"
     // over a log where clang said there were two - the count is the one part of the
     // wreckage that survived intact, and saying nothing was the real failure here.
-    const declared = [...s.matchAll(/^(\d+) errors? generated\.$/gm)]
+    // A translation unit with warnings as well as errors says both in one line - "1
+    // warning and 1 error generated." - and a count that knew only "1 error generated."
+    // missed every such unit. The safeguard below then went quiet in exactly the logs
+    // it is for, since a broken build rarely has errors and no warnings.
+    const declared = [...s.matchAll(/^(?:\d+ warnings? and )?(\d+) errors? generated\.$/gm)]
       .reduce((n, m) => n + Number(m[1]), 0);
     const n = distinct.length;
     const missed = declared > rawFailures ? declared : 0;
