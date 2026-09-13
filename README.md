@@ -329,7 +329,10 @@ unchanged — and the rest arrive under `others`.
 
 The same diagnosis is never reported twice: unittest prints its failures *as* Python
 tracebacks, and that is one failure read two ways, not two failures. Two different tools
-flagging the same line for different reasons are both kept, because they are.
+flagging the same line for different reasons are both kept, because they are. So are two
+runs that say the same thing at the same line: a failure is found where its location is
+written as a location, `src/main.rs:2:22`, before anywhere its numbers merely appear — a
+one-line JSON record is full of numbers, and a byte offset is not a column.
 
 A tool that does not own the log has to say where its failure is, or what it is — a
 diagnostic with no location and no identifier is a stray match on somebody else's text

@@ -87,15 +87,34 @@ function locate(text, all) {
     // One pass for both: every line naming this failure's file, and the subset that also
     // carries its line number. The subset is a strong anchor and adjusts the score; the
     // whole set is only ever used to break a tie (below).
-    const fileLines = [], locationAnchors = [];
+    const fileLines = [], lineAnchors = [], columnAnchors = [], writtenAnchors = [];
     if (failure.file) {
       const file = String(failure.file);
+      const written = failure.line
+        ? new RegExp(`${file.replace(/[.*+?^${}()|[\]\\]/g, "\\$&")}:${failure.line}${failure.col ? `:${failure.col}` : ""}(?!\\d)`)
+        : null;
       cleaned.forEach((line, index) => {
         if (!line.includes(file)) return;
         fileLines.push(index);
-        if (!failure.line || numbers[index].has(String(failure.line))) locationAnchors.push(index);
+        if (failure.line && !numbers[index].has(String(failure.line))) return;
+        lineAnchors.push(index);
+        if (failure.col && numbers[index].has(String(failure.col))) columnAnchors.push(index);
+        if (written?.test(line)) writtenAnchors.push(index);
       });
     }
+    // A line that names the file and holds the right numbers somewhere is a weak anchor,
+    // and a machine report written on one line is full of numbers. Two runs each reported
+    // "mismatched types" at src/main.rs line 2 - rustc's text at column 22, cargo's JSON at
+    // column 18 - and the text run's failure anchored on the JSON line, which holds the
+    // file, a 2, a 22 in a byte offset, and the same message. The ranges overlapped and
+    // the text run's failure was suppressed as a copy of a failure it was not.
+    //
+    // So the location written as a location - `src/main.rs:2:22` - anchors first, the
+    // right numbers on the file's line next, and file and line last. Each tier is only
+    // used where the one above it finds nothing, so a format that writes its location
+    // differently, or counts columns from zero, anchors exactly as it did before.
+    const locationAnchors = writtenAnchors.length ? writtenAnchors
+      : columnAnchors.length ? columnAnchors : lineAnchors;
     const scored = cleaned.map((line, index) => ({ index, score: scoreLine(line, numbers[index], failure, prepared) }))
       .filter((entry) => entry.score > 0);
     if (!scored.length) {
