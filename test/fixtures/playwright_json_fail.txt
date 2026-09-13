@@ -1,0 +1,241 @@
+{
+  "config": {
+    "argv": [
+      "/usr/local/bin/node",
+      "/home/dev/shop/node_modules/.bin/playwright",
+      "test",
+      "--reporter=json"
+    ],
+    "configFile": "/home/dev/shop/playwright.config.ts",
+    "rootDir": "/home/dev/shop/tests",
+    "failOnFlakyTests": false,
+    "forbidOnly": false,
+    "fullyParallel": false,
+    "globalSetup": null,
+    "globalTeardown": null,
+    "globalTimeout": 0,
+    "grep": {},
+    "grepInvert": null,
+    "maxFailures": 0,
+    "metadata": {
+      "actualWorkers": 1
+    },
+    "preserveOutput": "always",
+    "projects": [
+      {
+        "outputDir": "/home/dev/shop/test-results",
+        "repeatEach": 1,
+        "retries": 0,
+        "metadata": {
+          "actualWorkers": 1
+        },
+        "id": "",
+        "name": "",
+        "testDir": "/home/dev/shop/tests",
+        "testIgnore": [],
+        "testMatch": [
+          "**/*.@(spec|test).?(c|m)[jt]s?(x)"
+        ],
+        "timeout": 30000
+      }
+    ],
+    "quiet": false,
+    "reporter": [
+      [
+        "json"
+      ]
+    ],
+    "reportSlowTests": {
+      "max": 5,
+      "threshold": 300000
+    },
+    "shard": null,
+    "tags": [],
+    "updateSnapshots": "missing",
+    "updateSourceMethod": "patch",
+    "version": "1.63.0",
+    "workers": 1,
+    "webServer": null
+  },
+  "suites": [
+    {
+      "title": "cart.spec.ts",
+      "file": "cart.spec.ts",
+      "column": 0,
+      "line": 0,
+      "specs": [
+        {
+          "title": "totals an invoice",
+          "ok": false,
+          "tags": [],
+          "tests": [
+            {
+              "timeout": 30000,
+              "annotations": [],
+              "expectedStatus": "passed",
+              "projectId": "",
+              "projectName": "",
+              "results": [
+                {
+                  "workerIndex": 0,
+                  "parallelIndex": 0,
+                  "status": "failed",
+                  "duration": 3,
+                  "error": {
+                    "message": "Error: \u001b[2mexpect(\u001b[22m\u001b[31mreceived\u001b[39m\u001b[2m).\u001b[22mtoBe\u001b[2m(\u001b[22m\u001b[32mexpected\u001b[39m\u001b[2m) // Object.is equality\u001b[22m\n\nExpected: \u001b[32m6\u001b[39m\nReceived: \u001b[31m4\u001b[39m",
+                    "stack": "Error: \u001b[2mexpect(\u001b[22m\u001b[31mreceived\u001b[39m\u001b[2m).\u001b[22mtoBe\u001b[2m(\u001b[22m\u001b[32mexpected\u001b[39m\u001b[2m) // Object.is equality\u001b[22m\n\nExpected: \u001b[32m6\u001b[39m\nReceived: \u001b[31m4\u001b[39m\n    at /home/dev/shop/tests/cart.spec.ts:4:17",
+                    "location": {
+                      "file": "/home/dev/shop/tests/cart.spec.ts",
+                      "column": 17,
+                      "line": 4
+                    },
+                    "snippet": "  2 |\n  3 | test(\"totals an invoice\", async () => {\n> 4 |   expect(2 + 2).toBe(6);\n    |                 ^\n  5 | });\n  6 |\n  7 | test(\"applies a discount\", async () => {"
+                  },
+                  "errors": [
+                    {
+                      "location": {
+                        "file": "/home/dev/shop/tests/cart.spec.ts",
+                        "column": 17,
+                        "line": 4
+                      },
+                      "message": "Error: \u001b[2mexpect(\u001b[22m\u001b[31mreceived\u001b[39m\u001b[2m).\u001b[22mtoBe\u001b[2m(\u001b[22m\u001b[32mexpected\u001b[39m\u001b[2m) // Object.is equality\u001b[22m\n\nExpected: \u001b[32m6\u001b[39m\nReceived: \u001b[31m4\u001b[39m\n\n  2 |\n  3 | test(\"totals an invoice\", async () => {\n> 4 |   expect(2 + 2).toBe(6);\n    |                 ^\n  5 | });\n  6 |\n  7 | test(\"applies a discount\", async () => {\n    at /home/dev/shop/tests/cart.spec.ts:4:17"
+                    }
+                  ],
+                  "stdout": [],
+                  "stderr": [],
+                  "retry": 0,
+                  "startTime": "2026-09-13T05:20:36.949Z",
+                  "annotations": [],
+                  "attachments": [
+                    {
+                      "name": "error-context",
+                      "contentType": "text/markdown",
+                      "path": "/home/dev/shop/test-results/cart-totals-an-invoice/error-context.md"
+                    }
+                  ],
+                  "errorLocation": {
+                    "file": "/home/dev/shop/tests/cart.spec.ts",
+                    "column": 17,
+                    "line": 4
+                  }
+                }
+              ],
+              "status": "unexpected"
+            }
+          ],
+          "id": "1981448f0b79506fb670-ddc626486263f76c758f",
+          "file": "cart.spec.ts",
+          "line": 3,
+          "column": 5
+        },
+        {
+          "title": "applies a discount",
+          "ok": false,
+          "tags": [],
+          "tests": [
+            {
+              "timeout": 30000,
+              "annotations": [],
+              "expectedStatus": "passed",
+              "projectId": "",
+              "projectName": "",
+              "results": [
+                {
+                  "workerIndex": 1,
+                  "parallelIndex": 0,
+                  "status": "failed",
+                  "duration": 1,
+                  "error": {
+                    "message": "TypeError: Cannot read properties of null (reading 'lookup')",
+                    "stack": "TypeError: Cannot read properties of null (reading 'lookup')\n    at /home/dev/shop/tests/cart.spec.ts:9:9",
+                    "location": {
+                      "file": "/home/dev/shop/tests/cart.spec.ts",
+                      "column": 9,
+                      "line": 9
+                    },
+                    "snippet": "   7 | test(\"applies a discount\", async () => {\n   8 |   const table: any = null;\n>  9 |   table.lookup(\"SPRING\");\n     |         ^\n  10 | });\n  11 |\n  12 | test(\"counts items\", async () => {"
+                  },
+                  "errors": [
+                    {
+                      "location": {
+                        "file": "/home/dev/shop/tests/cart.spec.ts",
+                        "column": 9,
+                        "line": 9
+                      },
+                      "message": "TypeError: Cannot read properties of null (reading 'lookup')\n\n   7 | test(\"applies a discount\", async () => {\n   8 |   const table: any = null;\n>  9 |   table.lookup(\"SPRING\");\n     |         ^\n  10 | });\n  11 |\n  12 | test(\"counts items\", async () => {\n    at /home/dev/shop/tests/cart.spec.ts:9:9"
+                    }
+                  ],
+                  "stdout": [],
+                  "stderr": [],
+                  "retry": 0,
+                  "startTime": "2026-09-13T05:20:37.140Z",
+                  "annotations": [],
+                  "attachments": [
+                    {
+                      "name": "error-context",
+                      "contentType": "text/markdown",
+                      "path": "/home/dev/shop/test-results/cart-applies-a-discount/error-context.md"
+                    }
+                  ],
+                  "errorLocation": {
+                    "file": "/home/dev/shop/tests/cart.spec.ts",
+                    "column": 9,
+                    "line": 9
+                  }
+                }
+              ],
+              "status": "unexpected"
+            }
+          ],
+          "id": "1981448f0b79506fb670-772f0f5598997a5d59f4",
+          "file": "cart.spec.ts",
+          "line": 7,
+          "column": 5
+        },
+        {
+          "title": "counts items",
+          "ok": true,
+          "tags": [],
+          "tests": [
+            {
+              "timeout": 30000,
+              "annotations": [],
+              "expectedStatus": "passed",
+              "projectId": "",
+              "projectName": "",
+              "results": [
+                {
+                  "workerIndex": 2,
+                  "parallelIndex": 0,
+                  "status": "passed",
+                  "duration": 3,
+                  "errors": [],
+                  "stdout": [],
+                  "stderr": [],
+                  "retry": 0,
+                  "startTime": "2026-09-13T05:20:37.326Z",
+                  "annotations": [],
+                  "attachments": []
+                }
+              ],
+              "status": "expected"
+            }
+          ],
+          "id": "1981448f0b79506fb670-36986ef2abb103e0ec19",
+          "file": "cart.spec.ts",
+          "line": 12,
+          "column": 5
+        }
+      ]
+    }
+  ],
+  "errors": [],
+  "stats": {
+    "startTime": "2026-09-13T05:20:36.775Z",
+    "duration": 573.53,
+    "expected": 1,
+    "skipped": 0,
+    "unexpected": 2,
+    "flaky": 0
+  }
+}

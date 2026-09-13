@@ -3011,7 +3011,71 @@
       "generic": 4
     }
   },
+  "playwright_dot_fail.txt": {
+    "winner": "playwright",
+    "parser": "playwright",
+    "failures": 2,
+    "claimants": [
+      "playwright",
+      "node",
+      "generic"
+    ],
+    "shadow": {
+      "generic": 3
+    }
+  },
   "playwright_fail.txt": {
+    "winner": "playwright",
+    "parser": "playwright",
+    "failures": 2,
+    "claimants": [
+      "playwright",
+      "node",
+      "generic"
+    ],
+    "shadow": {
+      "generic": 3
+    }
+  },
+  "playwright_github_fail.txt": {
+    "winner": "playwright",
+    "parser": "playwright",
+    "failures": 2,
+    "claimants": [
+      "playwright",
+      "node",
+      "generic"
+    ],
+    "shadow": {
+      "generic": 3
+    }
+  },
+  "playwright_json_fail.txt": {
+    "winner": "playwright",
+    "parser": "playwright",
+    "failures": 2,
+    "claimants": [
+      "playwright",
+      "generic"
+    ],
+    "shadow": {
+      "generic": 2
+    }
+  },
+  "playwright_junit_fail.txt": {
+    "winner": "playwright",
+    "parser": "playwright",
+    "failures": 2,
+    "claimants": [
+      "playwright",
+      "node",
+      "generic"
+    ],
+    "shadow": {
+      "generic": 3
+    }
+  },
+  "playwright_list_same_fail.txt": {
     "winner": "playwright",
     "parser": "playwright",
     "failures": 2,

@@ -1,0 +1,57 @@
+<testsuites id="" name="" tests="3" failures="1" skipped="0" errors="1" time="0.574655">
+<testsuite name="cart.spec.ts" timestamp="2026-09-13T05:20:37.586Z" hostname="" tests="3" failures="1" skipped="0" time="0.006" errors="1">
+<testcase name="totals an invoice" classname="cart.spec.ts" time="0.003">
+<system-out>
+<![CDATA[
+[[ATTACHMENT|test-results/cart-totals-an-invoice/error-context.md]]
+]]>
+</system-out>
+<failure message="expect(received).toBe(expected) // Object.is equality" type="expect.toBe">
+<![CDATA[  cart.spec.ts:3:5 › totals an invoice ─────────────────────────────────────────────────────────────
+
+    Error: expect(received).toBe(expected) // Object.is equality
+
+    Expected: 6
+    Received: 4
+
+      2 |
+      3 | test("totals an invoice", async () => {
+    > 4 |   expect(2 + 2).toBe(6);
+        |                 ^
+      5 | });
+      6 |
+      7 | test("applies a discount", async () => {
+        at /home/dev/shop/tests/cart.spec.ts:4:17
+
+    Error Context: ../test-results/cart-totals-an-invoice/error-context.md
+]]>
+</failure>
+</testcase>
+<testcase name="applies a discount" classname="cart.spec.ts" time="0.001">
+<system-out>
+<![CDATA[
+[[ATTACHMENT|test-results/cart-applies-a-discount/error-context.md]]
+]]>
+</system-out>
+<error message="Cannot read properties of null (reading &apos;lookup&apos;)" type="TypeError">
+<![CDATA[  cart.spec.ts:7:5 › applies a discount ────────────────────────────────────────────────────────────
+
+    TypeError: Cannot read properties of null (reading 'lookup')
+
+       7 | test("applies a discount", async () => {
+       8 |   const table: any = null;
+    >  9 |   table.lookup("SPRING");
+         |         ^
+      10 | });
+      11 |
+      12 | test("counts items", async () => {
+        at /home/dev/shop/tests/cart.spec.ts:9:9
+
+    Error Context: ../test-results/cart-applies-a-discount/error-context.md
+]]>
+</error>
+</testcase>
+<testcase name="counts items" classname="cart.spec.ts" time="0.002">
+</testcase>
+</testsuite>
+</testsuites>
