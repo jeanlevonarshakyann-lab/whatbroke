@@ -83,6 +83,9 @@ function json(s) {
 }
 
 function findings(s) {
+  // Each form has a string it cannot be written without; a log holding none of them is
+  // not split and scanned three times over.
+  if (!s.includes("error[") && !s.includes(", col ") && !s.includes('"diagnostics"')) return [];
   const lines = s.split("\n");
   const out = [];
   const seen = new Set();
