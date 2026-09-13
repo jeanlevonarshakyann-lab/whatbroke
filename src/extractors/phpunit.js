@@ -1,4 +1,4 @@
-import { xmlAttributes, xmlText } from "../util.js";
+import { elements, firstElement, xmlAttributes, xmlText } from "../util.js";
 const LOCATION_RE = /^[^\S\n]*(.+?):(\d+)$/;
 // PHPUnit separates an assertion that did not hold ("failure") from an exception that
 // escaped ("error") and heads each block differently. Reading only the first meant an
@@ -14,6 +14,8 @@ const INTERNAL_RE = /^An error occurred inside PHPUnit\.$/m;
 // own class and name. The document was not read at all before.
 const CASE_RE = /<testcase\b([^>]*?)(?:\/>|>([\s\S]*?)<\/testcase>)/g;
 const OUTCOME_RE = /<(failure|error)\b([^>]*?)(?:\/>|>([\s\S]*?)<\/\1>)/;
+const CASE = { open: /<testcase\b/, close: () => "</testcase>", selfClosing: true };
+const OUTCOME = { open: /<(failure|error)\b/, close: (name) => `</${name}>`, selfClosing: true };
 
 // --testdox prints the same run with the class and the test renamed into prose, grouped
 // under the class, with every line of the body behind a box-drawing rule. The renaming
@@ -83,10 +85,10 @@ function bodyOf(text) {
 function junitResults(s) {
   if (!s.includes("<testcase")) return [];
   const out = [];
-  for (const test of s.matchAll(CASE_RE)) {
+  for (const test of elements(s, CASE_RE, CASE)) {
     if (!test[2]) continue;
     const a = xmlAttributes(test[1]);
-    const outcome = test[2].match(OUTCOME_RE);
+    const outcome = firstElement(test[2], OUTCOME_RE, OUTCOME);
     if (!outcome || !outcome[3]) continue;
     const text = xmlText(outcome[3]);
     const name = `${a.class ?? a.classname ?? ""}::${a.name ?? ""}`;

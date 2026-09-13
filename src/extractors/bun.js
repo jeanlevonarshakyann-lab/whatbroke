@@ -1,4 +1,4 @@
-import { isNoise, xmlAttributes, xmlText } from "../util.js";
+import { elements, firstElement, isNoise, xmlAttributes, xmlText } from "../util.js";
 
 // node writes stack paths as file:// URLs when a module throws; bun writes plain paths,
 // but a bun process running an ESM entry can produce either.
@@ -66,15 +66,18 @@ const BUN_DOC_RE = /<testsuites\b[^>]*\bname="bun test"[^>]*>([\s\S]*?)<\/testsu
 const BUN_SUITES = /<testsuites\b[^>]*\bname="bun test"/;
 const CASE_RE = /<testcase\b([^>]*?)(?:\/>|>([\s\S]*?)<\/testcase>)/g;
 const OUTCOME_RE = /<(failure|error)\b([^>]*?)(?:\/>|>([\s\S]*?)<\/\1>)/;
+const DOC = { open: /<testsuites\b/, close: () => "</testsuites>" };
+const CASE = { open: /<testcase\b/, close: () => "</testcase>", selfClosing: true };
+const OUTCOME = { open: /<(failure|error)\b/, close: (name) => `</${name}>`, selfClosing: true };
 
 /** The failed cases of a `--reporter=junit` document, or none. */
 function junitCases(s) {
   if (!BUN_SUITES.test(s)) return [];
   const out = [];
-  const mine = [...s.matchAll(BUN_DOC_RE)].map((d) => d[1]).join("\n");
-  for (const test of mine.matchAll(CASE_RE)) {
+  const mine = [...elements(s, BUN_DOC_RE, DOC)].map((d) => d[1]).join("\n");
+  for (const test of elements(mine, CASE_RE, CASE)) {
     const body = test[2] ?? "";
-    const outcome = body.match(OUTCOME_RE);
+    const outcome = firstElement(body, OUTCOME_RE, OUTCOME);
     if (!outcome) continue;
     const a = xmlAttributes(test[1]);
     const detail = xmlText(outcome[3] ?? "").trim() || xmlAttributes(outcome[2]).message || "";

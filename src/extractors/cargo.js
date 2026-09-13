@@ -87,6 +87,10 @@ export default {
   extract(s) {
     const lines = s.split("\n");
     const failures = [];
+    // What kind of run panicked is a question about the whole log, so it is asked once -
+    // asked per panic, a log of thousands of them searched the log once for each.
+    let category;
+    const panicCategory = () => (category ??= BUILD_SCRIPT.test(s) ? "build" : (RAN_TESTS.test(s) ? "test" : "runtime"));
 
     // --- test panics: "---- tests::x stdout ----" then "thread '...' panicked at file:l:c:" ---
     for (let i = 0; i < lines.length; i++) {
@@ -107,7 +111,7 @@ export default {
       failures.push({
         file: pm[2], line: +pm[3], col: +pm[4],
         title: pm[1], subject: pm[1],
-        category: BUILD_SCRIPT.test(s) ? "build" : (RAN_TESTS.test(s) ? "test" : "runtime"),
+        category: panicCategory(),
         severity: "error", message: msg.join("\n"),
       });
     }

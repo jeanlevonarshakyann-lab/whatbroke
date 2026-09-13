@@ -1,4 +1,4 @@
-import { xmlAttributes, xmlText } from "../util.js";
+import { elements, firstElement, xmlAttributes, xmlText } from "../util.js";
 // The reports a JVM build leaves behind - Maven Surefire's target/surefire-reports and
 // Gradle's build/test-results - are what a CI job keeps and what every test dashboard
 // reads. Neither was read: the generic fallback found one location in the log, and it was
@@ -25,6 +25,8 @@ import { xmlAttributes, xmlText } from "../util.js";
 // test, not the ones in the assertion library above it.
 const CASE_RE = /<testcase\b([^>]*?)(?:\/>|>([\s\S]*?)<\/testcase>)/g;
 const OUTCOME_RE = /<(failure|error)\b([^>]*?)(?:\/>|>([\s\S]*?)<\/\1>)/;
+const CASE = { open: /<testcase\b/, close: () => "</testcase>", selfClosing: true };
+const OUTCOME = { open: /<(failure|error)\b/, close: (name) => `</${name}>`, selfClosing: true };
 const CDATA_RE = /<!\[CDATA\[([\s\S]*?)\]\]>/g;
 // `at shop.CartTest.totalsAnInvoice(CartTest.java:9)`, with the classloader prefix
 // Gradle's console adds - `app//` - allowed for.
@@ -58,9 +60,9 @@ function said(lines) {
 function xmlCases(s) {
   if (!s.includes("<testcase")) return [];
   const out = [];
-  for (const test of s.matchAll(CASE_RE)) {
+  for (const test of elements(s, CASE_RE, CASE)) {
     if (!test[2]) continue;
-    const outcome = test[2].match(OUTCOME_RE);
+    const outcome = firstElement(test[2], OUTCOME_RE, OUTCOME);
     if (!outcome) continue;
     const a = xmlAttributes(test[1]);
     if (!a.classname || !a.name) continue;

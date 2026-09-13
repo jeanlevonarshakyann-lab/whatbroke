@@ -1,4 +1,4 @@
-import { jsonDocuments, stripAnsi, xmlAttributes, xmlText } from "../util.js";
+import { elements, jsonDocuments, stripAnsi, xmlAttributes, xmlText } from "../util.js";
 // Playwright numbers each failure and heads it with the location of the TEST, then the
 // error, then an excerpt of the source with the offending line marked, then the location
 // of the THROW, then a path to an artifact:
@@ -54,6 +54,7 @@ const JUNIT_HEAD_RE = /^[^\S\n]*()(\S+?):(\d+):(\d+)[^\S\n]+›[^\S\n]+(.+?)[^\S
 // "body" then ran to the next `</error>` in the log, which was the first of Playwright's -
 // shellcheck's checkstyle report, written just above, took it with it.
 const JUNIT_OUTCOME_RE = /<(failure|error)\b(?:[^>]*?\/>|[^>]*>([\s\S]*?)<\/\1>)/g;
+const JUNIT_OUTCOME = { open: /<(failure|error)\b/, close: (name) => `</${name}>`, selfClosing: true };
 const CDATA_RE = /<!\[CDATA\[([\s\S]*?)\]\]>/g;
 
 // --reporter=json is the run as a document: suites nested by file and describe block,
@@ -126,7 +127,7 @@ function blocks(lines, headRe) {
 function junit(s) {
   if (!s.includes("<testcase")) return [];
   const out = [];
-  for (const outcome of s.matchAll(JUNIT_OUTCOME_RE)) {
+  for (const outcome of elements(s, JUNIT_OUTCOME_RE, JUNIT_OUTCOME)) {
     if (outcome[2] === undefined) continue;
     const body = outcome[2].includes("<![CDATA[")
       ? [...outcome[2].matchAll(CDATA_RE)].map((m) => m[1]).join("\n")

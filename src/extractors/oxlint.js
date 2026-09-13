@@ -1,4 +1,4 @@
-import { githubAnnotations, jsonDocuments, xmlAttributes, xmlText } from "../util.js";
+import { elements, firstElement, githubAnnotations, jsonDocuments, xmlAttributes, xmlText } from "../util.js";
 // oxlint prints one run ten ways, and it chooses among them itself: a terminal gets a
 // drawn report, a GitHub Actions job gets workflow annotations, an AI agent gets one line
 // per finding. Only that last one was read. The report a developer sees and the
@@ -37,16 +37,23 @@ const DRAWN_BODY_RE = /^[^\S\n]*(?:$|\d+[^\S\n]*[|\u2502]|[:\u00b7]|[`\u2570][-\
 const DRAWN_HEAD_RE = new RegExp(String.raw`^[^\S\n]*(x|!|\u00d7|\u26a0)[^\S\n]+(?:${RULE}:[^\S\n]+)?(\S.*?)[^\S\n]*$`);
 const DRAWN_AT_RE = /^[^\S\n]*(?:,-|\u256d\u2500)\[(.+):(\d+):(\d+)\][^\S\n]*$/;
 
-/** Whether the drawn diagnostic heading at `i` is part of an oxlint report: every line
- *  from it down to oxlint's closing tally is a line of a drawn report. swc draws exactly
- *  the same box around a syntax error, so in a log holding both, "the log ends the way
- *  oxlint's does" was not enough to make swc's error oxlint's. */
-function inReport(lines, i) {
-  for (let j = i + 1; j < lines.length; j++) {
-    if (TALLY_LINE_RE.test(lines[j])) return FINISHED_LINE_RE.test(lines[j + 1] ?? "");
-    if (!DRAWN_HEAD_RE.test(lines[j]) && !DRAWN_AT_RE.test(lines[j]) && !DRAWN_BODY_RE.test(lines[j])) return false;
+/** For each line, whether a drawn diagnostic heading just above it is part of an oxlint
+ *  report: every line from there down to oxlint's closing tally is a line of a drawn
+ *  report. swc draws exactly the same box around a syntax error, so in a log holding
+ *  both, "the log ends the way oxlint's does" was not enough to make swc's error oxlint's.
+ *
+ *  Asked by walking down from each heading, a report of thousands of findings with no
+ *  rule name - parse errors - walked the rest of the report once per finding. The answer
+ *  from a line is the answer from the line below it until a tally or a line that is not
+ *  drawn decides it, so it is worked out once, from the bottom. */
+function reportsBelow(lines) {
+  const verdict = new Array(lines.length + 1).fill(false);
+  for (let j = lines.length - 1; j >= 0; j--) {
+    if (TALLY_LINE_RE.test(lines[j])) verdict[j] = FINISHED_LINE_RE.test(lines[j + 1] ?? "");
+    else if (!DRAWN_HEAD_RE.test(lines[j]) && !DRAWN_AT_RE.test(lines[j]) && !DRAWN_BODY_RE.test(lines[j])) verdict[j] = false;
+    else verdict[j] = verdict[j + 1];
   }
-  return false;
+  return verdict;
 }
 
 // -f unix: `src/cart.js:2:1: `debugger` statement is not allowed [Error/eslint(no-debugger)]`
@@ -77,6 +84,11 @@ const JUNIT_DOC_RE = /<testsuites\b[^>]*\bname="Oxlint"[^>]*>([\s\S]*?)<\/testsu
 const JUNIT_SUITE_RE = /<testsuite\b([^>]*)>([\s\S]*?)<\/testsuite>/g;
 const JUNIT_CASE_RE = /<testcase\b([^>]*)>([\s\S]*?)<\/testcase>/g;
 const JUNIT_OUTCOME_RE = /<(error|failure)\b([^>]*?)(?:\/>|>([\s\S]*?)<\/\1>)/;
+const CHECKSTYLE_FILE = { open: /<file\b/, close: () => "</file>" };
+const JUNIT_DOC = { open: /<testsuites\b/, close: () => "</testsuites>" };
+const JUNIT_SUITE = { open: /<testsuite\b/, close: () => "</testsuite>" };
+const JUNIT_CASE = { open: /<testcase\b/, close: () => "</testcase>" };
+const JUNIT_OUTCOME = { open: /<(error|failure)\b/, close: (name) => `</${name}>`, selfClosing: true };
 const JUNIT_WHERE_RE = /^line (\d+), column (\d+),/;
 
 // -f sarif names its driver.
@@ -90,7 +102,7 @@ const positive = (n) => (Number.isInteger(+n) && +n > 0 ? +n : undefined);
 function findings(s) {
   const lines = s.split("\n");
   const out = [];
-  let stylishFile;
+  let stylishFile, reports;
   for (let i = 0; i < lines.length; i++) {
     const line = lines[i];
     const agent = line.match(FINDING_RE);
@@ -107,7 +119,7 @@ function findings(s) {
     }
     const head = line.match(DRAWN_HEAD_RE);
     const at = head && lines[i + 1]?.match(DRAWN_AT_RE);
-    if (at && (head[3] || inReport(lines, i))) {
+    if (at && (head[3] || (reports ??= reportsBelow(lines))[i + 1])) {
       out.push({ file: at[1], line: +at[2], col: +at[3],
         severity: head[1] === "x" || head[1] === "\u00d7" ? "error" : "warning", code: head[3], message: head[4] });
       i++;
@@ -143,7 +155,7 @@ function findings(s) {
   }
 
   if (s.includes("<checkstyle")) {
-    for (const f of s.matchAll(CHECKSTYLE_FILE_RE)) {
+    for (const f of elements(s, CHECKSTYLE_FILE_RE, CHECKSTYLE_FILE)) {
       const file = xmlAttributes(f[1]).name;
       for (const e of f[2].matchAll(CHECKSTYLE_ERROR_RE)) {
         const a = xmlAttributes(e[1]);
@@ -166,11 +178,11 @@ function findings(s) {
   }
 
   if (s.includes('name="Oxlint"')) {
-    for (const doc of s.matchAll(JUNIT_DOC_RE)) {
-      for (const suite of doc[1].matchAll(JUNIT_SUITE_RE)) {
+    for (const doc of elements(s, JUNIT_DOC_RE, JUNIT_DOC)) {
+      for (const suite of elements(doc[1], JUNIT_SUITE_RE, JUNIT_SUITE)) {
         const file = xmlAttributes(suite[1]).name;
-        for (const test of suite[2].matchAll(JUNIT_CASE_RE)) {
-          const outcome = test[2].match(JUNIT_OUTCOME_RE);
+        for (const test of elements(suite[2], JUNIT_CASE_RE, JUNIT_CASE)) {
+          const outcome = firstElement(test[2], JUNIT_OUTCOME_RE, JUNIT_OUTCOME);
           if (!outcome || !file) continue;
           const where = xmlText(outcome[3] ?? "").trim().match(JUNIT_WHERE_RE);
           out.push({ file, line: positive(where?.[1]), col: positive(where?.[2]),

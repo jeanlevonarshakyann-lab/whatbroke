@@ -49,8 +49,12 @@ export default {
     return annotated(s).length > 0 ||
       PARSABLE.test(lines.find((l) => PARSABLE.test(l)) ?? "") ||
       // A finding on its own proves nothing about which file it belongs to, so the
-      // default format is only claimed when a filename actually opens the block.
-      lines.some((l, i) => TTY.test(l) && lines.slice(0, i).some((p) => FILE.test(p) && !TTY.test(p)));
+      // default format is only claimed when a filename actually opens the block - which
+      // is a finding below the first line that could be one. Asked of every finding by
+      // looking back over every line above it, a log of findings and no filename looked
+      // back over the whole log once per line: 32,001 of them took six seconds.
+      ((named) => named !== -1 && lines.some((l, i) => i > named && TTY.test(l)))(
+        lines.findIndex((p) => FILE.test(p) && !TTY.test(p)));
   },
 
   extract(s) {

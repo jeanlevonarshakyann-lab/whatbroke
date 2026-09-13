@@ -1,4 +1,4 @@
-import { findJsonDocument, githubAnnotations, xmlAttributes, xmlText } from "../util.js";
+import { elements, findJsonDocument, firstElement, githubAnnotations, xmlAttributes, xmlText } from "../util.js";
 // Biome heads each finding with the location and the rule, then says what is wrong on
 // the line under it, then draws the source and offers fixes:
 //
@@ -104,6 +104,10 @@ const BIOME_CLASS = /^org\.biome\./;
 const JUNIT_CASE_RE = /<testcase\b([^>]*)>([\s\S]*?)<\/testcase>/g;
 const JUNIT_SUITE_RE = /<testsuite\b([^>]*)>([\s\S]*?)<\/testsuite>/g;
 const JUNIT_FAILURE_RE = /<failure\b([^>]*?)(?:\/>|>([\s\S]*?)<\/failure>)/;
+const JUNIT_DOC = { open: /<testsuites\b/, close: () => "</testsuites>" };
+const JUNIT_SUITE = { open: /<testsuite\b/, close: () => "</testsuite>" };
+const JUNIT_CASE = { open: /<testcase\b/, close: () => "</testcase>" };
+const JUNIT_FAILURE = { open: /<failure\b/, close: () => "</failure>", selfClosing: true };
 
 // --reporter=summary. Biome heads its own sections here, and lists the files under one
 // of them. There are no line numbers anywhere in this format, so none are invented.
@@ -164,12 +168,12 @@ function reported(s) {
     });
   }
 
-  for (const doc of JUNIT_SUITES.test(s) ? s.matchAll(JUNIT_DOC_RE) : []) {
-    for (const suite of doc[1].matchAll(JUNIT_SUITE_RE)) {
+  for (const doc of JUNIT_SUITES.test(s) ? elements(s, JUNIT_DOC_RE, JUNIT_DOC) : []) {
+    for (const suite of elements(doc[1], JUNIT_SUITE_RE, JUNIT_SUITE)) {
       const file = xmlAttributes(suite[1]).name;
-      for (const test of suite[2].matchAll(JUNIT_CASE_RE)) {
+      for (const test of elements(suite[2], JUNIT_CASE_RE, JUNIT_CASE)) {
         const a = xmlAttributes(test[1]);
-        const f = test[2].match(JUNIT_FAILURE_RE);
+        const f = firstElement(test[2], JUNIT_FAILURE_RE, JUNIT_FAILURE);
         if (!f || !BIOME_CLASS.test(String(a.name ?? ""))) continue;
         // `org.biome.lint.suspicious.noDebugger` is the category with its separators
         // changed for a format that expects a class name; this changes them back.
