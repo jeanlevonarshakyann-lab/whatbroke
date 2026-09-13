@@ -79,7 +79,12 @@ function offenses(s) {
       // the same log, and quoting it made one offense two.
       const own = (l) => (!m[1] ? l : /^#/.test(l ?? "") ? l.replace(/^#[^\S\n]?/, "") : undefined);
       const source = own(lines[i + 1]);
-      const stmt = source !== undefined && CARETS.test(own(lines[i + 2]) ?? "") ? source.trim() : undefined;
+      // rubocop starts the carets at the offense's column, which is what ties this source
+      // line to this offense. Two captures of one run written into one log put another
+      // offense's source and carets under this one, and quoting them made one offense two.
+      const carets = own(lines[i + 2]) ?? "";
+      const stmt = source !== undefined && CARETS.test(carets) && carets.indexOf("^") === +m[4] - 1
+        ? source.trim() : undefined;
       found.push({
         file: m[2], line: +m[3], col: +m[4], letter: m[5],
         code: m[6], message: m[7], ...(stmt ? { stmt } : {}),

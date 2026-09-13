@@ -741,6 +741,22 @@ test("rustc's source line is the one with rustc's marks under it", () => {
   assert.equal(e0308.stmt.trim(), 'let total: i32 = "not a number";');
 });
 
+test("a rubocop offense quotes the source its carets start under", () => {
+  // Two captures of one rubocop run woven line by line. Another offense's source and
+  // carets - `def total( items )`, marked at column 11 - landed straight under the
+  // Style/SymbolProc offense at column 13, which quoted them. Its two readings then quoted
+  // different lines, and one offense was reported twice.
+  const progress = fx("rubocop_progress_same_fail.txt").split("\n");
+  const clang = fx("rubocop_clang_fail.txt").split("\n");
+  const at = progress.findIndex((l) => l.includes("Style/SymbolProc"));
+  const other = clang.findIndex((l) => l.startsWith("def total( items )"));
+  const woven = [...progress.slice(0, at + 1), clang[other], clang[other + 1], ...progress.slice(at + 1)].join("\n");
+  const symbolProc = analyse(woven).failures.find((f) => f.code === "Style/SymbolProc");
+  assert.notEqual(symbolProc.stmt, "def total( items )");
+  const both = allFailures(analyse(`${woven}\n${clang.join("\n")}`)).filter((f) => f.code === "Style/SymbolProc");
+  assert.equal(both.length, 1, "one offense, read from two captures, was reported twice");
+});
+
 test("two tools writing into one pipe never crash it or double a diagnosis", () => {
   let seed = 20260910;
   const rnd = () => (seed = (seed * 1103515245 + 12345) & 0x7fffffff) / 0x7fffffff;
