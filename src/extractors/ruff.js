@@ -1,4 +1,4 @@
-import { findJsonDocument } from "../util.js";
+import { findJsonDocument, jsonDocuments, xmlAttributes } from "../util.js";
 // ruff emits rustc-style diagnostics: a header line, then " --> file:line:col".
 const HEAD_RE = /^([A-Z]+\d+)(?:[^\S\n]+\[[*x]\])?[^\S\n]+(.+)$/;
 // Not everything ruff reports has a rule code. A file it cannot parse is reported as
@@ -34,6 +34,116 @@ const GROUP_ENTRY_RE = /^[^\S\n]+(\d+):(\d+)[^\S\n]+([A-Z]+\d+|invalid-syntax)(?
 // --output-format=github, the one a GitHub Actions job uses so the findings annotate the
 // diff. The message is percent-encoded because a workflow command may not span lines.
 const GITHUB_RE = /^::(?:error|warning)[^\S\n]+title=ruff[^\S\n]*\(([^)]+)\),file=(.+?),line=(\d+),col=(\d+)[^:]*::(.*)$/;
+
+// --output-format=json and json-lines write the same record, an array of them or one a
+// line.
+const isRecord = (r) => !!r && typeof r.filename === "string" && !!r.location;
+const fromRecord = (r) => ({
+  file: r.filename, line: r.location.row, col: r.location.column,
+  title: r.code ?? "ruff", ...(r.code ? { code: r.code } : { label: "ruff" }),
+  severity: "error",
+  message: [r.message, r.fix?.message].filter(Boolean).join("\n"),
+});
+const JSON_LINE_RE = /^\{"cell":.*"filename":.*\}[^\S\n]*$/;
+
+// The rest of --output-format read as nothing. Three of them name ruff:
+//
+//   junit   <testsuites name="ruff">, a case per finding named `org.ruff.F401` with
+//           its line and column as attributes
+//   rdjson  reviewdog's format, whose `source` is { "name": "ruff" }
+//   sarif   a run whose driver is named ruff; its paths are file:// URIs
+//
+// gitlab and azure do not. Both are shapes other tools write too - GitLab's Code Quality
+// report, and Azure Pipelines' `##vso[task.logissue ...]` command - so a finding in them
+// is ruff's by a rule code in ruff's shape on a Python file, and in gitlab by the
+// description repeating that code in front of the message.
+const PYTHON = /\.(?:py|pyi|pyw|ipynb)$/;
+const CODE = /^[A-Z]+\d+$/;
+const JUNIT_DOC_RE = /<testsuites\b[^>]*\bname="ruff"[^>]*>([\s\S]*?)<\/testsuites>/g;
+const JUNIT_SUITE_RE = /<testsuite\b([^>]*)>([\s\S]*?)<\/testsuite>/g;
+const JUNIT_CASE_RE = /<testcase\b([^>]*?)(?<!\/)>([\s\S]*?)<\/testcase>/g;
+const JUNIT_FAILURE_RE = /<failure\b([^>]*)/;
+const RDJSON_MARK = (v) => !!v && typeof v === "object" && v.source?.name === "ruff" && Array.isArray(v.diagnostics);
+const SARIF_MARK = (v) => !!v && typeof v === "object" && Array.isArray(v.runs) &&
+  v.runs.some((r) => r?.tool?.driver?.name === "ruff");
+const GITLAB_MARK = (v) => Array.isArray(v) && v.length > 0 && v.every((d) =>
+  CODE.test(d?.check_name ?? "") && PYTHON.test(d.location?.path ?? "") &&
+  String(d.description ?? "").startsWith(`${d.check_name}: `));
+const AZURE_RE = /^##vso\[task\.logissue\b([^\]]*)\](.*)$/;
+const unfile = (uri) => (String(uri).startsWith("file://") ? decodeURIComponent(String(uri).slice(7)) : String(uri));
+const finding = (file, line, col, code, message) => ({
+  file, line, ...(col ? { col } : {}), title: code ?? "ruff", ...(code ? { code } : { label: "ruff" }),
+  severity: "error", message,
+});
+
+/** ruff's json-lines, junit, rdjson, sarif, gitlab and azure outputs. */
+function reported(s, lines) {
+  const out = [];
+  if (s.includes('{"cell":')) {
+    for (const line of lines) {
+      if (!JSON_LINE_RE.test(line)) continue;
+      let r;
+      try { r = JSON.parse(line); } catch { continue; }
+      if (isRecord(r)) out.push(fromRecord(r));
+    }
+  }
+  if (s.includes('name="ruff"')) {
+    for (const doc of s.matchAll(JUNIT_DOC_RE)) {
+      for (const suite of doc[1].matchAll(JUNIT_SUITE_RE)) {
+        const file = xmlAttributes(suite[1]).name;
+        for (const c of suite[2].matchAll(JUNIT_CASE_RE)) {
+          const a = xmlAttributes(c[1]);
+          const failure = c[2].match(JUNIT_FAILURE_RE);
+          if (!failure || !file) continue;
+          const code = String(a.name ?? "").replace(/^org\.ruff\./, "");
+          out.push(finding(file, +a.line || undefined, +a.column || undefined, CODE.test(code) ? code : undefined,
+            String(xmlAttributes(failure[1]).message ?? "").trim()));
+        }
+      }
+    }
+  }
+  if (s.includes('"diagnostics"')) {
+    for (const doc of jsonDocuments(s, RDJSON_MARK)) {
+      for (const d of doc.diagnostics) {
+        const start = d?.location?.range?.start;
+        if (typeof d?.location?.path !== "string") continue;
+        out.push(finding(d.location.path, start?.line, start?.column, d.code?.value, String(d.message ?? "").trim()));
+      }
+    }
+  }
+  if (s.includes('"ruff"')) {
+    for (const doc of jsonDocuments(s, SARIF_MARK)) {
+      for (const run of doc.runs.filter((r) => r?.tool?.driver?.name === "ruff")) {
+        for (const r of run.results ?? []) {
+          const at = r?.locations?.[0]?.physicalLocation;
+          if (typeof at?.artifactLocation?.uri !== "string") continue;
+          const fix = r.fixes?.[0]?.description?.text;
+          out.push(finding(unfile(at.artifactLocation.uri), at.region?.startLine, at.region?.startColumn, r.ruleId,
+            [String(r.message?.text ?? "").trim(), fix].filter(Boolean).join("\n")));
+        }
+      }
+    }
+  }
+  if (s.includes('"check_name"')) {
+    for (const doc of jsonDocuments(s, GITLAB_MARK)) {
+      for (const d of doc) {
+        const begin = d.location.positions?.begin ?? {};
+        out.push(finding(d.location.path, begin.line ?? d.location.lines?.begin, begin.column, d.check_name,
+          d.description.slice(d.check_name.length + 2).trim()));
+      }
+    }
+  }
+  if (s.includes("##vso[task.logissue")) {
+    for (const line of lines) {
+      const m = line.match(AZURE_RE);
+      if (!m) continue;
+      const props = Object.fromEntries(m[1].split(";").map((p) => p.trim().split("=")).filter(([k, v]) => k && v !== undefined));
+      if (!CODE.test(props.code ?? "") || !PYTHON.test(props.sourcepath ?? "")) continue;
+      out.push(finding(props.sourcepath, +props.linenumber || undefined, +props.columnnumber || undefined, props.code, m[2].trim()));
+    }
+  }
+  return out;
+}
 
 /** ruff's concise, grouped and GitHub forms - one line per finding, no `-->` beneath. */
 function oneLinePerFinding(lines) {
@@ -113,14 +223,7 @@ function arrayAt(text, start) {
       let parsed;
       try { parsed = JSON.parse(out.join("")); } catch { return []; }
       if (!Array.isArray(parsed)) return [];
-      return parsed
-        .filter((r) => r && typeof r.filename === "string" && r.location)
-        .map((r) => ({
-          file: r.filename, line: r.location.row, col: r.location.column,
-          title: r.code ?? "ruff", ...(r.code ? { code: r.code } : { label: "ruff" }),
-          severity: "error",
-          message: [r.message, r.fix?.message].filter(Boolean).join("\n"),
-        }));
+      return parsed.filter(isRecord).map(fromRecord);
     }
   }
   return [];
@@ -132,7 +235,7 @@ export default {
   commands: ["ruff"],
   detect: (s) => (/^Found \d+ errors?\.?$/m.test(s) && /^[^\S\n]*-->\s/m.test(s)) ||
     (RUFF_SAYS_SO.test(s) && oneLinePerFinding(s.split("\n")).length > 0) ||
-    jsonFindings(s).length > 0,
+    jsonFindings(s).length > 0 || reported(s, s.split("\n")).length > 0,
 
   extract(s) {
     const lines = s.split("\n");
@@ -162,7 +265,7 @@ export default {
     // reading only the first left the second run's findings out without a word. A
     // finding already reported is not added twice.
     const seen = new Set(failures.map((f) => `${f.file}\u0000${f.line}\u0000${f.col}\u0000${f.code}`));
-    for (const f of [...jsonFindings(s), ...(RUFF_SAYS_SO.test(s) ? oneLinePerFinding(lines) : [])]) {
+    for (const f of [...jsonFindings(s), ...(RUFF_SAYS_SO.test(s) ? oneLinePerFinding(lines) : []), ...reported(s, lines)]) {
       const key = `${f.file}\u0000${f.line}\u0000${f.col}\u0000${f.code}`;
       if (seen.has(key)) continue;
       seen.add(key);

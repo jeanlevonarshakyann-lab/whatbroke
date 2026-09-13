@@ -1,0 +1,3 @@
+##vso[task.logissue type=error;sourcepath=/home/dev/ruff/lint_me.py;linenumber=1;columnnumber=8;code=F401;]`os` imported but unused
+##vso[task.logissue type=error;sourcepath=/home/dev/ruff/lint_me.py;linenumber=2;columnnumber=8;code=F401;]`sys` imported but unused
+##vso[task.logissue type=error;sourcepath=/home/dev/ruff/lint_me.py;linenumber=6;columnnumber=5;code=F841;]Local variable `unused` is assigned to but never used

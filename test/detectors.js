@@ -376,6 +376,7 @@ const INTERLEAVING_DESTROYS = new Set([...SERIALIZED_FIXTURES,
   "pylint_json_fail.txt", "pylint_json2_fail.txt", "biome_lint_gitlab_fail.txt",
   "govet_json_fail.txt", "npm_404_json_fail.txt", "denolint_json_fail.txt", "pyright_json_fail.txt",
   "oxlint_json_fail.txt", "oxlint_parse_json_fail.txt", "oxlint_gitlab_fail.txt", "oxlint_sarif_fail.txt",
+  "ruff_gitlab_fail.txt", "ruff_rdjson_fail.txt", "ruff_sarif_fail.txt",
 ]);
 
 test("interleaved output never invents a failure", () => {
