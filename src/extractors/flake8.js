@@ -7,6 +7,14 @@
 // noqa comment or a per-file ignore, so it is the code; its letter says what kind of
 // check it came from, and E9/F8 are the ones that stop a build rather than tidy it.
 const FINDING_RE = /^(\S+?):(\d+):(\d+):[^\S\n]+([A-Z]{1,4}\d{3,4})[^\S\n]+(.+?)[^\S\n]*$/;
+// --format=pylint moves the code into brackets and drops the column:
+//
+//   lint_me.py:1: [F401] 'os' imported but unused
+//
+// It went to the generic reader, which kept the file and line and put the code in the
+// message. pylint's own parseable format looks alike but always writes the check's name
+// in the bracket too - `[W0611(unused-import), ]` - so a bare code is flake8's.
+const PYLINT_FORM_RE = /^(\S+?):(\d+):[^\S\n]+\[([A-Z]{1,4}\d{3,4})\][^\S\n]+(.+?)[^\S\n]*$/;
 
 export default {
   name: "flake8",
@@ -15,21 +23,23 @@ export default {
 
   // pylint writes the same shape with a colon after its code, so requiring NO colon
   // there is what keeps the two apart.
-  detect: (s) => s.split("\n").some((l) => FINDING_RE.test(l)),
+  detect: (s) => s.split("\n").some((l) => FINDING_RE.test(l) || PYLINT_FORM_RE.test(l)),
 
   extract(s) {
     const failures = [];
     const seen = new Set();
     for (const line of s.split("\n")) {
       const m = line.match(FINDING_RE);
-      if (!m) continue;
-      const key = `${m[1]}:${m[2]}:${m[3]}:${m[4]}`;
+      const p = m ? null : line.match(PYLINT_FORM_RE);
+      if (!m && !p) continue;
+      const [file, row, col, code, message] = m ? m.slice(1) : [p[1], p[2], undefined, p[3], p[4]];
+      const key = `${file}:${row}:${col ?? ""}:${code}`;
       if (seen.has(key)) continue;
       seen.add(key);
       failures.push({
-        file: m[1], line: +m[2], col: +m[3],
-        title: m[4], code: m[4], severity: "error",
-        message: m[5].trim(),
+        file, line: +row, ...(col ? { col: +col } : {}),
+        title: code, code, severity: "error",
+        message: message.trim(),
       });
     }
     if (!failures.length) return null;
