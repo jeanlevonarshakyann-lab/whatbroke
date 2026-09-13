@@ -135,9 +135,20 @@ test("a log with one tool in it never pays for source ownership", () => {
   assert.equal(r.tool, "eslint");
   assert.equal(r.failures.length, 90);
   assert.equal(r.others, undefined, "this log holds one tool, so nothing needs a range");
-  // Eagerly locating 90 failures in 60k lines is seconds of work. The bound is loose
-  // enough to survive a slow CI runner and tight enough that doing it would fail.
-  assert.ok(took < 2000, `${took}ms - source ranges look like they are being computed eagerly`);
+  // Locating 90 failures in 60k lines costs about as much again as reading the log - 650ms
+  // against 750ms here. That was once seconds, and a bound of 2000ms caught it; on a slow
+  // macOS runner the reading alone now comes close to that and the bound failed runs
+  // that computed nothing eagerly. So the question is asked of the ranges themselves:
+  // asking for them after the read still has to cost a real share of the read. Had they
+  // been computed during it, asking would cost nothing. Both sides of that slow down
+  // together on a slower machine, so the answer does not depend on the machine.
+  const asked = Date.now();
+  for (const f of r.failures) sourceRange(f);
+  const locating = Date.now() - asked;
+  assert.ok(locating > took * 0.2,
+    `ranges cost ${locating}ms after a ${took}ms read - they look like they were computed during it`);
+  // ...and a read that has become several times slower is a regression of its own.
+  assert.ok(took < 8000, `${took}ms to read one tool out of 60k lines`);
 });
 
 // The same again with more than one tool in the log. Ownership is only consulted when

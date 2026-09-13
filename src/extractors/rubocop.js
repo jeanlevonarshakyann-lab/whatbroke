@@ -15,6 +15,7 @@ import { githubAnnotations, jsonDocuments, xmlAttributes, xmlText } from "../uti
 // `not ok` per file - and the TAP parser, asked first, read two failures called
 // "app/cart.rb" with nothing in them.
 const COP = String.raw`[A-Z]\w*\/[A-Z]\w*`;
+const COP_SAID = new RegExp(`${COP}:`);
 const OFFENSE = new RegExp(String.raw`^(#[^\S\n])?(.+?):(\d+):(\d+):[^\S\n]+([CWEFRI]):[^\S\n]+(?:\[[^\]]*\][^\S\n]+)?(${COP}):[^\S\n]+(.+?)[^\S\n]*$`);
 // The carets rubocop draws under the offending span. They are what says the line above
 // them is the source and not more prose - the syntax-error case puts a note about the
@@ -67,6 +68,10 @@ const unnamed = (message, cop) => {
 
 /** Every offense in `s`, in whichever of rubocop's formats it holds. */
 function offenses(s) {
+  // Every format writes the cop's name followed by a colon somewhere - before the message,
+  // or inside it. A log without one is not read line by line at all: this runs on every
+  // log whatbroke is handed, however large.
+  if (!COP_SAID.test(s)) return [];
   const lines = s.split("\n");
   const found = [];
   let simpleFile, markdownFile;

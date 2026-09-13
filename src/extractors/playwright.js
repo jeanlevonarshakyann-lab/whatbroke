@@ -148,13 +148,14 @@ export default {
 
   detect: (s) =>
     /^Running \d+ tests? using \d+ worker/m.test(s) ||
-    HEAD_RE.test(s.split("\n").find((l) => HEAD_RE.test(l)) ?? "") ||
+    // The heading's chevron is the one character every console block carries.
+    (s.includes("›") && HEAD_RE.test(s.split("\n").find((l) => HEAD_RE.test(l)) ?? "")) ||
     reports(s).some((r) => r.stats.unexpected > 0) || junit(s).length > 0,
 
   extract(s) {
     const lines = s.split("\n");
     const documents = reports(s);
-    const failures = [...blocks(lines, HEAD_RE), ...junit(s), ...documents.flatMap(reported)];
+    const failures = [...(s.includes("›") ? blocks(lines, HEAD_RE) : []), ...junit(s), ...documents.flatMap(reported)];
     if (!failures.length) return null;
     const tally = s.match(/^[^\S\n]*(\d+) failed[^\S\n]*$/m);
     const counted = documents.length ? documents.reduce((n, r) => n + r.stats.unexpected, 0) : null;
