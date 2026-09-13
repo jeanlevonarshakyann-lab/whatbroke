@@ -1,0 +1,49 @@
+
+  [38;2;225;80;80;1m×[0m ]8;;https://oxc.rs/docs/guide/usage/linter/rules/eslint/no-cond-assign.html\[38;2;225;80;80;1meslint(no-cond-assign)[0m]8;;\: [38;2;225;80;80;1mExpected a conditional expression and instead saw an assignment[0m
+   ╭─[[38;2;92;157;255;1msrc/checkout.js[0m:3:14]
+ [2m2[0m │   const rate = 2;
+ [2m3[0m │   if (amount = 0) {
+   · [38;2;246;87;248m             ─[0m
+ [2m4[0m │     return rate;
+   ╰────
+[38;2;106;159;181m  help: [0mConsider wrapping the assignment in additional parentheses
+
+  [38;2;244;191;117;1m⚠[0m ]8;;https://oxc.rs/docs/guide/usage/linter/rules/eslint/no-constant-condition.html\[38;2;244;191;117;1meslint(no-constant-condition)[0m]8;;\: [38;2;244;191;117;1mUnexpected constant condition[0m
+   ╭─[[38;2;92;157;255;1msrc/checkout.js[0m:3:7]
+ [2m2[0m │   const rate = 2;
+ [2m3[0m │   if (amount = 0) {
+   · [38;2;246;87;248m      ─────┬────[0m
+   ·            [38;2;246;87;248m╰── [38;2;246;87;248mthis expression will always evaluate to the same value[0m[0m
+ [2m4[0m │     return rate;
+   ╰────
+[38;2;106;159;181m  help: [0mUpdate the condition to not be constant, or remove the condition entirely
+
+  [38;2;244;191;117;1m⚠[0m ]8;;https://oxc.rs/docs/guide/usage/linter/rules/eslint/no-unused-vars.html\[38;2;244;191;117;1meslint(no-unused-vars)[0m]8;;\: [38;2;244;191;117;1mVariable 'unused' is declared but never used. Unused variables should start with a '_'.[0m
+   ╭─[[38;2;92;157;255;1msrc/cart.js[0m:1:5]
+ [2m1[0m │ let unused = 1;
+   · [38;2;246;87;248m    ───┬──[0m
+   ·        [38;2;246;87;248m╰── [38;2;246;87;248m'unused' is declared here[0m[0m
+ [2m2[0m │ debugger;
+   ╰────
+[38;2;106;159;181m  help: [0mConsider removing this declaration.
+
+  [38;2;225;80;80;1m×[0m ]8;;https://oxc.rs/docs/guide/usage/linter/rules/eslint/no-debugger.html\[38;2;225;80;80;1meslint(no-debugger)[0m]8;;\: [38;2;225;80;80;1m`debugger` statement is not allowed[0m
+   ╭─[[38;2;92;157;255;1msrc/cart.js[0m:2:1]
+ [2m1[0m │ let unused = 1;
+ [2m2[0m │ debugger;
+   · [38;2;246;87;248m─────────[0m
+ [2m3[0m │ 
+   ╰────
+[38;2;106;159;181m  help: [0mRemove the debugger statement
+
+  [38;2;225;80;80;1m×[0m ]8;;https://oxc.rs/docs/guide/usage/linter/rules/eslint/eqeqeq.html\[38;2;225;80;80;1meslint(eqeqeq)[0m]8;;\: [38;2;225;80;80;1mExpected === and instead saw ==[0m
+   ╭─[[38;2;92;157;255;1msrc/cart.js[0m:5:13]
+ [2m4[0m │ export function total(items) {
+ [2m5[0m │   if (items == null) return 0;
+   · [38;2;246;87;248m            ──[0m
+ [2m6[0m │   return items.reduce((sum, item) => sum + item.price, 0);
+   ╰────
+[38;2;106;159;181m  help: [0mPrefer === operator
+
+Found 2 warnings and 3 errors.
+Finished in 3ms on 2 files with 97 rules using 8 threads.

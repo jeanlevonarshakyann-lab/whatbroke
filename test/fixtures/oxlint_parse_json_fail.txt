@@ -1,0 +1,7 @@
+{ "diagnostics": [{"message": "Expected `,` or `)` but found `{`","severity": "error","filename": "src/broken.js","labels": [{"label": "`,` or `)` expected","span": {"offset": 27,"length": 1,"line": 1,"column": 28}},{"label": "Opened here","span": {"offset": 19,"length": 1,"line": 1,"column": 20}}]}],
+              "number_of_files": 1,
+              "number_of_rules": 96,
+              "threads_count": 8,
+              "start_time": 0.003431166
+            }
+            

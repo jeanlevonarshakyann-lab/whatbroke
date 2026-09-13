@@ -375,6 +375,7 @@ const INTERLEAVING_DESTROYS = new Set([...SERIALIZED_FIXTURES,
   "mocha_json_fail.txt", "markdownlint_json_fail.txt",
   "pylint_json_fail.txt", "pylint_json2_fail.txt", "biome_lint_gitlab_fail.txt",
   "govet_json_fail.txt", "npm_404_json_fail.txt", "denolint_json_fail.txt", "pyright_json_fail.txt",
+  "oxlint_json_fail.txt", "oxlint_parse_json_fail.txt", "oxlint_gitlab_fail.txt", "oxlint_sarif_fail.txt",
 ]);
 
 test("interleaved output never invents a failure", () => {
@@ -406,9 +407,11 @@ test("interleaved output never invents a failure", () => {
   // are fragile is worth naming rather than counting: a budget of three says nothing
   // about which three, and goes on passing when one fixture stops degrading and another
   // starts. deno's assertion block, ruff's fix hint and PHPUnit's testdox body each lose
-  // one finding when a line lands inside them.
+  // one finding when a line lands inside them. oxlint's drawn report loses a finding with
+  // no rule: nothing but an unbroken report down to oxlint's own closing lines says it
+  // is oxlint's, because swc draws the same box.
   assert.deepEqual(lost.map((l) => l.split(":")[0]).sort(),
-    ["deno_fail.txt", "phpunit_testdox_fail.txt", "ruff_fail.txt"],
+    ["deno_fail.txt", "oxlint_parse_default_fail.txt", "phpunit_testdox_fail.txt", "ruff_fail.txt"],
     `the set of fixtures that degrade under interleaving changed: ${lost.join("; ")}`);
 });
 

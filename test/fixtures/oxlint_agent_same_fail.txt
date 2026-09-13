@@ -1,0 +1,5 @@
+src/checkout.js:3:14: error eslint(no-cond-assign): Expected a conditional expression and instead saw an assignment help: Consider wrapping the assignment in additional parentheses
+src/checkout.js:3:7: warning eslint(no-constant-condition): Unexpected constant condition help: Update the condition to not be constant, or remove the condition entirely
+src/cart.js:1:5: warning eslint(no-unused-vars): Variable 'unused' is declared but never used. Unused variables should start with a '_'. help: Consider removing this declaration.
+src/cart.js:2:1: error eslint(no-debugger): `debugger` statement is not allowed help: Remove the debugger statement
+src/cart.js:5:13: error eslint(eqeqeq): Expected === and instead saw == help: Prefer === operator

@@ -1,0 +1,67 @@
+[
+  {
+    "description": "Expected a conditional expression and instead saw an assignment",
+    "check_name": "eslint(no-cond-assign)",
+    "fingerprint": "b3d90dbfcbf6b4f1",
+    "severity": "critical",
+    "location": {
+      "path": "src/checkout.js",
+      "lines": {
+        "begin": 3,
+        "end": 3
+      }
+    }
+  },
+  {
+    "description": "Unexpected constant condition",
+    "check_name": "eslint(no-constant-condition)",
+    "fingerprint": "197b6aa1b715994d",
+    "severity": "major",
+    "location": {
+      "path": "src/checkout.js",
+      "lines": {
+        "begin": 3,
+        "end": 3
+      }
+    }
+  },
+  {
+    "description": "Variable 'unused' is declared but never used. Unused variables should start with a '_'.",
+    "check_name": "eslint(no-unused-vars)",
+    "fingerprint": "6c0d214b8999b6e6",
+    "severity": "major",
+    "location": {
+      "path": "src/cart.js",
+      "lines": {
+        "begin": 1,
+        "end": 1
+      }
+    }
+  },
+  {
+    "description": "`debugger` statement is not allowed",
+    "check_name": "eslint(no-debugger)",
+    "fingerprint": "436c2ea848f9097e",
+    "severity": "critical",
+    "location": {
+      "path": "src/cart.js",
+      "lines": {
+        "begin": 2,
+        "end": 2
+      }
+    }
+  },
+  {
+    "description": "Expected === and instead saw ==",
+    "check_name": "eslint(eqeqeq)",
+    "fingerprint": "4a3deb6635d0ffc2",
+    "severity": "critical",
+    "location": {
+      "path": "src/cart.js",
+      "lines": {
+        "begin": 5,
+        "end": 5
+      }
+    }
+  }
+]

@@ -1,0 +1,49 @@
+
+  x eslint(no-cond-assign): Expected a conditional expression and instead saw an assignment
+   ,-[src/checkout.js:3:14]
+ 2 |   const rate = 2;
+ 3 |   if (amount = 0) {
+   :              ^
+ 4 |     return rate;
+   `----
+  help: Consider wrapping the assignment in additional parentheses
+
+  ! eslint(no-constant-condition): Unexpected constant condition
+   ,-[src/checkout.js:3:7]
+ 2 |   const rate = 2;
+ 3 |   if (amount = 0) {
+   :       ^^^^^|^^^^
+   :            `-- this expression will always evaluate to the same value
+ 4 |     return rate;
+   `----
+  help: Update the condition to not be constant, or remove the condition entirely
+
+  ! eslint(no-unused-vars): Variable 'unused' is declared but never used. Unused variables should start with a '_'.
+   ,-[src/cart.js:1:5]
+ 1 | let unused = 1;
+   :     ^^^|^^
+   :        `-- 'unused' is declared here
+ 2 | debugger;
+   `----
+  help: Consider removing this declaration.
+
+  x eslint(no-debugger): `debugger` statement is not allowed
+   ,-[src/cart.js:2:1]
+ 1 | let unused = 1;
+ 2 | debugger;
+   : ^^^^^^^^^
+ 3 | 
+   `----
+  help: Remove the debugger statement
+
+  x eslint(eqeqeq): Expected === and instead saw ==
+   ,-[src/cart.js:5:13]
+ 4 | export function total(items) {
+ 5 |   if (items == null) return 0;
+   :             ^^
+ 6 |   return items.reduce((sum, item) => sum + item.price, 0);
+   `----
+  help: Prefer === operator
+
+Found 2 warnings and 3 errors.
+Finished in 6ms on 2 files with 97 rules using 8 threads.

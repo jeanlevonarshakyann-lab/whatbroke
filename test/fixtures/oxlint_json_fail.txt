@@ -1,0 +1,11 @@
+{ "diagnostics": [{"message": "Expected a conditional expression and instead saw an assignment","code": "eslint(no-cond-assign)","severity": "error","url": "https://oxc.rs/docs/guide/usage/linter/rules/eslint/no-cond-assign.html","help": "Consider wrapping the assignment in additional parentheses","filename": "src/checkout.js","labels": [{"span": {"offset": 61,"length": 1,"line": 3,"column": 14}}]},
+{"message": "Unexpected constant condition","code": "eslint(no-constant-condition)","severity": "warning","url": "https://oxc.rs/docs/guide/usage/linter/rules/eslint/no-constant-condition.html","help": "Update the condition to not be constant, or remove the condition entirely","filename": "src/checkout.js","labels": [{"label": "this expression will always evaluate to the same value","span": {"offset": 54,"length": 10,"line": 3,"column": 7}}]},
+{"message": "Variable 'unused' is declared but never used. Unused variables should start with a '_'.","code": "eslint(no-unused-vars)","severity": "warning","url": "https://oxc.rs/docs/guide/usage/linter/rules/eslint/no-unused-vars.html","help": "Consider removing this declaration.","filename": "src/cart.js","labels": [{"label": "'unused' is declared here","span": {"offset": 4,"length": 6,"line": 1,"column": 5}}]},
+{"message": "`debugger` statement is not allowed","code": "eslint(no-debugger)","severity": "error","url": "https://oxc.rs/docs/guide/usage/linter/rules/eslint/no-debugger.html","help": "Remove the debugger statement","filename": "src/cart.js","labels": [{"span": {"offset": 16,"length": 9,"line": 2,"column": 1}}]},
+{"message": "Expected === and instead saw ==","code": "eslint(eqeqeq)","severity": "error","url": "https://oxc.rs/docs/guide/usage/linter/rules/eslint/eqeqeq.html","help": "Prefer === operator","filename": "src/cart.js","labels": [{"span": {"offset": 70,"length": 2,"line": 5,"column": 13}}]}],
+              "number_of_files": 2,
+              "number_of_rules": 97,
+              "threads_count": 8,
+              "start_time": 0.004451375
+            }
+            

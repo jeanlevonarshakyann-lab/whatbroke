@@ -1,0 +1,12 @@
+
+  x Expected `,` or `)` but found `{`
+   ,-[src/broken.js:1:28]
+ 1 | export function pay(amount {
+   :                    |       |
+   :                    |       `-- `,` or `)` expected
+   :                    `-- Opened here
+ 2 |   return amount;
+   `----
+
+Found 0 warnings and 1 error.
+Finished in 3ms on 1 file with 96 rules using 8 threads.

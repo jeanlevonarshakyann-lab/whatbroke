@@ -526,6 +526,10 @@ const indistinguishable = (a, b) => SAME_SYNTAX.some((g) => g.has(a) && g.has(b)
 // table are identical and the joined log holds exactly one copy of them.
 const SAME_RUN_TWO_ENCODINGS = [
   new Set(["pyright_text_same_fail.txt", "pyright_json_fail.txt"]),
+  new Set(["oxlint_agent_same_fail.txt", "oxlint_default_fail.txt", "oxlint_default_tty_fail.txt",
+    "oxlint_unix_fail.txt", "oxlint_github_fail.txt", "oxlint_stylish_fail.txt", "oxlint_json_fail.txt",
+    "oxlint_checkstyle_fail.txt", "oxlint_gitlab_fail.txt", "oxlint_junit_fail.txt", "oxlint_sarif_fail.txt"]),
+  new Set(["oxlint_parse_default_fail.txt", "oxlint_parse_json_fail.txt"]),
   new Set(["cargo_json_fail.txt", "cargo_plain_same_fail.txt"]),
   new Set(["cargo_warnings_human_fail.txt", "cargo_warnings_json_fail.txt"]),
   new Set(["eslint_json_fail.txt", "eslint_json_runner_fail.txt", "eslint_text_same_fail.txt"]),
@@ -837,6 +841,17 @@ test("two runs that say the same thing at the same place are two failures", () =
     const at = allFailures(analyse(joined)).filter((f) => f.file === "src/main.rs" && f.line === 2 && f.code === "E0308");
     assert.deepEqual(at.map((f) => f.stmt.trim()).sort(), ['let count: i32 = "several";', 'let total: i32 = "not a number";'],
       `${label}: the two runs' mismatched types were reported as one`);
+  }
+});
+
+test("swc's syntax error is not oxlint's because they draw the same box", () => {
+  // Both draw `x Expression expected` over `,-[swcbad.js:1:1]`. An oxlint finding with no
+  // rule is only oxlint's inside oxlint's own report, not anywhere in a log it ends.
+  for (const other of ["oxlint_parse_default_fail.txt", "oxlint_default_fail.txt", "oxlint_github_fail.txt"]) {
+    const r = analyse(`${fx("swc_fail.txt")}\n${fx(other)}`);
+    const oxlint = [r, ...(r.others ?? [])].find((x) => x.tool === "oxlint");
+    assert.ok(oxlint, `${other}: oxlint went unread`);
+    assert.ok(!oxlint.failures.some((f) => f.file === "swcbad.js"), `${other}: swc's error was read as oxlint's`);
   }
 });
 
