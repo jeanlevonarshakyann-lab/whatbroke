@@ -750,6 +750,20 @@ const CASES = [
       // node's own frames are under every one of these and are never the answer
       assert.doesNotMatch(JSON.stringify(r.failures), /node:internal/);
     } },
+  // One real mocha 12 run - two failing tests and one passing - under its reporters.
+  // spec, dot, list, min, progress, landing, nyan, tap, json and xunit were all read;
+  // json-stream, the one a runner consumes as the run happens, read as nothing. (doc
+  // writes an HTML page with no line numbers, and markdown lists only the passing tests.)
+  ...["spec_same", "dot", "json_same", "json_stream"].map((form) => ({ file: `mocha_${form}_fail.txt`, tool: "mocha", n: 2, check: (r) => {
+      assert.deepEqual(r.failures.map((f) => [f.file, f.line, f.col, f.subject]), [
+        ["test/cart.test.js", 5, 12, "cart totals an invoice"], ["test/cart.test.js", 10, 11, "cart applies a discount"],
+      ]);
+      assert.ok(r.failures[0].message.startsWith("Expected values to be strictly equal:\n4 !== 6"), r.failures[0].message);
+      // The legend over the diff says which sign is which, not what failed; it had taken
+      // the place of the diff.
+      assert.doesNotMatch(r.failures[0].message, /expected - actual/);
+      assert.equal(r.summary, "2 failing, 1 passing");
+    } })),
   { file: "mocha_hook_fail.txt", tool: "mocha", n: 1, check: (r) => {
       // a hook that throws is named for the hook, and the message is the throw - not
       // the hook's name repeated back
@@ -3325,6 +3339,9 @@ for (const [group, encodings, silentAbout = []] of [
   // Code Climate and TeamCity have nowhere to put a column.
   ["golangci-lint no column", ["golangci_text_same_fail.txt", "golangci_codeclimate_fail.txt",
     "golangci_teamcity_fail.txt"], ["col"]],
+  ["mocha reports", ["mocha_json_same_fail.txt", "mocha_json_stream_fail.txt"]],
+  // The console reporters print the diff under the assertion; the reports do not.
+  ["mocha console and reports", ["mocha_spec_same_fail.txt", "mocha_dot_fail.txt", "mocha_json_same_fail.txt"], ["message"]],
   ["deno lint", ["denolint_pretty_fail.txt", "denolint_json_fail.txt"]],
   // --compact prints no hint, so the message is the one field it cannot share.
   ["deno lint compact", ["denolint_pretty_fail.txt", "denolint_compact_fail.txt"], ["message"]],

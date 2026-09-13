@@ -2338,6 +2338,17 @@
       "generic": 1
     }
   },
+  "mocha_dot_fail.txt": {
+    "winner": "mocha",
+    "parser": "mocha",
+    "failures": 2,
+    "claimants": [
+      "mocha",
+      "node",
+      "generic"
+    ],
+    "shadow": {}
+  },
   "mocha_fail.txt": {
     "winner": "mocha",
     "parser": "mocha",
@@ -2372,6 +2383,26 @@
     ],
     "shadow": {}
   },
+  "mocha_json_same_fail.txt": {
+    "winner": "mocha",
+    "parser": "mocha json",
+    "failures": 2,
+    "claimants": [
+      "mocha json",
+      "generic"
+    ],
+    "shadow": {}
+  },
+  "mocha_json_stream_fail.txt": {
+    "winner": "mocha",
+    "parser": "mocha json",
+    "failures": 2,
+    "claimants": [
+      "mocha json",
+      "generic"
+    ],
+    "shadow": {}
+  },
   "mocha_load_fail.txt": {
     "winner": "mocha",
     "parser": "mocha",
@@ -2385,6 +2416,17 @@
       "node": 1,
       "generic": 1
     }
+  },
+  "mocha_spec_same_fail.txt": {
+    "winner": "mocha",
+    "parser": "mocha",
+    "failures": 2,
+    "claimants": [
+      "mocha",
+      "node",
+      "generic"
+    ],
+    "shadow": {}
   },
   "mocha_tap_fail.txt": {
     "winner": "tap",

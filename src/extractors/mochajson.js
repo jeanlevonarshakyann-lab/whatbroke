@@ -5,7 +5,7 @@
 //
 // The document is found by its own shape rather than by position: an object carrying
 // `stats` with a failure count, and a `failures` array. A log can hold other JSON.
-import { isNoise, findJsonDocument } from "../util.js";
+import { isNoise, jsonDocuments } from "../util.js";
 
 const MARKER = /"fullTitle"[^\S\n]*:/;
 // The same frame shape mocha's human reporter is read with, so both point at the line
@@ -20,10 +20,39 @@ function firstUserFrame(lines) {
   return null;
 }
 
-function mochaReport(text) {
-  if (!MARKER.test(text)) return null;
-  return findJsonDocument(text, (v) => v && typeof v === "object" && !Array.isArray(v) &&
-    v.stats && Array.isArray(v.failures) && typeof v.stats.failures === "number");
+// Every report in the log, not the first: two runs' reports in one log read as one run,
+// and the second run's failures went unreported.
+function mochaReports(text) {
+  if (!MARKER.test(text)) return [];
+  return [...jsonDocuments(text, (v) => v && typeof v === "object" && !Array.isArray(v) &&
+    v.stats && Array.isArray(v.failures) && typeof v.stats.failures === "number")];
+}
+
+// --reporter json-stream writes the run as it happens, one event a line:
+//
+//   ["fail",{"title":"totals an invoice","fullTitle":"cart totals an invoice","file":"/app/test/cart.test.js",
+//            "err":"Expected values to be strictly equal:\n\n4 !== 6\n","stack":"AssertionError ..."}]
+//   ["end",{"suites":1,"tests":3,"passes":1,"pending":0,"failures":2, ...}]
+//
+// Nothing read it. Each failure carries the same fields as a record in the json report,
+// with the message as a string of its own beside the stack rather than inside `err`.
+const STREAM_RE = /^\["(fail|end)",\{.*\}\][^\S\n]*$/;
+
+function streamed(text) {
+  if (!text.includes('["fail",')) return null;
+  const failures = [];
+  let end = null;
+  for (const line of text.split("\n")) {
+    const m = line.match(STREAM_RE);
+    if (!m) continue;
+    let event;
+    try { event = JSON.parse(line); } catch { continue; }
+    const body = event[1];
+    if (m[1] === "end") { end = body; continue; }
+    if (typeof body?.fullTitle !== "string") continue;
+    failures.push({ ...body, err: { message: typeof body.err === "string" ? body.err : body.err?.message, stack: body.stack } });
+  }
+  return failures.length ? { failures, stats: end } : null;
 }
 
 export default {
@@ -31,12 +60,13 @@ export default {
   category: "test",
   commands: ["mocha"],
 
-  detect: (s) => !!mochaReport(s),
+  detect: (s) => mochaReports(s).length > 0 || !!streamed(s),
 
   extract(s) {
-    const report = mochaReport(s);
-    if (!report?.failures?.length) return null;
-    const failures = report.failures.map((test) => {
+    const reports = [...mochaReports(s), streamed(s)].filter(Boolean);
+    const failed = reports.flatMap((r) => r.failures);
+    if (!failed.length) return null;
+    const failures = failed.map((test) => {
       const stack = String(test.err?.stack ?? "");
       // The stack names the line that threw; `file` names the whole test file. The
       // human reporters point at the line, so this points at the same one.
@@ -54,7 +84,7 @@ export default {
         message,
       };
     });
-    const passed = Number.isInteger(report.stats?.passes) ? report.stats.passes : 0;
+    const passed = reports.reduce((n, r) => n + (Number.isInteger(r.stats?.passes) ? r.stats.passes : 0), 0);
     return {
       tool: "mocha",
       summary: `${failures.length} failing, ${passed} passing`,

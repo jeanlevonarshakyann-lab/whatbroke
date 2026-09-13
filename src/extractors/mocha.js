@@ -32,7 +32,8 @@ const FRAME_RE = /^[^\S\n]+at[^\S\n]+(?:(.+?)[^\S\n]+\()?(.+?):(\d+):(\d+)\)?[^\
 const LOAD_RE = /^[^\S\n]*Exception during run:[^\S\n]*(.+?):(\d+)[^\S\n]*$/m;
 // mocha repeats the test file in the timeout message; the location already says it.
 const TRAILING_PATH = /[^\S\n]*\((?:\/|[A-Za-z]:\\)[^)]*\)[^\S\n]*$/;
-const MAX_MESSAGE_LINES = 3;
+// The assertion, the comparison, and both sides of the diff under it.
+const MAX_MESSAGE_LINES = 4;
 
 export default {
   name: "mocha",
@@ -91,7 +92,10 @@ export default {
         if (frames.length) break;
         const e = lines[j].match(ERROR_RE);
         if (e && !code) { code = e[1].split(/\s+/)[0]; message = e[2].trim(); continue; }
-        // the diff mocha prints under an assertion is context, kept briefly
+        // the diff mocha prints under an assertion is context, kept briefly. Its legend -
+        // `+ expected - actual` - says which sign is which and nothing about this failure,
+        // and in the room kept for the diff it took the place of the diff itself.
+        if (/^[^\S\n]*\+ expected - actual[^\S\n]*$/.test(lines[j])) continue;
         if (code && lines[j].trim() && message.split("\n").length < MAX_MESSAGE_LINES) {
           message += `\n${lines[j].trim()}`;
         }
