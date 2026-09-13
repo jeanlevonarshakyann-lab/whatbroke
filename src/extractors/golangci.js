@@ -1,4 +1,4 @@
-import { elements, jsonDocuments, xmlAttributes, xmlText } from "../util.js";
+import { colonPlaces, elements, jsonDocuments, tailFirst, xmlAttributes, xmlText } from "../util.js";
 // golangci-lint is what a Go CI job usually fails on. Its findings look almost exactly
 // like `go build`'s, and go's parser was claiming them - so a lint run came back as
 // "6 compile errors" from a tool called `go build`, with the linter's name left sitting
@@ -19,7 +19,19 @@ import { elements, jsonDocuments, xmlAttributes, xmlText } from "../util.js";
 // this claimed both of them, and 42 ordered pairs in test/mixed.js changed their
 // failures. golangci-lint lints Go, so the extension is something the tool itself
 // guarantees rather than a guess about shape.
-const ISSUE = /^(?:\.[\\/])?(.+?\.go):(\d+):(\d+):[^\S\n]+(.+?)[^\S\n]+\(([\w-]+)\)[^\S\n]*$/;
+// `file.go:line:col: message (linter)` - the pattern
+//   /^(?:\.[\\/])?(.+?\.go):(\d+):(\d+):[^\S\n]+(.+?)[^\S\n]+\(([\w-]+)\)[^\S\n]*$/
+// matched without reading a long line again from every colon in it. The `./` in front
+// is optional and greedy: the pattern tries the file without it only once it has failed
+// with it.
+export const issueLine = (line) => tailFirst(line, {
+  tail: /\(([\w-]+)\)[^\S\n]*$/, spaceBefore: 1, emptyMessage: false,
+  heads: function* (l, c, clear) {
+    for (const from of /^\.[\\/]/.test(l) ? [2, 0] : [0]) {
+      yield* colonPlaces(l, from, c, /:(\d+):(\d+):/y, (p) => p - from >= 4 && l.endsWith(".go", p) && clear(from, p));
+    }
+  },
+});
 const CARETS = /^[^\S\n]*\^[^\S\n]*$/;
 // golangci-lint ends with its own count and a breakdown by linter.
 const TALLY = /^(\d+) issues?:[^\S\n]*$/m;
@@ -147,15 +159,15 @@ export default {
   detect(s) {
     const lines = s.split("\n");
     if (reported(s, lines).length) return true;
-    if (!lines.some((l) => ISSUE.test(l))) return false;
-    return TALLY.test(s) || lines.some((l, i) => ISSUE.test(l) && CARETS.test(lines[i + 2] ?? ""));
+    if (!lines.some((l) => issueLine(l))) return false;
+    return TALLY.test(s) || lines.some((l, i) => issueLine(l) && CARETS.test(lines[i + 2] ?? ""));
   },
 
   extract(s) {
     const lines = s.split("\n");
     const failures = [];
     for (let i = 0; i < lines.length; i++) {
-      const m = lines[i].match(ISSUE);
+      const m = issueLine(lines[i]);
       if (!m) continue;
       const stmt = CARETS.test(lines[i + 2] ?? "") ? lines[i + 1].trim() : undefined;
       failures.push({

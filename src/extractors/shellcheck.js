@@ -1,4 +1,4 @@
-import { elements, findJsonDocument, xmlAttributes } from "../util.js";
+import { colonPlaces, elements, findJsonDocument, tailFirst, xmlAttributes } from "../util.js";
 // shellcheck writes two formats a CI job is likely to produce, and neither was read.
 // Its default is a block per location:
 //
@@ -20,7 +20,13 @@ const HEADER = /^In[^\S\n]+(.+?)[^\S\n]+line[^\S\n]+(\d+):[^\S\n]*$/;
 const CARET = /^([^\S\n]*)\^[-^]*[^\S\n]+(SC\d+)[^\S\n]+\((error|warning|info|style)\):[^\S\n]+(.+?)[^\S\n]*$/;
 // `deploy.sh:4:10: error: Iterating over ls output is fragile. Use globs. [SC2045]`.
 // The trailing code is what makes the line shellcheck's rather than any compiler's.
-const GCC = /^(.+?):(\d+):(\d+):[^\S\n]+(error|warning|note):[^\S\n]+(.+?)[^\S\n]+\[(SC\d+)\][^\S\n]*$/;
+// `-f gcc`: `file:line:col: severity: message [SCnnnn]` - the pattern
+//   /^(.+?):(\d+):(\d+):[^\S\n]+(error|warning|note):[^\S\n]+(.+?)[^\S\n]+\[(SC\d+)\][^\S\n]*$/
+// matched without reading a long line again from every colon in it.
+export const gccLine = (line) => tailFirst(line, {
+  tail: /\[(SC\d+)\][^\S\n]*$/, spaceBefore: 1, emptyMessage: false,
+  heads: (l, c, clear) => colonPlaces(l, 0, c, /:(\d+):(\d+):[^\S\n]+(error|warning|note):/y, (p) => clear(0, p)),
+});
 
 // And three machine formats, none of which was read. `-f json` is a bare array of the
 // findings; `-f json1` is the same array inside an object, which is the difference
@@ -75,7 +81,7 @@ export default {
   commands: ["shellcheck"],
 
   detect: (s) => HEADER.test(s.split("\n").find((l) => HEADER.test(l)) ?? "") ||
-    GCC.test(s.split("\n").find((l) => GCC.test(l)) ?? "") ||
+    s.split("\n").some((l) => gccLine(l)) ||
     machine(s).length > 0,
 
   extract(s) {
@@ -83,7 +89,7 @@ export default {
     let found = [];
     let file = null, line = null, stmt = null;
     for (let i = 0; i < lines.length; i++) {
-      const g = lines[i].match(GCC);
+      const g = gccLine(lines[i]);
       if (g) {
         found.push({ file: g[1], line: +g[2], col: +g[3], code: g[6], severity: g[4], message: g[5] });
         continue;

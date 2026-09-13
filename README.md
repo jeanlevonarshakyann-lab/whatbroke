@@ -543,18 +543,15 @@ What is dropped is stated, never silently stitched:
 Cuts land on line boundaries, so a parser is never handed half a line, and multi-byte
 characters are never split.
 
-However many lines a log has, reading it takes time in proportion to its length rather
-than its square. A log is untrusted input, and a line of one kind repeated thousands of
-times — a brace that never balances, a start tag that never closes, a traceback header
-with nothing under it — used to make a reader walk the rest of the log from each copy:
-50 KB of braces took 87 seconds. `test/bounds.js` builds each shape at one size and at
-four times it, and fails if the larger takes more than eight times as long.
-
-One shape is not bounded yet: a single line hundreds of kilobytes long, made of text that
-looks like diagnostics. Six parsers' line patterns read it in time that grows with the
-square of the line's length — 256 KB of repeated compiler errors on one line took eight
-seconds. Realistic long lines read in milliseconds: 256 KB of minified JavaScript took 43,
-and of base64, 29.
+Reading a log takes time in proportion to its length rather than its square, whatever it
+holds. A log is untrusted input, and a line of one kind repeated thousands of times — a
+brace that never balances, a start tag that never closes, a traceback header with
+nothing under it — used to make a reader walk the rest of the log from each copy: 50 KB
+of braces took 87 seconds. So did one long line that looked like diagnostics, which six
+line patterns read again from every colon in it: 256 KB of repeated compiler errors on a
+single line took eight seconds, and now takes 70 milliseconds. `test/bounds.js` builds
+each shape at one size and at four times it, and fails if the larger takes more than
+eight times as long.
 
 One step has a ceiling instead. Telling that two tools read the same line means working
 out which lines each finding came from, and past a fixed amount of that work in one log
