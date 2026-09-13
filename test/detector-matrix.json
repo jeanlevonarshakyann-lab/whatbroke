@@ -3740,6 +3740,16 @@
       "generic": 1
     }
   },
+  "ruff_azure_fail.txt": {
+    "winner": "ruff",
+    "parser": "ruff",
+    "failures": 3,
+    "claimants": [
+      "ruff",
+      "generic"
+    ],
+    "shadow": {}
+  },
   "ruff_concise_fail.txt": {
     "winner": "ruff",
     "parser": "ruff",
@@ -3784,6 +3794,16 @@
     ],
     "shadow": {}
   },
+  "ruff_gitlab_fail.txt": {
+    "winner": "ruff",
+    "parser": "ruff",
+    "failures": 3,
+    "claimants": [
+      "ruff",
+      "generic"
+    ],
+    "shadow": {}
+  },
   "ruff_grouped_fail.txt": {
     "winner": "ruff",
     "parser": "ruff",
@@ -3795,6 +3815,46 @@
     "shadow": {}
   },
   "ruff_json_fail.txt": {
+    "winner": "ruff",
+    "parser": "ruff",
+    "failures": 3,
+    "claimants": [
+      "ruff",
+      "generic"
+    ],
+    "shadow": {}
+  },
+  "ruff_json_lines_fail.txt": {
+    "winner": "ruff",
+    "parser": "ruff",
+    "failures": 3,
+    "claimants": [
+      "ruff",
+      "generic"
+    ],
+    "shadow": {}
+  },
+  "ruff_junit_fail.txt": {
+    "winner": "ruff",
+    "parser": "ruff",
+    "failures": 3,
+    "claimants": [
+      "ruff",
+      "generic"
+    ],
+    "shadow": {}
+  },
+  "ruff_rdjson_fail.txt": {
+    "winner": "ruff",
+    "parser": "ruff",
+    "failures": 3,
+    "claimants": [
+      "ruff",
+      "generic"
+    ],
+    "shadow": {}
+  },
+  "ruff_sarif_fail.txt": {
     "winner": "ruff",
     "parser": "ruff",
     "failures": 3,

@@ -1,0 +1,114 @@
+{
+  "diagnostics": [
+    {
+      "code": {
+        "url": "https://docs.astral.sh/ruff/rules/unused-import",
+        "value": "F401"
+      },
+      "location": {
+        "path": "/home/dev/ruff/lint_me.py",
+        "range": {
+          "end": {
+            "column": 10,
+            "line": 1
+          },
+          "start": {
+            "column": 8,
+            "line": 1
+          }
+        }
+      },
+      "message": "`os` imported but unused",
+      "suggestions": [
+        {
+          "range": {
+            "end": {
+              "column": 1,
+              "line": 2
+            },
+            "start": {
+              "column": 1,
+              "line": 1
+            }
+          },
+          "text": ""
+        }
+      ]
+    },
+    {
+      "code": {
+        "url": "https://docs.astral.sh/ruff/rules/unused-import",
+        "value": "F401"
+      },
+      "location": {
+        "path": "/home/dev/ruff/lint_me.py",
+        "range": {
+          "end": {
+            "column": 11,
+            "line": 2
+          },
+          "start": {
+            "column": 8,
+            "line": 2
+          }
+        }
+      },
+      "message": "`sys` imported but unused",
+      "suggestions": [
+        {
+          "range": {
+            "end": {
+              "column": 1,
+              "line": 3
+            },
+            "start": {
+              "column": 1,
+              "line": 2
+            }
+          },
+          "text": ""
+        }
+      ]
+    },
+    {
+      "code": {
+        "url": "https://docs.astral.sh/ruff/rules/unused-variable",
+        "value": "F841"
+      },
+      "location": {
+        "path": "/home/dev/ruff/lint_me.py",
+        "range": {
+          "end": {
+            "column": 11,
+            "line": 6
+          },
+          "start": {
+            "column": 5,
+            "line": 6
+          }
+        }
+      },
+      "message": "Local variable `unused` is assigned to but never used",
+      "suggestions": [
+        {
+          "range": {
+            "end": {
+              "column": 1,
+              "line": 7
+            },
+            "start": {
+              "column": 1,
+              "line": 6
+            }
+          },
+          "text": ""
+        }
+      ]
+    }
+  ],
+  "severity": "WARNING",
+  "source": {
+    "name": "ruff",
+    "url": "https://docs.astral.sh/ruff"
+  }
+}

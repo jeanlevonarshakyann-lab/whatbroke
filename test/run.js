@@ -5263,14 +5263,21 @@ try {
   console.log("  ok   a printing flag does not change what is read");
   pass++;
 } catch (e) { console.log(`  FAIL printing flags\n       ${e.message}`); fail++; }
-// --output-format decides how much ruff prints, never what it found.
+// --output-format decides how much ruff prints, never what it found. The first five were
+// read already; json-lines, junit, gitlab, rdjson, azure and sarif, captured from the same
+// run with ruff 0.16 - `full` and `concise` came out byte for byte as they are here -
+// read as nothing.
 try {
-  const forms = ["full_same", "concise", "grouped", "github", "json"]
+  const forms = ["full_same", "concise", "grouped", "github", "json", "json_lines", "junit", "gitlab", "rdjson",
+    "azure", "sarif"]
     .map((n) => [n, analyse(fx(`ruff_${n}_fail.txt`))]);
   const where = (r) => r.failures.map((f) => [f.line, f.col, f.code]);
   for (const [name, r] of forms) {
     assert.equal(r.tool, "ruff", `${name}: wrong tool`);
     assert.deepEqual(where(r), [[1, 8, "F401"], [2, 8, "F401"], [6, 5, "F841"]], `${name}: different findings`);
+    // The message is ruff's own, and the fix is added where the format carries one.
+    assert.match(r.failures[0].message, /^`os` imported but unused(\nRemove unused import: `os`)?$/, name);
+    assert.equal(r.summary, "3 errors", name);
   }
   console.log("  ok   every ruff output format reports the same findings");
   pass++;
