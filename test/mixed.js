@@ -721,6 +721,19 @@ test("a Playwright block quotes its own source line, not the other capture's", (
   assert.equal(both.length, 1, "one failure, read from two captures, was reported twice");
 });
 
+test("rustc's source line is the one with rustc's marks under it", () => {
+  // Two cargo runs woven line by line. The other run's `2 |     let base = (4);` - a
+  // different file's line 2 - landed between this run's `--> src/main.rs:2:22` and its own
+  // line 2. Taken for the source, it made this E0308 quote another program's code, and
+  // the two runs' E0308s at the same place were kept apart by quotes that were not theirs.
+  const run = fx("cargo_human_same_fail.txt").split("\n");
+  const other = fx("cargo_warnings_human_fail.txt").split("\n").find((l) => /^2 \|\s+let base = \(4\);/.test(l));
+  const at = run.findIndex((l) => l.includes("--> src/main.rs:2:22"));
+  const woven = [...run.slice(0, at + 2), other, ...run.slice(at + 2)].join("\n");
+  const e0308 = analyse(woven).failures.find((f) => f.code === "E0308");
+  assert.equal(e0308.stmt.trim(), 'let total: i32 = "not a number";');
+});
+
 test("two tools writing into one pipe never crash it or double a diagnosis", () => {
   let seed = 20260910;
   const rnd = () => (seed = (seed * 1103515245 + 12345) & 0x7fffffff) / 0x7fffffff;

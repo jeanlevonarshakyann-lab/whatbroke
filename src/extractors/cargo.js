@@ -133,7 +133,7 @@ export default {
       const m = lines[i].match(ERR_RE);
       if (!m || TALLY_RE.test(m[2])) continue;
 
-      let loc = null, note = "", stmt = "", lint = "";
+      let loc = null, note = "", stmt = "", lint = "", marked = "";
       // rustc puts the `-->` on the line straight after the error, every time - the gap
       // is exactly 1 in every captured fixture. Scanning further for one means that in a
       // log holding more than one tool, an `error:` line belonging to somebody else can
@@ -168,10 +168,18 @@ export default {
         // note appears only once per lint, so repeats would come out untitled.
         const lm = lines[j].match(/rust-clippy\/.*#([a-z_]+)\b/);
         if (lm && !lint) lint = `clippy::${lm[1]}`;
-        // rustc echoes the offending line as "N | <source>"
+        // rustc echoes the offending line as "N | <source>", with the marks under its span
+        // on the very next line. The number alone is not enough: another tool's source
+        // line can carry the same number and land here in a log two tools write to, and
+        // quoting it made one E0308 two. So the line with rustc's marks under it wins,
+        // and the first numbered one stands in only where no such line is found.
         const sm = lines[j].match(/^[^\S\n]*(\d+)\s\|\s?(.*)$/);
-        if (sm && loc && +sm[1] === loc.line && !stmt) stmt = sm[2];
+        if (sm && loc && +sm[1] === loc.line) {
+          if (!stmt) stmt = sm[2];
+          if (!marked && /^[^\S\n]*\|[^\S\n]*[\^~-]/.test(lines[j + 1] ?? "")) marked = sm[2];
+        }
       }
+      stmt = marked || stmt;
       // An `error:` with no location, no E-code and no lint behind it is not a rustc
       // diagnostic - it is a line that happens to start with the word.
       if (!loc && !m[1] && !lint && !CARGO_OWN.test(m[2])) continue;
