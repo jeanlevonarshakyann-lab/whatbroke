@@ -1,0 +1,31 @@
+[0m[1mbun test [0m[2mv1.3.14 (0d9b296a)[0m
+[0m
+bt/cart.test.ts:
+[0m[1m1 |[0m [0m[35mimport[0m { expect, test, describe } [0m[35mfrom[0m [0m[32m"bun:test"[0m[0m[2m;[0m
+[0m[1m2 |[0m 
+[0m[1m3 |[0m describe([0m[32m"cart"[0m, () => {
+[0m[1m4 |[0m   test([0m[32m"totals an invoice"[0m, () => {
+[0m[1m5 |[0m     expect([[0m[33m2[0m, [0m[33m3[0m][0m[3m[1m.reduce[0m((a, b) => a + b, [0m[33m0[0m))[0m[3m[1m.toBe[0m([0m[33m6[0m)[0m[2m;[0m
+                                                  [31m[1m^[0m
+[0m[31merror[0m[2m:[0m [1m[2mexpect([0m[31mreceived[0m[2m).[0mtoBe[2m([0m[32mexpected[0m[2m)[0m
+
+Expected: [32m6[0m
+Received: [31m5[0m
+[0m
+[0m      [2mat [0m[0m[2m<anonymous>[0m[2m ([0m[0m[36m[2m/home/dev/shop/[0m[36mbt/cart.test.ts[0m[2m:[0m[33m5[0m[2m:[33m47[0m[2m)[0m
+[0m[31m✗[0m [0mcart[2m >[0m[1m totals an invoice[0m [0m[2m[0.22ms[0m[2m][0m
+ [0m[1m5 |[0m     expect([[0m[33m2[0m, [0m[33m3[0m][0m[3m[1m.reduce[0m((a, b) => a + b, [0m[33m0[0m))[0m[3m[1m.toBe[0m([0m[33m6[0m)[0m[2m;[0m
+ [0m[1m6 |[0m   })[0m[2m;[0m
+ [0m[1m7 |[0m })[0m[2m;[0m
+ [0m[1m8 |[0m 
+ [0m[1m9 |[0m test([0m[32m"raises unexpectedly"[0m, () => {
+[0m[1m10 |[0m   [0m[35mthrow[0m [0m[35mnew[0m [0m[1mError[0m([0m[32m"fixture exploded"[0m)[0m[2m;[0m
+                                         [31m[1m^[0m
+[0m[31merror[0m[2m:[0m [1mfixture exploded[0m
+[0m      [2mat [0m[0m[2m<anonymous>[0m[2m ([0m[0m[36m[2m/home/dev/shop/[0m[36mbt/cart.test.ts[0m[2m:[0m[33m10[0m[2m:[33m37[0m[2m)[0m
+[0m[31m✗[0m[0m[1m raises unexpectedly[0m [0m[2m[0.04ms[0m[2m][0m
+
+ 0 pass[0m
+[0m[31m 2 fail[0m
+ 1 expect() calls
+Ran 2 tests across 1 file. [0m[2m[[1m5.00ms[0m[2m][0m

@@ -164,6 +164,32 @@
       "generic": 1
     }
   },
+  "bun_color_fail.txt": {
+    "winner": "bun test",
+    "parser": "bun test",
+    "failures": 2,
+    "claimants": [
+      "bun test",
+      "node",
+      "generic"
+    ],
+    "shadow": {
+      "generic": 2
+    }
+  },
+  "bun_color_plain_same_fail.txt": {
+    "winner": "bun test",
+    "parser": "bun test",
+    "failures": 2,
+    "claimants": [
+      "bun test",
+      "node",
+      "generic"
+    ],
+    "shadow": {
+      "generic": 2
+    }
+  },
   "bun_fail.txt": {
     "winner": "bun test",
     "parser": "bun test",
