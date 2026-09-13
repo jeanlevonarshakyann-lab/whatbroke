@@ -93,6 +93,13 @@ const PROBABLE_DIAGNOSTIC = new RegExp([
   // ends with the assembly it ran and the framework it ran on.
   "^[^\\S\\n]{2}\\S[^\\n]*[^\\S\\n]\\[(?:<[^\\S\\n]+)?\\d+(?:\\.\\d+)?[^\\S\\n]*m?s\\][^\\S\\n]*$",
   "^\\S[^\\n]*![^\\n]*\\.dll[^\\S\\n]+\\((?:net|\\.NET)[^)\\n]*\\)[^\\S\\n]*$",
+  // oxlint draws its report the way miette does, and in a pipe it draws it in ASCII: an
+  // `x` or a `!`, then the location on the next line in `,-[file:line:col]`. Neither is a
+  // failure word, and the rule is spelled `plugin(rule)`. The run ends with a line only
+  // oxlint writes, which is all that marks a finding with no rule as oxlint's.
+  "^[^\\S\\n]*[x!][^\\S\\n]+[\\w-]+\\([\\w/-]+\\):[^\\S\\n]",
+  "^[^\\S\\n]*(?:,-|\\u256d\\u2500)\\[[^\\]\\n]+:\\d+:\\d+\\][^\\S\\n]*$",
+  "^Finished in [\\d.]+\\S*s on \\d+ files? with \\d+ rules using \\d+ threads\\.",
 ].join("|"), "im");
 
 /** Drop a trailing character that the cut left half-written.

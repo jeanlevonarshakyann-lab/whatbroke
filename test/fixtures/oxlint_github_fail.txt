@@ -1,0 +1,8 @@
+::error file=src/checkout.js,line=3,endLine=3,col=14,endColumn=15,title=eslint(no-cond-assign)::src/checkout.js:3:14: Expected a conditional expression and instead saw an assignment
+::warning file=src/checkout.js,line=3,endLine=3,col=7,endColumn=17,title=eslint(no-constant-condition)::src/checkout.js:3:7: Unexpected constant condition
+::warning file=src/cart.js,line=1,endLine=1,col=5,endColumn=11,title=eslint(no-unused-vars)::src/cart.js:1:5: Variable 'unused' is declared but never used. Unused variables should start with a '_'.
+::error file=src/cart.js,line=2,endLine=2,col=1,endColumn=10,title=eslint(no-debugger)::src/cart.js:2:1: `debugger` statement is not allowed
+::error file=src/cart.js,line=5,endLine=5,col=13,endColumn=15,title=eslint(eqeqeq)::src/cart.js:5:13: Expected === and instead saw ==
+
+Found 2 warnings and 3 errors.
+Finished in 2ms on 2 files with 97 rules using 8 threads.

@@ -1,0 +1,11 @@
+
+[4m/home/dev/shop/src/cart.js[0m
+  [2m1:5 [0m  [33mwarning[0m  Variable 'unused' is declared but never used. Unused variables should start with a '_'.  [2meslint(no-unused-vars)[0m
+  [2m2:1 [0m  [31merror[0m  `debugger` statement is not allowed  [2meslint(no-debugger)[0m
+  [2m5:13[0m  [31merror[0m  Expected === and instead saw ==  [2meslint(eqeqeq)[0m
+
+[4m/home/dev/shop/src/checkout.js[0m
+  [2m3:14[0m  [31merror[0m  Expected a conditional expression and instead saw an assignment  [2meslint(no-cond-assign)[0m
+  [2m3:7 [0m  [33mwarning[0m  Unexpected constant condition  [2meslint(no-constant-condition)[0m
+
+[31m✖ 5 problems (3 errors, 2 warnings)[0m

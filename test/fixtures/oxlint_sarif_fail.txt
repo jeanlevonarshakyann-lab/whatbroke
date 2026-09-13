@@ -1,0 +1,203 @@
+{
+  "version": "2.1.0",
+  "$schema": "https://docs.oasis-open.org/sarif/sarif/v2.1.0/errata01/os/schemas/sarif-schema-2.1.0.json",
+  "runs": [
+    {
+      "tool": {
+        "driver": {
+          "name": "oxlint",
+          "version": "1.82.0",
+          "semanticVersion": "1.82.0",
+          "informationUri": "https://oxc.rs/docs/guide/usage/linter.html",
+          "rules": [
+            {
+              "id": "eslint(no-cond-assign)",
+              "name": "no-cond-assign",
+              "helpUri": "https://oxc.rs/docs/guide/usage/linter/rules/eslint/no-cond-assign.html",
+              "properties": {
+                "category": "correctness",
+                "plugin": "eslint",
+                "fix": "none"
+              }
+            },
+            {
+              "id": "eslint(no-constant-condition)",
+              "name": "no-constant-condition",
+              "helpUri": "https://oxc.rs/docs/guide/usage/linter/rules/eslint/no-constant-condition.html",
+              "properties": {
+                "category": "correctness",
+                "plugin": "eslint",
+                "fix": "none"
+              }
+            },
+            {
+              "id": "eslint(no-unused-vars)",
+              "name": "no-unused-vars",
+              "helpUri": "https://oxc.rs/docs/guide/usage/linter/rules/eslint/no-unused-vars.html",
+              "properties": {
+                "category": "correctness",
+                "plugin": "eslint",
+                "fix": "conditional_dangerous_fix_or_suggestion"
+              }
+            },
+            {
+              "id": "eslint(no-debugger)",
+              "name": "no-debugger",
+              "helpUri": "https://oxc.rs/docs/guide/usage/linter/rules/eslint/no-debugger.html",
+              "properties": {
+                "category": "correctness",
+                "plugin": "eslint",
+                "fix": "fixable_suggestion"
+              }
+            },
+            {
+              "id": "eslint(eqeqeq)",
+              "name": "eqeqeq",
+              "helpUri": "https://oxc.rs/docs/guide/usage/linter/rules/eslint/eqeqeq.html",
+              "properties": {
+                "category": "pedantic",
+                "plugin": "eslint",
+                "fix": "conditional_dangerous_fix"
+              }
+            }
+          ]
+        }
+      },
+      "artifacts": [
+        {
+          "location": {
+            "uri": "src/checkout.js"
+          }
+        },
+        {
+          "location": {
+            "uri": "src/cart.js"
+          }
+        }
+      ],
+      "results": [
+        {
+          "ruleId": "eslint(no-cond-assign)",
+          "ruleIndex": 0,
+          "level": "error",
+          "message": {
+            "text": "Expected a conditional expression and instead saw an assignment"
+          },
+          "locations": [
+            {
+              "physicalLocation": {
+                "artifactLocation": {
+                  "uri": "src/checkout.js",
+                  "index": 0
+                },
+                "region": {
+                  "startLine": 3,
+                  "startColumn": 14,
+                  "endLine": 3,
+                  "endColumn": 15
+                }
+              }
+            }
+          ]
+        },
+        {
+          "ruleId": "eslint(no-constant-condition)",
+          "ruleIndex": 1,
+          "level": "warning",
+          "message": {
+            "text": "Unexpected constant condition"
+          },
+          "locations": [
+            {
+              "physicalLocation": {
+                "artifactLocation": {
+                  "uri": "src/checkout.js",
+                  "index": 0
+                },
+                "region": {
+                  "startLine": 3,
+                  "startColumn": 7,
+                  "endLine": 3,
+                  "endColumn": 17
+                }
+              }
+            }
+          ]
+        },
+        {
+          "ruleId": "eslint(no-unused-vars)",
+          "ruleIndex": 2,
+          "level": "warning",
+          "message": {
+            "text": "Variable 'unused' is declared but never used. Unused variables should start with a '_'."
+          },
+          "locations": [
+            {
+              "physicalLocation": {
+                "artifactLocation": {
+                  "uri": "src/cart.js",
+                  "index": 1
+                },
+                "region": {
+                  "startLine": 1,
+                  "startColumn": 5,
+                  "endLine": 1,
+                  "endColumn": 11
+                }
+              }
+            }
+          ]
+        },
+        {
+          "ruleId": "eslint(no-debugger)",
+          "ruleIndex": 3,
+          "level": "error",
+          "message": {
+            "text": "`debugger` statement is not allowed"
+          },
+          "locations": [
+            {
+              "physicalLocation": {
+                "artifactLocation": {
+                  "uri": "src/cart.js",
+                  "index": 1
+                },
+                "region": {
+                  "startLine": 2,
+                  "startColumn": 1,
+                  "endLine": 2,
+                  "endColumn": 10
+                }
+              }
+            }
+          ]
+        },
+        {
+          "ruleId": "eslint(eqeqeq)",
+          "ruleIndex": 4,
+          "level": "error",
+          "message": {
+            "text": "Expected === and instead saw =="
+          },
+          "locations": [
+            {
+              "physicalLocation": {
+                "artifactLocation": {
+                  "uri": "src/cart.js",
+                  "index": 1
+                },
+                "region": {
+                  "startLine": 5,
+                  "startColumn": 13,
+                  "endLine": 5,
+                  "endColumn": 15
+                }
+              }
+            }
+          ]
+        }
+      ],
+      "columnKind": "unicodeCodePoints"
+    }
+  ]
+}

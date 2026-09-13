@@ -2645,6 +2645,48 @@
     ],
     "shadow": {}
   },
+  "oxlint_agent_same_fail.txt": {
+    "winner": "oxlint",
+    "parser": "oxlint",
+    "failures": 3,
+    "claimants": [
+      "oxlint",
+      "generic"
+    ],
+    "shadow": {
+      "generic": 5
+    }
+  },
+  "oxlint_checkstyle_fail.txt": {
+    "winner": "oxlint",
+    "parser": "oxlint",
+    "failures": 3,
+    "claimants": [
+      "oxlint",
+      "generic"
+    ],
+    "shadow": {}
+  },
+  "oxlint_default_fail.txt": {
+    "winner": "oxlint",
+    "parser": "oxlint",
+    "failures": 3,
+    "claimants": [
+      "oxlint",
+      "generic"
+    ],
+    "shadow": {}
+  },
+  "oxlint_default_tty_fail.txt": {
+    "winner": "oxlint",
+    "parser": "oxlint",
+    "failures": 3,
+    "claimants": [
+      "oxlint",
+      "generic"
+    ],
+    "shadow": {}
+  },
   "oxlint_fail.txt": {
     "winner": "oxlint",
     "parser": "oxlint",
@@ -2655,6 +2697,100 @@
     ],
     "shadow": {
       "generic": 1
+    }
+  },
+  "oxlint_github_fail.txt": {
+    "winner": "oxlint",
+    "parser": "oxlint",
+    "failures": 3,
+    "claimants": [
+      "oxlint",
+      "generic"
+    ],
+    "shadow": {}
+  },
+  "oxlint_gitlab_fail.txt": {
+    "winner": "oxlint",
+    "parser": "oxlint",
+    "failures": 3,
+    "claimants": [
+      "oxlint",
+      "generic"
+    ],
+    "shadow": {}
+  },
+  "oxlint_json_fail.txt": {
+    "winner": "oxlint",
+    "parser": "oxlint",
+    "failures": 3,
+    "claimants": [
+      "oxlint",
+      "generic"
+    ],
+    "shadow": {}
+  },
+  "oxlint_junit_fail.txt": {
+    "winner": "oxlint",
+    "parser": "oxlint",
+    "failures": 3,
+    "claimants": [
+      "oxlint",
+      "generic"
+    ],
+    "shadow": {}
+  },
+  "oxlint_parse_default_fail.txt": {
+    "winner": "oxlint",
+    "parser": "oxlint",
+    "failures": 1,
+    "claimants": [
+      "oxlint",
+      "generic"
+    ],
+    "shadow": {}
+  },
+  "oxlint_parse_json_fail.txt": {
+    "winner": "oxlint",
+    "parser": "oxlint",
+    "failures": 1,
+    "claimants": [
+      "oxlint",
+      "generic"
+    ],
+    "shadow": {}
+  },
+  "oxlint_sarif_fail.txt": {
+    "winner": "oxlint",
+    "parser": "oxlint",
+    "failures": 3,
+    "claimants": [
+      "oxlint",
+      "generic"
+    ],
+    "shadow": {}
+  },
+  "oxlint_stylish_fail.txt": {
+    "winner": "oxlint",
+    "parser": "oxlint",
+    "failures": 3,
+    "claimants": [
+      "eslint",
+      "stylelint",
+      "oxlint",
+      "generic"
+    ],
+    "shadow": {}
+  },
+  "oxlint_unix_fail.txt": {
+    "winner": "oxlint",
+    "parser": "oxlint",
+    "failures": 3,
+    "claimants": [
+      "oxlint",
+      "generic"
+    ],
+    "shadow": {
+      "generic": 5
     }
   },
   "perl_die_fail.txt": {

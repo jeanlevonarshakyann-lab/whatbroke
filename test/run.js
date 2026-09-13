@@ -517,6 +517,24 @@ const CASES = [
       assert.match(r.failures[0].message, /^Variable 'unused' is declared but never used/);
       assert.doesNotMatch(r.failures[0].message, /help:/);
     } },
+  // One real oxlint 1.82 run - three errors and two warnings over two files - in every
+  // format it has. oxlint picks among them itself: a terminal gets the drawn report, a
+  // pipe the same report in ASCII, a GitHub Actions job the annotations, and an AI agent
+  // the one-line form, which was the only one read. The other ten came back with nothing.
+  ...["agent_same", "default", "default_tty", "unix", "github", "stylish", "json", "checkstyle",
+    "gitlab", "junit", "sarif"].map((form) => ({ file: `oxlint_${form}_fail.txt`, tool: "oxlint", n: 3, check: (r) => {
+      assert.deepEqual(r.failures.map((f) => [f.file.split("/").pop(), f.line, f.code]).sort(),
+        [["cart.js", 2, "no-debugger"], ["cart.js", 5, "eqeqeq"], ["checkout.js", 3, "no-cond-assign"]]);
+      assert.equal(r.summary, "3 errors — 2 warnings hidden");
+      assert.ok(r.failures.every((f) => !/help:|\[Error|eslint\(/.test(f.message)), JSON.stringify(r.failures));
+    } })),
+  // A file that does not parse has no rule. Where the format names oxlint some other
+  // way - the drawn report's closing line, the document's own fields - it is still read.
+  ...["parse_default", "parse_json"].map((form) => ({ file: `oxlint_${form}_fail.txt`, tool: "oxlint", n: 1, check: (r) => {
+      assert.deepEqual([r.failures[0].file, r.failures[0].line, r.failures[0].col, r.failures[0].label],
+        ["src/broken.js", 1, 28, "error"]);
+      assert.equal(r.failures[0].message, "Expected `,` or `)` but found `{`");
+    } })),
   // Captured with stylelint 16. It reports like eslint but marks severity with a glyph
   // rather than a word, which is why eslint's own parser never saw it.
   { file: "stylelint_fail.txt", tool: "stylelint", n: 3, check: (r) => {
@@ -3207,6 +3225,11 @@ for (const [group, encodings, silentAbout = []] of [
   // --message-format=short joins the label onto the message with a colon.
   ["cargo warnings short", ["cargo_warnings_human_fail.txt", "cargo_warnings_short_fail.txt"], ["message"]],
   ["pyright", ["pyright_text_same_fail.txt", "pyright_json_fail.txt"]],
+  ["oxlint", ["oxlint_agent_same_fail.txt", "oxlint_default_fail.txt", "oxlint_default_tty_fail.txt",
+    "oxlint_unix_fail.txt", "oxlint_github_fail.txt", "oxlint_stylish_fail.txt", "oxlint_json_fail.txt",
+    "oxlint_checkstyle_fail.txt", "oxlint_junit_fail.txt", "oxlint_sarif_fail.txt"]],
+  // GitLab's Code Quality format has nowhere to put a column.
+  ["oxlint gitlab", ["oxlint_agent_same_fail.txt", "oxlint_gitlab_fail.txt"], ["col"]],
   ["deno lint", ["denolint_pretty_fail.txt", "denolint_json_fail.txt"]],
   // --compact prints no hint, so the message is the one field it cannot share.
   ["deno lint compact", ["denolint_pretty_fail.txt", "denolint_compact_fail.txt"], ["message"]],
