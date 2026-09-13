@@ -1,0 +1,32 @@
+次からテストを実行しています: /home/dev/shop/ShopTests/bin/Debug/net10.0/ShopTests.dll (net10.0|arm64)
+失敗 AppliesDiscount (7ms)
+  Test method ShopTests.CartTests.AppliesDiscount threw exception:
+System.InvalidOperationException: discount table missing
+  参照元: /home/dev/shop/ShopTests/bin/Debug/net10.0/ShopTests.dll (net10.0|arm64)
+  Test method ShopTests.CartTests.AppliesDiscount threw exception:
+  System.InvalidOperationException: discount table missing
+    場所: ShopTests.CartTests.AppliesDiscount() 場所: /home/dev/shop/ShopTests/Test1.cs:15
+    場所: System.Reflection.MethodBaseInvoker.InterpretedInvoke_Method(Object obj, IntPtr* args)
+    場所: System.Reflection.MethodBaseInvoker.InvokeWithNoArgs(Object obj, BindingFlags invokeAttr)
+    
+失敗 TotalsAnInvoice (8ms)
+  Assert.AreEqual に失敗しました。<6> が必要ですが、<4> が指定されました。'expected' 式: '6'、'actual' 式: '2 + 2'。
+  参照元: /home/dev/shop/ShopTests/bin/Debug/net10.0/ShopTests.dll (net10.0|arm64)
+  Assert.AreEqual に失敗しました。<6> が必要ですが、<4> が指定されました。'expected' 式: '6'、'actual' 式: '2 + 2'。
+    場所: Microsoft.VisualStudio.TestTools.UnitTesting.Assert.ThrowAssertAreEqualFailed(Object expected, Object actual, String userMessage) 場所: /_/src/TestFramework/TestFramework/Assertions/Assert.AreEqual.cs:665
+    場所: Microsoft.VisualStudio.TestTools.UnitTesting.Assert.AreEqual[T](T expected, T actual, IEqualityComparer`1 comparer, String message, String expectedExpression, String actualExpression) 場所: /_/src/TestFramework/TestFramework/Assertions/Assert.AreEqual.cs:492
+    場所: Microsoft.VisualStudio.TestTools.UnitTesting.Assert.AreEqual[T](T expected, T actual, String message, String expectedExpression, String actualExpression) 場所: /_/src/TestFramework/TestFramework/Assertions/Assert.AreEqual.cs:405
+    場所: ShopTests.CartTests.TotalsAnInvoice() 場所: /home/dev/shop/ShopTests/Test1.cs:9
+    場所: System.Reflection.MethodBaseInvoker.InterpretedInvoke_Method(Object obj, IntPtr* args)
+    場所: System.Reflection.MethodBaseInvoker.InvokeWithNoArgs(Object obj, BindingFlags invokeAttr)
+/home/dev/shop/ShopTests/bin/Debug/net10.0/ShopTests.dll (net10.0|arm64) 2 件のエラーで失敗しました (263ms)
+終了コード: 2
+  標準出力: Test Parallelization enabled for /home/dev/shop/ShopTests/bin/Debug/net10.0/ShopTests.dll (Workers: 8, Scope: MethodLevel)
+
+テストの実行の概要: 失敗!
+  合計: 3
+  失敗: 2
+  成功: 1
+  スキップ済み: 0
+  期間: 380ms
+テスト実行が非成功終了コードで完了しました: 2 (参照: https://aka.ms/testingplatform/exitcodes)

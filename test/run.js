@@ -2324,6 +2324,35 @@ const CASES = [
   // is translated - "Failed" is "Fehler", "失敗", "Не пройден", "Com falha" - and reading
   // only the English words sent every other language to no diagnosis at all. The failure
   // word is read from the run's own tally instead, and the labels by where they stand.
+  // The same run under Microsoft.Testing.Platform, which translates more: the outcome
+  // ("fehlerhaft", "operazione non riuscita", "已失敗"), the assembly line under it, the
+  // summary, and the stack frames - "um ... in", "場所: ... 場所:". None of it but the
+  // English was read. What no language changes is the assembly line with its framework
+  // and architecture, and only a failure has a stack under it.
+  ...[
+    ["dotnettest_mtp_locale_en_fail.txt", "Assert.AreEqual failed. Expected:<6>. Actual:<4>."],
+    ["dotnettest_mtp_locale_de_fail.txt", 'Fehler bei "Assert.AreEqual". Erwartet:<6>. Tatsächlich:<4>.'],
+    // one word in Japanese, and the frame's two words are the same word with a colon
+    ["dotnettest_mtp_locale_ja_fail.txt", "Assert.AreEqual に失敗しました。"],
+    // "total" is Spanish too, so reading the English labels first found only that one
+    ["dotnettest_mtp_locale_es_fail.txt", "Error de Assert.AreEqual."],
+    // the outcome is three words
+    ["dotnettest_mtp_locale_it_fail.txt", "Assert.AreEqual non riuscita."],
+    // the summary's colon is full-width
+    ["dotnettest_mtp_locale_zh_hant_fail.txt", "Assert.AreEqual 失敗。"],
+  ].map(([file, said]) => ({ file, tool: "dotnet test", n: 2, check: (r) => {
+      assert.deepEqual(r.failures.map((f) => [f.subject, f.file.split("/").pop(), f.line]),
+        [["AppliesDiscount", "Test1.cs", 15], ["TotalsAnInvoice", "Test1.cs", 9]]);
+      assert.match(r.failures[0].message, /System\.InvalidOperationException: discount table missing/);
+      assert.ok(r.failures[1].message.startsWith(said), r.failures[1].message);
+      assert.equal(r.summary, "2 failed, 1 passed (3)");
+    } })),
+  // --output detailed prints the passing test too, with the same assembly line under it.
+  { file: "dotnettest_mtp_detailed_de_fail.txt", tool: "dotnet test", n: 2, check: (r) => {
+      assert.deepEqual(r.failures.map((f) => f.subject), ["AppliesDiscount", "TotalsAnInvoice"],
+        "erfolgreich CountsItems passed, and was read as a failure");
+      assert.equal(r.summary, "2 failed, 1 passed (3)");
+    } },
   // English, the control
   { file: "dotnettest_locale_en_fail.txt", tool: "dotnet test", n: 3, check: (r) => {
       assert.deepEqual(r.failures.map((f) => f.subject),
@@ -3174,6 +3203,11 @@ for (const [group, encodings, silentAbout = []] of [
   // share; the file and the line always are.
   ["javac languages", ["javac_locale_en_fail.txt", "javac_locale_de_fail.txt",
     "javac_locale_ja_fail.txt", "javac_locale_zh_fail.txt"], ["message"]],
+  // The assertion's message is MSTest's, and MSTest translates it; the exception's is not.
+  ["dotnet test platform languages", ["dotnettest_mtp_locale_en_fail.txt", "dotnettest_mtp_locale_de_fail.txt",
+    "dotnettest_mtp_locale_ja_fail.txt", "dotnettest_mtp_locale_es_fail.txt", "dotnettest_mtp_locale_it_fail.txt",
+    "dotnettest_mtp_locale_zh_hant_fail.txt"], ["message"]],
+  ["dotnet test platform detailed", ["dotnettest_mtp_locale_de_fail.txt", "dotnettest_mtp_detailed_de_fail.txt"]],
   ["gradle console", ["gradle_tests_plain_fail.txt", "gradle_tests_rich_fail.txt"]],
   // The short exception format names the exception and not its message.
   ["gradle exception format", ["gradle_tests_plain_fail.txt", "gradle_tests_full_fail.txt"], ["message"]],
