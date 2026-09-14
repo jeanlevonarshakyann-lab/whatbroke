@@ -154,6 +154,8 @@ const placedReports = (s) => (s.includes('"unexpected"') ? [...jsonDocumentsAt(s
 
 export default {
   name: "playwright",
+  // Strings a log has to hold for this parser to read anything from it - see src/router.js.
+  signals: ["Running ", "\u203a", "\"unexpected\""],
   category: "test",
   commands: ["playwright"],
 

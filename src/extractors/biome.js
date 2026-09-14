@@ -236,6 +236,8 @@ function summarised(s) {
 
 export default {
   name: "biome",
+  // Strings a log has to hold for this parser to read anything from it - see src/router.js.
+  signals: ["/", "parse", "format", "organizeImports", "assist", "\"diagnostics\"", "::error", "::warning", "::notice", "\"check_name\"", "name=\"Biome\"", "reporter/"],
   category: "lint",
   commands: ["biome"],
 

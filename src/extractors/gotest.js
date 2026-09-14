@@ -111,6 +111,8 @@ function standalonePanic(lines) {
 
 export default {
   name: "go",
+  // Strings a log has to hold for this parser to read anything from it - see src/router.js.
+  signals: ["--- FAIL", "ok ", "ok\t", "FAIL ", "FAIL\t", "--- ", "---\t", ".go:", "goroutine "],
   category: "compile",
   commands: ["go"],
   detect: (s) =>

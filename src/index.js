@@ -69,6 +69,7 @@ import pip from "./extractors/pip.js";
 import generic from "./extractors/generic.js";
 import { stripAnsi, stripCiPrefix, isNoise, collapseRepeats } from "./util.js";
 import { clusterFailures } from "./cluster.js";
+import { readers } from "./router.js";
 import { stripRedrawnCiPrefix, wrapperCandidates } from "./normalize.js";
 import { joinSources, preserveSourceRange, rangesOverlap, setParser, sourceRange } from "./ownership.js";
 
@@ -182,7 +183,7 @@ const MAX_TEXT_COMPARISONS = 4_000_000;
  *
  *  `failures` still means "what the winning tool reported", unchanged, so nothing that
  *  reads it sees a different shape. Everything else arrives here, attributed. */
-function otherTools(s, winner, mine, cluster) {
+function otherTools(s, winner, mine, cluster, extractors) {
   const exact = (f) => JSON.stringify([f.file ?? null, f.line ?? null, f.col ?? null, f.title ?? "", f.message ?? ""]);
   const claimed = new Map();
   const claim = (f) => claimed.set(exact(f), [...(claimed.get(exact(f)) ?? []), f]);
@@ -245,7 +246,7 @@ function otherTools(s, winner, mine, cluster) {
     });
   };
   const others = [];
-  for (const ex of EXTRACTORS) {
+  for (const ex of extractors) {
     if (ex === winner || ex.name === "generic") continue;
     let r = null;
     try { if (ex.detect(s)) r = ex.extract(s); } catch { r = null; }
@@ -327,8 +328,8 @@ function dropEchoes(mine, others) {
  *
  *  Reordering still only affects parsers that both claim and extract from the log.
  *  Piped logs carry no command and are entirely unaffected. */
-function ordered(command) {
-  if (!command?.length) return EXTRACTORS;
+function ordered(command, extractors) {
+  if (!command?.length) return extractors;
   // `npx jest`, `poetry run pytest`, `./node_modules/.bin/eslint` - the tool's name is
   // somewhere in the argv, not necessarily first, and not necessarily bare.
   const words = command.flatMap((a) => String(a).split(/[\\/]/))
@@ -336,14 +337,14 @@ function ordered(command) {
   const hints = (extractor) => extractor.commandHints ?? extractor.commands;
   const firstMention = (extractor) => Math.min(...hints(extractor)
     .map((commandName) => words.indexOf(commandName.toLowerCase())).filter((index) => index >= 0));
-  const hinted = EXTRACTORS.filter((extractor) => Number.isFinite(firstMention(extractor)))
+  const hinted = extractors.filter((extractor) => Number.isFinite(firstMention(extractor)))
     .sort((a, b) => firstMention(a) - firstMention(b));
-  return hinted.length ? [...hinted, ...EXTRACTORS.filter((ex) => !hinted.includes(ex))] : EXTRACTORS;
+  return hinted.length ? [...hinted, ...extractors.filter((ex) => !hinted.includes(ex))] : extractors;
 }
 
 /** The extractor loop: first parser that claims the text AND finds something owns it. */
-function parse(s, command) {
-  for (const ex of ordered(command)) {
+function parse(s, command, extractors) {
+  for (const ex of ordered(command, extractors)) {
     let r = null;
     try { if (ex.detect(s)) r = ex.extract(s); } catch { r = null; }
     if (r?.failures?.length) return { extractor: ex, result: r };
@@ -428,9 +429,9 @@ function better(candidate, cand, current) {
 const MAX_WRAPPER_LAYERS = 3;   // CI stamps a monorepo runner that stamps a container
 
 /** Peel wrapper prefixes for as long as peeling demonstrably improves the parse. */
-function unwrap(s, command) {
+function unwrap(s, command, extractors) {
   let text = s;
-  let hit = parse(text, command);
+  let hit = parse(text, command, extractors);
   const wrappers = [];
   // At most one literal strip. Once a wrapper is off, the tool's OWN uniform prefix is
   // the next thing a literal search finds - Maven leads every line with `[INFO] ` - and
@@ -441,7 +442,7 @@ function unwrap(s, command) {
     let found = null;
     for (const c of wrapperCandidates(text)) {
       if (c.kind === "literal" && literalsTaken) continue;
-      const candidate = parse(c.text, command);
+      const candidate = parse(c.text, command, extractors);
       if (better(c, candidate, hit)) { found = { ...c, hit: candidate }; break; }
       // Wrappers stack: a monorepo runner relaying a container relaying a test run.
       // Peeling only the outer one is often no improvement by itself, and a strictly
@@ -450,7 +451,7 @@ function unwrap(s, command) {
       if (real(candidate)) continue;
       for (const inner of wrapperCandidates(c.text)) {
         if (inner.kind === "literal" && (literalsTaken || c.kind === "literal")) continue;
-        const deeper = parse(inner.text, command);
+        const deeper = parse(inner.text, command, extractors);
         if (better(inner, deeper, hit)) { found = { ...c, text: inner.text, wrapper: c.wrapper, hit: deeper, then: inner.wrapper }; break; }
       }
       if (found) break;
@@ -495,7 +496,7 @@ function collapseExactRetries(text) {
   }
 }
 
-function analyseWhole(raw, { cluster = true, command = null } = {}) {
+function analyseWhole(raw, { cluster = true, command = null, route = true } = {}) {
   // Windows tools, and logs pasted out of Windows CI, arrive with CRLF. Every
   // parser anchors on $, so a stray \r makes all of them silently match nothing.
   // A byte-order mark is not content. PowerShell writes one at the head of anything it
@@ -505,7 +506,10 @@ function analyseWhole(raw, { cluster = true, command = null } = {}) {
   const base = collapseExactRetries(
     stripRedrawnCiPrefix(stripCiPrefix(stripAnsi(raw.replace(/^\uFEFF/, ""))))
       .replace(/\r\n?/g, "\n"));
-  const { text: s, hit, wrappers } = unwrap(base, command);
+  // The parsers that could read anything from this log, asked once for the log and every
+  // wrapper stripped from it - see src/router.js.
+  const extractors = route ? readers(base, EXTRACTORS) : EXTRACTORS;
+  const { text: s, hit, wrappers } = unwrap(base, command, extractors);
   if (!hit) return null;
   const r = hit.result;
   // dedupe first: it collapses the SAME diagnostic printed twice, so cluster
@@ -513,7 +517,7 @@ function analyseWhole(raw, { cluster = true, command = null } = {}) {
   const failures = dedupeFailures(r.failures)
     .map((f) => preserveSourceRange(f, { tool: r.tool, category: hit.extractor.category, ...f }));
   const clusters = cluster ? clusterFailures(failures) : null;
-  const others = otherTools(s, hit.extractor, failures, cluster);
+  const others = otherTools(s, hit.extractor, failures, cluster, extractors);
   const answer = {
     ...r, failures, clusters,
     ...(others.length ? { others } : {}),
@@ -523,6 +527,7 @@ function analyseWhole(raw, { cluster = true, command = null } = {}) {
   return setParser(answer, hit.extractor);
 }
 
-export function analyse(raw, { cluster = true, command = null } = {}) {
-  return analyseWhole(raw, { cluster, command });
+/** `route: false` asks every parser about the log, as the router's own tests need to. */
+export function analyse(raw, { cluster = true, command = null, route = true } = {}) {
+  return analyseWhole(raw, { cluster, command, route });
 }

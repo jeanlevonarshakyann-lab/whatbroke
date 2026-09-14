@@ -14,6 +14,8 @@ const ESBUILD_SRC = /^[^\S\n]*\d+[^\S\n]*│[^\S\n]?(.*)$/;
 
 export const esbuild = {
   name: "esbuild",
+  // Strings a log has to hold for this parser to read anything from it - see src/router.js.
+  signals: ["[ERROR]", "[WARNING]"],
   category: "compile",
   commands: ["esbuild"],
 
@@ -66,6 +68,8 @@ const VITE_SRC = /^[^\S\n]*\d+[^\S\n]*│[^\S\n]?(.*)$/;
 
 export const vite = {
   name: "vite",
+  // Strings a log has to hold for this parser to read anything from it - see src/router.js.
+  signals: ["error during build:", "Build failed with"],
   category: "compile",
   commands: ["vite", "rollup", "rolldown"],
 

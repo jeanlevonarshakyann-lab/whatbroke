@@ -14,9 +14,22 @@
    bound what `extract` reads — see "Bound what a parser reads" below.
 6. Add the tool to the README support table and changelog.
 
-An extractor declares itself: `{ name, category, commands, detect, extract }`, where
+An extractor declares itself: `{ name, category, commands, signals, detect, extract }`, where
 `category` is one of `test`, `lint`, `typecheck`, `compile`, `build`, `runtime`,
 `package`, `vcs`, `deploy` or `unknown` (`unknown` belongs to the fallback alone), and `commands` lists the command names that imply it.
+
+`signals` lists strings a log has to hold for the parser to read anything from it: at
+least one of them is in every log `detect` accepts. A parser is not asked about a log
+holding none of them, which is what keeps a large log fast - see `src/router.js`. Take
+them from `detect` itself, one from each way it can succeed, and keep each free of line
+breaks. `test/router.js` fails if `detect` ever accepts a log without one; a parser left
+without `signals` is asked about every log.
+
+Every failure says which lines of the text the parser was given it was read from:
+`withSource(failure, start, end)` from `src/ownership.js`, end exclusive. Two tools'
+readings of the same lines are one diagnosis, and a failure without a range can never be
+recognised as one. `test/evidence.js` holds each range to the text it points at, and
+`test/fuzz.js` holds every parser to writing one on damaged logs too.
 
 Extractors should return `{ tool, summary, failures }`. A failure may include
 `file`, `line`, `col`, `title`, `message`, and parser-specific context fields.

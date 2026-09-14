@@ -228,6 +228,8 @@ function nodeJunit(text) {
 
 export default {
   name: "node --test",
+  // Strings a log has to hold for this parser to read anything from it - see src/router.js.
+  signals: ["not ok", "failing tests:", "testCodeFailure", "Failed tests:"],
   category: "test",
   commands: ["node"],
   detect: (s) =>

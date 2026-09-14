@@ -22,6 +22,8 @@ const TALLY_RE = /^Error:[^\S\n]+Failed to compile \d+ files? with swc\.?[^\S\n]
 
 export default {
   name: "swc",
+  // Strings a log has to hold for this parser to read anything from it - see src/router.js.
+  signals: ["with swc"],
   category: "compile",
   commands: ["swc", "spack"],
 

@@ -70,6 +70,8 @@ const reports = (s) => s.includes('"posn"') ? [...jsonDocuments(s, REPORT)] : []
 
 export default {
   name: "go vet json",
+  // Strings a log has to hold for this parser to read anything from it - see src/router.js.
+  signals: ["\"posn\""],
   category: "lint",
   commands: ["go"],
 

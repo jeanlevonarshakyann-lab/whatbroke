@@ -47,6 +47,8 @@ function refusal(s) {
 
 export default {
   name: "eslint",
+  // Strings a log has to hold for this parser to read anything from it - see src/router.js.
+  signals: ["problem", "error", "warning", "Oops! Something went wrong!", "Invalid option", "no longer part of core ESLint", "No files matching the pattern"],
   category: "lint",
   commands: ["eslint"],
   detect: (s) => /^[^\S\n]*[✖x][^\S\n]+\d+ problems? \(/m.test(s) || PROB_RE.test(s) ||

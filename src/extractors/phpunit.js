@@ -142,6 +142,8 @@ function testdoxResults(s) {
 
 export default {
   name: "phpunit",
+  // Strings a log has to hold for this parser to read anything from it - see src/router.js.
+  signals: ["There w", "inside PHPUnit", "<testcase", "php_qn://", "Tests:"],
   category: "test",
   commands: ["phpunit"],
   detect: (s) =>

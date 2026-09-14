@@ -104,6 +104,8 @@ const MAX_MESSAGE_LINES = 4;
 
 export default {
   name: "bun test",
+  // Strings a log has to hold for this parser to read anything from it - see src/router.js.
+  signals: ["(fail)", "\u2717", "name=\"bun test\""],
   category: "test",
   commands: ["bun"],
   detect: (s) => (FAIL_ANY.test(s) &&
@@ -232,6 +234,8 @@ const RUNTIME_SRC_RE = /^[^\S\n]*(\d+)[^\S\n]*\|[^\S\n]?(.*)$/;
 
 export const bunRuntime = {
   name: "bun",
+  // Strings a log has to hold for this parser to read anything from it - see src/router.js.
+  signals: ["Bun v"],
   category: "runtime",
   commands: ["bun", "bunx"],
   detect: (s) => BUN_FOOTER.test(s),

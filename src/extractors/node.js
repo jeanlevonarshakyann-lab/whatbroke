@@ -40,6 +40,8 @@ function xmlBodyLines(lines) {
 
 export default {
   name: "node",
+  // Strings a log has to hold for this parser to read anything from it - see src/router.js.
+  signals: ["at "],
   category: "runtime",
   commands: ["node"],
   detect: (s) => FRAME_WITH_CALL.test(s) || /^[^\S\n]+at .+:\d+:\d+$/m.test(s),

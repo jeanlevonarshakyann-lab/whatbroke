@@ -13,6 +13,8 @@ const SOURCE_RE = /^[^\S\n]*(\d+)[^\S\n](.*)$/;
 
 export default {
   name: "less",
+  // Strings a log has to hold for this parser to read anything from it - see src/router.js.
+  signals: ["on line"],
   category: "compile",
   commands: ["lessc", "less"],
 

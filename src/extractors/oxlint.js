@@ -234,6 +234,8 @@ function findings(s, placed = false) {
 
 export default {
   name: "oxlint",
+  // Strings a log has to hold for this parser to read anything from it - see src/router.js.
+  signals: ["error", "warning", "Error", "Warning", ",-[", "\u256d\u2500[", "::", "\"number_of_rules\"", "<checkstyle", "\"check_name\"", "name=\"Oxlint\"", "\"oxlint\""],
   category: "lint",
   commands: ["oxlint"],
 

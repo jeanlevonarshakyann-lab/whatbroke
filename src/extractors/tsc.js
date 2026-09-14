@@ -16,6 +16,8 @@ const PRETTY_RE = /^(.+?):(\d+):(\d+)[^\S\n]+-[^\S\n]+(error|warning)[^\S\n]+(TS
 
 export default {
   name: "tsc",
+  // Strings a log has to hold for this parser to read anything from it - see src/router.js.
+  signals: ["TS"],
   category: "typecheck",
   commands: ["tsc", "vue-tsc"],
   detect: (s) => s.split("\n").some((l) => LINE_RE.test(l) || PRETTY_RE.test(l) || BARE_RE.test(l)),

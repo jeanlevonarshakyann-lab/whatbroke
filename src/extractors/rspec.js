@@ -24,6 +24,8 @@ const EXPECTATION = /^RSpec::Expectations::/;
 
 export default {
   name: "rspec",
+  // Strings a log has to hold for this parser to read anything from it - see src/router.js.
+  signals: ["\"full_description\"", "Finished in", "example"],
   category: "test",
   commands: ["rspec", "bundle"],
   detect: (s) =>

@@ -51,6 +51,8 @@ const jsonMessages = (s) => {
 
 export default {
   name: "pylint",
+  // Strings a log has to hold for this parser to read anything from it - see src/router.js.
+  signals: ["*** Module", "Your code has been rated at", "\"symbol\""],
   category: "lint",
   commands: ["pylint"],
 

@@ -28,6 +28,8 @@ const THROWN_RE = /^[^\S\n]*thrown in[^\S\n]+.+[^\S\n]+on line[^\S\n]+\d+$/;
 
 export default {
   name: "php",
+  // Strings a log has to hold for this parser to read anything from it - see src/router.js.
+  signals: ["Fatal error:", "Parse error:"],
   category: "runtime",
   commands: ["php", "php-cgi"],
 

@@ -39,6 +39,8 @@ function jsonReports(s) {
 
 export default {
   name: "pyright",
+  // Strings a log has to hold for this parser to read anything from it - see src/router.js.
+  signals: ["information", "error:", "warning:", "\"generalDiagnostics\""],
   category: "typecheck",
   commands: ["pyright", "basedpyright"],
 

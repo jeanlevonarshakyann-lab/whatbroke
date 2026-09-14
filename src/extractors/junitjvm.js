@@ -128,6 +128,8 @@ function txtCases(s) {
 
 export default {
   name: "junit jvm",
+  // Strings a log has to hold for this parser to read anything from it - see src/router.js.
+  signals: ["<testcase", "Time elapsed:"],
   category: "test",
   commands: ["mvn", "maven", "gradle", "gradlew"],
 

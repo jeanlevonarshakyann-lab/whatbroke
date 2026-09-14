@@ -41,6 +41,8 @@ function hasYaml(lines, i) {
 
 export default {
   name: "tap",
+  // Strings a log has to hold for this parser to read anything from it - see src/router.js.
+  signals: ["TAP version"],
   category: "test",
   commands: ["tap"],
 

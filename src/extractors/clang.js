@@ -93,6 +93,8 @@ function clangSarif(text) {
 
 export default {
   name: "clang",
+  // Strings a log has to hold for this parser to read anything from it - see src/router.js.
+  signals: ["\"runs\"", "error:", "warning:", "note:"],
   category: "compile",
   commands: ["clang", "clang++", "gcc", "g++", "cc", "make"],
   detect: (s) =>

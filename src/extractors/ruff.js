@@ -242,6 +242,8 @@ function arrayAt(text, start) {
 
 export default {
   name: "ruff",
+  // Strings a log has to hold for this parser to read anything from it - see src/router.js.
+  signals: ["-->", "fixable", "title=ruff", "\"filename\"", "{\"cell\":", "name=\"ruff\"", "\"diagnostics\"", "\"ruff\"", "\"check_name\"", "##vso[task.logissue"],
   category: "lint",
   commands: ["ruff"],
   detect: (s) => (/^Found \d+ errors?\.?$/m.test(s) && /^[^\S\n]*-->\s/m.test(s)) ||

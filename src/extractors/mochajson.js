@@ -64,6 +64,8 @@ function streamed(text) {
 
 export default {
   name: "mocha json",
+  // Strings a log has to hold for this parser to read anything from it - see src/router.js.
+  signals: ["\"fullTitle\"", "[\"fail\","],
   category: "test",
   commands: ["mocha"],
 
