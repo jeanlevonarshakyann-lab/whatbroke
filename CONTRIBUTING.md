@@ -7,8 +7,10 @@
 2. Remove usernames, absolute home directories, repository names, tokens,
    URLs with credentials, and other sensitive values while preserving syntax.
 3. Add the capture to `test/fixtures/` with a descriptive `_fail.txt` name.
-4. Add a focused case to `test/run.js` covering the tool name, failure count,
-   location, title, message, and summary.
+4. Add a focused case to the file for the tool's family in `test/tools/` -
+   `test/tools/python.js` for a Python tool - covering the tool name, failure count,
+   location, title, message, and summary. A tool in no family there gets a file of its
+   own, run from `test:fast`; `test/suites.js` fails until it is.
 5. Add the extractor to `src/extractors/` and register it in `src/index.js`.
    Keep detection specific enough that existing fixtures do not cross-detect, and
    bound what `extract` reads — see "Bound what a parser reads" below.

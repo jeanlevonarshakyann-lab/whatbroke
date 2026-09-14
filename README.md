@@ -229,7 +229,7 @@ true.
 - **The exit code is the command's own**, in every output mode: the shell's code for a
   signal, and 127 for a command that does not exist. *(test/guarantees.js)*
 - **A failed command never reads as anything else.** A headline over real failures never
-  sounds like success, and a guess says it is one. *(test/guarantees.js, test/run.js)*
+  sounds like success, and a guess says it is one. *(test/guarantees.js, test/tools/generic.js)*
 - **Output it cannot read is never swallowed.** The command's output streams as it runs
   unless you pass `-q` or `--json`, and when nothing in it could be read, the captured
   output comes back in every mode — printed, in JSON's `fallback.rawOutput`, or in the
@@ -680,7 +680,7 @@ no command — behave exactly as before.
 
 ## Adding a tool
 
-Extractors are ~40 lines and self-contained. Drop a file in `src/extractors/`, export `detect(raw)` and `extract(raw)`, add a **real** captured fixture to `test/fixtures/` and a case to `test/run.js`.
+Extractors are ~40 lines and self-contained. Drop a file in `src/extractors/`, export `detect(raw)` and `extract(raw)`, add a **real** captured fixture to `test/fixtures/` and a case to its family's file in `test/tools/`.
 
 Real captured output only — no hand-written samples. Every parser in here was built against output actually produced on a real machine, which is why they work.
 
@@ -691,7 +691,10 @@ npm test
 ```
 
 That runs both halves. `npm run test:fast` is everything but the shredded-log suite and
-runs in a few minutes; `npm run test:heavy` is `test/mixed.js`, which weaves every pair of
+runs in a few minutes. Each family of tools has a file of its own in `test/tools/`, which
+reads that family's fixtures and holds its formats to each other; `test/reading.js`,
+`test/render.js`, `test/cluster.js` and `test/commandline.js` hold what every reading
+shares. `npm run test:heavy` is `test/mixed.js`, which weaves every pair of
 fixtures into one log, `test/bounds.js`, which feeds each parser logs built to make it
 slow, and `test/router.js`, which holds the router to reading every log as asking every
 parser would. CI runs the fast half on every platform and Node version, and the heavy half on

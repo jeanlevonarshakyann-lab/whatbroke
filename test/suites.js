@@ -6,7 +6,7 @@
 // and holds the one required check until both have passed.
 import assert from "node:assert/strict";
 import { readFileSync, readdirSync } from "node:fs";
-import { dirname, join } from "node:path";
+import { dirname, join, posix } from "node:path";
 import { fileURLToPath } from "node:url";
 
 const here = dirname(fileURLToPath(import.meta.url));
@@ -19,7 +19,12 @@ const test = (name, fn) => {
   try { fn(); console.log(`  ok   ${name}`); pass++; }
   catch (e) { console.log(`  FAIL ${name}\n       ${e.message}`); fail++; }
 };
-const ran = (script) => [...String(script ?? "").matchAll(/\bnode test\/([\w.-]+\.js)\b/g)].map((m) => m[1]);
+// A suite's path under test/, which may be in a directory of its own: `tools/python.js`.
+// Every script under test/, in directories too, as a path from test/ - not the fixtures.
+const scripts_ = (dir, prefix = "") => readdirSync(dir, { withFileTypes: true }).flatMap((entry) =>
+  entry.isDirectory() ? (entry.name === "fixtures" ? [] : scripts_(join(dir, entry.name), `${prefix}${entry.name}/`))
+    : entry.name.endsWith(".js") ? [`${prefix}${entry.name}`] : []);
+const ran = (script) => [...String(script ?? "").matchAll(/\bnode test\/((?:[\w.-]+\/)*[\w.-]+\.js)\b/g)].map((m) => m[1]);
 // A job's block: its key at two spaces, up to the next key at two spaces.
 const job = (name) => workflow.match(new RegExp(`^  ${name}:\\n((?:(?!  \\S).*\\n?)*)`, "m"))?.[1] ?? null;
 
@@ -27,8 +32,10 @@ console.log("\nsuites");
 
 test("every test file runs in exactly one half, or is imported by a suite that does", () => {
   const suites = [...ran(scripts["test:fast"]), ...ran(scripts["test:heavy"])];
-  const files = readdirSync(here).filter((f) => f.endsWith(".js")).sort();
-  const imported = (f) => suites.some((s) => files.includes(s) && readFileSync(join(here, s), "utf8").includes(`"./${f}"`));
+  const files = scripts_(here).sort();
+  // imported by a suite, named the way that suite names it: "./harness.js" from beside it
+  const imported = (f) => suites.some((s) => files.includes(s) &&
+    readFileSync(join(here, s), "utf8").includes(`"./${posix.relative(posix.dirname(s), f)}"`));
   const problems = [];
   for (const f of files) {
     const n = suites.filter((s) => s === f).length;
