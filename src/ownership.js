@@ -283,6 +283,13 @@ const placesOf = (range) => (range.also ? [range, ...range.also] : [range]);
  *  Returns `kept`, or a copy of it that carries the places `dropped` was read from as
  *  well. A guessed range is left as it is - a guess is about one line, and joining two
  *  would make both into claims. */
+/** `failure`, or a copy of it, read from lines [start, end) as well as where it says -
+ *  for a finding whose parts are in two places, like a test's result and the diagnostic
+ *  its harness printed somewhere else. */
+export function alsoFrom(failure, start, end) {
+  return joinSources(failure, withSource({}, start, end));
+}
+
 export function joinSources(kept, dropped) {
   const a = Object.getOwnPropertyDescriptor(kept, SOURCE_RANGE);
   const b = Object.getOwnPropertyDescriptor(dropped, SOURCE_RANGE);

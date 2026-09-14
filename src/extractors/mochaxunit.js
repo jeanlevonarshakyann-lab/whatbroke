@@ -6,6 +6,7 @@
 // mocha names itself in the root element - `<testsuite name="Mocha Tests">` - which is
 // what tells this apart from every other tool that writes a JUnit-shaped report.
 import { xmlText, xmlAttributes, isNoise } from "../util.js";
+import { withSource } from "../ownership.js";
 
 const ROOT_RE = /<testsuite\b[^>]*\bname="Mocha Tests"/;
 const FRAME_RE = /^[^\S\n]+at[^\S\n]+(?:(.+?)[^\S\n]+\()?(.+?):(\d+):(\d+)\)?[^\S\n]*$/;
@@ -49,11 +50,12 @@ export default {
         if (t && message.length < MAX_MESSAGE_LINES && !message.includes(t)) message.push(t);
       }
       const name = [test.classname, test.name].filter(Boolean).join(" ").trim() || "test";
-      failures.push({
+      // The test case's tag, and its failure's body down to the closing tag.
+      failures.push(withSource({
         file: file ?? test.file, line, col,
         title: name, subject: name, severity: "error",
         message: message.join("\n") || name,
-      });
+      }, i, Math.min(end, lines.length - 1) + 1));
       i = end;
     }
     if (!failures.length) return null;
