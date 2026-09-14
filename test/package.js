@@ -83,7 +83,7 @@ try {
   assert.equal(metadata.name, manifest.name);
   assert.equal(metadata.version, manifest.version);
   const files = new Set(metadata.files.map(({ path }) => path));
-  for (const required of ["package.json", "bin/whatbroke.js", "src/index.js"]) {
+  for (const required of ["package.json", "bin/whatbroke.js", "src/index.js", "report.schema.json"]) {
     assert.equal(files.has(required), true, `${required} is missing from the npm package`);
   }
 

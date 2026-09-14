@@ -406,7 +406,9 @@ const CASES = [
   { file: "babel_fail.txt", tool: "babel", n: 1, check: (r) => {
       assert.match(r.failures[0].file, /bad\.jsx$/);
       assert.equal(r.failures[0].line, 1);
-      assert.equal(r.failures[0].col, 10);
+      // `(1:10)`, counted from 0: babel's caret is under the semicolon, the 11th character
+      assert.equal(r.failures[0].col, 11);
+      assert.equal(r.failures[0].stmt.indexOf(";") + 1, r.failures[0].col);
       assert.equal(r.failures[0].message, "Unexpected token");
       assert.equal(r.failures[0].stmt, "const x = ;");
       // none of babel's own frames reach the reader
@@ -431,6 +433,8 @@ const CASES = [
   { file: "webpack_resolve_fail.txt", tool: "webpack", n: 1, check: (r) => {
       assert.equal(r.failures[0].file, "./wsrc/index.js");
       assert.equal(r.failures[0].line, 1);
+      // webpack's `1:0-36` counts from 0
+      assert.equal(r.failures[0].col, 1);
       assert.match(r.failures[0].message, /^Module not found: Can't resolve '\.\/missing\.js'/);
       // "Module not found: Error: Can't resolve" says the same thing twice
       assert.doesNotMatch(r.failures[0].message, /Error:/);
@@ -440,6 +444,9 @@ const CASES = [
   { file: "webpack_parse_fail.txt", tool: "webpack", n: 1, check: (r) => {
       assert.match(r.failures[0].message, /^Module parse failed/);
       assert.equal(r.failures[0].stmt, "const x = ;");
+      // `1:10`, counted from 0, with webpack's own caret under the semicolon: the 11th
+      assert.equal(r.failures[0].col, 11);
+      assert.equal(r.failures[0].stmt.indexOf(";") + 1, r.failures[0].col);
       // the loader advice is a suggestion, not what happened
       assert.doesNotMatch(JSON.stringify(r.failures), /appropriate loader|webpack\.js\.org/);
     } },
@@ -467,6 +474,9 @@ const CASES = [
       // the symbolic name is what goes in a disable comment and what the docs are
       // indexed by, so it leads; the numeric code identifies
       assert.equal(r.failures[0].title, "missing-module-docstring");
+      // pylint counts columns from 0 - `lint_me.py:1:0:` is the start of the module -
+      // and a column here counts from 1
+      assert.deepEqual(r.failures.map((f) => f.col), [1, 1, 5, 1]);
     } },
   { file: "pylint_error_fail.txt", tool: "pylint", n: 1, check: (r) => {
       // a real error alongside a missing docstring buries the error, so the advice
@@ -1742,6 +1752,9 @@ const CASES = [
       assert.equal(r.failures[0].line, 1);
       assert.equal(r.failures[0].col, undefined, "no column was printed; none is invented");
       assert.match(r.failures[0].message, /nope\.h: No such file or directory/);
+      // an error that stopped the compile: the label says fatal, the severity says error
+      assert.equal(r.failures[0].label, "fatal error");
+      assert.equal(r.failures[0].severity, "error");
     } },
   { file: "gcc_nocolumn_multi_fail.txt", tool: "clang", n: 3, check: (r) => {
       assert.deepEqual(r.failures.map((f) => f.line), [2, 3, 4]);
@@ -1943,7 +1956,8 @@ const CASES = [
   { file: "pylint_text_same_fail.txt", tool: "pylint", n: 3, check: (r) => {
       assert.deepEqual(r.failures.map((f) => f.code), ["E1101", "E0602", "E0602"]);
       assert.equal(r.failures[0].file, "my project/orders.py");
-      assert.equal(r.failures[0].col, 42);
+      // pylint printed 9:42, counting from 0
+      assert.equal(r.failures[0].col, 43);
       assert.match(r.summary, /3 advisory hidden/);
     } },
   // -f parseable and -f msvs put the code and the symbolic name in a bracket, and put
@@ -1971,7 +1985,7 @@ const CASES = [
   { file: "pylint_json_fail.txt", tool: "pylint", n: 3, check: (r) => {
       assert.deepEqual(r.failures.map((f) => f.code), ["E1101", "E0602", "E0602"]);
       assert.equal(r.failures[2].file, "my project/shipping.py");
-      assert.equal(r.failures[2].col, 20);
+      assert.equal(r.failures[2].col, 21);
       assert.match(r.summary, /3 advisory hidden/);
     } },
   { file: "pylint_json2_fail.txt", tool: "pylint", n: 3, check: (r) => {

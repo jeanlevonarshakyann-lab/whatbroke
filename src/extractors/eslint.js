@@ -88,7 +88,9 @@ export default {
     }
     const lines = s.split("\n");
     const failures = [];
-    let file = null;
+    // Until a heading names one, a problem has no file - and says so by having none. A
+    // log cut above its first heading, or with its lines out of order, has problems there.
+    let file;
     const warningLines = new Set();
 
     for (let i = 0; i < lines.length; i++) {

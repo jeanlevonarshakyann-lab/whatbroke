@@ -12,6 +12,8 @@
 import { withSource } from "../ownership.js";
 
 const HEAD_RE = /^(ERROR|WARNING) in (\S+?)(?:[^\S\n]+(\d+):(\d+)(?:-\d+)?)?[^\S\n]*$/;
+// The column in that heading counts from 0: `const x = ;` fails `1:10`, with the caret
+// webpack draws under the semicolon, the eleventh character. A column here counts from 1.
 const TALLY_RE = /^webpack [\d.]+ compiled with (\d+) errors?(?:[^\S\n]+and[^\S\n]+(\d+) warnings?)?/m;
 // Where the explanation stops and the resolver's diary begins.
 const TRACE_RE = /^(?:resolve[ds]?[^\S\n]|[^\S\n]+(?:using description file|Field '|aliased from|Failed to alias|doesn't exist|as directory|no extension))/;
@@ -59,7 +61,7 @@ export default {
       }
 
       failures.push(withSource({
-        file: head[2], line: head[3] ? +head[3] : undefined, col: head[4] ? +head[4] : undefined,
+        file: head[2], line: head[3] ? +head[3] : undefined, col: head[4] ? +head[4] + 1 : undefined,
         title: "build error", label: "build error", severity: "error",
         message: msg.join("\n") || "webpack reported an error with no explanation", stmt,
       }, i, end));

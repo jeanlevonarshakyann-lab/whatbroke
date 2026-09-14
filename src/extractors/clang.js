@@ -126,9 +126,12 @@ export default {
       const code = match[5].match(CODE_RE);
       const message = code ? match[5].replace(CODE_RE, "") : match[5];
       if (match[4] === "warning") { warningLines.add(line); continue; }
+      // gcc's "fatal error" is an error that stopped the compile, and it stays the label.
+      // As a severity it was a third value beside error and warning, which nothing that
+      // reads one expects.
       failures.push(withSource({
         file: match[1], line: +match[2], ...(match[3] ? { col: +match[3] } : {}),
-        title: code?.[1] ?? match[4], code: code?.[1], label: code ? undefined : match[4], severity: match[4], message,
+        title: code?.[1] ?? match[4], code: code?.[1], label: code ? undefined : match[4], severity: "error", message,
       }, i, i + 1));
     }
     if (!failures.length) return null;

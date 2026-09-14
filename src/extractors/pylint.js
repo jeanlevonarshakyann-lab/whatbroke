@@ -34,6 +34,10 @@ const MODULE_RE = /^\*{3,}[^\S\n]+Module[^\S\n]+\S+/m;
 const RATING_RE = /^Your code has been rated at/m;
 // C and R are convention and refactor suggestions; W is a warning. E and F stop the run.
 const STOPS_THE_RUN = /^[EF]/;
+// pylint counts columns from 0, in every format that prints one: a module's missing
+// docstring is at `mod.py:1:0`. A column here counts from 1, as the other tools' do and
+// as a GitHub annotation's does, so the caret sat one character left of the finding.
+const column = (n) => n + 1;
 
 // -f json is an array of messages; -f json2 wraps the same messages in an object beside
 // the run's statistics, and renames one key. Both are pretty-printed across many lines,
@@ -81,7 +85,7 @@ export default {
     for (let i = 0; i < lines.length; i++) {
       const m = lines[i].match(FINDING_RE);
       if (m) {
-        add(withSource({ file: m[1], line: +m[2], col: +m[3], title: m[6] ?? m[4], code: m[4],
+        add(withSource({ file: m[1], line: +m[2], col: column(+m[3]), title: m[6] ?? m[4], code: m[4],
           severity: "error", message: m[5].trim() }, i, i + 1));
         continue;
       }
@@ -95,7 +99,7 @@ export default {
     for (const { value, where } of jsonDocumentsAt(s, JSON_MARK)) {
       for (const r of Array.isArray(value) ? value : value.messages) {
         const { start, end } = where(r);
-        add(withSource({ file: r.path, line: r.line, col: Number.isInteger(r.column) ? r.column : undefined,
+        add(withSource({ file: r.path, line: r.line, col: Number.isInteger(r.column) ? column(r.column) : undefined,
           title: r.symbol, code: r["message-id"] ?? r.messageId,
           severity: "error", message: String(r.message ?? "").trim() }, start, end));
       }

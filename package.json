@@ -10,6 +10,7 @@
   "files": [
     "bin",
     "src",
+    "report.schema.json",
     "README.md",
     "CHANGELOG.md",
     "CONTRIBUTING.md",
@@ -17,7 +18,7 @@
   ],
   "scripts": {
     "test": "npm run test:fast && npm run test:heavy",
-    "test:fast": "node test/guarantees.js && node test/run.js && node test/capture.js && node test/normalize.js && node test/fuzz.js && node test/detectors.js && node test/evidence.js && node test/source-safety.js && node test/history.js && node test/suites.js && node test/package.js",
+    "test:fast": "node test/guarantees.js && node test/run.js && node test/capture.js && node test/normalize.js && node test/fuzz.js && node test/detectors.js && node test/evidence.js && node test/report.js && node test/source-safety.js && node test/history.js && node test/suites.js && node test/package.js",
     "test:heavy": "node test/mixed.js && node test/bounds.js && node test/router.js",
     "bench": "node bench/speed.js",
     "prepublishOnly": "npm test"

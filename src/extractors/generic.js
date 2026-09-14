@@ -109,7 +109,12 @@ export default {
       said.push(h.text.replace(/\s+/g, " ").trim());
       const loc = h.text.match(/^([^\s:]+):(\d+)(?::(\d+))?:[^\S\n]*(.*)$/);
       if (loc) {
-        failures.push(withSource({ file: loc[1], line: +loc[2], col: loc[3] ? +loc[3] : undefined, title: "", severity: "error", message: loc[4] }, h.i, h.i + 1));
+        // A line or a column of 0 points at nothing. `<unknown>:0:` is how swift and clang
+        // say there is no location, and a column of 0 is a tool counting from 0 - pylint
+        // does - which one line is not enough to correct for. Neither is kept.
+        const line = +loc[2] || undefined;
+        const col = line && +loc[3] ? +loc[3] : undefined;
+        failures.push(withSource({ file: loc[1], line, col, title: "", severity: "error", message: loc[4] }, h.i, h.i + 1));
         continue;
       }
       const { frame, ...at } = locate(lines, h.i, h.text) ?? {};

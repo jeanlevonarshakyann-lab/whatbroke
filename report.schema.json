@@ -1,0 +1,274 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://raw.githubusercontent.com/jeanlevonarshakyann-lab/whatbroke/main/report.schema.json",
+  "title": "whatbroke report",
+  "description": "What `whatbroke --json` prints: one report per run. Version 1 only ever gains fields, and a field it has keeps its meaning, so an object here may carry fields this schema does not list yet.",
+  "type": "object",
+  "required": ["version", "tool", "summary", "guessed", "wrappers", "clusters", "others", "exitCode", "inputMode", "commandExitCode", "fallback", "truncated", "error", "since", "failures"],
+  "properties": {
+    "version": {
+      "description": "The format of this report.",
+      "const": 1
+    },
+    "tool": {
+      "description": "The tool whose output this is, named by the parser that read it. null when nothing in the output could be read.",
+      "type": ["string", "null"],
+      "minLength": 1
+    },
+    "summary": {
+      "description": "The run's tally as the tool stated it, or as whatbroke counted it where the tool states none.",
+      "type": ["string", "null"]
+    },
+    "guessed": {
+      "description": "No parser recognised the tool, and the failures are the generic reader's best guess.",
+      "type": "boolean"
+    },
+    "wrappers": {
+      "description": "What was taken off the output before it could be read, outermost first: the name of a known shape (`docker`, `jenkins`, `kubectl logs`), or the literal prefix removed from every line (`api:test: `).",
+      "type": "array",
+      "items": { "type": "string", "minLength": 1 }
+    },
+    "clusters": {
+      "description": "`failures` grouped by likely cause. Every failure is a member of exactly one entry. null with `--no-cluster`.",
+      "type": ["array", "null"],
+      "items": { "$ref": "#/$defs/cluster" }
+    },
+    "others": {
+      "description": "Failures that other tools printed into the same output, one entry per tool. null when there were none.",
+      "type": ["array", "null"],
+      "items": { "$ref": "#/$defs/other" }
+    },
+    "exitCode": {
+      "description": "whatbroke's own exit code: the wrapped command's, 0 for piped input it processed, 127 for a command that could not be started.",
+      "type": "integer",
+      "minimum": 0
+    },
+    "inputMode": {
+      "description": "Whether whatbroke ran the command itself or read piped input.",
+      "enum": ["command", "pipe"]
+    },
+    "commandExitCode": {
+      "description": "The wrapped command's exit code. null for piped input, whose upstream status is unknown, and for a command that could not be started.",
+      "type": ["integer", "null"],
+      "minimum": 0
+    },
+    "fallback": {
+      "description": "Set when the command failed, or input was piped, and nothing in the output could be read.",
+      "anyOf": [{ "type": "null" }, { "$ref": "#/$defs/fallback" }]
+    },
+    "truncated": {
+      "description": "The output was larger than `--max-bytes`, and parts of it were not kept.",
+      "type": "boolean"
+    },
+    "error": {
+      "description": "Why the command could not be started.",
+      "type": ["string", "null"]
+    },
+    "since": {
+      "description": "With `--since-last`: how this run's causes compare with the last tracked run of the same command, for the same tool, in the same directory.",
+      "anyOf": [{ "type": "null" }, { "$ref": "#/$defs/since" }]
+    },
+    "failures": {
+      "description": "What the tool reported. Empty does not mean the command succeeded: check `commandExitCode`.",
+      "type": "array",
+      "items": { "$ref": "#/$defs/failure" }
+    }
+  },
+  "$defs": {
+    "failure": {
+      "type": "object",
+      "required": ["tool", "category", "severity", "title", "message"],
+      "properties": {
+        "tool": {
+          "description": "The tool that reported it.",
+          "type": "string",
+          "minLength": 1
+        },
+        "category": {
+          "description": "What kind of step failed.",
+          "enum": ["test", "lint", "typecheck", "compile", "build", "runtime", "package", "vcs", "deploy", "unknown"]
+        },
+        "severity": {
+          "description": "How the tool classed it. A warning is never reported as a failure.",
+          "enum": ["error", "warning"]
+        },
+        "title": {
+          "description": "What the failure is called: its `code`, `subject` or `label`, or the tool's own name for it. Can be empty.",
+          "type": "string"
+        },
+        "message": {
+          "description": "What the tool said about it, one or more lines.",
+          "type": "string"
+        },
+        "code": {
+          "description": "A diagnostic identifier: `TS2551`, `no-unused-vars`, `E0308`.",
+          "type": "string",
+          "minLength": 1
+        },
+        "subject": {
+          "description": "The name of what failed: a test, a method.",
+          "type": "string",
+          "minLength": 1
+        },
+        "label": {
+          "description": "A constant the tool prints for a class of failure: `compile error`.",
+          "type": "string",
+          "minLength": 1
+        },
+        "file": {
+          "description": "The file, as the tool named it.",
+          "type": "string",
+          "minLength": 1
+        },
+        "line": {
+          "description": "The line in `file`, counting from 1.",
+          "type": "integer",
+          "minimum": 1
+        },
+        "col": {
+          "description": "The column in `line`, counting from 1, in the tool's own unit: bytes for some tools, UTF-16 code units or characters for others. Most count a tab as one column. On a line of plain ASCII with no tabs, every unit agrees.",
+          "type": "integer",
+          "minimum": 1
+        },
+        "stmt": {
+          "description": "The source line the tool quoted.",
+          "type": "string"
+        },
+        "trace": {
+          "description": "The stack frames kept, in the order the tool printed them. The first is where the failure happened.",
+          "type": "array",
+          "items": { "type": "string" }
+        },
+        "hiddenFrames": {
+          "description": "How many frames were left out of `trace` as the internals of a runtime or a tool.",
+          "type": "integer",
+          "minimum": 0
+        }
+      }
+    },
+    "cluster": {
+      "type": "object",
+      "required": ["id", "signature", "size", "members", "exemplar", "reported"],
+      "properties": {
+        "id": {
+          "description": "A fingerprint of what the members share. For an entry that is not reported it also includes the member's position.",
+          "type": "string",
+          "pattern": "^[0-9a-f]{24}$"
+        },
+        "signature": {
+          "description": "What the members have in common, with the parts that vary between them abstracted away.",
+          "type": "string"
+        },
+        "size": {
+          "description": "How many members it has.",
+          "type": "integer",
+          "minimum": 1
+        },
+        "members": {
+          "description": "Indices into the `failures` array this entry groups.",
+          "type": "array",
+          "minItems": 1,
+          "items": { "type": "integer", "minimum": 0 }
+        },
+        "exemplar": {
+          "description": "The member shown for the whole group: one of `members`.",
+          "type": "integer",
+          "minimum": 0
+        },
+        "reported": {
+          "description": "Whether this is claimed as one likely cause. A failure whose cause is not confidently shared is its own entry, not reported.",
+          "type": "boolean"
+        }
+      }
+    },
+    "other": {
+      "type": "object",
+      "required": ["tool", "count", "clusters", "failures"],
+      "properties": {
+        "tool": {
+          "description": "The other tool.",
+          "type": "string",
+          "minLength": 1
+        },
+        "count": {
+          "description": "How many failures are listed for it.",
+          "type": "integer",
+          "minimum": 1
+        },
+        "summary": {
+          "description": "The tool's tally, present only when every failure it reported is listed here.",
+          "type": "string"
+        },
+        "clusters": {
+          "description": "This tool's `failures` grouped by likely cause, as for the report's own.",
+          "type": ["array", "null"],
+          "items": { "$ref": "#/$defs/cluster" }
+        },
+        "failures": {
+          "description": "What it reported that the report's own tool did not.",
+          "type": "array",
+          "minItems": 1,
+          "items": { "$ref": "#/$defs/failure" }
+        }
+      }
+    },
+    "since": {
+      "type": "object",
+      "required": ["compared", "reason", "fresh", "gone"],
+      "properties": {
+        "compared": {
+          "description": "Whether there was a previous run to compare with.",
+          "type": "boolean"
+        },
+        "reason": {
+          "description": "Why nothing was compared.",
+          "enum": [null, "no-previous-run", "nothing-parsed"]
+        },
+        "fresh": {
+          "description": "The causes that were not in the previous run.",
+          "type": "array",
+          "items": { "type": "string", "pattern": "^[0-9a-f]{24}$" }
+        },
+        "gone": {
+          "description": "How many of the previous run's causes this run no longer reports. null when this run cannot say, as `goneWithheld` explains.",
+          "type": ["integer", "null"],
+          "minimum": 0
+        },
+        "ranAt": {
+          "description": "When the previous run was recorded, as an ISO 8601 instant.",
+          "type": ["string", "null"]
+        },
+        "goneWithheld": {
+          "description": "Why `gone` is null.",
+          "enum": [null, "truncated", "run-not-comparable", "identity-migration"]
+        },
+        "recorded": {
+          "description": "Whether this run was saved for the next one to compare with. A truncated run, or a command that could not be started, never is.",
+          "type": "boolean"
+        },
+        "migrated": {
+          "description": "The previous run was saved by an older version of whatbroke and compared through its identifiers.",
+          "type": "boolean"
+        }
+      }
+    },
+    "fallback": {
+      "type": "object",
+      "required": ["reason", "message", "rawOutput"],
+      "properties": {
+        "reason": {
+          "description": "Why there is nothing to report.",
+          "enum": ["unrecognized-output", "no-output", "spawn-error"]
+        },
+        "message": {
+          "description": "The same explanation, as a sentence.",
+          "type": "string"
+        },
+        "rawOutput": {
+          "description": "What was captured, which can be empty. Check `truncated` before treating it as complete.",
+          "type": "string"
+        }
+      }
+    }
+  }
+}

@@ -90,6 +90,25 @@ function quoteDiffers(a, b) {
   return !!quote(a) && !!quote(b) && quote(a) !== quote(b);
 }
 
+/** A failure's location as a report promises it: a file with a name, and a line and a column
+ *  that count from 1. A parser writes what the log says, and a damaged log can say
+ *  `file:0:0`, or put a problem above the heading that names its file - which points at
+ *  nothing, so it is not passed on. A column without its line points at nothing either.
+ *  The corpus holds every parser to the same promise before this is reached; see
+ *  test/report.js. */
+function located(failure) {
+  const { file, line, col } = failure;
+  const fileOk = file === undefined || (typeof file === "string" && file.length > 0);
+  const lineOk = line === undefined || (Number.isInteger(line) && line >= 1);
+  const colOk = col === undefined || (Number.isInteger(col) && col >= 1 && lineOk && line !== undefined);
+  if (fileOk && lineOk && colOk) return failure;
+  const copy = { ...failure };
+  if (!fileOk) delete copy.file;
+  if (!lineOk) delete copy.line;
+  if (!lineOk || !colOk) delete copy.col;
+  return preserveSourceRange(failure, copy);
+}
+
 function dedupeFailures(failures) {
   // Collapsing here rather than in each parser puts it on every failure that reaches the
   // reader, from every parser, and it happens before the key is built - so two failures
@@ -253,7 +272,7 @@ function otherTools(s, winner, mine, cluster, extractors) {
     if (!r?.failures?.length) continue;
     // A shared location does not prove a shared diagnostic, and missing locations
     // say nothing at all. Compare diagnostic content consistently for the winner and other tools.
-    const fresh = dedupeFailures(r.failures
+    const fresh = dedupeFailures(r.failures.map(located)
       .filter((f) => !isClaimed(f))
       .filter((f) => !sameSourceAsClaimed(f))
       .filter((f) => !f.file || !(locations.get(JSON.stringify([fileName(f.file), f.line ?? null])) ?? [])
@@ -514,7 +533,7 @@ function analyseWhole(raw, { cluster = true, command = null, route = true } = {}
   const r = hit.result;
   // dedupe first: it collapses the SAME diagnostic printed twice, so cluster
   // sizes end up counting real distinct sites rather than print repetitions.
-  const failures = dedupeFailures(r.failures)
+  const failures = dedupeFailures(r.failures.map(located))
     .map((f) => preserveSourceRange(f, { tool: r.tool, category: hit.extractor.category, ...f }));
   const clusters = cluster ? clusterFailures(failures) : null;
   const others = otherTools(s, hit.extractor, failures, cluster, extractors);

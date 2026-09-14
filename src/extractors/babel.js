@@ -45,9 +45,11 @@ export default {
         const marked = lines[j].match(MARKED_RE);
         if (marked) { stmt = marked[2].trim(); end = j + 1; break; }
       }
-      // The header, down to the marked line of the code frame under it.
+      // The header, down to the marked line of the code frame under it. Babel counts the
+      // column in its header from 0 - `const x = ;` fails at `(1:10)`, with the caret under
+      // the semicolon, the eleventh character - and a column here counts from 1.
       const failure = withSource({
-        file: m[2], line: +m[4], col: +m[5],
+        file: m[2], line: +m[4], col: +m[5] + 1,
         title: m[1], code: m[1], severity: "error",
         message: m[3].trim(), stmt,
       }, i, end);

@@ -15,6 +15,8 @@ import assert from "node:assert/strict";
 import { analyse, EXTRACTORS } from "../src/index.js";
 import { stripAnsi, stripCiPrefix } from "../src/util.js";
 import { SOURCE_RANGE } from "../src/ownership.js";
+import { createReport } from "../src/report.js";
+import { REPORT_SCHEMA, inconsistencies, validate } from "./schema.js";
 
 const here = dirname(fileURLToPath(import.meta.url));
 const fixtures = join(here, "fixtures");
@@ -160,12 +162,15 @@ test("every failure read from a mutated log says where it came from, inside the 
   assert.deepEqual(wrong.slice(0, 6), [], `${wrong.length} failures had no range, or one outside the log`);
 });
 
-test("a mutated log never reports a warning as a failure", () => {
-  // Mutation can sever a diagnostic from its severity marker. Reading a warning as a
-  // failure is a false claim, and it is the one the corpus cannot catch on its own.
+// The corpus shows what a parser writes for the logs it was built from. A damaged log is
+// where one writes something else - a column read from half a line, a severity marker cut
+// away from its diagnostic - so the report built from each has to keep to the schema and
+// to itself as well. Reading a warning as a failure is one of the things that checks.
+test("a report read from a mutated log keeps to the schema, and never calls a warning a failure", () => {
   seed = SEED + 1;
   const files = readdirSync(fixtures);
-  const leaked = [];
+  const wrong = [];
+  let reports = 0;
   for (let round = 0; round < 10; round++) {
     for (const f of files) {
       let text = readFileSync(join(fixtures, f), "utf8");
@@ -173,12 +178,15 @@ test("a mutated log never reports a warning as a failure", () => {
       text = MUTATIONS[name](text);
       let r;
       try { r = analyse(text); } catch { continue; }
-      for (const failure of r?.failures ?? []) {
-        if (failure.severity === "warning") leaked.push(`${f} after ${name}: ${failure.title}`);
+      if (r) reports++;
+      const report = JSON.parse(JSON.stringify(createReport({ analysis: r, raw: text, exitCode: 0, inputMode: "pipe" })));
+      for (const problem of [...validate(report, REPORT_SCHEMA, { strict: true }), ...inconsistencies(report)]) {
+        wrong.push(`${f} after ${name}: ${problem}`);
       }
     }
   }
-  assert.deepEqual(leaked, [], "a warning was reported as a failure");
+  assert.ok(reports > 3000, `only ${reports} reports read`);
+  assert.deepEqual(wrong.slice(0, 6), [], `${wrong.length} problems`);
 });
 
 console.log(`\n  ${pass} passed, ${fail} failed`);

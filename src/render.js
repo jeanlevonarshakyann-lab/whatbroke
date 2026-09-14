@@ -2,6 +2,7 @@ import { relPath } from "./util.js";
 import { snippet, contextFor } from "./snippet.js";
 import { normTitle } from "./cluster.js";
 import { trackedCauseId } from "./history.js";
+import { TRUNCATION_NOTICE, wrapperName } from "./report.js";
 
 // A failure message line longer than this is padding - pytest lists every
 // available fixture, rustc lists every trait impl. Keep the head, drop the rest.
@@ -86,6 +87,11 @@ export function render(result, { max = 5, cwd = true, source = true, cluster = t
     const n = fails.length;
     out.push(`  ${C.red}${C.bold}✗${C.reset} ${C.bold}${n} error${n > 1 ? "s" : ""}${C.reset}` +
              `${result.guessed ? ` ${C.dim}(no parser for this tool — best guess)${C.reset}` : ""}`);
+  }
+  // Which package or container the output came through. The prefix is gone from every
+  // line, and `api:test:` is how a monorepo's log says which package failed.
+  if (!secondary && result.wrappers?.length) {
+    out.push(`    ${C.dim}via ${result.wrappers.map(wrapperName).join(" \u203a ")}${C.reset}`);
   }
   if (reported.length) {
     const sites = reported.reduce((n, u) => n + u.size, 0);
@@ -265,4 +271,25 @@ export function render(result, { max = 5, cwd = true, source = true, cluster = t
     out.push("");
   }
   return out.join("\n");
+}
+
+/** A report as the terminal shows it. `quiet` is whether the command's own output was
+ *  held back, which decides whether the fallback prints what was captured. */
+export function renderReport(report, { quiet = false, ...options } = {}) {
+  if (report.tool !== null) {
+    let out = "\n" + render(report, { ...options, since: report.since });
+    if (report.truncated) {
+      out += `\n${C.yellow}  ! output capture limit reached; increase --max-bytes for complete diagnostics${C.reset}\n`;
+    }
+    return out;
+  }
+  const { fallback, truncated, error } = report;
+  if (!fallback) return "";
+  const raw = fallback.rawOutput;
+  let out = `\n${fallback.message}\n${error ?? "whatbroke could not identify a diagnostic."}\n`;
+  if (!raw) out += "No output was captured.\n";
+  else if (report.inputMode === "pipe" || quiet) out += `\nCaptured output:\n${raw}${raw.endsWith("\n") ? "" : "\n"}`;
+  else out += "Raw command output was streamed above.\n";
+  if (truncated) out += `\nwhatbroke: ${TRUNCATION_NOTICE}\n`;
+  return out;
 }

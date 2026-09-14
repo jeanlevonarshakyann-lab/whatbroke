@@ -15,8 +15,9 @@ import {
   trackedCauseId,
   legacyTrackedCauseId,
 } from "../src/history.js";
-import { render, setColor } from "../src/render.js";
-import { normTitle } from "../src/cluster.js";
+import { renderReport, setColor } from "../src/render.js";
+import { githubOutput } from "../src/github.js";
+import { createReport } from "../src/report.js";
 const { version } = createRequire(import.meta.url)("../package.json");
 
 const argv = process.argv.slice(2);
@@ -100,166 +101,13 @@ const sinceLast = has("--since-last");
 const quiet = has("-q", "--quiet") || json;
 const opts = { max: has("-a", "--all") ? Infinity : 5 };
 
-// The runner unescapes only these three in a message body. Escaping a colon there
-// too leaves "AssertionError%3A expected 1" on screen, so : and , are escaped in
-// property values only - where the , and :: separators genuinely need it.
-const escapeData = (value) => String(value)
-  .replace(/%/g, "%25")
-  .replace(/\r/g, "%0D")
-  .replace(/\n/g, "%0A");
-const escapeAnnotation = (value) => escapeData(value)
-  .replace(/:/g, "%3A")
-  .replace(/,/g, "%2C");
-
-function annotation(f, tool) {
-  const params = [];
-  if (f.file) params.push(`file=${escapeAnnotation(f.file)}`);
-  if (f.line) params.push(`line=${f.line}`);
-  if (f.col) params.push(`col=${f.col}`);
-  // Name the producing tool when it is not the one that owns the log, so a reader can
-  // tell an eslint marker from a jest one at a glance.
-  const label = [tool, f.title].filter(Boolean).join(" ");
-  if (label) params.push(`title=${escapeAnnotation(label)}`);
-  const message = escapeData(f.message ?? f.stmt ?? "Command failed");
-  return `::error${params.length ? ` ${params.join(",")}` : ""}::${message}`;
-}
-
-// The step summary is the one screen a human actually reads in CI, so it leads with
-// causes exactly like the terminal does. Annotations stay one per failure - each is a
-// marker on a line in the diff view, and dropping one hides a line - so nothing here
-// removes information, it only decides what sits above the fold.
+/** The job summary is a file GitHub names in the environment. Writing it can fail - a
+ *  runner can hand over a path that is not writable - and that must not fail the run. */
 function appendGithubSummary(text) {
   const target = process.env.GITHUB_STEP_SUMMARY;
-  if (!target) return;
+  if (!target || !text) return;
   try { appendFileSync(target, text); }
   catch (error) { process.stderr.write(`whatbroke: could not write GitHub summary: ${error.message}\n`); }
-}
-
-function writeGithubSummary(result, truncated) {
-  const target = process.env.GITHUB_STEP_SUMMARY;
-  if (!target || !result) return;
-  const markdown = (value) => String(value)
-    .replace(/\\/g, "\\\\")
-    .replace(/([`*_{}\[\]()#+\-.!|<>])/g, "\\$1")
-    .replace(/\r?\n/g, " ");
-  // A code span needs no escaping and must not receive any. It must also not contain
-  // a backtick, or the span closes early and the rest of the path becomes markup.
-  const code = (value) => "`" + String(value).replace(/[`\r\n]/g, " ").trim() + "`";
-  const fails = result.failures;
-  const at = (f) => (f.file ? `${f.file}${f.line ? `:${f.line}` : ""}` : (f.title || "?"));
-  const head = (f) => markdown(String(f.message ?? f.stmt ?? "").split("\n")[0]);
-  const plural = (n, word) => `${n} ${word}${n > 1 ? "s" : ""}`;
-
-  // Same fallback as the terminal: with clustering off this is the old flat list.
-  const units = result.clusters
-    ?? fails.map((_, i) => ({ size: 1, members: [i], exemplar: i, reported: false }));
-  const reported = units.filter((u) => u.reported);
-
-  const lines = ["## whatbroke", ""];
-  if (result.summary) lines.push(`**${markdown(result.summary)}**`, "");
-  if (reported.length) {
-    const sites = reported.reduce((n, u) => n + u.size, 0);
-    const others = fails.length - sites;
-    lines.push(`**${plural(reported.length, "likely cause")}, ${plural(sites, "site")}` +
-               `${others ? ` (+${plural(others, "other")})` : ""}**`, "");
-  }
-
-  reported.forEach((u, n) => {
-    const f = fails[u.exemplar];
-    // one parametrized family reads as "N cases", not "N sites" - as in the terminal
-    const family = u.members.every((i) => normTitle(fails[i].title) === normTitle(f.title));
-    lines.push(`### ${n + 1}. ${markdown((family ? normTitle(f.title) : f.title) || "failure")}`, "");
-    lines.push(`${code(at(f))} — ${head(f)}`, "");
-    // Parametrized cases share a source line, so the member count and the number of
-    // distinct places differ. Label the disclosure with what is actually inside it -
-    // "6 sites" above a list of three is the tool contradicting its own evidence.
-    const sites = [...new Set(u.members.map((i) => at(fails[i])))];
-    const label = sites.length === u.size
-      ? plural(u.size, family ? "case" : "site")
-      : `${plural(u.size, "case")} at ${plural(sites.length, "site")}`;
-    lines.push(`<details><summary>${label}</summary>`, "");
-    for (const s of sites) lines.push(`- ${code(s)}`);
-    lines.push("", "</details>", "");
-  });
-
-  const rest = units.filter((u) => !u.reported).map((u) => u.exemplar);
-  if (rest.length) {
-    if (reported.length) lines.push("### Other failures", "");
-    const body = rest.map((i) => `- **${markdown(fails[i].title || "failure")}**` +
-      `${fails[i].file ? ` ${code(at(fails[i]))}` : ""}: ${head(fails[i])}`);
-    // A long ungrouped tail buries the causes above it. Fold it, never drop it: the
-    // summary stays a complete account of everything that failed.
-    if (body.length > 10) lines.push(`<details><summary>${body.length} more</summary>`, "", ...body, "", "</details>", "");
-    else lines.push(...body, "");
-  }
-
-  // A second tool's failures are not a footnote. Give each one its own section rather
-  // than a count the reader has to go back to the raw log to act on.
-  for (const other of result.others ?? []) {
-    if (!other.failures?.length) continue;
-    lines.push(`### ${markdown(other.tool)} — ${plural(other.failures.length, "failure")}`, "");
-    const body = other.failures.map((f) => `- **${markdown(f.title || "failure")}**` +
-      `${f.file ? ` ${code(at(f))}` : ""}: ${head(f)}`);
-    if (body.length > 10) lines.push(`<details><summary>${body.length} more</summary>`, "", ...body, "", "</details>", "");
-    else lines.push(...body, "");
-  }
-
-  if (truncated) lines.push("", "> Output capture limit reached. Increase `--max-bytes` for complete diagnostics.");
-  appendGithubSummary(`${lines.join("\n")}\n`);
-}
-
-const truncationNotice = "output capture limit reached; captured output is incomplete (increase --max-bytes)";
-
-// Bound the encoded preview too: newlines/percent signs expand during escaping,
-// and Unicode characters can occupy several bytes. Never split an escape or code point.
-function capturedOutputAnnotation(raw) {
-  const prefix = "::notice title=whatbroke captured output::";
-  const suffix = " [preview truncated; use --json for full captured output]";
-  const budget = 3500 - Buffer.byteLength(prefix + suffix + "\n");
-  let preview = "", bytes = 0;
-  for (const char of raw) {
-    const escaped = escapeData(char);
-    const size = Buffer.byteLength(escaped);
-    if (bytes + size > budget) return prefix + preview + suffix + "\n";
-    preview += escaped;
-    bytes += size;
-  }
-  return prefix + preview + "\n";
-}
-
-function writeFallback(fallback, truncated, executionError) {
-  const piped = inputMode === "pipe";
-  const explanation = executionError ?? "whatbroke could not identify a diagnostic.";
-  const raw = fallback.rawOutput;
-  if (githubActions) {
-    // Unknown upstream status is a notice, not an invented failed command.
-    const level = piped ? "notice" : "error";
-    process.stdout.write(`::${level} title=whatbroke::${escapeData(fallback.message + "\n" + explanation)}\n`);
-    if (raw && (piped || quiet)) {
-      // Escaped annotation data keeps raw workflow-command syntax inert.
-      process.stdout.write(capturedOutputAnnotation(raw));
-    } else if (!raw) {
-      process.stdout.write("::notice title=whatbroke::No output was captured.\n");
-    }
-    if (truncated) process.stdout.write(`::warning title=whatbroke::${truncationNotice}\n`);
-
-    const context = executionError ?? (raw || "No output was captured.");
-    // A log may itself contain fenced Markdown. Use a longer fence so its text
-    // stays inside the code block in the job summary.
-    let fenceLength = 3;
-    for (const match of context.matchAll(/`+/g)) fenceLength = Math.max(fenceLength, match[0].length + 1);
-    const fence = "`".repeat(fenceLength);
-    appendGithubSummary(["## whatbroke", "", fallback.message, "",
-      executionError ? "Launch error:" : "Captured output:", "", fence, context, fence, "",
-      ...(truncated ? [`> ${truncationNotice}`, ""] : []),
-    ].join("\n"));
-  } else {
-    process.stdout.write(`\n${fallback.message}\n${explanation}\n`);
-    if (!raw) process.stdout.write("No output was captured.\n");
-    else if (piped || quiet) process.stdout.write(`\nCaptured output:\n${raw}${raw.endsWith("\n") ? "" : "\n"}`);
-    else process.stdout.write("Raw command output was streamed above.\n");
-    if (truncated) process.stdout.write(`\nwhatbroke: ${truncationNotice}\n`);
-  }
 }
 
 /** Compare this run's causes with the last recorded one, then record this one.
@@ -313,57 +161,18 @@ function report(raw, code, truncated = false, executionError = null) {
   if (reported) return;
   reported = true;
   // argv is what the user actually ran; it is evidence for detection, not decoration.
-  const r = analyse(raw, { cluster: !noCluster, command: inputMode === "command" ? argv : null });
-  const since = sinceLast ? track(r, truncated, executionError) : null;
-  const fallback = !r && (code !== 0 || (inputMode === "pipe" && raw.length > 0)) ? {
-    reason: executionError ? "spawn-error" : raw.length ? "unrecognized-output" : "no-output",
-    message: executionError ? `Command could not be started (exit code ${code}).`
-      : inputMode === "pipe" ? "Unrecognized input. Upstream command exit status is unknown."
-      : `Command failed with exit code ${code}.`,
-    rawOutput: raw,
-  } : null;
+  const analysis = analyse(raw, { cluster: !noCluster, command: inputMode === "command" ? argv : null });
+  const since = sinceLast ? track(analysis, truncated, executionError) : null;
+  const result = createReport({ analysis, raw, exitCode: code, inputMode, truncated, error: executionError, since });
   if (json) {
-    // Keep the machine-readable envelope stable even when no parser matches.
-    const payload = {
-      version: 1,
-      tool: r?.tool ?? null,
-      summary: r?.summary ?? null,
-      guessed: r?.guessed ?? false,
-      clusters: r?.clusters ?? null,
-      others: r?.others ?? null,
-      exitCode: code,
-      inputMode,
-      commandExitCode: inputMode === "command" && !executionError ? code : null,
-      fallback,
-      truncated,
-      error: executionError,
-      since,
-      failures: r?.failures ?? [],
-    };
-    process.stdout.write(JSON.stringify(payload, null, 2) + "\n");
-  } else if (githubActions && r) {
-    // Every failure in the log gets a marker, including the ones a second tool found.
-    // A lint error on line 12 is no less real for arriving in the same log as the tests.
-    for (const f of r.failures) process.stdout.write(`${annotation(f)}\n`);
-    for (const other of r.others ?? []) {
-      for (const f of other.failures ?? []) process.stdout.write(`${annotation(f, other.tool)}\n`);
-    }
-    // the notice is the line shown at the top of the run - it says causes, not just count
-    const causes = (r.clusters ?? []).filter((c) => c.reported);
-    const sites = causes.reduce((n, c) => n + c.size, 0);
-    const lead = [r.summary, causes.length &&
-      `${causes.length} likely cause${causes.length > 1 ? "s" : ""}, ${sites} site${sites > 1 ? "s" : ""}`,
-      since?.compared && `${since.fresh.length} new since the last tracked run`]
-      .filter(Boolean).join(" \u2014 ");
-    if (lead) process.stdout.write(`::notice title=whatbroke::${escapeData(lead)}\n`);
-    writeGithubSummary(r, truncated);
-  } else if (r) {
-    process.stdout.write("\n" + render(r, { ...opts, source: !noSource, cluster: !noCluster, since }));
-    if (truncated) {
-      const warning = "  ! output capture limit reached; increase --max-bytes for complete diagnostics";
-      process.stdout.write(`\n${process.stdout.isTTY ? `\x1b[33m${warning}\x1b[0m` : warning}\n`);
-    }
-  } else if (fallback) writeFallback(fallback, truncated, executionError);
+    process.stdout.write(JSON.stringify(result, null, 2) + "\n");
+  } else if (githubActions) {
+    const { stdout, summary } = githubOutput(result, { quiet });
+    process.stdout.write(stdout);
+    appendGithubSummary(summary);
+  } else {
+    process.stdout.write(renderReport(result, { ...opts, source: !noSource, cluster: !noCluster, quiet }));
+  }
   process.exitCode = code;
 }
 

@@ -85,8 +85,8 @@ labelled incomplete when truncated. GitHub fallback annotations show a preview
 capped at 3,500 encoded bytes; job summaries and JSON retain the captured output.
 
 Use `whatbroke --help` for all options. `--json` suppresses the wrapped command's
-output so stdout remains valid JSON, and emits a versioned envelope with
-`tool`, `summary`, `guessed`, `exitCode`, and `failures` fields. It is intended
+output so stdout remains valid JSON, and emits a versioned report — `tool`, `summary`,
+`exitCode`, `failures` and the rest, [described below](#github-actions). It is intended
 for CI wrappers and scripts. The wrapped command's stderr remains available on
 stderr for debugging.
 
@@ -135,48 +135,66 @@ For scripts that need to inspect the result without parsing terminal formatting:
   run: npx --yes @jeanlevon/whatbroke --json npm test > whatbroke.json
 ```
 
-The JSON envelope is versioned and has this shape:
+The JSON report is versioned, and [`report.schema.json`](report.schema.json) — a JSON
+Schema shipped in the package — describes every field in it. The terminal and
+`--format github` render the same report, so none of the three can say something the
+others do not. A pytest run piped in with `--no-cluster`, all but its first failure left
+out:
 
 ```json
 {
   "version": 1,
   "tool": "pytest",
-  "summary": "1 failed, 2 passed",
+  "summary": "3 failed, 2 passed in 0.01s",
   "guessed": false,
-  "exitCode": 1,
-  "inputMode": "command",
-  "commandExitCode": 1,
+  "wrappers": [],
+  "clusters": null,
+  "others": null,
+  "exitCode": 0,
+  "inputMode": "pipe",
+  "commandExitCode": null,
   "fallback": null,
   "truncated": false,
   "error": null,
+  "since": null,
   "failures": [
     {
-      "file": "tests/test_shop.py",
-      "line": 12,
-      "col": 5,
-      "title": "test_total",
-      "message": "assert 1049 == 1050"
+      "tool": "pytest",
+      "category": "test",
+      "file": "test_shop.py",
+      "line": 4,
+      "title": "test_invoice_total",
+      "subject": "test_invoice_total",
+      "severity": "error",
+      "message": "assert 1049 == 1050\n+  where 1049 = total([1000, 49], 0.5)",
+      "stmt": "assert total([1000, 49], 0.5) == 1050"
     }
   ]
 }
 ```
 
-`tool`, `summary`, `col`, and `error` may be `null` or omitted when the input
-does not provide them. Consumers should use `version` to handle future schema
-changes. Spawn failures set `error` and use exit code `127`.
-
-The following fields are additive to version 1; existing fields retain their meaning:
+Every field of the report is always there, and `null` when there is nothing to say. A
+failure leaves out what the output did not say: one with no line has no `line`. `line` and
+`col` count from 1, and `col` is in the tool's own unit — bytes for some tools, UTF-16
+code units or characters for others, with a tab one column to most of them — so on a line
+of plain ASCII with no tabs, every tool agrees. Version 1 only gains fields, and a field it
+has keeps its meaning. Spawn failures set `error` and use exit code `127`.
 
 - `inputMode` is `"command"` or `"pipe"`.
 - `commandExitCode` is the wrapped command's shell-compatible exit code, or `null`
-  for piped input and commands that could not be started. The existing `exitCode`
-  remains whatbroke's process exit code, including `0` for processed pipes and
-  `127` for spawn failures.
+  for piped input and commands that could not be started. `exitCode` is whatbroke's
+  own process exit code, including `0` for processed pipes and `127` for spawn failures.
 - `fallback` is `null` for recognized diagnostics, successful commands, and empty
   pipes. Otherwise it contains `reason` (`"unrecognized-output"`, `"no-output"`,
   or `"spawn-error"`), a human-readable `message`, and `rawOutput` containing the
   captured text. `rawOutput` can be empty. Check the top-level `truncated` field
   before treating captured text as complete; spawn error details remain in `error`.
+- `wrappers` names what was taken off the output before it could be read — `docker`, or a
+  monorepo runner's `api:test: ` — outermost first. See
+  [When something else is printing your log](#when-something-else-is-printing-your-log).
+- `clusters` groups `failures` by likely cause, and `others` holds the failures other
+  tools printed into the same log. See [One bug, or eighty?](#one-bug-or-eighty).
+- `since` is set by `--since-last`. See [What changed since last time](#what-changed-since-last-time).
 
 An empty `failures` array means no diagnostics were extracted. It does not establish
 command success: check `commandExitCode`, and treat `null` as unknown.
@@ -212,6 +230,9 @@ true.
 - **The directory it runs in is only read**, for the source lines around a failure. The
   cache `--since-last` keeps and the step summary GitHub Actions names are all it writes.
   *(test/guarantees.js)*
+- **`--json` prints what `report.schema.json` says it does**: for every fixture, every
+  log the fuzz suite damages, and every way the command line can end.
+  *(test/report.js, test/fuzz.js)*
 
 One limit, stated rather than hidden: when whatbroke runs the command, stdout and stderr
 arrive on two pipes, so their order relative to each other is the order they reached
@@ -402,9 +423,9 @@ Every failure carries what it is, not just a display string:
 | `code` | a diagnostic identifier — `TS2551`, `no-unused-vars`, `E0308` |
 | `subject` | the name of the site that failed — a test name, a method |
 | `label` | a constant the tool prints for a class of failure — `compile error` |
-| `category` | `test`, `lint`, `typecheck`, `compile`, `build`, `runtime`, `package`, `vcs` |
+| `category` | `test`, `lint`, `typecheck`, `compile`, `build`, `runtime`, `package`, `vcs`, `deploy`, or `unknown` for the generic reader's guesses |
 | `severity` | `error` or `warning`; warnings never become failures |
-| `file` `line` `col` `message` `stmt` `trace` | as before |
+| `file` `line` `col` `message` `stmt` `trace` | as before; `line` and `col` count from 1 |
 
 `code`, `subject` and `label` are alternatives — a parser declares whichever it actually
 found, and never two. `title` is unchanged and still carries the display string, so
@@ -660,8 +681,9 @@ npm test
 
 That runs both halves. `npm run test:fast` is everything but the shredded-log suite and
 runs in a few minutes; `npm run test:heavy` is `test/mixed.js`, which weaves every pair of
-fixtures into one log, and `test/bounds.js`, which feeds each parser logs built to make it
-slow. CI runs the fast half on every platform and Node version, and the heavy half on
+fixtures into one log, `test/bounds.js`, which feeds each parser logs built to make it
+slow, and `test/router.js`, which holds the router to reading every log as asking every
+parser would. CI runs the fast half on every platform and Node version, and the heavy half on
 Linux with the oldest and newest Node, and everywhere once a night.
 
 ## License
