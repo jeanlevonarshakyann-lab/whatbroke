@@ -19,7 +19,7 @@ import { xmlText, xmlAttributes } from "../util.js";
 //
 // The header line carries the test name and its location together, which is all
 // the location we need - the stack frames below it are inside the assert library.
-import { SOURCE_RANGE } from "../ownership.js";
+import { withSource } from "../ownership.js";
 
 const HEADER_RE = /^(\S.*?)[^\S\n]+=>[^\S\n]+(\S+?):(\d+):(\d+)[^\S\n]*$/;
 const SUMMARY_RE = /^(?:FAILED|ok)[^\S\n]*\|[^\S\n]*(\d+)[^\S\n]+passed[^\S\n]*\|[^\S\n]*(\d+)[^\S\n]+failed/m;
@@ -55,20 +55,23 @@ const denoPretty = {
       if (at >= lines.length || !ERROR_RE.test(lines[at].trim())) continue;
 
       const msg = [];
+      // The header, down to the last line of the block read before the message was full.
+      let end = at + 1;
       for (let j = at; j < lines.length && !HEADER_RE.test(lines[j]); j++) {
         const t = lines[j].trim();
         if (!t || msg.length >= MAX_MESSAGE_LINES) continue;
         // the FAILURES roll-call and the final tally end the block
         if (/^FAILURES[^\S\n]*$/.test(t) || SUMMARY_RE.test(t) || /^error: Test failed[^\S\n]*$/.test(t)) break;
+        end = j + 1;
         if (/^at\s/.test(t) || DIFF_LABEL_RE.test(t) || THROW_RE.test(t)) continue;
         const err = t.match(ERROR_RE);
         msg.push(err ? err[1] : t);
       }
       if (!msg.length) continue;
-      failures.push({
+      failures.push(withSource({
         file: head[2], line: +head[3], col: +head[4],
         title: head[1], subject: head[1], severity: "error", message: msg.join("\n"),
-      });
+      }, i, end));
     }
 
     if (!failures.length) return null;
@@ -128,15 +131,11 @@ function denoTapFailures(text) {
       try { value = JSON.parse(candidate); } catch { continue; }
       if (value?.severity !== "fail" || typeof value?.message !== "string" ||
           typeof value?.at?.file !== "string" || !Number.isInteger(value?.at?.line)) continue;
-      const failure = {
+      failures.push(withSource({
         file: value.at.file, line: value.at.line,
         title: head[1] || "test", subject: head[1] || "test", severity: "error",
         message: usefulMessage(value.message),
-      };
-      Object.defineProperty(failure, SOURCE_RANGE, {
-        value: { start: i, end: j + 1 }, enumerable: false,
-      });
-      failures.push(failure);
+      }, i, j + 1));
       break;
     }
   }
@@ -218,16 +217,12 @@ function denoJunit(text) {
         let end = open.at;
         while (end < rootEnd && !close.test(body.at(-1))) body.push(lines[++end] ?? "");
         const decoded = xmlText(body.join("\n").replace(new RegExp(`</${kind[1]}>[\\s\\S]*$`), ""));
-        const failure = {
+        failures.push(withSource({
           file: test.classname, line: /^\d+$/.test(test.line) ? +test.line : undefined,
           col: /^\d+$/.test(test.col) ? +test.col : undefined,
           title: test.name || "test", subject: test.name || "test", severity: "error",
           message: blockMessage(decoded) || usefulMessage(decoded),
-        };
-        Object.defineProperty(failure, SOURCE_RANGE, {
-          value: { start: i, end: end + 1 }, enumerable: false,
-        });
-        failures.push(failure);
+        }, i, end + 1));
         i = end;
         break;
       }

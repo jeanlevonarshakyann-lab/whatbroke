@@ -1,4 +1,5 @@
-import { elements, jsonDocuments, stripAnsi, xmlAttributes, xmlText } from "../util.js";
+import { elements, jsonDocuments, jsonDocumentsAt, lineAt, stripAnsi, xmlAttributes, xmlText } from "../util.js";
+import { withSource } from "../ownership.js";
 // Playwright numbers each failure and heads it with the location of the TEST, then the
 // error, then an excerpt of the source with the offending line marked, then the location
 // of the THROW, then a path to an artifact:
@@ -63,8 +64,9 @@ const CDATA_RE = /<!\[CDATA\[([\s\S]*?)\]\]>/g;
 const REPORT = (v) => !!v && typeof v === "object" && !!v.config && Array.isArray(v.suites) &&
   !!v.stats && Number.isInteger(v.stats.unexpected);
 
-/** The failed tests of a JSON report, with the describe blocks they sit in. */
-function reported(report) {
+/** The failed tests of a JSON report, with the describe blocks they sit in, each where its
+ *  test's record was written. */
+function reported({ value: report, where }) {
   const out = [];
   const walk = (suite, titles) => {
     for (const spec of suite.specs ?? []) {
@@ -78,13 +80,14 @@ function reported(report) {
         const name = [...titles, spec.title].join(" › ");
         const stmt = quoted(String(error.snippet ?? "").split("\n").map(stripAnsi)
           .map((l) => l.match(MARKED_RE)).filter(Boolean).map((m) => ({ n: +m[1], text: m[2].trim() })), at?.line);
-        out.push({
+        const { start, end } = where(test);
+        out.push(withSource({
           file: at?.file ?? spec.file, line: at?.line ?? spec.line, col: at?.column ?? spec.column,
           title: name, subject: name, severity: "error",
           message: stripAnsi(String(error.message ?? "")).split("\n").map((l) => l.trim()).filter(Boolean)
             .slice(0, MAX_MESSAGE).join("\n"),
           ...(stmt ? { stmt } : {}),
-        });
+        }, start, end));
       }
     }
     // The first level is the file, which the heading already names by its location.
@@ -94,8 +97,9 @@ function reported(report) {
   return out;
 }
 
-/** The failure blocks in `lines`, each under a heading `headRe` recognises. */
-function blocks(lines, headRe) {
+/** The failure blocks in `lines`, each under a heading `headRe` recognises. `place(start,
+ *  end)` turns the lines a block was read from into the log's. */
+function blocks(lines, headRe, place = (start, end) => [start, end]) {
   const failures = [];
   for (let i = 0; i < lines.length; i++) {
     const h = lines[i].match(headRe);
@@ -103,9 +107,12 @@ function blocks(lines, headRe) {
     let file = h[2], line = +h[3], col = +h[4];
     const message = [];
     const marked = [];
+    // The heading, down to the last line of the block that says anything.
+    let end = i + 1;
     for (let j = i + 1; j < lines.length && !headRe.test(lines[j]) && !TALLY_RE.test(lines[j]) &&
       !ANNOTATION_RE.test(lines[j]); j++) {
       if (PROGRESS_RE.test(lines[j])) continue;
+      if (lines[j].trim()) end = j + 1;
       // the `at` inside the block is where it actually threw, which beats the test's
       // own declaration line
       const at = lines[j].match(AT_RE);
@@ -116,10 +123,10 @@ function blocks(lines, headRe) {
       const t = lines[j].trim();
       if (t && message.length < MAX_MESSAGE) message.push(t);
     }
-    failures.push({
+    failures.push(withSource({
       file, line, col, title: h[5], subject: h[5], severity: "error",
       message: message.join("\n"), stmt: quoted(marked, line),
-    });
+    }, ...place(i, end)));
   }
   return failures;
 }
@@ -135,12 +142,15 @@ function junit(s) {
     const lines = body.split("\n");
     const first = lines.findIndex((l) => l.trim());
     if (first < 0 || !JUNIT_HEAD_RE.test(lines[first])) continue;
-    out.push(...blocks(lines.slice(first), JUNIT_HEAD_RE));
+    // A block inside a report is read from the failure element that holds it.
+    const element = [lineAt(s, outcome.index), lineAt(s, outcome.index + outcome[0].length - 1) + 1];
+    out.push(...blocks(lines.slice(first), JUNIT_HEAD_RE, () => element));
   }
   return out;
 }
 
 const reports = (s) => (s.includes('"unexpected"') ? [...jsonDocuments(s, REPORT)] : []);
+const placedReports = (s) => (s.includes('"unexpected"') ? [...jsonDocumentsAt(s, REPORT)] : []);
 
 export default {
   name: "playwright",
@@ -155,11 +165,11 @@ export default {
 
   extract(s) {
     const lines = s.split("\n");
-    const documents = reports(s);
+    const documents = placedReports(s);
     const failures = [...(s.includes("›") ? blocks(lines, HEAD_RE) : []), ...junit(s), ...documents.flatMap(reported)];
     if (!failures.length) return null;
     const tally = s.match(/^[^\S\n]*(\d+) failed[^\S\n]*$/m);
-    const counted = documents.length ? documents.reduce((n, r) => n + r.stats.unexpected, 0) : null;
+    const counted = documents.length ? documents.reduce((n, r) => n + r.value.stats.unexpected, 0) : null;
     const n = Number(tally?.[1] ?? counted ?? failures.length);
     return { tool: "playwright", summary: `${n} failed`, failures };
   },

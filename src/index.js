@@ -121,10 +121,23 @@ function dedupeFailures(failures) {
   return unique;
 }
 
+/** Whether two paths name one file: the same path, or a path and a longer one that ends
+ *  with it. A report prints `/home/dev/shop/test/cart.test.js` where the console printed
+ *  `test/cart.test.js` - vitest's TAP and JSON do, and so does jest's JSON. */
+function sameFile(a, b) {
+  const x = String(a).replace(/\\/g, "/"), y = String(b).replace(/\\/g, "/");
+  return x === y || x.endsWith(`/${y}`) || y.endsWith(`/${x}`);
+}
+const fileName = (path) => String(path).split(/[\\/]/).pop();
+
 /** Two parsers may label the same diagnostic differently. Require both a real
- * location and matching message, allowing a code printed as a trailing suffix. */
+ * location and matching message, allowing a code printed as a trailing suffix.
+ *
+ * A location is a file, and a line where either has one. A suite that failed to load
+ * has no line in any of the formats that report it, and the same file and the same
+ * words are then the same failure. */
 function sameLocatedDiagnostic(a, b) {
-  if (!a.file || !a.line || a.file !== b.file || a.line !== b.line) return false;
+  if (!a.file || !b.file || !sameFile(a.file, b.file) || (a.line ?? null) !== (b.line ?? null)) return false;
   if (a.col && b.col && a.col !== b.col) return false;
   if (a.code && b.code && a.code !== b.code) return false;
   if (quoteDiffers(a, b)) return false;
@@ -172,8 +185,8 @@ function otherTools(s, winner, mine, cluster, budget) {
   mine.forEach(claim);
   const locations = new Map();
   const remember = (f) => {
-    if (!f.file || !f.line) return;
-    const key = JSON.stringify([f.file, f.line]);
+    if (!f.file) return;
+    const key = JSON.stringify([fileName(f.file), f.line ?? null]);
     const at = locations.get(key) ?? [];
     at.push(f);
     locations.set(key, at);
@@ -238,7 +251,7 @@ function otherTools(s, winner, mine, cluster, budget) {
     const fresh = dedupeFailures(r.failures
       .filter((f) => !isClaimed(f))
       .filter((f) => !sameSourceAsClaimed(f))
-      .filter((f) => !(locations.get(JSON.stringify([f.file, f.line])) ?? [])
+      .filter((f) => !f.file || !(locations.get(JSON.stringify([fileName(f.file), f.line ?? null])) ?? [])
         .some((g) => sameLocatedDiagnostic(f, g)))
       // A tool's CLI wrapper reports that the tool exited non-zero, and that stack sits
       // entirely in node internals. It is the same failure a second time, told worse.

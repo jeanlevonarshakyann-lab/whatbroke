@@ -1,4 +1,5 @@
 import { isNoise } from "../util.js";
+import { withSource } from "../ownership.js";
 
 // jasmine gathers its failures under a "Failures:" heading and gives each one a
 // message and a stack, both labelled:
@@ -51,32 +52,35 @@ export default {
       const message = [];
       const frames = [];
       let inMessage = false, inStack = false;
+      // The heading, its Message: and Stack: sections, down to the last line in them.
+      let end = i + 1;
       for (let j = i + 1; j < to && j <= i + 40; j++) {
         if (HEAD_RE.test(lines[j])) break;
         if (TALLY_RE.test(lines[j])) break;
-        if (MESSAGE_RE.test(lines[j])) { inMessage = true; inStack = false; continue; }
-        if (STACK_RE.test(lines[j])) { inStack = true; inMessage = false; continue; }
+        if (MESSAGE_RE.test(lines[j])) { inMessage = true; inStack = false; end = j + 1; continue; }
+        if (STACK_RE.test(lines[j])) { inStack = true; inMessage = false; end = j + 1; continue; }
         if (inStack) {
           const f = lines[j].match(FRAME_RE);
           // jasmine's own frames say "<Jasmine>" and name no file, so they never match
           if (f && !isNoise(unfile(f[2]))) {
             frames.push({ fn: f[1] ?? "<anonymous>", file: unfile(f[2]), line: +f[3], col: +f[4] });
           }
+          if (lines[j].trim()) end = j + 1;
           continue;
         }
-        if (inMessage && lines[j].trim() && message.length < MAX_MESSAGE_LINES) message.push(lines[j].trim());
+        if (inMessage && lines[j].trim() && message.length < MAX_MESSAGE_LINES) { message.push(lines[j].trim()); end = j + 1; }
       }
 
       // Only a numbered block that said something is a failure; the summary line at the
       // top of a run repeats the numbers with nothing under them.
       if (!message.length && !frames.length) continue;
       const at = frames[0];
-      failures.push({
+      failures.push(withSource({
         file: at?.file, line: at?.line, col: at?.col,
         title: head[2], subject: head[2], severity: "error",
         message: message.join("\n") || head[2],
         trace: frames.length ? frames.slice(0, 4).map((f) => `${f.fn} (${f.file}:${f.line}:${f.col})`) : undefined,
-      });
+      }, i, end));
       i += 1;
     }
 

@@ -1,4 +1,5 @@
 import { isNoise } from "../util.js";
+import { alsoFrom, withSource } from "../ownership.js";
 
 // ava lists what failed, then details each one under a rule:
 //
@@ -59,11 +60,11 @@ export default {
     const failures = [];
 
     // Names first: the roll-call is the only place every failure is listed once.
-    const names = [];
-    for (const l of lines) {
+    const names = [], rolled = [];
+    lines.forEach((l, i) => {
       const m = l.match(ROLL_RE);
-      if (m) names.push(m[1].replace(/[^\S\n]+\w*(?:Error|Exception) thrown in test$/, "").trim());
-    }
+      if (m) { names.push(m[1].replace(/[^\S\n]+\w*(?:Error|Exception) thrown in test$/, "").trim()); rolled.push(i); }
+    });
 
     // Where each name's detail block begins, found in one pass. Scanning the whole log
     // per name made this quadratic - and cubic with the inner loop's own lookup - so a
@@ -77,13 +78,18 @@ export default {
       if (nameSet.has(t) && !blockAt.has(t)) blockAt.set(t, i);
     });
 
-    for (const name of names) {
+    for (const [index, name] of names.entries()) {
       // The detail block repeats the name alone on a line, after the rule.
       const at = blockAt.get(name) ?? -1;
-      if (at < 0) { failures.push({ title: name, subject: name, severity: "error", message: name }); continue; }
+      if (at < 0) {
+        failures.push(withSource({ title: name, subject: name, severity: "error", message: name }, rolled[index], rolled[index] + 1));
+        continue;
+      }
 
       let where = null, message = "", code, threw = false;
       const diff = [];
+      // The block's last line anything was read from.
+      let end = at + 1;
       for (let j = at + 1; j < lines.length && j <= at + 40; j++) {
         if (RULE_RE.test(lines[j])) break;
         const here = lines[j].trim();
@@ -92,22 +98,24 @@ export default {
         if (SOURCE_RE.test(lines[j])) continue;
 
         const f = lines[j].match(FRAME_RE);
-        if (f && !isNoise(unfile(f[1]))) { where ??= { file: unfile(f[1]), line: +f[2], col: +f[3] }; continue; }
+        if (f && !isNoise(unfile(f[1]))) { where ??= { file: unfile(f[1]), line: +f[2], col: +f[3] }; end = j + 1; continue; }
         const a = lines[j].match(AT_RE);
-        if (a) { if (!where && !isNoise(a[1])) where = { file: a[1], line: +a[2], col: +a[3] }; continue; }
+        if (a) { if (!where && !isNoise(a[1])) { where = { file: a[1], line: +a[2], col: +a[3] }; end = j + 1; } continue; }
         const w = lines[j].match(WHERE_RE);
-        if (w && !where) { where = { file: w[1], line: +w[2] }; continue; }
+        if (w && !where) { where = { file: w[1], line: +w[2] }; end = j + 1; continue; }
 
         const t = lines[j].match(THREW_RE);
-        if (t) { threw = true; code = t[1]; continue; }
+        if (t) { threw = true; code = t[1]; end = j + 1; continue; }
         const c = lines[j].match(CLASS_RE);
-        if (c && threw && !message) { code = c[1]; message = c[2].trim(); continue; }
+        if (c && threw && !message) { code = c[1]; message = c[2].trim(); end = j + 1; continue; }
 
         if (DIFF_RE.test(lines[j])) {
+          end = j + 1;
           for (let k = j + 1; k < lines.length && k <= j + 8 && diff.length < MAX_MESSAGE_LINES; k++) {
             if (!lines[k].trim()) { if (diff.length) break; else continue; }
             if (!/^[^\S\n]*[-+]/.test(lines[k])) break;
             diff.push(lines[k].trim());
+            end = Math.max(end, k + 1);
           }
           continue;
         }
@@ -117,17 +125,20 @@ export default {
         const as = lines[j].match(ASSERTION_RE);
         if (as && !message && !threw) {
           message = as[1].trim();
+          end = Math.max(end, j + 1);
           // ava puts a blank line between the assertion and the value it is about.
           let k = j + 1;
           while (k < lines.length && !lines[k].trim()) k++;
           const value = lines[k]?.trim();
           if (value && !RULE_RE.test(lines[k]) && !FRAME_RE.test(lines[k]) && !SOURCE_RE.test(lines[k])) {
             message += `\n${value}`;
+            end = Math.max(end, k + 1);
           }
         }
       }
 
-      failures.push({
+      // The block, and the roll-call line that named the test.
+      failures.push(alsoFrom(withSource({
         file: where?.file, line: where?.line, col: where?.col,
         // The site that failed is the test, so that is the subject - and `code` is its
         // alternative, not its companion. A thrown class belongs in the title, where it
@@ -135,7 +146,7 @@ export default {
         title: threw && code ? `${name} (${code})` : name,
         subject: name, severity: "error",
         message: message || (diff.length ? diff.join("\n") : name),
-      });
+      }, at, end), rolled[index], rolled[index] + 1));
     }
 
     if (!failures.length) {
@@ -143,27 +154,28 @@ export default {
       const at = lines.findIndex((l) => UNCAUGHT_RE.test(l));
       if (at >= 0) {
         const file = lines[at].match(UNCAUGHT_RE)[1];
-        let why = null, seen = 0;
+        let why = null, seen = 0, end = at + 1;
         for (let j = at + 1; j < lines.length && seen < 3; j++) {
           if (!lines[j].trim()) continue;
           seen++;
           const m = lines[j].match(CLASS_RE);
-          if (m) { why = m; break; }
+          if (m) { why = m; end = j + 1; break; }
         }
-        failures.push({
+        failures.push(withSource({
           file, title: why ? why[1] : "uncaught exception",
           code: why ? why[1] : undefined,
           label: why ? undefined : "uncaught exception",
           severity: "error",
           message: why ? why[2].trim() : "ava could not run this file",
-        });
+        }, at, end));
       } else {
         const exited = s.match(EXITED_RE);
         if (exited) {
-          failures.push({
+          const line = lines.findIndex((l) => EXITED_RE.test(l));
+          failures.push(withSource({
             file: exited[1], title: "exited non-zero", label: "exited non-zero",
             severity: "error", message: "the test file exited with a non-zero code",
-          });
+          }, line, line + 1));
         }
       }
     }

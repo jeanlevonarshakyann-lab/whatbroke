@@ -4,7 +4,7 @@
 // `message`, so reuse the text parser rather than creating a second interpretation of
 // Jest's assertions.
 import jest from "./jest.js";
-import { SOURCE_RANGE } from "../ownership.js";
+import { withSource } from "../ownership.js";
 import { stripAnsi } from "../util.js";
 
 const REQUIRED_COUNTS = [
@@ -89,13 +89,10 @@ function parsedDocuments(text) {
     const mine = VITEST_OWN(document.value) && !JEST_OWN(document.value);
     const result = jest.extract(humanReport(document.value, mine ? " > " : " \u203a "));
     if (!result?.failures?.length) continue;
-    for (const failure of result.failures) {
-      // A JSON report is one physical source line. Ground every reconstructed failure
-      // in that line so mixed-log ownership never confuses it with nearby human output.
-      Object.defineProperty(failure, SOURCE_RANGE, {
-        value: { start: document.line, end: document.line + 1 }, enumerable: false,
-      });
-    }
+    // A JSON report is one physical source line. Ground every reconstructed failure
+    // in that line so mixed-log ownership never confuses it with nearby human output -
+    // and not in the lines of the report rebuilt from it, which are not the log's.
+    result.failures = result.failures.map((failure) => withSource({ ...failure }, document.line, document.line + 1));
     result.tool = mine ? "vitest" : "jest";
     parsed.push(result);
   }

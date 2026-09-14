@@ -36,13 +36,13 @@ const test = (name, fn) => {
 
 // The parsers whose failures still carry a guessed range on at least one fixture.
 const GUESSING = new Set([
-  "ava", "babel", "biome", "black", "bun", "bun test", "cargo", "cargo --message-format=json", "clang", "cmake",
-  "deno", "deno fmt", "deno lint", "deno test", "docker", "dotnet", "dotnet test", "esbuild",
-  "generic", "git", "go", "go test -json", "go vet json", "golangci-lint", "jasmine",
-  "jest", "junit jvm", "jvm", "kubectl", "less", "make", "markdownlint",
-  "mypy", "node", "node --test", "npm", "oxlint", "perl", "php", "phpunit", "pip", "playwright", "pnpm",
+  "babel", "biome", "black", "cargo", "cargo --message-format=json", "clang", "cmake",
+  "deno fmt", "deno lint", "docker", "dotnet", "dotnet test", "esbuild",
+  "generic", "git", "go", "go test -json", "go vet json", "golangci-lint",
+  "junit jvm", "jvm", "kubectl", "less", "make", "markdownlint",
+  "mypy", "node", "npm", "oxlint", "perl", "php", "phpunit", "pip", "pnpm",
   "prettier", "pylint", "pyright", "pytest", "python", "rspec", "ruby", "sass", "shellcheck",
-  "stylelint", "swc", "swift", "terraform", "tsc", "unittest", "vite", "vitest", "webpack",
+  "stylelint", "swc", "swift", "terraform", "tsc", "unittest", "vite", "webpack",
   "yamllint", "yarn",
 ]);
 
