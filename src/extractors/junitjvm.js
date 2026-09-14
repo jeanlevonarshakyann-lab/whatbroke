@@ -1,4 +1,5 @@
-import { elements, firstElement, xmlAttributes, xmlText } from "../util.js";
+import { elements, firstElement, lineAt, xmlAttributes, xmlText } from "../util.js";
+import { joinSources, withSource } from "../ownership.js";
 // The reports a JVM build leaves behind - Maven Surefire's target/surefire-reports and
 // Gradle's build/test-results - are what a CI job keeps and what every test dashboard
 // reads. Neither was read: the generic fallback found one location in the log, and it was
@@ -88,10 +89,12 @@ function xmlCases(s) {
     // Gradle's report and would then rename Gradle's report after Maven.
     const roots = [...s.slice(0, test.index).matchAll(/<testsuite\b[^>]*>/g)];
     const root = roots.at(-1)?.[0] ?? "";
+    // The test case, from its opening tag to its closing one.
     out.push({
       ...at, title: name, subject: name, category: "test", severity: "error",
       message: said(lines) || xmlAttributes(outcome[2]).message || outcome[1],
       origin: SUREFIRE_SCHEMA.test(root) ? "maven" : "junit",
+      from: lineAt(s, test.index), to: lineAt(s, test.index + test[0].length - 1) + 1,
     });
   }
   return out;
@@ -110,13 +113,15 @@ function txtCases(s) {
     // The exception and its frames follow the header, and end at the blank line
     // Surefire leaves before the next test or the next class.
     const block = [];
-    for (let j = i + 1; j < lines.length && lines[j].trim() && !TXT_HEAD_RE.test(lines[j]); j++) {
+    let j = i + 1;
+    for (; j < lines.length && lines[j].trim() && !TXT_HEAD_RE.test(lines[j]); j++) {
       block.push(lines[j]);
     }
     const at = located(block, cls, method);
     if (!at) continue;
     const name = `${simple(cls)}.${method}`;
-    out.push({ ...at, title: name, subject: name, category: "test", severity: "error", message: said(block), origin: "maven" });
+    // The header and the exception and frames under it.
+    out.push({ ...at, title: name, subject: name, category: "test", severity: "error", message: said(block), origin: "maven", from: i, to: j });
   }
   return out;
 }
@@ -130,15 +135,17 @@ export default {
 
   extract(s) {
     const failures = [];
-    const seen = new Set();
+    const seen = new Map();
     let surefire = false;
-    for (const { origin, ...f } of [...xmlCases(s), ...txtCases(s)]) {
-      // `cat target/surefire-reports/*` holds each failure twice, once per format.
+    for (const { origin, from, to, ...f } of [...xmlCases(s), ...txtCases(s)]) {
+      // `cat target/surefire-reports/*` holds each failure twice, once per format - and
+      // it was read from both.
       const key = [f.subject, f.file, f.line].join("\u0000");
-      if (seen.has(key)) continue;
-      seen.add(key);
+      const failure = withSource(f, from, to);
+      if (seen.has(key)) { failures[seen.get(key)] = joinSources(failures[seen.get(key)], failure); continue; }
+      seen.set(key, failures.length);
       if (origin === "maven") surefire = true;
-      failures.push(f);
+      failures.push(failure);
     }
     if (!failures.length) return null;
     const n = failures.length;

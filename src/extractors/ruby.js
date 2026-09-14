@@ -1,4 +1,5 @@
 import { isNoise, tailFirst } from "../util.js";
+import { withSource } from "../ownership.js";
 
 // An uncaught Ruby exception names where it was raised, the method it was raised in, the
 // message, and the class - all on one line - and then unwinds:
@@ -77,24 +78,25 @@ export default {
         // library frames are counted rather than listed: for a missing gem they are the
         // whole of rubygems and none of them is yours.
         const shown = mine.slice(0, 4).map((f) => `${f.fn} (${f.file}:${f.line})`);
-        failures.push({
+        // The raise, and the frames it unwound through.
+        failures.push(withSource({
           file: at.file, line: at.line,
           title: raise[5], code: raise[5], severity: "error",
           message, stmt: undefined,
           trace: shown.length ? shown : undefined,
           hiddenFrames: 1 + frames.length - mine.length,
-        });
+        }, i, i + 1 + frames.length));
         i += frames.length;
         continue;
       }
 
       const syntax = lines[i].match(SYNTAX_RE);
       if (syntax) {
-        failures.push({
+        failures.push(withSource({
           file: syntax[1], line: +syntax[2],
           title: "syntax error", label: "syntax error", severity: "error",
           message: syntax[3],
-        });
+        }, i, i + 1));
       }
     }
 

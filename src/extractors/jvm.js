@@ -1,3 +1,6 @@
+import { lineAt } from "../util.js";
+import { alsoFrom, joinSources, withSource } from "../ownership.js";
+
 const SUREFIRE_RE = /^\[ERROR\]\s{2,}([A-Z]\w*)\.(\w+):(\d+)[^\S\n]+(.+)$/;
 const MAVEN_RE = /^\[ERROR\][^\S\n]+(.+?):\[(\d+),(\d+)\][^\S\n]+(.+)$/;
 // "file:line:col: message" is the universal compiler diagnostic shape - Go, clang,
@@ -50,7 +53,8 @@ function gradleTests(s) {
     // The block is everything indented under the header, and ends at the first line
     // that is not - which is where Gradle's next test, or its tally, begins.
     const block = [];
-    for (let j = i + 1; j < lines.length && /^[^\S\n]+\S/.test(lines[j]); j++) block.push(lines[j]);
+    let j = i + 1;
+    for (; j < lines.length && /^[^\S\n]+\S/.test(lines[j]); j++) block.push(lines[j]);
     // A header whose detail is not under it - another stream's line landed between
     // them, or the capture was cut - is still Gradle saying this test failed. With
     // Gradle's tally in the same log to say a test run happened, it is reported; the
@@ -58,10 +62,10 @@ function gradleTests(s) {
     if (!block.length) {
       if (!tallied) continue;
       const name = head[1].trim();
-      out.push({
+      out.push(withSource({
         title: name, subject: name, category: "test", severity: "error",
         message: "Gradle reported this test as failed; its detail is not in this log",
-      });
+      }, i, i + 1));
       continue;
     }
     let file, line, message;
@@ -79,10 +83,11 @@ function gradleTests(s) {
     }
     if (!message) continue;
     const name = head[1].trim();
-    out.push({
+    // The header and the block indented under it.
+    out.push(withSource({
       file, line: line === undefined ? undefined : +line,
       title: name, subject: name, category: "test", severity: "error", message,
-    });
+    }, i, j));
   }
   return out;
 }
@@ -99,9 +104,10 @@ export default {
 
   extract(s) {
     const failures = [];
-    const seen = new Set();
-    for (const rawLine of s.split("\n")) {
-      const line = rawLine.trim();
+    const seen = new Map();
+    const lines = s.split("\n");
+    for (let i = 0; i < lines.length; i++) {
+      const line = lines[i].trim();
       const maven = line.match(MAVEN_RE);
       const g = line.match(GRADLE_RE);
       const gradle = g && (g[1] || JVM_SRC.test(g[2])) ? g : null;
@@ -119,10 +125,12 @@ export default {
       // Deduplicate by diagnostic identity even when the repeated rendering
       // changes indentation or compiler metadata.
       const key = JSON.stringify([match.file, match.line, match.message]);
-      if (seen.has(key)) continue;
-      seen.add(key);
       const { severity, ...failure } = match;
-      failures.push({ ...failure, title: "compile error", label: "compile error", severity: "error" });
+      const placed = withSource({ ...failure, title: "compile error", label: "compile error", severity: "error" }, i, i + 1);
+      // ...where it was said again, it was read again.
+      if (seen.has(key)) { failures[seen.get(key)] = joinSources(failures[seen.get(key)], placed); continue; }
+      seen.set(key, failures.length);
+      failures.push(placed);
     }
     // Gradle's test failures are read whatever else is in the log. The branches below
     // are fallbacks - what to say when nothing more specific was found - but a test that
@@ -130,8 +138,8 @@ export default {
     // would not compile and another whose tests failed lost the second run whole.
     for (const t of gradleTests(s)) {
       const key = JSON.stringify([t.subject, t.file, t.line]);
-      if (seen.has(key)) continue;
-      seen.add(key);
+      if (seen.has(key)) { failures[seen.get(key)] = joinSources(failures[seen.get(key)], t); continue; }
+      seen.set(key, failures.length);
       failures.push(t);
     }
     if (!failures.length) {
@@ -139,15 +147,15 @@ export default {
       //   [ERROR]   ClassTest.methodName:1055 expected:<...> but was:<...>
       // That single line carries the test, its line, and the assertion. Reporting
       // only "Tests run: 164, Failures: 1" back is a counter, not a diagnosis.
-      for (const l of s.split("\n")) {
+      lines.forEach((l, i) => {
         const m = l.trim().match(SUREFIRE_RE);
-        if (!m) continue;
-        failures.push({
+        if (!m) return;
+        failures.push(withSource({
           file: `${m[1]}.java`, line: +m[3],
           title: `${m[1]}.${m[2]}`, subject: `${m[1]}.${m[2]}`, category: "test", severity: "error",
           message: m[4].trim(),
-        });
-      }
+        }, i, i + 1));
+      });
       // A build script that fails to evaluate - wrong Gradle version, bad plugin -
       // names its file, its line, and the cause under "* What went wrong:". Without
       // this the whole run produced no output at all.
@@ -162,12 +170,17 @@ export default {
           // not in the log, not a build script that would not evaluate.
           const tests = /There were failing tests/.test(wrong[1]);
           const tally = s.match(/^[^\S\n]*(\d+ tests? completed, \d+ failed.*?)[^\S\n]*$/m);
-          failures.push({
+          // The "What went wrong" section, and the line naming the script when there is one.
+          const said = { start: lineAt(s, wrong.index), end: lineAt(s, wrong.index + wrong[0].length - 1) + 1 };
+          let failure = withSource({
             file: where?.[1], line: where ? +where[2] : undefined,
             title: tests ? "tests failed" : "build script", label: tests ? "tests failed" : "build script",
             category: tests ? "test" : "build", severity: "error",
             message: (tests && tally ? [tally[1], ...detail] : detail).join("\n"),
-          });
+          }, said.start, said.end);
+          if (where) failure = alsoFrom(failure, lineAt(s, where.index), lineAt(s, where.index) + 1);
+          if (tests && tally) failure = alsoFrom(failure, lineAt(s, tally.index), lineAt(s, tally.index) + 1);
+          failures.push(failure);
         }
       }
       // Maven reports everything that is not a compiler diagnostic the same way: the
@@ -181,6 +194,7 @@ export default {
         if (at >= 0) {
           const head = all[at].replace(/^\[ERROR\][^\S\n]+/, "");
           const detail = [];
+          let end = at + 1;
           for (let j = at + 1; j < all.length && detail.length < 3; j++) {
             if (!/^\[ERROR\]/.test(all[j])) break;
             const t = all[j].replace(/^\[ERROR\][^\S\n]*/, "").trim();
@@ -188,16 +202,20 @@ export default {
             // output, not telling you what went wrong
             if (!t || /^->[^\S\n]*\[Help/.test(t) || /^(?:To see the full stack trace|Re-run Maven)/.test(t)) break;
             detail.push(t);
+            end = j + 1;
           }
-          failures.push({
+          failures.push(withSource({
             title: "goal failed", label: "goal failed", category: "build", severity: "error",
             message: [head, ...detail].join("\n"),
-          });
+          }, at, end));
         }
       }
       if (!failures.length) {
         const testFailure = s.match(/^\[ERROR\][^\S\n]+Tests run:.*?(?:Failures|Errors):[^\S\n]*(\d+)/m);
-        if (testFailure) failures.push({ title: "test failure", label: "test failure", category: "test", severity: "error", message: testFailure[0].replace(/^\[ERROR\][^\S\n]+/, "") });
+        if (testFailure) {
+          const at = lineAt(s, testFailure.index);
+          failures.push(withSource({ title: "test failure", label: "test failure", category: "test", severity: "error", message: testFailure[0].replace(/^\[ERROR\][^\S\n]+/, "") }, at, at + 1));
+        }
       }
     }
     if (!failures.length) return null;

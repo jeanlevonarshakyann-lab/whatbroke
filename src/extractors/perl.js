@@ -5,6 +5,8 @@
 //
 // The pattern is greedy on the message so it binds to the LAST "at FILE line N" - a
 // message can contain the word "at", and the location is always last.
+import { withSource } from "../ownership.js";
+
 const DIAGNOSTIC_RE = /^(.+)[^\S\n]at[^\S\n](\S+)[^\S\n]line[^\S\n](\d+)(?:,[^\S\n]*(.+?))?\.?$/;
 // Test::More reports where a test failed in a TAP comment - "#   at shop.t line 5." -
 // which is the shape above with a hash in front of it. Reading those as dies turned a
@@ -77,7 +79,9 @@ export default {
   extract(s) {
     const failures = [];
     let warnings = 0;
-    for (const line of s.split("\n")) {
+    const lines = s.split("\n");
+    for (let i = 0; i < lines.length; i++) {
+      const line = lines[i];
       if (RESTATES.some((re) => re.test(line))) continue;
       const m = tapComment(line.match(DIAGNOSTIC_RE));
       if (!m) continue;
@@ -86,14 +90,14 @@ export default {
       const message = m[1].replace(INC_LIST, "").trim();
       if (WARNINGS.some((re) => re.test(message))) { warnings++; continue; }
 
-      failures.push({
+      failures.push(withSource({
         file: NO_FILE.test(m[2]) ? undefined : m[2],
         line: +m[3],
         title: "error", label: "error", severity: "error",
         // "near \"= ;\"" is what the parser choked on, which is the useful half of a
         // syntax error.
         message: m[4] ? `${message} (${m[4]})` : message,
-      });
+      }, i, i + 1));
     }
     if (!failures.length) return null;
     const n = failures.length;

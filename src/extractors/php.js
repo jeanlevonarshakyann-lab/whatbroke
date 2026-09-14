@@ -11,6 +11,8 @@
 //
 // The two copies produce identical failures, so the pipeline's own de-duplication
 // collapses them - which is why nothing here counts blocks.
+import { withSource } from "../ownership.js";
+
 const UNCAUGHT_RE = /^(?:PHP[^\S\n]+)?Fatal error:[^\S\n]+Uncaught[^\S\n]+([\w\\]+):[^\S\n]+(.+?)[^\S\n]+in[^\S\n]+(.+?):(\d+)$/;
 // Not every fatal is a thrown exception: a call to an undefined function, an abstract
 // class instantiated. Those name the file the long way round.
@@ -53,30 +55,33 @@ export default {
       const parse = !uncaught && !fatal && line.match(PARSE_RE);
       if (!uncaught && !fatal && !parse) continue;
 
-      let trace;
+      let trace, end = i + 1;
       if (uncaught || fatal) {
         // "Stack trace:" then "#0 /a/p.php(8): Gateway->charge(1050)", innermost first.
         // "#N {main}" is the entry point and carries nothing.
         const frames = [];
         for (let j = i + 1; j < lines.length && j <= i + 32; j++) {
-          if (THROWN_RE.test(lines[j]) || (!lines[j].trim() && j > i + 1) ||
+          // The block ends at the `thrown in` line that repeats the location.
+          if (THROWN_RE.test(lines[j])) { end = j + 1; break; }
+          if ((!lines[j].trim() && j > i + 1) ||
               (j > i + 1 && (UNCAUGHT_RE.test(lines[j]) || FATAL_RE.test(lines[j]) || PARSE_RE.test(lines[j])))) break;
-          if (/^Stack trace:$/.test(lines[j])) continue;
+          if (/^Stack trace:$/.test(lines[j])) { end = j + 1; continue; }
           const f = lines[j].match(FRAME_RE);
           if (!f) { if (frames.length) break; else continue; }
+          end = j + 1;
           if (f[2]) frames.push(`${f[4]} (${f[2]}:${f[3]})`);
         }
         if (frames.length) trace = frames.slice(0, 4);
       }
 
-      failures.push(uncaught
+      failures.push(withSource(uncaught
         ? { file: uncaught[3], line: +uncaught[4], title: uncaught[1], code: uncaught[1],
             severity: "error", message: uncaught[2].replace(INCLUDE_PATH, ""), trace }
         : fatal
           ? { file: fatal[2], line: +fatal[3], title: "fatal error", label: "fatal error",
               severity: "error", message: fatal[1], trace }
           : { file: parse[2], line: +parse[3], title: "parse error", label: "parse error",
-              severity: "error", message: parse[1] });
+              severity: "error", message: parse[1] }, i, end));
     }
 
     if (!failures.length) return null;
