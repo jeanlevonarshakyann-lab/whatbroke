@@ -1,4 +1,5 @@
-import { findJsonDocument } from "../util.js";
+import { findJsonDocument, jsonDocumentsAt } from "../util.js";
+import { joinSources, withSource } from "../ownership.js";
 // pylint heads each module it checked and then lists its findings, with the symbolic
 // name of the check in parentheses at the end:
 //
@@ -64,40 +65,46 @@ export default {
     // found nothing but conventions still failed and still has to say why - reporting
     // none of them would be reporting nothing.
     const all = [];
-    const seen = new Set();
+    const seen = new Map();
     const add = (f) => {
       // One log can hold the same run printed more than one way, and the formats differ
       // over whether a column was printed at all - so the column is not part of what
-      // makes a finding distinct.
+      // makes a finding distinct. Where it was read the second time is kept.
       const key = [f.file, f.line, f.code].join("\u0000");
-      if (seen.has(key)) return;
-      seen.add(key);
-      all.push({ ...f, stops: STOPS_THE_RUN.test(f.code) });
+      if (seen.has(key)) { all[seen.get(key)] = joinSources(all[seen.get(key)], f); return; }
+      seen.set(key, all.length);
+      all.push(f);
     };
-    for (const line of s.split("\n")) {
-      const m = line.match(FINDING_RE);
+    const lines = s.split("\n");
+    for (let i = 0; i < lines.length; i++) {
+      const m = lines[i].match(FINDING_RE);
       if (m) {
-        add({ file: m[1], line: +m[2], col: +m[3], title: m[6] ?? m[4], code: m[4],
-          severity: "error", message: m[5].trim() });
+        add(withSource({ file: m[1], line: +m[2], col: +m[3], title: m[6] ?? m[4], code: m[4],
+          severity: "error", message: m[5].trim() }, i, i + 1));
         continue;
       }
-      const b = line.match(PARSEABLE_RE) ?? line.match(MSVS_RE);
+      const b = lines[i].match(PARSEABLE_RE) ?? lines[i].match(MSVS_RE);
       if (b) {
-        add({ file: b[1], line: +b[2], title: b[4], code: b[3],
-          severity: "error", message: b[5].trim() });
+        add(withSource({ file: b[1], line: +b[2], title: b[4], code: b[3],
+          severity: "error", message: b[5].trim() }, i, i + 1));
       }
     }
-    for (const r of jsonMessages(s)) {
-      add({ file: r.path, line: r.line, col: Number.isInteger(r.column) ? r.column : undefined,
-        title: r.symbol, code: r["message-id"] ?? r.messageId,
-        severity: "error", message: String(r.message ?? "").trim() });
+    // The first report, read as jsonMessages reads it, each message where its object is.
+    for (const { value, where } of jsonDocumentsAt(s, JSON_MARK)) {
+      for (const r of Array.isArray(value) ? value : value.messages) {
+        const { start, end } = where(r);
+        add(withSource({ file: r.path, line: r.line, col: Number.isInteger(r.column) ? r.column : undefined,
+          title: r.symbol, code: r["message-id"] ?? r.messageId,
+          severity: "error", message: String(r.message ?? "").trim() }, start, end));
+      }
+      break;
     }
-    const stopping = all.filter((f) => f.stops);
+    const stopping = all.filter((f) => STOPS_THE_RUN.test(f.code));
     // A real error alongside a missing docstring buries the error, so when there is one
     // the advisories step aside and are counted instead.
     const chosen = stopping.length ? stopping : all;
     const advisory = all.length - chosen.length;
-    const failures = chosen.map(({ stops, ...f }) => f);
+    const failures = chosen;
 
     if (!failures.length) return null;
     const n = failures.length;

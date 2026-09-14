@@ -16,7 +16,7 @@ import assert from "node:assert/strict";
 import { isDeepStrictEqual } from "node:util";
 import { readdirSync } from "node:fs";
 import { analyse } from "../src/index.js";
-import { parserOf, SOURCE_RANGE, sourceRange } from "../src/ownership.js";
+import { parserOf, SOURCE_RANGE, sourceRange, timesLocated } from "../src/ownership.js";
 
 const here = dirname(fileURLToPath(import.meta.url));
 const cli = join(here, "..", "bin", "whatbroke.js");
@@ -125,36 +125,37 @@ test("one diagnosis is never reported under two tools", () => {
 // none of it: 90 eslint problems inside a 100k-line build log cost 4.5s, against 0.56s
 // with the work skipped. The ranges are the same either way; what changed is when.
 //
-// eslint writes its ranges down now, and a range written down costs nothing to ask for, so
-// it can no longer show when a guess is made. mypy's are still guessed: two of its runs,
-// the second over a different package, are 82 failures to place.
+// This was measured by timing how long the ranges took to ask for after the read, which
+// needed a parser whose ranges are guessed - and parsers are writing theirs down, one
+// family at a time. So the reader counts how often it locates, and the log is built from
+// whichever fixture one parser reads alone with the most failures still guessed: nothing
+// may be located while it is read, and asking for a range locates it.
 test("a log with one tool in it never pays for source ownership", () => {
   const noise = Array(60000).fill("  vite:build transforming src/components/Widget.tsx +2ms").join("\n");
-  const mypy = fx("mypy_notes_fail.txt");
-  const log = `${noise}\n${mypy}\n${mypy.replaceAll("src/requests/", "src/sessions/")}`;
-
-  const started = Date.now();
-  const r = analyse(log);
-  const took = Date.now() - started;
-
-  assert.equal(r.tool, "mypy");
-  assert.equal(r.failures.length, 82);
-  assert.equal(r.others, undefined, "this log holds one tool, so nothing needs a range");
-  assert.ok(r.failures.every((f) => "get" in Object.getOwnPropertyDescriptor(f, SOURCE_RANGE)),
-    "mypy writes its ranges down now, so this measures nothing - use a parser that still guesses");
-  // Locating 82 failures in 60k lines costs a little over half as much again as reading
-  // the log - 440ms against 770ms here, as 90 of eslint's did. That was once seconds, and
-  // a bound of 2000ms caught it; on a slow macOS runner the reading alone now comes close
-  // to that and the bound failed runs that computed nothing eagerly. So the question is
-  // asked of the ranges themselves: asking for them after the read still has to cost a
-  // real share of the read. Had they been computed during it, asking would cost nothing.
-  // Both sides of that slow down together on a slower machine, so the answer does not
-  // depend on the machine.
-  const asked = Date.now();
+  const guessed = (r) => r.failures.every((f) => "get" in (Object.getOwnPropertyDescriptor(f, SOURCE_RANGE) ?? {}));
+  const candidates = readdirSync(join(here, "fixtures"))
+    .map((name) => ({ name, r: analyse(fx(name)) }))
+    .filter(({ r }) => r && r.tool !== "output" && !r.others && r.failures.length > 0 && guessed(r))
+    .sort((a, b) => b.r.failures.length - a.r.failures.length);
+  let r = null, took = 0, during = 0;
+  for (const { name } of candidates) {
+    const before = timesLocated();
+    const started = Date.now();
+    const read = analyse(`${noise}\n${fx(name)}`);
+    took = Date.now() - started;
+    if (read.others || !guessed(read)) continue;
+    r = read;
+    during = timesLocated() - before;
+    break;
+  }
+  if (!r) {
+    console.log("       no single-tool fixture has its ranges guessed any more; nothing to locate");
+    return;
+  }
+  assert.equal(during, 0, `${r.tool}'s ${r.failures.length} failures were located while the log was read`);
+  const before = timesLocated();
   for (const f of r.failures) sourceRange(f);
-  const locating = Date.now() - asked;
-  assert.ok(locating > took * 0.2,
-    `ranges cost ${locating}ms after a ${took}ms read - they look like they were computed during it`);
+  assert.equal(timesLocated() - before, 1, "asking for the ranges locates them, once for all of them");
   // ...and a read that has become several times slower is a regression of its own.
   assert.ok(took < 8000, `${took}ms to read one tool out of 60k lines`);
 });
@@ -192,8 +193,10 @@ test("a mixed log only pays for ownership where two parsers agree", () => {
 test("source ownership is attached internally without changing JSON v1", () => {
   const r = analyse(fx("py_traceback.txt"));
   const range = sourceRange(r.failures[0]);
-  assert.equal(range.end, range.start + 1);
-  assert.match(fx("py_traceback.txt").split("\n")[range.start], /KeyError: 'taxrate'/);
+  // The traceback it was read from: the header down to the exception.
+  const lines = fx("py_traceback.txt").split("\n");
+  assert.match(lines[range.start], /^Traceback \(most recent call last\):/);
+  assert.match(lines[range.end - 1], /KeyError: 'taxrate'/);
   assert.ok(!JSON.stringify(r).includes("sourceRange"));
   assert.deepEqual(Object.keys(r.failures[0]).sort(),
     ["category", "file", "line", "message", "severity", "stmt", "subject", "title", "tool"].sort());

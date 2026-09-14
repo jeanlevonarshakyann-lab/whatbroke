@@ -1,4 +1,5 @@
-import { jsonDocuments } from "../util.js";
+import { jsonDocuments, jsonDocumentsAt } from "../util.js";
+import { withSource } from "../ownership.js";
 // pyright indents each diagnostic under the file it belongs to, puts the column after
 // the line with a dash between location and severity, and names the rule in brackets at
 // the end of an indented explanation below:
@@ -67,30 +68,32 @@ export default {
       // no explanation under it to hold the name.
       rule ??= m[5].match(RULE_RE)?.[1];
       const head = m[5].replace(RULE_RE, "").trim();
-      failures.push({
+      // The diagnostic and the explanation indented under it.
+      failures.push(withSource({
         file: m[1], line: +m[2], col: +m[3],
         title: rule ?? "error", ...(rule ? { code: rule } : { label: "error" }),
         severity: "error",
         message: [head, ...detail].filter(Boolean).join("\n"),
-      });
+      }, i, i + 1 + detail.length));
     }
-    const reports = jsonReports(s);
+    const reports = s.includes('"generalDiagnostics"') ? [...jsonDocumentsAt(s, REPORT)] : [];
     let reportedWarnings = 0;
-    for (const report of reports) {
+    for (const { value: report, where } of reports) {
       reportedWarnings += report.summary.warningCount;
       for (const d of report.generalDiagnostics) {
         if (d?.severity !== "error" || typeof d.file !== "string" || typeof d.message !== "string") continue;
         const start = d.range?.start;
         const [head, ...detail] = d.message.split("\n").map((l) => l.trim()).filter(Boolean);
         const rule = typeof d.rule === "string" && d.rule ? d.rule : undefined;
-        failures.push({
+        const place = where(d);
+        failures.push(withSource({
           file: d.file,
           line: Number.isInteger(start?.line) ? start.line + 1 : undefined,
           col: Number.isInteger(start?.character) ? start.character + 1 : undefined,
           title: rule ?? "error", ...(rule ? { code: rule } : { label: "error" }),
           severity: "error",
           message: [head, ...detail.slice(0, MAX_DETAIL)].filter(Boolean).join("\n"),
-        });
+        }, place.start, place.end));
       }
     }
     if (!failures.length) return null;
@@ -98,7 +101,7 @@ export default {
     // A log holding only the document has no tally line; the document counts the same
     // things, run by run.
     const counted = reports.length && !tally
-      ? { errors: reports.reduce((n, r) => n + r.summary.errorCount, 0), warnings: reportedWarnings }
+      ? { errors: reports.reduce((n, r) => n + r.value.summary.errorCount, 0), warnings: reportedWarnings }
       : null;
     const hidden = Number(tally?.[2] ?? counted?.warnings ?? warnings);
     const n = Number(tally?.[1] ?? counted?.errors ?? failures.length);

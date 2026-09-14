@@ -135,12 +135,18 @@ function firstAtOrAfter(sorted, value) {
   return lo;
 }
 
+// How many times ranges have been located. A log holding one tool never needs a range, and
+// test/mixed.js holds the reader to never locating one for it.
+let located = 0;
+export const timesLocated = () => located;
+
 function locate(text, all, budget) {
   const identities = all.map((failure) => (failure[SOURCE_RANGE] ? null : identityOf(failure)));
   const distinct = new Set(identities.filter(Boolean)).size;
   const work = text.length * distinct;
   if (budget.spent + work > budget.limit) return all.map((failure) => failure[SOURCE_RANGE] ?? null);
   budget.spent += work;
+  located++;
   const lineSet = preparedLines(text, budget);
   const { lines, cleaned } = lineSet;
   const used = new Set();
