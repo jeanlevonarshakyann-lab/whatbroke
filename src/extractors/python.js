@@ -1,4 +1,5 @@
 import { isNoise } from "../util.js";
+import { withSource } from "../ownership.js";
 
 const CHAIN = /^(?:During handling of the above exception|The above exception was the direct cause)/;
 const HEADER = /^Traceback \(most recent call last\):$/;
@@ -81,8 +82,11 @@ function tracebackReadings(lines) {
     const { error, frame, own } = last.get(end);
     const at = own > start ? own : frame > start ? frame : -1;
     const m = at === -1 ? null : lines[at].match(FRAME_RE);
+    // Read from the header to the error, or to the frame and its source line when the
+    // error is not there - not to wherever the block's scan ran out.
+    const read = Math.max(error > start ? error : start, at === -1 ? start : at + 1 < end ? at + 1 : at);
     return {
-      start,
+      start, end: read + 1,
       deepest: m ? { file: m[1], line: +m[2], fn: m[3], code: at + 1 < end ? lines[at + 1].trim() : "" } : undefined,
       err: error > start ? lines[error].trim() : "",
     };
@@ -131,11 +135,12 @@ function compileError(lines) {
     for (let j = i + 1; j < lines.length && j <= i + 4; j++) {
       const err = lines[j].match(COMPILE_ERR_RE);
       if (err) {
-        return {
+        // The location, the source and caret under it, and the error.
+        return withSource({
           file: at[1], line: +at[2],
           title: err[1], code: err[1], severity: "error",
           message: err[2].trim() || err[1], stmt,
-        };
+        }, i, j + 1);
       }
       if (lines[j].trim() && !CARET_RE.test(lines[j]) && !stmt) stmt = lines[j].trim();
     }
@@ -153,18 +158,18 @@ export const traceback = {
     const lines = s.split("\n");
     const failures = [];
     let unittestFallback = null;
-    for (const { start, deepest, err } of tracebackReadings(lines)) {
+    for (const { start, end, deepest, err } of tracebackReadings(lines)) {
       // unittest owns tracebacks framed by its FAIL/ERROR header. The generic Python
       // parser must still keep scanning: a standalone traceback may follow the test
       // summary in a mixed CI log.
       const framedByUnittest = /^(?:FAIL|ERROR): /.test(lines[start - 2] ?? "") &&
         /^-{10,}$/.test(lines[start - 1] ?? "");
       if (!deepest && !err) continue;
-      const failure = {
+      const failure = withSource({
         file: deepest?.file, line: deepest?.line,
         title: deepest?.fn ?? "traceback", subject: deepest?.fn, severity: "error",
         message: err, stmt: deepest?.code,
-      };
+      }, start, end);
       if (framedByUnittest) unittestFallback ??= failure;
       else failures.push(failure);
     }
@@ -201,13 +206,16 @@ export const unittest = {
       // the parser read pip's line as a test named "Invalid".
       if (!/^={10,}$/.test(lines[i - 1] ?? "") || !/^-{10,}$/.test(lines[i + 1] ?? "")) continue;
       const body = [];
-      for (let j = i + 2; j < lines.length && !/^={10,}$/.test(lines[j]) && !/^-{10,}$/.test(lines[j]); j++)
+      let j = i + 2;
+      for (; j < lines.length && !/^={10,}$/.test(lines[j]) && !/^-{10,}$/.test(lines[j]); j++)
         body.push(lines[j]);
       const { deepest, err } = parseTraceback(body);
-      failures.push({
+      // The header in its frame of rules, and the traceback under it.
+      while (j > i + 2 && !lines[j - 1].trim()) j--;
+      failures.push(withSource({
         file: deepest?.file, line: deepest?.line,
         title: h[2], subject: h[2], severity: "error", message: err || h[1], stmt: deepest?.code,
-      });
+      }, i - 1, j));
     }
     let summary;
     const ran = lines.find((l) => /^Ran \d+ tests? in /.test(l));

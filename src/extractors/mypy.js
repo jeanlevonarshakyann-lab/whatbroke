@@ -1,4 +1,5 @@
-import { jsonDocuments } from "../util.js";
+import { jsonDocuments, jsonDocumentsAt } from "../util.js";
+import { joinSources, withSource } from "../ownership.js";
 const MAX_NOTES = 2;
 const DIAGNOSTIC_RE = /^(.+?):(\d+)(?::(\d+))?:[^\S\n]+(error|warning|note):[^\S\n]+(.+?)(?:[^\S\n]+\[([^\]]+)\])?$/;
 // mypy only ever reports Python source. "file:line: error: message" is not its shape
@@ -16,6 +17,8 @@ const RECORD = (v) => !!v && typeof v === "object" && !Array.isArray(v) &&
   typeof v.message === "string" && typeof v.severity === "string" &&
   ("hint" in v) && ("code" in v);
 const records = (s) => s.includes('"severity"') ? [...jsonDocuments(s, RECORD)] : [];
+// ...with where each was written, for reading them rather than deciding.
+const placedRecords = (s) => s.includes('"severity"') ? [...jsonDocumentsAt(s, RECORD)] : [];
 
 export default {
   name: "mypy",
@@ -33,6 +36,7 @@ export default {
     // as "mypy: error: ...", with no file:line for the diagnostic pattern to find.
     const own = s.match(/^mypy: error: (.+)$/m);
     const lines = s.split("\n");
+    const ownAt = own ? lines.findIndex((l) => /^mypy: error: (.+)$/.test(l)) : -1;
     const failures = [];
     let warnings = 0;
     for (let i = 0; i < lines.length; i++) {
@@ -48,42 +52,48 @@ export default {
         if (!n || n[4] !== "note" || n[1] !== match[1] || n[2] !== match[2]) break;
         notes.push(n[5]);
       }
-      failures.push({
+      // The error's line and the notes under it that continue it.
+      failures.push(withSource({
         file: match[1], line: +match[2], col: match[3] ? +match[3] : undefined,
         title: match[6] ?? "mypy", code: match[6], severity: match[4], 
         message: [match[5], ...notes].join("\n"),
-      });
+      }, i, i + 1 + notes.length));
     }
     // ...and the same diagnostics as --output=json writes them. A record already read
     // from the text form is not read twice; the formats differ only over the column,
     // which the text form does not print unless it is asked to.
-    const seen = new Set(failures.map((f) => [f.file, f.line, f.code].join("\u0000")));
-    const found = records(s);
+    const seen = new Map();
+    failures.forEach((f, i) => { const key = [f.file, f.line, f.code].join("\u0000"); if (!seen.has(key)) seen.set(key, i); });
+    const found = placedRecords(s);
     for (let i = 0; i < found.length; i++) {
-      const r = found[i];
+      const r = found[i].value;
       if (r.severity === "note" || !PYTHON_SRC.test(r.file)) continue;
       if (r.severity !== "error") { warnings++; continue; }
       const key = [r.file, r.line, r.code ?? undefined].join("\u0000");
-      if (seen.has(key)) continue;
-      seen.add(key);
       // A note at the same position continues this error, exactly as it does in the
       // text form - for a call-overload failure the notes carry the valid signatures.
       const notes = [];
+      let last = found[i];
       if (r.hint) notes.push(String(r.hint));
       for (let j = i + 1; j < found.length && notes.length < MAX_NOTES; j++) {
-        const n = found[j];
+        const n = found[j].value;
         if (n.severity !== "note" || n.file !== r.file || n.line !== r.line) break;
         notes.push(n.message);
+        last = found[j];
       }
-      failures.push({
+      // The record, and the notes written after it.
+      const failure = withSource({
         file: r.file, line: r.line,
         col: Number.isInteger(r.column) ? r.column : undefined,
         title: r.code ?? "mypy", code: r.code ?? undefined, severity: "error",
         message: [r.message, ...notes].join("\n"),
-      });
+      }, found[i].where().start, last.where().end);
+      if (seen.has(key)) { failures[seen.get(key)] = joinSources(failures[seen.get(key)], failure); continue; }
+      seen.set(key, failures.length);
+      failures.push(failure);
     }
     if (own) {
-      failures.push({ title: "mypy", label: "mypy", severity: "error", message: own[1] });
+      failures.push(withSource({ title: "mypy", label: "mypy", severity: "error", message: own[1] }, ownAt, ownAt + 1));
     }
     if (!failures.length) return null;
     const summaryMatch = s.match(/^[^\S\n]*Found (\d+) errors? in (\d+) files?/m);

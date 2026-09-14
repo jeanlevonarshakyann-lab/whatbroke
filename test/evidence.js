@@ -36,13 +36,13 @@ const test = (name, fn) => {
 
 // The parsers whose failures still carry a guessed range on at least one fixture.
 const GUESSING = new Set([
-  "babel", "biome", "black", "cargo", "cargo --message-format=json", "clang", "cmake",
+  "babel", "biome", "cargo", "cargo --message-format=json", "clang", "cmake",
   "deno fmt", "deno lint", "docker", "dotnet", "dotnet test", "esbuild",
   "generic", "git", "go", "go test -json", "go vet json", "golangci-lint",
   "junit jvm", "jvm", "kubectl", "less", "make", "markdownlint",
-  "mypy", "node", "npm", "oxlint", "perl", "php", "phpunit", "pip", "pnpm",
-  "prettier", "pylint", "pyright", "pytest", "python", "rspec", "ruby", "sass", "shellcheck",
-  "stylelint", "swc", "swift", "terraform", "tsc", "unittest", "vite", "webpack",
+  "node", "npm", "oxlint", "perl", "php", "phpunit", "pnpm",
+  "prettier", "rspec", "ruby", "sass", "shellcheck",
+  "stylelint", "swc", "swift", "terraform", "tsc", "vite", "webpack",
   "yamllint", "yarn",
 ]);
 

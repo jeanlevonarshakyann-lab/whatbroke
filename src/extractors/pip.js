@@ -1,4 +1,5 @@
 import { traceback } from "./python.js";
+import { joinSources, withSource } from "../ownership.js";
 
 // pip states a failure two or three times. A build error is printed once inside the
 // subprocess's own output block, then repeated at the end as "See above for output",
@@ -28,16 +29,20 @@ function dedent(lines) {
  *  which belong to setuptools. */
 function fromOutputBlock(lines, at) {
   const block = [];
-  for (let i = at + 1; i < lines.length && !OUTPUT_END.test(lines[i]); i++) block.push(lines[i]);
+  let i = at + 1;
+  for (; i < lines.length && !OUTPUT_END.test(lines[i]); i++) block.push(lines[i]);
   if (!block.length) return null;
+  // The block runs to its `[end of output]`, or to the end of the log without one.
+  const end = Math.min(i, lines.length - 1) + 1;
   const inner = dedent(block);
   if (traceback.detect(inner)) {
     const r = traceback.extract(inner);
-    if (r?.failures?.length) return r.failures[0];
+    // The traceback's own range is in the block, not in the log.
+    if (r?.failures?.length) return { failure: { ...r.failures[0] }, end };
   }
   // Not a traceback: the last line that says something is the closest thing to a cause.
   const last = block.map((l) => l.trim()).filter(Boolean).at(-1);
-  return last ? { message: last } : null;
+  return last ? { failure: { message: last }, end } : null;
 }
 
 const requirementOf = (s) => s.match(/^Processing (\S+)/m)?.[1]
@@ -60,18 +65,18 @@ export default {
   extract(s) {
     const lines = s.split("\n");
     const failures = [];
-    const said = new Set();      // one diagnosis, however many times pip prints it
-    const push = (f) => {
+    const said = new Map();      // one diagnosis, however many times pip prints it
+    const push = (f, start, end) => {
       // Keyed on the requirement and the kind of problem, not the wording: pip says
       // "Could not find a version that satisfies X" and then "No matching distribution
-      // found for X", which is one failure described twice.
+      // found for X", which is one failure described twice - read in both places.
       const key = f.subject ? `${f.subject}|${f.title ?? ""}` : String(f.message ?? "").slice(0, 200);
-      if (said.has(key)) return;
-      said.add(key);
+      if (said.has(key)) { failures[said.get(key)] = joinSources(failures[said.get(key)], withSource({}, start, end)); return; }
+      said.set(key, failures.length);
       // The traceback parser echoes the failing source line, and for a bare raise that
       // line IS the message. Printing it twice explains nothing.
       const stmt = f.stmt && f.stmt.trim() !== String(f.message ?? "").trim() ? f.stmt : undefined;
-      failures.push({ severity: "error", ...f, stmt });
+      failures.push(withSource({ severity: "error", ...f, stmt }, start, end));
     };
 
     for (let i = 0; i < lines.length; i++) {
@@ -84,7 +89,7 @@ export default {
           // Keep the traceback's file, line and message - that is the actual cause -
           // but not its title, which is the enclosing function name and here is
           // "<module>". What failed is the package pip was building.
-          push({ ...inner, subject: requirementOf(s), label: undefined, title: "build failed" });
+          push({ ...inner.failure, subject: requirementOf(s), label: undefined, title: "build failed" }, i, inner.end);
         }
         continue;
       }
@@ -99,28 +104,28 @@ export default {
       if (bad) {
         let file = bad[4];
         let line = bad[3] ? +bad[3] : undefined;
-        let stmt;
+        let stmt, end = i + 1;
         for (let j = i + 1; j < lines.length && j <= i + 3; j++) {
           const from = lines[j].match(/\(from line (\d+) of (.+?)\)[^\S\n]*$/);
-          if (from) { line = +from[1]; file = from[2]; break; }
-          if (lines[j].trim() && !/^[^\S\n]*\^/.test(lines[j])) stmt ??= lines[j].trim();
+          if (from) { line = +from[1]; file = from[2]; end = j + 1; break; }
+          if (lines[j].trim() && !/^[^\S\n]*\^/.test(lines[j]) && stmt === undefined) { stmt = lines[j].trim(); end = j + 1; }
         }
-        push({ file, line, subject: bad[1], title: "invalid requirement", message: bad[2], stmt });
+        push({ file, line, subject: bad[1], title: "invalid requirement", message: bad[2], stmt }, i, end);
         continue;
       }
 
       const noFile = l.match(/^ERROR: Could not open requirements file: (.+)$/);
-      if (noFile) { push({ subject: noFile[1].match(/'([^']+)'/)?.[1], title: "requirements file", message: noFile[1] }); continue; }
+      if (noFile) { push({ subject: noFile[1].match(/'([^']+)'/)?.[1], title: "requirements file", message: noFile[1] }, i, i + 1); continue; }
 
       const noVersion = l.match(/^ERROR: Could not find a version that satisfies the requirement (\S+)/);
-      if (noVersion) { push({ subject: noVersion[1], title: "no matching distribution", message: l.slice("ERROR: ".length).replace(VERSION_LIST, "") }); continue; }
+      if (noVersion) { push({ subject: noVersion[1], title: "no matching distribution", message: l.slice("ERROR: ".length).replace(VERSION_LIST, "") }, i, i + 1); continue; }
 
       // The second wording of the same failure; keep it only if the first never came.
       const noDist = l.match(/^ERROR: No matching distribution found for (\S+)/);
-      if (noDist) { push({ subject: noDist[1], title: "no matching distribution", message: l.slice("ERROR: ".length) }); continue; }
+      if (noDist) { push({ subject: noDist[1], title: "no matching distribution", message: l.slice("ERROR: ".length) }, i, i + 1); continue; }
 
       const conflict = l.match(/^ERROR: Cannot install (.+?) because these package versions have conflicting dependencies/);
-      if (conflict) { push({ subject: conflict[1], title: "conflicting dependencies", message: l.slice("ERROR: ".length) }); continue; }
+      if (conflict) { push({ subject: conflict[1], title: "conflicting dependencies", message: l.slice("ERROR: ".length) }, i, i + 1); continue; }
 
       const other = l.match(/^ERROR: (.+)$/);
       // The catch-all is the weakest rule here, and in a container it reaches a line
@@ -129,7 +134,7 @@ export default {
       // runner saying the step exited non-zero, which is the mechanism and never the
       // diagnosis - and pip installs inside a Dockerfile are not a rare arrangement.
       if (other && !RUNNER_MECHANISM.test(other[1])) {
-        push({ title: "error", label: "error", message: other[1].replace(VERSION_LIST, "") });
+        push({ title: "error", label: "error", message: other[1].replace(VERSION_LIST, "") }, i, i + 1);
       }
     }
 

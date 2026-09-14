@@ -1,4 +1,5 @@
 import { isNoise } from "../util.js";
+import { alsoFrom, withSource } from "../ownership.js";
 
 // pytest's traceback style is a flag, and CI configs set it constantly. Only the default
 // was read properly:
@@ -44,12 +45,13 @@ export default {
     // FAILURES / ERRORS sections are split by ____ test name ____ banners.
     const blocks = [];
     let cur = null;
-    for (const l of lines) {
+    lines.forEach((l, i) => {
       const b = l.match(/^_{3,}[^\S\n]+(.+?)[^\S\n]+_{3,}$/);
-      if (b) { cur = { title: b[1], body: [] }; blocks.push(cur); continue; }
-      if (/^=+ .* =+$/.test(l)) { cur = null; continue; }
-      if (cur) cur.body.push(l);
-    }
+      // A block is its banner down to the last line under it that is not blank.
+      if (b) { cur = { title: b[1], body: [], at: i, end: i + 1 }; blocks.push(cur); return; }
+      if (/^=+ .* =+$/.test(l)) { cur = null; return; }
+      if (cur) { cur.body.push(l); if (l.trim()) cur.end = i + 1; }
+    });
 
     for (const blk of blocks) {
       // trailing "path:line: ExceptionType"
@@ -83,12 +85,12 @@ export default {
         }
       }
       if (!expl.length && !stmt.length && !native) continue;
-      failures.push({
+      failures.push(withSource({
         file, line,
         title: blk.title, subject: blk.title, severity: "error",
         message: (expl.length ? expl : [native ?? kind ?? ""]).join("\n"),
         stmt: stmt[0],
-      });
+      }, blk.at, blk.end));
     }
 
     // "===== 3 failed, 2 passed in 0.01s =====", or with -q the same line
@@ -109,35 +111,42 @@ export default {
       // same string the summary carries, so the two are matched on it rather than on
       // the order they happen to appear in.
       const located = new Map();
-      for (const l of lines) {
+      lines.forEach((l, i) => {
         const m = l.match(ONE_LINE_RE);
-        if (m && !isNoise(m[1])) located.set(m[3], { file: m[1], line: +m[2] });
-      }
+        if (m && !isNoise(m[1])) located.set(m[3], { file: m[1], line: +m[2], i });
+      });
       // Every summary section, not the first: two pytest runs in one log have one each,
       // and reading only the first dropped the second run's failures entirely.
       const entries = [];
       for (let start = 0; start < lines.length; start++) {
         if (!SUMMARY_HEAD_RE.test(lines[start])) continue;
-        for (let i = start + 1; i < lines.length && !/^=+/.test(lines[i]); i++) entries.push(lines[i]);
+        for (let i = start + 1; i < lines.length && !/^=+/.test(lines[i]); i++) entries.push(i);
       }
+      // A summary line naming a failure already read from its block is another place
+      // that failure was read.
+      const also = (index, entry) => { failures[index] = alsoFrom(failures[index], entry, entry + 1); };
       for (const entry of entries) {
-        const m = entry.match(SUMMARY_ENTRY_RE);
+        const m = lines[entry].match(SUMMARY_ENTRY_RE);
         if (!m) continue;
         const { file, title } = idParts(m[1]);
         const message = (m[2] ?? "").trim();
         // A collection error is summarised as bare "ERROR test_broken.py" - no test id
         // and no message - so it says nothing the block above it has not already said.
-        if (!message && failures.some((f) => f.file === file || String(f.title).includes(file))) continue;
+        const collected = message ? -1 : failures.findIndex((f) => f.file === file || String(f.title).includes(file));
+        if (collected >= 0) { also(collected, entry); continue; }
         // The name alone decides. Comparing the messages too looked more careful and was
         // less safe: a block whose text arrives damaged - two tools sharing a pipe - no
         // longer matched its own summary line, and the failure was then counted twice.
-        if (failures.some((f) => f.title === title)) continue;
+        const named = failures.findIndex((f) => f.title === title);
+        if (named >= 0) { also(named, entry); continue; }
         const at = located.get(message);
-        failures.push({
+        // The summary line, and the one-line location --tb=line printed for it.
+        const failure = withSource({
           file: at?.file ?? file, line: at?.line,
           title, subject: title, severity: "error",
           message: message || title,
-        });
+        }, entry, entry + 1);
+        failures.push(at ? alsoFrom(failure, at.i, at.i + 1) : failure);
       }
     }
     if (!failures.length && !summary) return null;
