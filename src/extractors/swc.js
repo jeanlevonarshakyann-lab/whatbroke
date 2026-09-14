@@ -7,6 +7,12 @@
 //      :           ^
 //      `----
 //
+// The bracket is where the frame starts - the first line it draws, at column 1 - and not
+// where the error is: that is the caret, under the semicolon in column 11. With context
+// lines drawn above the error the bracket's line is wrong as well, so both come from the
+// caret and the numbered line above it. miette draws a tab as spaces, so on a line indented
+// with tabs the caret's column is where it was drawn rather than a count of characters.
+//
 //   Caused by:
 //       Syntax Error
 //   Error: Failed to compile 1 file with swc.
@@ -18,6 +24,10 @@ import { withSource } from "../ownership.js";
 const MESSAGE_RE = /^[^\S\n]*[x×✗][^\S\n]+(\S.*?)[^\S\n]*$/;
 const AT_RE = /^[^\S\n]*,-\[(.+?):(\d+):(\d+)\][^\S\n]*$/;
 const SOURCE_RE = /^[^\S\n]*(\d+)[^\S\n]*\|[^\S\n]?(.*)$/;
+// Under a numbered line: the gutter, then blanks, then what marks the span - `^` in the
+// ASCII drawing a pipe gets, the underline or its tick in a terminal's.
+const MARK_RE = /^([^\S\n]*[:|\u2502\u250a\u00b7][^\S\n]?)([^\S\n]*)[\^\u2500\u252c]/;
+const FRAME_END_RE = /^[^\S\n]*(?:`-|\u2570\u2500)/;
 const TALLY_RE = /^Error:[^\S\n]+Failed to compile \d+ files? with swc\.?[^\S\n]*$/m;
 
 export default {
@@ -42,14 +52,23 @@ export default {
       const at = lines[i + 1]?.match(AT_RE);
       if (!at) continue;
 
-      let stmt, end = i + 2;
-      for (let j = i + 2; j < lines.length && j <= i + 8; j++) {
+      let stmt, line = +at[2], col, end = i + 2;
+      for (let j = i + 2; j < lines.length && j <= i + 12 && !FRAME_END_RE.test(lines[j]); j++) {
         const src = lines[j].match(SOURCE_RE);
-        if (src && +src[1] === +at[2]) { stmt = src[2].trim(); end = j + 1; break; }
+        const mark = src && lines[j + 1]?.match(MARK_RE);
+        if (!mark) continue;
+        // the source text starts where the gutter ends, and the mark lines up under it
+        const gutter = lines[j].length - src[2].length;
+        if (mark[1].length !== gutter) continue;
+        line = +src[1];
+        col = mark[2].length + 1;
+        stmt = src[2].trim();
+        end = j + 2;
+        break;
       }
-      // The message, its location, and the source line it points at.
+      // The message, its location, and the source line it points at, down to the caret.
       failures.push(withSource({
-        file: at[1], line: +at[2], col: +at[3],
+        file: at[1], line, col,
         title: "syntax error", label: "syntax error", severity: "error",
         message: m[1], stmt,
       }, i, end));

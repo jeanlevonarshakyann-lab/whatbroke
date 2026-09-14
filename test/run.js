@@ -397,6 +397,8 @@ const CASES = [
   { file: "swc_fail.txt", tool: "swc", n: 1, check: (r) => {
       assert.equal(r.failures[0].file, "swcbad.js");
       assert.equal(r.failures[0].line, 1);
+      // the frame's bracket says 1:1, where the frame starts; the caret is the error's column
+      assert.equal(r.failures[0].col, 11);
       assert.equal(r.failures[0].message, "Expression expected");
       assert.equal(r.failures[0].stmt, "const x = ;");
       assert.doesNotMatch(JSON.stringify(r), /Failed to compile/);
@@ -1267,13 +1269,18 @@ const CASES = [
       const f = r.failures[0];
       assert.equal(f.file, "src/app.js");
       assert.equal(f.line, 5);
-      assert.equal(f.col, 24);
+      // esbuild printed 5:24, counting from 0, with its caret under the semicolon
+      assert.equal(f.col, 25);
+      assert.equal(f.stmt.indexOf(";") + 1 + "  ".length, f.col, "the stmt is trimmed of the line's two-space indent");
       assert.match(f.message, /Expected "\)" but found ";"/);
       assert.match(f.stmt, /return sum \* \(1 \+ rate;/);
       assert.doesNotMatch(JSON.stringify(r), /node:internal/, "the wrapper's stack is not the failure");
     } },
   { file: "esbuild_resolve_fail.txt", tool: "esbuild", n: 1, check: (r) => {
       assert.equal(r.failures[0].file, "src/clean.js");
+      // 1:21 counted from 0: the opening quote of the import, where vite's rolldown says 1:22
+      assert.equal(r.failures[0].col, 22);
+      assert.equal(r.failures[0].stmt.indexOf('"') + 1, r.failures[0].col);
       assert.match(r.failures[0].message, /Could not resolve "\.\/also-missing\.js"/);
       assert.equal(r.others, undefined, "the CLI wrapper's stack must not surface as a second tool");
     } },
@@ -1282,6 +1289,8 @@ const CASES = [
       assert.equal(f.code, "PARSE_ERROR");
       assert.equal(f.file, "src/app.js");
       assert.equal(f.line, 5);
+      // the same line esbuild_syntax_fail.txt reports: rolldown counts from 1, and says 25
+      assert.equal(f.col, 25);
       assert.match(f.message, /Expected `,` or `\)` but found `;`/);
     } },
   { file: "vite_resolve_fail.txt", tool: "vite", n: 1, check: (r) => {
@@ -1289,6 +1298,8 @@ const CASES = [
       assert.equal(f.code, "UNRESOLVED_IMPORT");
       assert.equal(f.file, "src/clean.js");
       assert.equal(f.line, 1);
+      // and the import esbuild_resolve_fail.txt reports, at the same column
+      assert.equal(f.col, 22);
       assert.match(f.message, /Could not resolve/);
     } },
   // Captured with pip 24.3.1 on Python 3.12: a build backend that raises, a version
@@ -3827,6 +3838,32 @@ try {
   console.log("  ok   a failure beside the last one does not print its line twice");
   pass++;
 } catch (e) { console.log(`  FAIL near-failure duplicate line\n       ${e.message}`); fail++; }
+
+// a caret under a line indented with a tab
+try {
+  const { render, setColor } = await import("../src/render.js");
+  const { resetSnippetCache } = await import("../src/snippet.js");
+  const { mkdtempSync, writeFileSync, rmSync } = await import("node:fs");
+  setColor(false);
+  const dir = mkdtempSync(join(process.cwd(), ".tmp-tab-"));
+  const file = join(dir, "main.go");
+  writeFileSync(file, "package main\n\nfunc main() {\n\tfmt.Println(x)\n}\n");
+  resetSnippetCache();
+  // go counts the tab as one column: `./main.go:4:14: undefined: x`
+  const out = render({ tool: "go", failures: [
+    { file, line: 4, col: 14, title: "compile error", code: "UndeclaredName", message: "undefined: x" },
+  ] }, {});
+  rmSync(dir, { recursive: true, force: true });
+  const lines = out.split("\n");
+  const source = lines.findIndex((l) => /^\s+4 \u2502 \tfmt/.test(l));
+  assert.ok(source >= 0, `no source line in:\n${out}`);
+  // A terminal draws a tab out to the next tab stop. A tab under it is drawn the same
+  // width, which one blank per character is not: the caret sat under the tab.
+  assert.equal(lines[source + 1], "        \u2502 \t            ^");
+  assert.equal(lines[source + 1].indexOf("^"), lines[source].indexOf("x"));
+  console.log("  ok   a caret under a line indented with a tab lands under its character");
+  pass++;
+} catch (e) { console.log(`  FAIL caret under a tab\n       ${e.message}`); fail++; }
 
 // a headline that is the whole diagnosis
 try {

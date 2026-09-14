@@ -484,7 +484,9 @@ off everywhere.
 
 Source context is read from the file on disk. If the file has changed since the command
 ran — you edited it, or you piped in saved output — whatbroke says so and shows the line
-the tool itself reported, rather than confidently pointing a caret at the wrong code.
+the tool itself reported, rather than confidently pointing a caret at the wrong code. Most
+tools count a tab as one column and a terminal draws it wider, so the line under the source
+keeps the source's tabs, and the caret lands under the character the tool pointed at.
 
 ## What changed since last time
 

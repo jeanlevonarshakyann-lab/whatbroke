@@ -34,8 +34,9 @@ recognised as one. `test/evidence.js` holds each range to the text it points at,
 Extractors should return `{ tool, summary, failures }`. A failure holds the fields
 `report.schema.json` documents and no others - `file`, `line`, `col`, `title`, `message`,
 `stmt`, `trace` and the rest - and leaves out what the tool did not print rather than
-setting it to `null`. `line` and `col` count from 1: pylint, webpack and Babel count
-columns from 0, and their parsers add one. `test/report.js` holds every parser's result
+setting it to `null`. `line` and `col` count from 1: pylint, webpack, Babel and esbuild
+count columns from 0, and their parsers add one. Where the tool draws a caret under the
+source line, the column is where the caret is - check it against one. `test/report.js` holds every parser's result
 on every fixture to this, and a field nothing documents fails it.
 
 A failure should also say what it is. Set exactly one of `code` (a diagnostic

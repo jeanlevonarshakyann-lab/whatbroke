@@ -63,6 +63,17 @@ function windowed(text, start) {
 const windowedCol = (col, start) =>
   Math.max(1, Math.min(col - start + (start > 0 ? 1 : 0), SOURCE_WIDTH + 1));
 
+/** What goes under a line before its caret: a blank for each character, and a tab where
+ *  the line has a tab. A terminal draws a tab as wide as the next tab stop, which depends
+ *  on where the tab starts - so one blank under it put the caret under the tab and not the
+ *  character after it, on every line of Go. The gutter in front of both lines is the same
+ *  width, so a tab under a tab is drawn exactly as wide. */
+const underneath = (text, col, start) => {
+  const shown = windowed(text, start);
+  const width = windowedCol(col, start) - 1;
+  return shown.slice(0, width).replace(/[^\t]/g, " ").padEnd(width, " ");
+};
+
 const SITES_SHOWN = 3;   // how many extra sites to name before "+ N more"
 
 export function render(result, { max = 5, cwd = true, source = true, cluster = true, since = null, secondary = false } = {}) {
@@ -187,7 +198,7 @@ export function render(result, { max = 5, cwd = true, source = true, cluster = t
         const w = String(one[0].n).length;
         const start = windowStart(one[0].text, f.col);
         out.push(`      ${C.dim}${pad(one[0].n, w)}${C.reset} ${C.red}│${C.reset} ${windowed(one[0].text, start)}`);
-        if (f.col) out.push(`      ${" ".repeat(w)} ${C.dim}│${C.reset} ${" ".repeat(windowedCol(f.col, start) - 1)}${C.red}^${C.reset}`);
+        if (f.col) out.push(`      ${" ".repeat(w)} ${C.dim}│${C.reset} ${underneath(one[0].text, f.col, start)}${C.red}^${C.reset}`);
       }
     }
     if (snip) {
@@ -202,7 +213,7 @@ export function render(result, { max = 5, cwd = true, source = true, cluster = t
         const cut = windowed(s.text, start);
         const txt = s.hit ? cut : `${C.dim}${cut}${C.reset}`;
         out.push(`      ${num} ${bar} ${txt}`);
-        if (s.hit && f.col) out.push(`      ${" ".repeat(w)} ${C.dim}│${C.reset} ${" ".repeat(windowedCol(f.col, start) - 1)}${C.red}^${C.reset}`);
+        if (s.hit && f.col) out.push(`      ${" ".repeat(w)} ${C.dim}│${C.reset} ${underneath(s.text, f.col, start)}${C.red}^${C.reset}`);
       }
     } else if (f.stmt && !drifted && !near) {
       // `stmt` stands in for source that could not be shown. When the failure sits in

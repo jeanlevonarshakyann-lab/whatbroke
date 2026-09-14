@@ -8,6 +8,9 @@ import { withSource } from "../ownership.js";
 const ESBUILD_DIAG = /^[✘▲] \[(ERROR|WARNING)\] (?:\[plugin ([^\]]+)\] )?(.+)$/;
 // esbuild puts the location on its own line, indented, with a trailing colon:
 //     src/app.js:5:24:
+// and counts the column from 0. That one is the semicolon in `  return sum * (1 + rate;`,
+// the 25th character, where esbuild draws its caret; vite's rolldown says 5:25 of the same
+// line. A column here counts from 1.
 const ESBUILD_LOC = /^[^\S\n]+(\S.*?):(\d+):(\d+):[^\S\n]*$/;
 // and the source under that, in a gutter:  5 │   return sum * (1 + rate;
 const ESBUILD_SRC = /^[^\S\n]*\d+[^\S\n]*│[^\S\n]?(.*)$/;
@@ -40,7 +43,7 @@ export const esbuild = {
         if (ESBUILD_DIAG.test(lines[j])) break;
       }
       failures.push(withSource({
-        file, line: line ? +line : undefined, col: col ? +col : undefined,
+        file, line: line ? +line : undefined, col: col ? +col + 1 : undefined,
         title: d[2] ?? "build error", label: d[2] ?? "build error",
         severity: "error", message: d[3], stmt,
       }, i, end));
