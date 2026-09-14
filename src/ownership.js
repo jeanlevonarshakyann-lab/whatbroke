@@ -11,6 +11,7 @@
 // so both readings of it are kept: a finding shown twice rather than one hidden.
 export const SOURCE_RANGE = Symbol("whatbroke.sourceRange");
 const PARSER = Symbol("whatbroke.parser");
+const LINES = Symbol("whatbroke.lines");
 
 /** Record that `failure` was read from lines [start, end) of the text its parser was given.
  *  A parser knows this as it reads. Written ranges are what `test/evidence.js` holds to the
@@ -95,8 +96,6 @@ export function throughOrigin(failure, origin) {
 }
 
 export function preserveSourceRange(from, to) {
-  // Carry the accessor across rather than its value, so a copy made on the way to the
-  // reader does not force a computation nothing has asked for.
   const own = from && Object.getOwnPropertyDescriptor(from, SOURCE_RANGE);
   if (own) Object.defineProperty(to, SOURCE_RANGE, { ...own, enumerable: false });
   return to;
@@ -113,6 +112,18 @@ export function rangesOverlap(a, b) {
     for (const q of placesOf(y)) if (p.start < q.end && q.start < p.end) return true;
   }
   return false;
+}
+
+/** Record, on a reading of a log, how the lines its parsers were given are lines of the log
+ *  itself: `lines(start, end)` is lines [start, end) of the parsed text as the runs of the
+ *  log's own lines they are, `{ start, end }` inclusive and counting from 0. */
+export function setLines(result, lines) {
+  Object.defineProperty(result, LINES, { value: lines, enumerable: false });
+  return result;
+}
+
+export function linesOf(result) {
+  return result?.[LINES] ?? null;
 }
 
 export function setParser(result, parser) {

@@ -29,7 +29,8 @@ Every failure says which lines of the text the parser was given it was read from
 `withSource(failure, start, end)` from `src/ownership.js`, end exclusive. Two tools'
 readings of the same lines are one diagnosis, and a failure without a range can never be
 recognised as one. `test/evidence.js` holds each range to the text it points at, and
-`test/fuzz.js` holds every parser to writing one on damaged logs too.
+`test/fuzz.js` holds every parser to writing one on damaged logs too. The ranges are what a
+report gives as each failure's `evidence`, moved onto the lines of the output itself.
 
 Extractors should return `{ tool, summary, failures }`. A failure holds the fields
 `report.schema.json` documents and no others - `file`, `line`, `col`, `title`, `message`,

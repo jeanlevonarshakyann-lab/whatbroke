@@ -30,13 +30,16 @@ const test = (name, fn) => {
   } catch (e) { console.log(`  FAIL ${name}\n       ${e.message}`); fail++; }
 };
 
-/** Feed text through the accumulator, optionally in chunks of a given size. */
+/** Feed text through the accumulator, optionally in chunks of a given size. A truncated
+ *  capture's map of its lines onto the output's comes back as what it says of every line,
+ *  so two captures compare equal only when they map their lines the same way too. */
 function capture(text, maxBytes, chunk = 0) {
   const c = createCapture(maxBytes);
   const buf = Buffer.from(text, "utf8");
   if (!chunk) c.push(buf);
   else for (let i = 0; i < buf.length; i += chunk) c.push(buf.subarray(i, i + chunk));
-  return c.finish();
+  const { lines, ...result } = c.finish();
+  return lines ? { ...result, lines: lines(0, result.text.split("\n").length - 1) } : result;
 }
 
 const MARKER = /\n~~~ whatbroke: \d+ bytes of output elided here[^\n]*~~~\n/g;
@@ -108,6 +111,23 @@ test("a diagnostic in the middle survives clean output on both sides", () => {
   assert.ok(gaps.length >= 2, "separate missing regions must remain visibly separate");
   assert.equal(gaps.reduce((sum, match) => sum + Number(match[1]), 0), r.elided);
   assert.equal(r.elided + Buffer.byteLength(r.text.replace(MARKER, "")), Buffer.byteLength(text));
+  // Every line kept is the line of the output it came from, and a marker is nobody's line:
+  // evidence read from a capture cut short numbers the output's lines, not the capture's.
+  const c = createCapture(32768);
+  c.push(Buffer.from(text));
+  const { text: kept, lines } = c.finish();
+  const original = text.split("\n");
+  const wrong = [];
+  let markers = 0;
+  kept.split("\n").forEach((line, k) => {
+    const runs = lines(k, k);
+    if (!runs.length) { if (line && !/^~~~ whatbroke: \d+ bytes of output elided here/.test(line)) wrong.push(`${k}: ${line}`); else markers++; return; }
+    if (runs.length !== 1 || runs[0].start !== runs[0].end || original[runs[0].start] !== line) {
+      wrong.push(`${k}: ${JSON.stringify(line)} is not line ${JSON.stringify(runs)} of the output`);
+    }
+  });
+  assert.deepEqual(wrong.slice(0, 5), []);
+  assert.ok(markers >= 2 * gaps.length, "the markers map onto nothing");
 });
 
 test("diagnostics already in the tail do not spend the capture budget twice", () => {

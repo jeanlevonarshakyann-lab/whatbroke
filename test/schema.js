@@ -117,6 +117,14 @@ export function inconsistencies(report) {
     const n = group.failures.length;
     for (const [i, f] of group.failures.entries()) {
       if (f.tool !== group.tool) wrong.push(`${path}failures/${i} is ${f.tool}'s in ${group.tool}'s list`);
+      // evidence is in order, each stretch apart from the last, and there is some unless
+      // the capture was cut short and what the failure was read from went with it
+      const evidence = f.evidence ?? [];
+      if (!evidence.length && !report.truncated) wrong.push(`${path}failures/${i} was read from nowhere`);
+      for (const [k, lines] of evidence.entries()) {
+        if (lines.end < lines.start) wrong.push(`${path}failures/${i}/evidence/${k} ends before it starts`);
+        if (k > 0 && lines.start <= evidence[k - 1].end + 1) wrong.push(`${path}failures/${i}/evidence/${k} is not apart from the lines before it`);
+      }
       // a warning is never reported as a failure
       if (f.severity !== "error") wrong.push(`${path}failures/${i} is a ${f.severity}`);
       if (f.col !== undefined && f.line === undefined) wrong.push(`${path}failures/${i} has a column and no line`);

@@ -155,7 +155,7 @@ function track(r, truncated, executionError) {
 }
 
 let reported = false;
-function report(raw, code, truncated = false, executionError = null) {
+function report(raw, code, truncated = false, executionError = null, lines = null) {
   // Spawn errors are followed by a close event. Emit exactly one result while
   // allowing stdout to drain instead of cutting off a large JSON/raw fallback.
   if (reported) return;
@@ -163,7 +163,7 @@ function report(raw, code, truncated = false, executionError = null) {
   // argv is what the user actually ran; it is evidence for detection, not decoration.
   const analysis = analyse(raw, { cluster: !noCluster, command: inputMode === "command" ? argv : null });
   const since = sinceLast ? track(analysis, truncated, executionError) : null;
-  const result = createReport({ analysis, raw, exitCode: code, inputMode, truncated, error: executionError, since });
+  const result = createReport({ analysis, raw, exitCode: code, inputMode, truncated, error: executionError, since, lines });
   if (json) {
     process.stdout.write(JSON.stringify(result, null, 2) + "\n");
   } else if (githubActions) {
@@ -183,8 +183,8 @@ if (argv.length === 0) {
   const capture = createCapture(maxBytes);
   process.stdin.on("data", (d) => capture.push(d));
   process.stdin.on("end", () => {
-    const { text, truncated } = capture.finish();
-    report(text, 0, truncated);
+    const { text, truncated, lines } = capture.finish();
+    report(text, 0, truncated, null, lines);
   });
 } else {
   const child = spawn(argv[0], argv.slice(1), { stdio: ["inherit", "pipe", "pipe"] });
@@ -207,7 +207,7 @@ if (argv.length === 0) {
   child.on("close", (code, signal) => {
     if (code === 0 && !json) { process.exitCode = 0; return; }
     const signalCode = signal ? 128 + (osConstants.signals?.[signal] ?? 1) : null;
-    const { text, truncated } = capture.finish();
-    report(text, code ?? signalCode ?? 1, truncated);
+    const { text, truncated, lines } = capture.finish();
+    report(text, code ?? signalCode ?? 1, truncated, null, lines);
   });
 }

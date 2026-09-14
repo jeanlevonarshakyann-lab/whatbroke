@@ -183,6 +183,11 @@ test("a report read from a mutated log keeps to the schema, and never calls a wa
       for (const problem of [...validate(report, REPORT_SCHEMA, { strict: true }), ...inconsistencies(report)]) {
         wrong.push(`${f} after ${name}: ${problem}`);
       }
+      // and evidence is lines of the log it was read from, not past its end
+      const lines = text.split("\n").length;
+      for (const failure of [...report.failures, ...(report.others ?? []).flatMap((o) => o.failures)]) {
+        if (failure.evidence.some(({ end }) => end > lines)) wrong.push(`${f} after ${name}: ${JSON.stringify(failure.evidence)} of ${lines} lines`);
+      }
     }
   }
   assert.ok(reports > 3000, `only ${reports} reports read`);

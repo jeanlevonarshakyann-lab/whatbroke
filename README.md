@@ -167,7 +167,11 @@ out:
       "subject": "test_invoice_total",
       "severity": "error",
       "message": "assert 1049 == 1050\n+  where 1049 = total([1000, 49], 0.5)",
-      "stmt": "assert total([1000, 49], 0.5) == 1050"
+      "stmt": "assert total([1000, 49], 0.5) == 1050",
+      "evidence": [
+        { "start": 9, "end": 16 },
+        { "start": 37, "end": 37 }
+      ]
     }
   ]
 }
@@ -195,6 +199,11 @@ has keeps its meaning. Spawn failures set `error` and use exit code `127`.
 - `clusters` groups `failures` by likely cause, and `others` holds the failures other
   tools printed into the same log. See [One bug, or eighty?](#one-bug-or-eighty).
 - `since` is set by `--since-last`. See [What changed since last time](#what-changed-since-last-time).
+- A failure's `evidence` is the lines of the output it was read from — above, pytest's
+  block for the test and its line in the short summary. The lines count from 1 and end at
+  a line feed, in the output as it arrived: all of a pipe's input, or everything a command
+  wrote. When the capture was cut short, what was left out still counts, so the numbers
+  are the output's own. A script holding the log can show the lines behind each finding.
 
 An empty `failures` array means no diagnostics were extracted. It does not establish
 command success: check `commandExitCode`, and treat `null` as unknown.

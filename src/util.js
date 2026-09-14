@@ -4,7 +4,12 @@ import { joinSources } from "./ownership.js";
 // window-title commands, terminated by BEL or ST. Both have seven- and eight-bit
 // encodings. Keeping this local avoids a runtime dependency while handling the control
 // families emitted by modern terminals and clickable CI log viewers.
-export const ANSI = /(?:\x1b\[|\x9b)[0-?]*[ -/]*[@-~]|(?:\x1b\]|\x9d)[^\x07\x1b\x9c]*(?:\x07|\x1b\\|\x9c)/g;
+//
+// An OSC ends on the line it starts on. None of them carries a line break - a link, a
+// title, a clipboard's base64 - and one cut off before its terminator, which a truncated
+// write leaves behind, used to run on to the next BEL anywhere below it and take every
+// line in between with it, a diagnostic included.
+export const ANSI = /(?:\x1b\[|\x9b)[0-?]*[ -/]*[@-~]|(?:\x1b\]|\x9d)[^\x07\x1b\x9c\n\r]*(?:\x07|\x1b\\|\x9c)/g;
 // Cursor-up/down commands are not decoration. A rich progress renderer can interrupt
 // a diagnostic halfway through its filename, redraw two status lines, then resume the
 // filename where the terminal cursor returned. Simply deleting the controls glues all

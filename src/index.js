@@ -71,7 +71,7 @@ import { stripAnsi, stripCiPrefix, isNoise, collapseRepeats } from "./util.js";
 import { clusterFailures } from "./cluster.js";
 import { readers } from "./router.js";
 import { stripRedrawnCiPrefix, wrapperCandidates } from "./normalize.js";
-import { joinSources, preserveSourceRange, rangesOverlap, setParser, sourceRange } from "./ownership.js";
+import { joinSources, preserveSourceRange, rangesOverlap, setLines, setParser, sourceRange } from "./ownership.js";
 
 // order matters: most specific first, generic last
 export const EXTRACTORS = [pytest, nodetest, bun, bunRuntime, deno, denoRuntime, denoLint, denoFmt, playwright, jestjson, jest, mochajson, mochaxunit, mocha, ava, jasmine, rubocop, tap, taptext, vitest, unittest, traceback, eslintjson, eslint, ruff, pylint, flake8, golangci, markdownlint, stylelint, shellcheck, yamllint, biome, oxlint, black, prettier, sass, less, webpack, babel, swc, pyright, mypy, cmake, terraform, swift, clang, ruby, perl, php, rspec, junitjvm, jvm, dotnettest, dotnet, phpunit, cargojson, cargo, govetjson, gojson, gotest, esbuild, vite, node, tsc, git, kubectl, docker, make, npm, pnpm, yarn, pip, generic];
@@ -447,11 +447,18 @@ function better(candidate, cand, current) {
 
 const MAX_WRAPPER_LAYERS = 3;   // CI stamps a monorepo runner that stamps a container
 
+/** Lines of a text taken from a text taken from a log, as lines of the log. `outer` says
+ *  which line of the log each line of the middle text is, `inner` which line of the middle
+ *  text each line of the last one is; either is null where every line was kept. */
+const through = (outer, inner) => (inner ? (outer ? inner.map((k) => outer[k]) : inner) : outer);
+
 /** Peel wrapper prefixes for as long as peeling demonstrably improves the parse. */
 function unwrap(s, command, extractors) {
   let text = s;
   let hit = parse(text, command, extractors);
   const wrappers = [];
+  // Which line of `s` each line of `text` is, once a candidate has kept only some of them.
+  let origin = null;
   // At most one literal strip. Once a wrapper is off, the tool's OWN uniform prefix is
   // the next thing a literal search finds - Maven leads every line with `[INFO] ` - and
   // taking that too swaps a correct parse for a different, worse one. Genuine stacking
@@ -471,7 +478,10 @@ function unwrap(s, command, extractors) {
       for (const inner of wrapperCandidates(c.text)) {
         if (inner.kind === "literal" && (literalsTaken || c.kind === "literal")) continue;
         const deeper = parse(inner.text, command, extractors);
-        if (better(inner, deeper, hit)) { found = { ...c, text: inner.text, wrapper: c.wrapper, hit: deeper, then: inner.wrapper }; break; }
+        if (better(inner, deeper, hit)) {
+          found = { ...c, text: inner.text, wrapper: c.wrapper, hit: deeper, then: inner.wrapper, origin: through(c.origin, inner.origin) };
+          break;
+        }
       }
       if (found) break;
     }
@@ -479,10 +489,56 @@ function unwrap(s, command, extractors) {
     if (found.kind === "literal") literalsTaken++;
     text = found.text;
     hit = found.hit;
+    origin = through(origin, found.origin);
     wrappers.push(found.wrapper);
     if (found.then) wrappers.push(found.then);
   }
-  return { text, hit, wrappers };
+  return { text, hit, wrappers, origin };
+}
+
+/** How the lines a parser was given are lines of the log as it arrived, whose lines end at
+ *  `\n`. Returns `lines(start, end)`: lines [start, end) of the parsed text as the runs of
+ *  the log's lines they are, each `{ start, end }` inclusive, counting from 0.
+ *
+ *  Nearly everything done to a log before a parser reads it leaves each line where it was:
+ *  colour, a CI stamp or a runner's prefix comes off the front of a line, and a retry
+ *  collapsed into one copy is the first copy. Two things do not. A bare carriage return - a
+ *  progress bar redrawing itself - breaks a line in two for a parser and not in the log.
+ *  And BuildKit's failing steps, lifted out when nothing else in a log could be read, keep
+ *  some lines and not the ones between them; `origin` says which. */
+function linesOfLog(unbroken, origin) {
+  let onLine = null;
+  if (/\r(?!\n)/.test(unbroken)) {
+    onLine = [0];
+    let line = 0;
+    for (const m of unbroken.matchAll(/\r\n|\r|\n/g)) {
+      if (m[0] !== "\r") line++;
+      onLine.push(line);
+    }
+  }
+  const inLog = (k) => (onLine ? onLine[k] : k);
+  return (start, end) => {
+    const runs = [];
+    const add = (from, to) => {
+      const a = inLog(from), b = inLog(to), last = runs.at(-1);
+      if (last && a <= last.end + 1) last.end = Math.max(last.end, b);
+      else runs.push({ start: a, end: b });
+    };
+    if (!origin) {
+      if (end > start) add(start, end - 1);
+      return runs;
+    }
+    let from = null, to = null;
+    for (let k = start; k < end; k++) {
+      const at = origin[k];
+      if (at === undefined) continue;
+      if (from !== null && at === to + 1) { to = at; continue; }
+      if (from !== null) add(from, to);
+      from = to = at;
+    }
+    if (from !== null) add(from, to);
+    return runs;
+  };
 }
 
 /** CI systems commonly append a byte-identical failed retry to the first attempt.
@@ -522,13 +578,12 @@ function analyseWhole(raw, { cluster = true, command = null, route = true } = {}
   // redirects, so a log captured on Windows and piped in later begins with U+FEFF - and
   // every parser anchors on ^, so the first line stops matching. 25 of the fixtures read
   // differently with one in front of them; bun's unresolved import fell to the guess.
-  const base = collapseExactRetries(
-    stripRedrawnCiPrefix(stripCiPrefix(stripAnsi(raw.replace(/^\uFEFF/, ""))))
-      .replace(/\r\n?/g, "\n"));
+  const unbroken = stripRedrawnCiPrefix(stripCiPrefix(stripAnsi(raw.replace(/^\uFEFF/, ""))));
+  const base = collapseExactRetries(unbroken.replace(/\r\n?/g, "\n"));
   // The parsers that could read anything from this log, asked once for the log and every
   // wrapper stripped from it - see src/router.js.
   const extractors = route ? readers(base, EXTRACTORS) : EXTRACTORS;
-  const { text: s, hit, wrappers } = unwrap(base, command, extractors);
+  const { text: s, hit, wrappers, origin } = unwrap(base, command, extractors);
   if (!hit) return null;
   const r = hit.result;
   // dedupe first: it collapses the SAME diagnostic printed twice, so cluster
@@ -543,7 +598,7 @@ function analyseWhole(raw, { cluster = true, command = null, route = true } = {}
     // Which package or build step the output came from is worth keeping, not discarding.
     ...(wrappers.length ? { wrappers } : {}),
   };
-  return setParser(answer, hit.extractor);
+  return setLines(setParser(answer, hit.extractor), linesOfLog(unbroken, origin));
 }
 
 /** `route: false` asks every parser about the log, as the router's own tests need to. */

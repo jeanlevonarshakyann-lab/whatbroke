@@ -152,6 +152,13 @@ function trimEndToLine(buf) {
   return at === -1 ? trimPartialTrailingChar(buf) : buf.subarray(0, at + 1);
 }
 
+/** How many lines end in `buf`. */
+function newlines(buf) {
+  let n = 0;
+  for (let at = buf.indexOf(NL); at !== -1; at = buf.indexOf(NL, at + 1)) n++;
+  return n;
+}
+
 /** Drop the leading partial line, so the tail starts where a line does. */
 function trimStartToLine(buf) {
   const at = buf.indexOf(NL);
@@ -190,6 +197,8 @@ export function createCapture(maxBytes) {
   let pending = Buffer.alloc(0);
   let pendingStart = 0;
   let pendingWasClipped = false;
+  // How many lines have ended so far, which is the line a record starts on.
+  let linesEnded = 0;
 
   const saveDiagnostic = (record) => {
     if (record.start + record.buf.length <= headMax || diagnosticOffsets.has(record.start)) return;
@@ -202,7 +211,7 @@ export function createCapture(maxBytes) {
   const considerLine = (view, start) => {
     // Copy a line before retaining it: a subarray of a large stream chunk would keep
     // the entire parent allocation alive and quietly defeat the memory bound.
-    const record = { start, buf: Buffer.from(view) };
+    const record = { start, buf: Buffer.from(view), line: linesEnded };
     // Decoded as UTF-8, not latin1. A bullet is three bytes - jest's "\u25cf" is
     // e2 97 8f - and latin1 turns those into three separate characters, so a pattern
     // written with the bullet in it can never match. The alternatives for jest's and
@@ -235,6 +244,7 @@ export function createCapture(maxBytes) {
     while ((at = pending.indexOf(NL)) !== -1) {
       const length = at + 1;
       if (!pendingWasClipped) considerLine(pending.subarray(0, length), pendingStart);
+      linesEnded++;
       pending = pending.subarray(length);
       pendingStart += length;
       pendingWasClipped = false;
@@ -314,19 +324,34 @@ export function createCapture(maxBytes) {
       }
 
       const spans = [];
-      if (keptHead.length) spans.push({ start: 0, buf: keptHead });
+      if (keptHead.length) spans.push({ start: 0, buf: keptHead, line: 0 });
       spans.push(...middle);
-      if (keptTail.length) spans.push({ start: tailStart, buf: keptTail });
+      if (keptTail.length) spans.push({ start: tailStart, buf: keptTail, line: linesEnded - newlines(keptTail) });
 
       let text = "";
       let cursor = 0;
       let kept = 0;
+      // Which line of the output each line of the text is: runs of lines kept together.
+      // A marker's lines are the capture's own, and in no run.
+      const segments = [];
+      let lineAt = 0;
       for (const span of spans) {
-        if (span.start > cursor) text += elision(span.start - cursor);
+        if (span.start > cursor) {
+          const marker = elision(span.start - cursor);
+          text += marker;
+          lineAt += marker.split("\n").length - 1;
+        }
         const overlap = Math.max(0, cursor - span.start);
         if (overlap < span.buf.length) {
           const part = span.buf.subarray(overlap);
+          const line = span.line + newlines(span.buf.subarray(0, overlap));
+          const ended = newlines(part);
+          const count = ended + (part[part.length - 1] === NL ? 0 : 1);
+          const last = segments.at(-1);
+          if (last && last.at + last.count === lineAt && last.line + last.count === line) last.count += count;
+          else segments.push({ at: lineAt, line, count });
           text += part.toString("utf8");
+          lineAt += ended;
           kept += part.length;
           cursor = span.start + span.buf.length;
         }
@@ -336,6 +361,16 @@ export function createCapture(maxBytes) {
         text,
         truncated: true,
         elided: totalBytes - kept,
+        /** Lines [start..end] of `text`, counting from 0, as the runs of the output's own
+         *  lines they are - what was elided counted in, and the markers left out. */
+        lines: (start, end) => {
+          const runs = [];
+          for (const { at, line, count } of segments) {
+            const from = Math.max(start, at), to = Math.min(end, at + count - 1);
+            if (from <= to) runs.push({ start: line + from - at, end: line + to - at });
+          }
+          return runs;
+        },
       };
     },
   };

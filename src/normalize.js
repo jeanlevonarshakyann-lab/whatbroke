@@ -231,16 +231,20 @@ function buildkitBlock(text) {
   // "failed to solve" line - so a two-image job reported that both builds failed and
   // nothing about why either did.
   const blocks = [];
+  // Which line of the log each line of the block is, so what a parser reads from the block
+  // can still be pointed at in the log.
+  const origin = [];
   for (let i = 0; i < lines.length; i++) {
     if (!BUILDKIT_RULE.test(lines[i]) || !BUILDKIT_STEP.test(lines[i + 1] ?? "")) continue;
-    const body = [];
+    const body = [], from = [];
     for (let j = i + 2; j < lines.length && !BUILDKIT_RULE.test(lines[j]); j++) {
       // each line keeps the seconds-since-step-start column; the tool never wrote it
       body.push(lines[j].replace(BUILDKIT_ELAPSED, ""));
+      from.push(j);
     }
-    if (body.some((l) => l.trim())) blocks.push(body.join("\n"));
+    if (body.some((l) => l.trim())) { blocks.push(body.join("\n")); for (const j of from) origin.push(j); }
   }
-  return blocks.length ? blocks.join("\n") : null;
+  return blocks.length ? { text: blocks.join("\n"), origin } : null;
 }
 
 /** Every normalisation worth trying on this text. Proposals only - the caller decides.
@@ -257,8 +261,9 @@ export function wrapperCandidates(text) {
   }
   const block = buildkitBlock(text);
   // A region candidate throws away everything outside the block, so it is only ever
-  // taken when nothing real parsed from the whole text - see `better` in index.js.
-  if (block) out.push({ kind: "region", wrapper: "docker buildkit", text: block });
+  // taken when nothing real parsed from the whole text - see `better` in index.js. It is
+  // the one candidate that keeps some lines and not others; `origin` says which.
+  if (block) out.push({ kind: "region", wrapper: "docker buildkit", text: block.text, origin: block.origin });
   const tasks = mixedTaskPrefixes(text);
   if (tasks) out.push(tasks);
   for (const literal of literalCandidates(literalPrefix(text))) {

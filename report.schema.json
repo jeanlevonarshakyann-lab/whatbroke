@@ -143,6 +143,27 @@
           "description": "How many frames were left out of `trace` as the internals of a runtime or a tool.",
           "type": "integer",
           "minimum": 0
+        },
+        "evidence": {
+          "description": "The lines of the output this failure was read from, in order and apart. A line ends at a line feed, and the lines count from 1 in the output as it arrived: all of a pipe's input, or everything a command wrote to stdout and stderr. When the capture was cut short, what was left out still counts, so the numbers are the output's and not the capture's.",
+          "type": "array",
+          "items": { "$ref": "#/$defs/lines" }
+        }
+      }
+    },
+    "lines": {
+      "type": "object",
+      "required": ["start", "end"],
+      "properties": {
+        "start": {
+          "description": "The first line, counting from 1.",
+          "type": "integer",
+          "minimum": 1
+        },
+        "end": {
+          "description": "The last line, which is `start` or after it.",
+          "type": "integer",
+          "minimum": 1
         }
       }
     },

@@ -17,6 +17,10 @@ import { createReport } from "../src/report.js";
 import { renderReport } from "../src/render.js";
 import { githubOutput } from "../src/github.js";
 import { REPORT_SCHEMA, inconsistencies, unknownKeywords, validate } from "./schema.js";
+import { evidenced } from "./evidenced.js";
+import { createCapture } from "../src/capture.js";
+import { stripAnsi } from "../src/util.js";
+import { sourceRange } from "../src/ownership.js";
 
 const here = dirname(fileURLToPath(import.meta.url));
 const root = join(here, "..");
@@ -89,6 +93,8 @@ test("the validator refuses what each keyword in the schema is there to refuse",
     "a comparison withheld for no reason given": (r) => { r.since.goneWithheld = "tired"; },
     "a comparison missing its count": (r) => { delete r.since.gone; },
     "a field nothing documents": (r) => { r.failures[0].origin = "maven"; },
+    "evidence on line 0": (r) => { r.failures[0].evidence = [{ start: 0, end: 1 }]; },
+    "evidence with no end": (r) => { r.failures[0].evidence = [{ start: 3 }]; },
   };
   const fallbackBreaks = {
     "a fallback for a reason there is none of": (r) => { r.fallback.reason = "bored"; },
@@ -127,10 +133,10 @@ test("every fixture's report keeps to the schema, and to itself", () => {
 });
 
 // What a parser returns is what the report's failures are built from: every field the
-// report documents and nothing else, less the two the reader adds - the tool's name on
-// each failure, and the category a parser need not state when it is the parser's own.
+// report documents and nothing else, less what the reader adds - the tool's name and the
+// evidence on each failure, and the category a parser need not state when it is its own.
 test("every parser's own result keeps to what a report is built from", () => {
-  const { tool, ...properties } = REPORT_SCHEMA.$defs.failure.properties;
+  const { tool, evidence, ...properties } = REPORT_SCHEMA.$defs.failure.properties;
   const contract = {
     $defs: {
       failure: { type: "object", properties, required: REPORT_SCHEMA.$defs.failure.required.filter((k) => k !== "tool" && k !== "category") },
@@ -228,6 +234,140 @@ test("the wrapper taken off a log is named in every output", () => {
   assert.deepEqual(plain.wrappers, []);
   assert.doesNotMatch(renderReport(plain, { source: false }), /^    via /m);
   assert.doesNotMatch(githubOutput(plain).summary, /^via /m);
+});
+
+// Every failure says which lines of the output it was read from. What a parser was given
+// is not the output: colour, a CI stamp and a runner's prefix are gone from the front of
+// its lines, a retried run is one copy, a progress bar's redraws are lines of their own,
+// and BuildKit's failing steps may be all that is left of a build. None of that may move
+// the numbers, and a capture cut short must not either.
+const evidenceOf = (report) => [...report.failures, ...(report.others ?? []).flatMap((o) => o.failures)]
+  .map((f) => JSON.stringify(f.evidence));
+
+test("every failure's evidence is the lines of the output it was read from", () => {
+  const wrong = [];
+  let failures = 0;
+  for (const name of names) {
+    const text = read(name);
+    const analysis = analyse(text);
+    const report = createReport({ analysis, raw: text, exitCode: 0, inputMode: "pipe" });
+    const lines = stripAnsi(text).split("\n");
+    const readings = analysis ? [...analysis.failures, ...(analysis.others ?? []).flatMap((o) => o.failures)] : [];
+    for (const [i, f] of [...report.failures, ...(report.others ?? []).flatMap((o) => o.failures)].entries()) {
+      failures++;
+      // Where nothing was taken out of the log or broken in two, the evidence is every place
+      // the failure was read from, one line further on - the first and all the others.
+      if (!text.includes("\r") && !report.wrappers.length) {
+        const range = sourceRange(readings[i]);
+        const places = [range, ...(range.also ?? [])].map(({ start, end }) => ({ start: start + 1, end }))
+          .sort((a, b) => a.start - b.start)
+          .reduce((apart, p) => {
+            const last = apart.at(-1);
+            if (last && p.start <= last.end + 1) last.end = Math.max(last.end, p.end);
+            else apart.push({ ...p });
+            return apart;
+          }, []);
+        if (JSON.stringify(f.evidence) !== JSON.stringify(places)) wrong.push(`${name}: ${JSON.stringify(f.evidence)} for places ${JSON.stringify(places)}`);
+      }
+      const said = f.evidence.flatMap(({ start, end }) => lines.slice(start - 1, end));
+      if (f.evidence.some(({ end }) => end > lines.length)) wrong.push(`${name}: ${JSON.stringify(f.evidence)} of ${lines.length} lines`);
+      else if (!evidenced(f, said, { start: 0, end: said.length })) {
+        wrong.push(`${name}: lines ${JSON.stringify(f.evidence)} say nothing of ${JSON.stringify([f.file, f.code, f.message])}`);
+      }
+    }
+  }
+  assert.ok(failures > 1000, `only ${failures} failures checked`);
+  assert.deepEqual(wrong.slice(0, 8), [], `${wrong.length} failures`);
+});
+
+test("what is done to a log before it is read does not move its evidence", () => {
+  const E = String.fromCharCode(27), CR = String.fromCharCode(13);
+  const dressed = {
+    "with CRLF line endings": (t) => t.replace(/\n/g, CR + "\n"),
+    "coloured": (t) => t.split("\n").map((l) => (l ? `${E}[31m${l}${E}[0m` : l)).join("\n"),
+    "stamped by CI": (t) => t.split("\n").map((l) => `2026-09-14T10:00:00.1234567Z ${l}`).join("\n"),
+    "prefixed by a monorepo runner": (t) => t.split("\n").map((l) => `api:test: ${l}`).join("\n"),
+    "retried, word for word": (t) => (t.endsWith("\n") ? `${t}${t}` : `${t}\n${t}`),
+  };
+  // Where the parser read each failure, in the text it was given. When a dressed log is read
+  // from the same lines of that text as the log as written, its evidence has to be the same
+  // lines of the output - and when it is not, something else changed what was read.
+  const placesRead = (analysis) => JSON.stringify([...analysis.failures, ...(analysis.others ?? []).flatMap((o) => o.failures)]
+    .map((f) => sourceRange(f)));
+  const wrong = [];
+  let compared = 0;
+  for (const name of names.filter((n) => !n.startsWith("docker_buildkit_"))) {
+    const text = read(name);
+    if (text.includes(CR) || text.includes(E)) continue;
+    const analysis = analyse(text);
+    if (!analysis) continue;
+    const plain = createReport({ analysis, raw: text, exitCode: 0, inputMode: "pipe" });
+    for (const [how, dress] of Object.entries(dressed)) {
+      const again = analyse(dress(text));
+      // a dressing that changes what is read is test/normalize.js's business, not this one's
+      if (!again || placesRead(again) !== placesRead(analysis)) continue;
+      const report = createReport({ analysis: again, raw: dress(text), exitCode: 0, inputMode: "pipe" });
+      compared++;
+      if (JSON.stringify(evidenceOf(report)) !== JSON.stringify(evidenceOf(plain))) {
+        wrong.push(`${name} ${how}: ${evidenceOf(report)[0]} where the log as written says ${evidenceOf(plain)[0]}`);
+      }
+    }
+  }
+  assert.ok(compared > 1000, `only ${compared} dressed logs compared`);
+  assert.deepEqual(wrong.slice(0, 8), [], `${wrong.length} logs`);
+});
+
+test("a progress bar's redraws are one line of the output, however many a parser sees", () => {
+  const CR = String.fromCharCode(13);
+  const text = read("pytest_fail.txt");
+  const redrawn = `Collecting 10%${CR}Collecting 50%${CR}Collecting 100%\n${text}`;
+  const shifted = evidenceOf(reportOf(text)).map((e) => JSON.stringify(JSON.parse(e).map(({ start, end }) => ({ start: start + 1, end: end + 1 }))));
+  assert.deepEqual(evidenceOf(reportOf(redrawn)), shifted);
+});
+
+test("evidence read from BuildKit's failing steps is where those steps are in the build", () => {
+  // Without its stamped output the build is only the steps Docker quotes when it fails,
+  // which is lifted out of the log and read on its own.
+  const all = read("docker_buildkit_pytest_fail.txt").split("\n");
+  const quoted = [...all.slice(0, 64), ...all.slice(88)].join("\n");
+  const report = reportOf(quoted);
+  assert.ok(report.wrappers.includes("docker buildkit"), JSON.stringify(report.wrappers));
+  const lines = quoted.split("\n");
+  for (const f of report.failures) {
+    const said = f.evidence.flatMap(({ start, end }) => lines.slice(start - 1, end));
+    assert.ok(said.length && evidenced(f, said, { start: 0, end: said.length }), `${f.title}: ${JSON.stringify(f.evidence)}`);
+    assert.ok(f.evidence.every(({ start }) => start > 64), "evidence outside the quoted steps");
+  }
+});
+
+test("a capture cut short still numbers the output's lines, not its own", () => {
+  const text = read("pytest_fail.txt");
+  const chatter = Array.from({ length: 4000 }, (_, i) => `building module ${i} of 4000`).join("\n");
+  const output = `${chatter}\n${text}`;
+  const capture = createCapture(16 * 1024);
+  capture.push(Buffer.from(output));
+  const { text: captured, truncated, lines } = capture.finish();
+  assert.equal(truncated, true);
+  const report = createReport({ analysis: analyse(captured), raw: captured, exitCode: 0, inputMode: "pipe", truncated, lines });
+  const expected = evidenceOf(reportOf(text)).map((e) => JSON.stringify(JSON.parse(e).map(({ start, end }) => ({ start: start + 4000, end: end + 4000 }))));
+  assert.deepEqual(evidenceOf(report), expected);
+  // and the same through the command line, reading a pipe
+  const cli = JSON.parse(run(["--json", "--max-bytes", String(16 * 1024)], output).stdout);
+  assert.equal(cli.truncated, true);
+  assert.deepEqual(evidenceOf(cli), expected);
+});
+
+test("a control sequence cut off before its end does not take the lines after it", () => {
+  // A window title half written, and a bell three lines later: everything between used to
+  // be read as the title, a diagnostic with it.
+  const E = String.fromCharCode(27), BEL = String.fromCharCode(7);
+  const text = read("flake8_fail.txt").split("\n");
+  const damaged = [`${E}]0;flake8 running`, ...text.slice(0, 2), `${BEL}${text[2]}`, ...text.slice(3)].join("\n");
+  const report = reportOf(damaged);
+  const plain = reportOf(text.join("\n"));
+  assert.equal(report.tool, "flake8");
+  assert.equal(report.failures.length, plain.failures.length);
+  assert.deepEqual(evidenceOf(report), evidenceOf(plain).map((e) => JSON.stringify(JSON.parse(e).map(({ start, end }) => ({ start: start + 1, end: end + 1 })))));
 });
 
 rmSync(cache, { recursive: true, force: true });
