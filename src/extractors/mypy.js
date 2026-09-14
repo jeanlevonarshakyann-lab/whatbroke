@@ -1,4 +1,4 @@
-import { jsonDocuments, jsonDocumentsAt } from "../util.js";
+import { counted, jsonDocuments, jsonDocumentsAt } from "../util.js";
 import { joinSources, withSource } from "../ownership.js";
 const MAX_NOTES = 2;
 const DIAGNOSTIC_RE = /^(.+?):(\d+)(?::(\d+))?:[^\S\n]+(error|warning|note):[^\S\n]+(.+?)(?:[^\S\n]+\[([^\]]+)\])?$/;
@@ -101,7 +101,7 @@ export default {
     const summaryMatch = s.match(/^[^\S\n]*Found (\d+) errors? in (\d+) files?/m);
     const summary = summaryMatch
       ? `${summaryMatch[1]} error${summaryMatch[1] === "1" ? "" : "s"} in ${summaryMatch[2]} file${summaryMatch[2] === "1" ? "" : "s"}`
-      : `${failures.length} errors`;
+      : counted(failures.length, "error");
     return {
       tool: "mypy",
       summary: warnings ? `${summary} — ${warnings} warning${warnings > 1 ? "s" : ""} hidden` : summary,

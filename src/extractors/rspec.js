@@ -1,4 +1,4 @@
-import { findJsonDocument, jsonDocumentsAt } from "../util.js";
+import { counted as many, findJsonDocument, jsonDocumentsAt } from "../util.js";
 import { joinSources, withSource } from "../ownership.js";
 const LOCATION_RE = /^[^\S\n]+#[^\S\n]+(.+):(\d+):in\b/;
 // A spec file that raises while being loaded never becomes a numbered example, so it is
@@ -136,7 +136,7 @@ export default {
       : null;
     return {
       tool: "rspec",
-      summary: summaryMatch ? summaryMatch[0] : counted ?? `${failures.length} failures`,
+      summary: summaryMatch ? summaryMatch[0] : counted ?? many(failures.length, "failure"),
       failures,
     };
   },

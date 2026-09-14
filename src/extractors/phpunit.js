@@ -1,4 +1,4 @@
-import { elements, firstElement, lineAt, xmlAttributes, xmlText } from "../util.js";
+import { counted as many, elements, firstElement, lineAt, xmlAttributes, xmlText } from "../util.js";
 import { alsoFrom, joinSources, withSource } from "../ownership.js";
 const LOCATION_RE = /^[^\S\n]*(.+?):(\d+)$/;
 // PHPUnit separates an assertion that did not hold ("failure") from an exception that
@@ -251,7 +251,7 @@ export default {
     if (internal.length) {
       // The internal error is why PHPUnit stopped, so it leads; whatever else the log
       // holds follows it rather than being dropped.
-      const rest = counted.length ? counted.join(", ") : failures.length ? `${failures.length} failures` : "";
+      const rest = counted.length ? counted.join(", ") : failures.length ? many(failures.length, "failure") : "";
       return {
         tool: "phpunit",
         summary: rest ? `error inside PHPUnit — ${rest} elsewhere` : "error inside PHPUnit",
@@ -275,8 +275,8 @@ export default {
     return {
       tool: "phpunit",
       summary: counted.length ? counted.join(", ")
-        : teamcity.results.length && teamcity.count ? `${n} of ${teamcity.count} tests failed`
-        : `${n} failures`,
+        : teamcity.results.length && teamcity.count ? `${n} of ${many(teamcity.count, "test")} failed`
+        : many(n, "failure"),
       failures,
     };
   },

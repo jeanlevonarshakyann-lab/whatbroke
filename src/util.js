@@ -59,6 +59,10 @@ const NOISE = [
 ];
 export const isNoise = (p) => !!p && NOISE.some((re) => re.test(p));
 
+/** A count and a noun that agrees with it: `1 error`, `2 errors`. A headline written from a
+ *  count said "1 errors" wherever a parser had to make its own sentence. */
+export const counted = (n, noun) => `${n} ${noun}${n === 1 ? "" : "s"}`;
+
 export function relPath(p) {
   if (!p) return p;
   const cwd = process.cwd();

@@ -1,4 +1,4 @@
-import { uniqueFailures } from "../util.js";
+import { counted, uniqueFailures } from "../util.js";
 import { withSource } from "../ownership.js";
 
 const PROB_RE = /^[^\S\n]+(\d+):(\d+)[^\S\n]+(error|warning)[^\S\n]+(.+?)\s{2,}([\w@/-]+)[^\S\n]*$/;
@@ -114,7 +114,7 @@ export default {
     const m = s.match(/^[^\S\n]*[✖x][^\S\n]+(\d+ problems? \(.+?\))[^\S\n]*$/m);
     if (m) summary = m[1];
     if (!tableFailures.length && !configFailures.length) return null;
-    if (warnings) summary = `${summary ?? `${tableFailures.length} errors`} — ${warnings} warning${warnings > 1 ? "s" : ""} hidden`;
+    if (warnings) summary = `${summary ?? counted(tableFailures.length, "error")} — ${counted(warnings, "warning")} hidden`;
     // The config error is why eslint stopped, so it leads; anything it did manage to
     // lint before or after follows it rather than being dropped.
     if (configFailures.length) {
@@ -122,7 +122,7 @@ export default {
       // the guarantees suite rejects a headline that reads like nothing happened.
       const why = configFailures[0].code ? "configuration error" : `eslint refused to run — ${configFailures[0].label}`;
       summary = tableFailures.length
-        ? `${why} — ${summary ?? `${tableFailures.length} problems`} elsewhere`
+        ? `${why} — ${summary ?? counted(tableFailures.length, "problem")} elsewhere`
         : why;
     }
     return { tool: "eslint", summary, failures: uniqueFailures([...configFailures, ...tableFailures]) };

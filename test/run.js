@@ -3865,6 +3865,36 @@ try {
   pass++;
 } catch (e) { console.log(`  FAIL caret under a tab\n       ${e.message}`); fail++; }
 
+// A headline a parser writes from a count, rather than copying the tool's, has to agree
+// with it. Five of them said "1 errors" or "1 failures" whenever the count was one: a lone
+// mypy line, a PHPUnit or rspec run whose tally was cut off, a TeamCity stream of one test.
+try {
+  const { EXTRACTORS } = await import("../src/index.js");
+  const fx = (n) => readFileSync(join(here, "fixtures", n), "utf8");
+  const teamcity = fx("phpunit_teamcity_fail.txt").split("\n");
+  const one = {
+    "a lone mypy line": [analyse("b.pyi:1:14: error: Incompatible types in assignment  [assignment]\n"), "1 error"],
+    "PHPUnit with its tally cut off": [analyse(fx("phpunit_error_fail.txt").replace(/^Tests:.*\n/m, "")), "1 failure"],
+    "rspec with its tally cut off": [analyse(fx("rspec_fail.txt")
+      .replace(/^\d+ examples, \d+ failures\n/m, "")
+      .replace(/  2\) [\s\S]*?(?=\nFinished)/, "")
+      .replace(/^rspec .*exp claim\n/m, "")), "1 failure"],
+    "a TeamCity stream of one test": [analyse([teamcity[0].replace("count='3'", "count='1'"), ...teamcity.slice(1, 6),
+      teamcity.find((l) => l.startsWith("##teamcity[testSuiteFinished name='ArithmeticTest"))].join("\n")), "1 of 1 test failed"],
+  };
+  for (const [what, [r, summary]] of Object.entries(one)) {
+    assert.equal(r?.failures.length, 1, `${what}: not one failure`);
+    assert.equal(r.summary, summary, what);
+  }
+  // eslint without its tally, where a warning is counted beside the one error
+  const eslint = EXTRACTORS.find((ex) => ex.name === "eslint");
+  const lint = "/home/dev/js/messy.js\n  1:7  error  'unused' is assigned a value but never used  no-unused-vars\n" +
+    "  4:10  warning  Empty block statement  no-empty\n";
+  assert.equal(eslint.extract(lint).summary, "1 error — 1 warning hidden");
+  console.log("  ok   a count of one takes a noun in the singular");
+  pass++;
+} catch (e) { console.log(`  FAIL singular counts\n       ${e.message}`); fail++; }
+
 // a headline that is the whole diagnosis
 try {
   const { render, setColor } = await import("../src/render.js");
