@@ -17,7 +17,6 @@ import { readFileSync } from "node:fs";
 import { dirname, join } from "node:path";
 import { fileURLToPath } from "node:url";
 import { analyse } from "../src/index.js";
-import { addSourceRanges, ownershipBudget, SOURCE_RANGE, sourceRange } from "../src/ownership.js";
 import { unixLine } from "../src/extractors/stylelint.js";
 import { issueLine } from "../src/extractors/golangci.js";
 import { gccLine } from "../src/extractors/shellcheck.js";
@@ -188,16 +187,17 @@ function tableAndReport(n, fixText = null) {
 }
 
 test("the same message across two tools, most of it on one line", () => {
-  // Every finding was placed by sorting the lines that mention it, and every comparison
-  // in the sort searched the report line - the whole JSON document - again: 2,001
-  // findings, 471 KB, took three minutes.
+  // When ranges were guessed, every finding was placed by sorting the lines that mention
+  // it, and every comparison in the sort searched the report line - the whole JSON
+  // document - again: 2,001 findings, 471 KB, took three minutes. The comparison of the
+  // two tools' readings that ranges decide is still quadratic in principle.
   nearOrdinary(tableAndReport(801));
 });
 
 test("a location search inside a long unbroken token", () => {
-  // Asking whether a line writes `file.ext:line:col` backtracked through every run of path
-  // characters from each position in it; a fix's 5,000-character token cost that per
-  // comparison, per finding.
+  // Guessing a range asked whether a line writes `file.ext:line:col`, which backtracked
+  // through every run of path characters from each position in it; a fix's 5,000-character
+  // token cost that per comparison, per finding.
   nearOrdinary(tableAndReport(51, "x".repeat(5000)));
 });
 
@@ -281,42 +281,6 @@ test("each replacement matches exactly what its pattern matched", () => {
     () => pick(["  ", " ", "\n ", "\r "]) + "at " + pick(["f ", "(", "a (b) ", ""]) + pick(["(", "(("]) + pick(["x.js", "", ":1"]) + ":" + pick(["1", "x"]) + ":" + pick(["2", ""]) + ")" + pick(["", "\n", "\u2028", " "]));
   agrees("surefire tally", testing(/Time elapsed:.*<<<[^\S\n]+(?:FAILURE|ERROR)!/), testing(FAILED_TALLY),
     () => pick(["", "Tests run: 1, ", "x"]) + "Time elapsed:" + pick([" 0.01 s ", "", "\u2028", "\n"]) + pick(["<<<", "<<", ""]) + gap() + pick(["FAILURE!", "ERROR!", "FAIL"]) + pick(["", " -- in T"]));
-});
-
-// ------------------------------------------------------------- the locating budget
-
-const failures = (count) => Array.from({ length: count }, (_, i) => ({ file: `src/f${i}.js`, line: i + 1, message: `problem ${i}` }));
-const log = (lines) => Array.from({ length: lines }, (_, i) => `src/f${i}.js:${i + 1}: problem ${i}`).join("\n");
-
-// The work is the log's length times the distinct failures located, so a budget of ten
-// times the log's length locates ten.
-const text = log(100);
-
-test("ranges are located while the work fits the budget", () => {
-  const r = addSourceRanges(text, { failures: failures(10) }, ownershipBudget(text.length * 10));
-  assert.deepEqual(r.failures.map((f) => sourceRange(f)?.start), [0, 1, 2, 3, 4, 5, 6, 7, 8, 9]);
-});
-
-test("past the budget a range is unknown, not guessed", () => {
-  const r = addSourceRanges(text, { failures: failures(11) }, ownershipBudget(text.length * 10));
-  assert.deepEqual(r.failures.map((f) => sourceRange(f)), Array(11).fill(null));
-});
-
-test("the budget is the whole reading's, not each tool's", () => {
-  // Thirty-six tools that each stayed under a per-call limit were the 36 seconds.
-  const budget = ownershipBudget(text.length * 10);
-  const first = addSourceRanges(text, { failures: failures(6) }, budget);
-  const second = addSourceRanges(text, { failures: failures(5) }, budget);
-  assert.ok(first.failures.every((f) => sourceRange(f)), "the first tool fits");
-  assert.ok(second.failures.every((f) => sourceRange(f) === null), "the second would take the reading past it");
-});
-
-test("a range a parser wrote down itself survives the budget", () => {
-  const own = { file: "src/f0.js", line: 1, message: "problem 0" };
-  Object.defineProperty(own, SOURCE_RANGE, { value: { start: 0, end: 1 }, enumerable: false });
-  const r = addSourceRanges(text, { failures: [own, ...failures(20)] }, ownershipBudget(text.length * 10));
-  assert.deepEqual(sourceRange(r.failures[0]), { start: 0, end: 1 });
-  assert.equal(sourceRange(r.failures[1]), null);
 });
 
 console.log(`\n  ${pass} passed, ${fail} failed`);
