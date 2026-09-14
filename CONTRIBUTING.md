@@ -14,7 +14,8 @@
 5. Add the extractor to `src/extractors/` and register it in `src/index.js`.
    Keep detection specific enough that existing fixtures do not cross-detect, and
    bound what `extract` reads — see "Bound what a parser reads" below.
-6. Add the tool to the README support table and changelog.
+6. Add the tool to the README support table and changelog, and name its row for the
+   parser in `test/support.json`.
 
 An extractor declares itself: `{ name, category, commands, signals, detect, extract }`, where
 `category` is one of `test`, `lint`, `typecheck`, `compile`, `build`, `runtime`,
@@ -50,6 +51,29 @@ grouped across and never enters it. Setting none means the failure clusters on i
 message alone, which is safe but inert.
 Warnings, notes, framework internals, and summary counters should not become
 failures unless they are actionable diagnostics.
+
+## Admitting a tool
+
+A new tool, or a new format of one already read, comes in with all of these. Each is held
+by a test that fails without it, and most of those tests find a new parser or fixture on
+their own - nothing has to be registered with them.
+
+| It comes with | Held by |
+|---|---|
+| a real capture of a failing run, which its parser reads | `test/detectors.js` |
+| a case in its family's file in `test/tools/`, which reads that capture | `test/support.js`, `test/suites.js` |
+| a row in the README's table, named for its parser in `test/support.json` | `test/support.js` |
+| `signals`, the strings a log has to hold for it, or a reason in `test/support.json` why it can have none | `test/support.js`, `test/router.js` |
+| a written range for every failure, on its captures and on damaged logs | `test/evidence.js`, `test/fuzz.js` |
+| a report that keeps to `report.schema.json`, and columns that count from 1 | `test/report.js` |
+| no new claim on another tool's captures | `test/detectors.js`, whose matrix fails on any change until `--update` writes it again, for a review to read |
+| every pair of captures, itself included, read as the two read apart | `test/mixed.js` |
+| a reading that takes time in proportion to the log | `test/bounds.js` |
+| a guess that says it is one, and output it cannot read handed back | `test/guarantees.js`, `test/tools/generic.js`, `test/cli.js` |
+
+What no test can hold: that the capture is real, from the tool, on a machine, and not
+written to look like it - which is the first step above - and that the case says what a
+reader of that tool would want said.
 
 ## Bound what a parser reads
 
