@@ -139,8 +139,16 @@ function sameLocatedDiagnostic(a, b) {
     // both ways says the same thing twice, and only the full stop told them apart.
     return text.replace(/([^ ])\.$/u, "$1");
   };
-  const text = message(a);
-  return text.length > 0 && text === message(b);
+  const text = message(a), other = message(b);
+  if (!text.length || !other.length) return false;
+  if (text === other) return true;
+  // One reporter prints the diff under an assertion and another stops at the assertion:
+  // mocha's spec and xunit reporters write `4 !== 6` and then `-4` and `+6`, and its JSON
+  // report writes the first two lines alone. The same test at the same place, whose
+  // message is the other's with lines added under it, is the same failure told at more
+  // length. Whole lines, so a message that merely begins the same way is not taken.
+  const [shorter, longer] = text.length < other.length ? [text, other] : [other, text];
+  return !!a.title && a.title === b.title && longer.startsWith(`${shorter}\n`);
 }
 
 // How many pairs of readings one log may compare by text before it stops asking.

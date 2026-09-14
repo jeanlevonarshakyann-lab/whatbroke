@@ -15,6 +15,8 @@
 // What bounds this parser is TAP's own plan. A `not ok` line on its own is a sentence
 // several tools write; a plan - `1..3`, exactly once, naming how many tests there are -
 // is TAP declaring the document's shape, and nothing else in the corpus prints one.
+import { alsoFrom, withSource } from "../ownership.js";
+
 const PLAN_RE = /^[^\S\n]*1\.\.(\d+)[^\S\n]*$/m;
 const NOT_OK_RE = /^[^\S\n]*not ok(?:[^\S\n]+(\d+))?[^\S\n]*(?:-[^\S\n]*)?(.*?)[^\S\n]*$/;
 const OK_RE = /^[^\S\n]*ok[^\S\n]+\d+\b/;
@@ -77,38 +79,43 @@ export default {
         (head[1] ? `test ${head[1]}` : "test");
       let file, col, at;
       const got = {}, body = [];
+      // The result line, and its block down to the last line anything was read from.
+      let end = i + 1;
       // The block is everything until TAP's next statement. A result line or the plan
       // ends it, which is what keeps one failure's diagnostic out of the next one's.
       for (let j = i + 1; j < lines.length; j++) {
         if (NOT_OK_RE.test(lines[j]) || OK_RE.test(lines[j]) || PLAN_LINE_RE.test(lines[j])) break;
         if (EPILOGUE_RE.test(lines[j])) break;
         if (lines[j].trim() && !BLOCK_LINE_RE.test(lines[j])) break;
-        if (FAILED_TEST_RE.test(lines[j])) continue;
+        if (FAILED_TEST_RE.test(lines[j])) { end = j + 1; continue; }
         const where = lines[j].match(AT_RE);
-        if (where) { file ??= where[1]; at ??= +where[2]; continue; }
+        if (where) { file ??= where[1]; at ??= +where[2]; end = j + 1; continue; }
         const g = lines[j].match(GOT_RE);
-        if (g) { got.found ??= g[1]; continue; }
+        if (g) { got.found ??= g[1]; end = j + 1; continue; }
         const w = lines[j].match(WANTED_RE);
-        if (w) { got.wanted ??= w[1]; continue; }
+        if (w) { got.wanted ??= w[1]; end = j + 1; continue; }
         const frame = lines[j].match(FRAME_RE);
         if (frame) {
           if (!file && !INTERNAL_RE.test(frame[1])) { file = frame[1]; at = +frame[2]; col = +frame[3]; }
+          end = j + 1;
           continue;
         }
         const t = lines[j].replace(/^[^\S\n]*#[^\S\n]?/, "").trim();
-        if (t && body.length < MAX_MESSAGE_LINES) body.push(t);
+        if (t && body.length < MAX_MESSAGE_LINES) { body.push(t); end = j + 1; }
       }
       // Nothing under the result line - so if this test was named in a diagnostic
       // elsewhere in the log, that is where it said what went wrong.
       const orphan = (!file && !body.length && got.wanted === undefined) ? named.get(name) : undefined;
       if (orphan) { file = orphan.file; at = orphan.line; got.found = orphan.found; got.wanted = orphan.wanted; }
-      failures.push({
+      const failure = withSource({
         file, line: at, col,
         title: name, subject: name, severity: "error",
         message: got.wanted !== undefined && got.found !== undefined
           ? `expected ${got.wanted}, got ${got.found}`
           : (body.join("\n") || name),
-      });
+      }, i, end);
+      // An orphan's facts were read where its harness printed them, too.
+      failures.push(orphan ? alsoFrom(failure, orphan.from, orphan.to) : failure);
     }
     if (!failures.length) return null;
     // TAP's plan is the only count it guarantees, so what passed is what it says minus
@@ -128,15 +135,15 @@ function namedDiagnostics(lines) {
   for (let i = 0; i < lines.length; i++) {
     const head = lines[i].match(FAILED_NAMED_RE);
     if (!head || named.has(head[1])) continue;
-    const found = {};
+    const found = { from: i, to: i + 1 };
     for (let j = i + 1; j < lines.length && j <= i + 6; j++) {
       if (FAILED_NAMED_RE.test(lines[j])) break;
       const where = lines[j].match(AT_RE);
-      if (where) { found.file ??= where[1]; found.line ??= +where[2]; continue; }
+      if (where) { found.file ??= where[1]; found.line ??= +where[2]; found.to = j + 1; continue; }
       const g = lines[j].match(GOT_RE);
-      if (g) { found.found ??= g[1]; continue; }
+      if (g) { found.found ??= g[1]; found.to = j + 1; continue; }
       const w = lines[j].match(WANTED_RE);
-      if (w) { found.wanted ??= w[1]; }
+      if (w) { found.wanted ??= w[1]; found.to = j + 1; }
     }
     if (found.file || found.wanted !== undefined) named.set(head[1], found);
   }

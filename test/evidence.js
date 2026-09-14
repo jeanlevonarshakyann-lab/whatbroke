@@ -39,10 +39,10 @@ const GUESSING = new Set([
   "ava", "babel", "biome", "black", "bun", "bun test", "cargo", "cargo --message-format=json", "clang", "cmake",
   "deno", "deno fmt", "deno lint", "deno test", "docker", "dotnet", "dotnet test", "esbuild",
   "generic", "git", "go", "go test -json", "go vet json", "golangci-lint", "jasmine",
-  "jest", "junit jvm", "jvm", "kubectl", "less", "make", "markdownlint", "mocha", "mocha json", "mocha xunit",
+  "jest", "junit jvm", "jvm", "kubectl", "less", "make", "markdownlint",
   "mypy", "node", "node --test", "npm", "oxlint", "perl", "php", "phpunit", "pip", "playwright", "pnpm",
   "prettier", "pylint", "pyright", "pytest", "python", "rspec", "ruby", "sass", "shellcheck",
-  "stylelint", "swc", "swift", "tap", "tap-text", "terraform", "tsc", "unittest", "vite", "vitest", "webpack",
+  "stylelint", "swc", "swift", "terraform", "tsc", "unittest", "vite", "vitest", "webpack",
   "yamllint", "yarn",
 ]);
 
@@ -57,8 +57,9 @@ for (const name of readdirSync(join(here, "fixtures")).sort()) {
   }
 }
 
-// What a range has to hold to be about its failure: the file's name, the code, or the start
-// of the message - as written, or as JSON or XML would have escaped it.
+// What a range has to hold to be about its failure: the file's name, the code, the name of
+// the test, or the start of the message - as written, or as JSON or XML would have escaped
+// it. A test's result line often says nothing but its name.
 function evidenced(failure, lines, { start, end }) {
   const said = lines.slice(start, end).join("\n");
   const forms = (value) => {
@@ -70,7 +71,8 @@ function evidenced(failure, lines, { start, end }) {
   const holds = (value) => !!value && forms(value).some((form) => said.includes(form));
   const base = failure.file ? String(failure.file).split(/[\\/]/).pop() : null;
   const start16 = String(failure.message ?? "").split("\n")[0].trim().slice(0, 16);
-  return holds(base) || holds(failure.code) || (start16.length >= 6 && holds(start16));
+  const names = [failure.subject, failure.title].map((v) => String(v ?? "").trim()).filter((v) => v.length >= 4);
+  return holds(base) || holds(failure.code) || (start16.length >= 6 && holds(start16)) || names.some(holds);
 }
 
 console.log("\nwhere failures were read from");

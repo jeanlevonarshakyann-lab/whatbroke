@@ -1,4 +1,5 @@
 import { isNoise } from "../util.js";
+import { withSource } from "../ownership.js";
 
 // mocha numbers its failures under a tally, and splits each one over two lines: the
 // suite on the numbered line, the test indented under it with a trailing colon.
@@ -84,20 +85,23 @@ export default {
       const suite = head[2].trim();
       const test = named[1].trim();
 
-      let message = "", code, frames = [];
+      // `last` is the last line the failure was read from: its error, what is kept of the
+      // diff under it, and its stack.
+      let message = "", code, frames = [], last = i + 1;
       for (let j = i + 2; j < lines.length && j <= i + 40; j++) {
         if (HEAD_RE.test(lines[j]) && NAME_RE.test(lines[j + 1] ?? "")) break;
         const f = lines[j].match(FRAME_RE);
-        if (f) { frames.push({ fn: f[1] ?? "<anonymous>", file: f[2], line: +f[3], col: +f[4] }); continue; }
+        if (f) { frames.push({ fn: f[1] ?? "<anonymous>", file: f[2], line: +f[3], col: +f[4] }); last = j; continue; }
         if (frames.length) break;
         const e = lines[j].match(ERROR_RE);
-        if (e && !code) { code = e[1].split(/\s+/)[0]; message = e[2].trim(); continue; }
+        if (e && !code) { code = e[1].split(/\s+/)[0]; message = e[2].trim(); last = j; continue; }
         // the diff mocha prints under an assertion is context, kept briefly. Its legend -
         // `+ expected - actual` - says which sign is which and nothing about this failure,
         // and in the room kept for the diff it took the place of the diff itself.
         if (/^[^\S\n]*\+ expected - actual[^\S\n]*$/.test(lines[j])) continue;
         if (code && lines[j].trim() && message.split("\n").length < MAX_MESSAGE_LINES) {
           message += `\n${lines[j].trim()}`;
+          last = j;
         }
       }
 
@@ -106,7 +110,7 @@ export default {
       // failed is worse than reporting no place at all.
       const mine = frames.filter((f) => !isNoise(f.file) && !/^node:/.test(f.file));
       const at = mine[0];
-      failures.push({
+      failures.push(withSource({
         file: at?.file, line: at?.line, col: at?.col,
         title: suite ? `${suite} ${test}` : test,
         subject: suite ? `${suite} ${test}` : test,
@@ -115,7 +119,7 @@ export default {
         code: undefined,
         trace: mine.length ? mine.slice(0, 4).map((f) => `${f.fn} (${f.file}:${f.line}:${f.col})`) : undefined,
         hiddenFrames: frames.length - mine.length,
-      });
+      }, i, last + 1));
       i += 1;
     }
     }
@@ -132,21 +136,22 @@ export default {
         // reported at syn.test.js:2.
         // Blank lines do not count toward the distance - mocha puts several between its
         // own line and node's - so the window is the next few lines that say anything.
-        let why = null, seen = 0;
+        let why = null, seen = 0, end = at + 1;
         for (let j = at + 1; j < lines.length && seen < 3; j++) {
           if (!lines[j].trim()) continue;
           seen++;
           const m = lines[j].match(ERROR_RE);
-          if (m) { why = m; break; }
+          if (m) { why = m; end = j + 1; break; }
         }
-        failures.push({
+        // mocha's line, and node's error under it when there is one.
+        failures.push(withSource({
           file: load[1], line: +load[2],
           title: why ? why[1] : "failed to load",
           code: why ? why[1] : undefined,
           label: why ? undefined : "failed to load",
           severity: "error",
           message: why ? why[2].trim() : "mocha could not load this file",
-        });
+        }, at, end));
       }
     }
     if (!failures.length) return null;

@@ -13,6 +13,8 @@
 // `node --test` writes TAP too and has its own parser; what tells them apart is the
 // version line, which node does not emit, and node's YAML uses `failureType` and
 // `location` where tap uses `at:` with a nested fileName.
+import { withSource } from "../ownership.js";
+
 const VERSION_RE = /^TAP version \d+[^\S\n]*$/m;
 const NOT_OK_RE = /^[^\S\n]*not ok[^\S\n]+(\d+)[^\S\n]*-?[^\S\n]*(.*?)[^\S\n]*$/;
 const AT_RE = /^[^\S\n]*at:[^\S\n]*$/;
@@ -102,28 +104,33 @@ export default {
       const diff = [];
       let stmt;
       let inAt = false, inDiff = false, inSource = false;
+      // The result line and its YAML block: down to the `...` that closes it, or the last
+      // line anything was read from when the block never closes.
+      let end = i + 1;
       for (let j = i + 1; j < lines.length && j <= i + 40; j++) {
-        if (NOT_OK_RE.test(lines[j]) || END_RE.test(lines[j])) break;
-        if (AT_RE.test(lines[j])) { inAt = true; continue; }
-        if (DIFF_RE.test(lines[j])) { inDiff = true; inSource = false; continue; }
-        if (SOURCE_RE.test(lines[j])) { inSource = true; inDiff = false; continue; }
+        if (NOT_OK_RE.test(lines[j])) break;
+        if (END_RE.test(lines[j])) { end = j + 1; break; }
+        if (AT_RE.test(lines[j])) { inAt = true; end = j + 1; continue; }
+        if (DIFF_RE.test(lines[j])) { inDiff = true; inSource = false; end = j + 1; continue; }
+        if (SOURCE_RE.test(lines[j])) { inSource = true; inDiff = false; end = j + 1; continue; }
         if (inDiff) {
           const d = lines[j].match(DIFF_VALUE_RE);
-          if (d && diff.length < 4) { diff.push(`${d[1]}${d[2]}`); continue; }
+          if (d && diff.length < 4) { diff.push(`${d[1]}${d[2]}`); end = j + 1; continue; }
         }
         if (inSource) {
           // the marked line is the one above the --^ pointer
-          if (MARKER_RE.test(lines[j])) { stmt ??= lines[j - 1]?.trim(); continue; }
+          if (MARKER_RE.test(lines[j])) { stmt ??= lines[j - 1]?.trim(); end = j + 1; continue; }
           continue;
         }
         const f = lines[j].match(FIELD_RE);
         if (!f) continue;
+        end = j + 1;
         // fileName appears both inside `at:` and inside a stack dump; the first wins
         if (field[f[1]] === undefined) field[f[1]] = f[2].trim().replace(/^["']|["']$/g, "");
         if (inAt && f[1] === "columnNumber") inAt = false;
       }
 
-      failures.push({
+      failures.push(withSource({
         file: field.fileName || undefined,
         line: field.lineNumber ? +field.lineNumber : undefined,
         col: field.columnNumber ? +field.columnNumber : undefined,
@@ -136,7 +143,7 @@ export default {
           : (field.found !== undefined && field.wanted !== undefined
               ? `expected ${field.wanted}, got ${field.found}`
               : (m[2] || `test ${m[1]}`)),
-      });
+      }, i, end));
     }
 
     if (!failures.length) return null;

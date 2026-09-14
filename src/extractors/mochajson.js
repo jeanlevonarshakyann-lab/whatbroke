@@ -5,7 +5,8 @@
 //
 // The document is found by its own shape rather than by position: an object carrying
 // `stats` with a failure count, and a `failures` array. A log can hold other JSON.
-import { isNoise, jsonDocuments } from "../util.js";
+import { isNoise, jsonDocuments, jsonDocumentsAt } from "../util.js";
+import { withSource } from "../ownership.js";
 
 const MARKER = /"fullTitle"[^\S\n]*:/;
 // The same frame shape mocha's human reporter is read with, so both point at the line
@@ -20,12 +21,16 @@ function firstUserFrame(lines) {
   return null;
 }
 
+const REPORT = (v) => v && typeof v === "object" && !Array.isArray(v) &&
+  v.stats && Array.isArray(v.failures) && typeof v.stats.failures === "number";
+
 // Every report in the log, not the first: two runs' reports in one log read as one run,
-// and the second run's failures went unreported.
+// and the second run's failures went unreported. Each failure comes with the lines its
+// record was written on.
 function mochaReports(text) {
   if (!MARKER.test(text)) return [];
-  return [...jsonDocuments(text, (v) => v && typeof v === "object" && !Array.isArray(v) &&
-    v.stats && Array.isArray(v.failures) && typeof v.stats.failures === "number")];
+  return [...jsonDocumentsAt(text, REPORT)].map(({ value, where }) =>
+    ({ stats: value.stats, failures: value.failures.map((test) => ({ test, place: where(test) })) }));
 }
 
 // --reporter json-stream writes the run as it happens, one event a line:
@@ -42,15 +47,17 @@ function streamed(text) {
   if (!text.includes('["fail",')) return null;
   const failures = [];
   let end = null;
-  for (const line of text.split("\n")) {
-    const m = line.match(STREAM_RE);
+  const lines = text.split("\n");
+  for (let i = 0; i < lines.length; i++) {
+    const m = lines[i].match(STREAM_RE);
     if (!m) continue;
     let event;
-    try { event = JSON.parse(line); } catch { continue; }
+    try { event = JSON.parse(lines[i]); } catch { continue; }
     const body = event[1];
     if (m[1] === "end") { end = body; continue; }
     if (typeof body?.fullTitle !== "string") continue;
-    failures.push({ ...body, err: { message: typeof body.err === "string" ? body.err : body.err?.message, stack: body.stack } });
+    const test = { ...body, err: { message: typeof body.err === "string" ? body.err : body.err?.message, stack: body.stack } };
+    failures.push({ test, place: { start: i, end: i + 1 } });
   }
   return failures.length ? { failures, stats: end } : null;
 }
@@ -60,13 +67,14 @@ export default {
   category: "test",
   commands: ["mocha"],
 
-  detect: (s) => mochaReports(s).length > 0 || !!streamed(s),
+  // Deciding needs no places, and finding them reads a report a second time.
+  detect: (s) => (MARKER.test(s) && !jsonDocuments(s, REPORT).next().done) || !!streamed(s),
 
   extract(s) {
     const reports = [...mochaReports(s), streamed(s)].filter(Boolean);
     const failed = reports.flatMap((r) => r.failures);
     if (!failed.length) return null;
-    const failures = failed.map((test) => {
+    const failures = failed.map(({ test, place }) => {
       const stack = String(test.err?.stack ?? "");
       // The stack names the line that threw; `file` names the whole test file. The
       // human reporters point at the line, so this points at the same one.
@@ -77,12 +85,12 @@ export default {
       // it - so the two say the same thing once it is gone.
       const message = (String(test.err?.message ?? "").trim() ||
         stack.split("\n")[0]?.trim() || name).replace(/\n[^\S\n]*\n/g, "\n");
-      return {
+      return withSource({
         file: frame?.file ?? test.file ?? undefined,
         line: frame?.line, col: frame?.col,
         title: name, subject: name, severity: "error",
         message,
-      };
+      }, place.start, place.end);
     });
     const passed = reports.reduce((n, r) => n + (Number.isInteger(r.stats?.passes) ? r.stats.passes : 0), 0);
     return {
