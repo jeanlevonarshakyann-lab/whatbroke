@@ -1,4 +1,5 @@
 import { uniqueFailures } from "../util.js";
+import { withSource } from "../ownership.js";
 
 // The column is optional. gcc drops it under -fno-show-column, and older gcc never
 // printed one at all - which left `inc.c:1: fatal error: nope.h: No such file or
@@ -45,7 +46,9 @@ const DRIVER_RE = /^(clang(?:\+\+)?|gcc|g\+\+|cc|ld|cc1(?:plus)?):[^\S\n]+(error
 function clangSarif(text) {
   const failures = [];
   let warnings = 0;
-  for (const line of text.split("\n")) {
+  const lines = text.split("\n");
+  for (let at = 0; at < lines.length; at++) {
+    const line = lines[at];
     const encoded = line.trim();
     if (!encoded.startsWith("{") || !encoded.endsWith("}") || !encoded.includes('"runs"')) continue;
     let report;
@@ -75,12 +78,13 @@ function clangSarif(text) {
           }
         }
         const region = physical?.region;
-        failures.push({
+        // The document is one line of the log.
+        failures.push(withSource({
           ...(file ? { file } : {}),
           ...(Number.isInteger(region?.startLine) ? { line: region.startLine } : {}),
           ...(Number.isInteger(region?.startColumn) ? { col: region.startColumn } : {}),
           title: "error", label: "error", severity: "error", message: result.message.text,
-        });
+        }, at, at + 1));
       }
     }
   }
@@ -103,12 +107,14 @@ export default {
     const sarif = clangSarif(s);
     const failures = [...sarif.failures];
     const warningLines = new Set();
-    for (const line of s.split("\n")) {
+    const lines = s.split("\n");
+    for (let i = 0; i < lines.length; i++) {
+      const line = lines[i];
       const driver = line.match(DRIVER_RE);
       if (driver) {
         // "no input files" only restates the failure above it; the first one is the cause.
         if (!/^no input files$/.test(driver[3])) {
-          failures.push({ title: driver[2], label: driver[2], severity: "error", message: driver[3] });
+          failures.push(withSource({ title: driver[2], label: driver[2], severity: "error", message: driver[3] }, i, i + 1));
         }
         continue;
       }
@@ -118,10 +124,10 @@ export default {
       const code = match[5].match(CODE_RE);
       const message = code ? match[5].replace(CODE_RE, "") : match[5];
       if (match[4] === "warning") { warningLines.add(line); continue; }
-      failures.push({
+      failures.push(withSource({
         file: match[1], line: +match[2], ...(match[3] ? { col: +match[3] } : {}),
         title: code?.[1] ?? match[4], code: code?.[1], label: code ? undefined : match[4], severity: match[4], message,
-      });
+      }, i, i + 1));
     }
     if (!failures.length) return null;
     const rawFailures = failures.length;

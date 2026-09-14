@@ -1,3 +1,5 @@
+import { withSource } from "../ownership.js";
+
 const ERR_RE = /^error(?:\[(E\d+)\])?: (.+)$/;
 const ARROW_RE = /^[^\S\n]*-->[^\S\n]+(.+?):(\d+):(\d+)[^\S\n]*$/;
 const DIFF_CONTEXT_RE = /^[^\S\n]*\d+[^\S\n]+\d+[^\S\n]*\|/;
@@ -97,10 +99,13 @@ export default {
       const pm = lines[i].match(PANIC_RE);
       if (!pm) continue;
       const msg = [];
+      // The panic line and the message under it.
+      let end = i + 1;
       for (let j = i + 1; j < lines.length; j++) {
         const t = lines[j].trim();
         if (!t) { if (msg.length) break; else continue; }
         if (/^note: run with `RUST_BACKTRACE/.test(t) || /^----/.test(t) || /^failures:/.test(t)) break;
+        end = j + 1;
         // Snapshot assertions (snapbox, insta) print a diff whose context lines carry
         // BOTH line numbers and a bar - those are the parts that matched. Keeping them
         // fills the budget before the "-"/"+" lines that say what actually changed.
@@ -108,12 +113,12 @@ export default {
         msg.push(t);
         if (msg.length >= 4) break;
       }
-      failures.push({
+      failures.push(withSource({
         file: pm[2], line: +pm[3], col: +pm[4],
         title: pm[1], subject: pm[1],
         category: panicCategory(),
         severity: "error", message: msg.join("\n"),
-      });
+      }, i, end));
     }
     // A panic used to end the read here. One cargo invocation does not both fail to
     // compile and panic, so there was nothing after it worth scanning - but a CI job
@@ -122,15 +127,15 @@ export default {
     const panics = failures.length;
 
     // --- --message-format=short: one line, location first, no `-->` beneath it ---
-    for (const line of lines) {
+    lines.forEach((line, i) => {
       const m = line.match(SHORT_RE);
-      if (!m || m[4] !== "error") continue;
-      failures.push({
+      if (!m || m[4] !== "error") return;
+      failures.push(withSource({
         file: m[1], line: +m[2], col: +m[3],
         title: m[5] ?? "error", ...(m[5] ? { code: m[5] } : { label: "error" }),
         severity: "error", message: m[6],
-      });
-    }
+      }, i, i + 1));
+    });
 
     // --- compile errors ---
     for (let i = 0; i < lines.length; i++) {
@@ -148,10 +153,13 @@ export default {
       // The rest of a diagnostic - notes, the echoed source, clippy's lint link - trails
       // further, but not indefinitely.
       const DIAGNOSTIC_WINDOW = 40;
+      // The error and the block under it, to the blank line that ends it.
+      let end = i + 1;
       for (let j = i + 1; j < lines.length && j <= i + DIAGNOSTIC_WINDOW && !ERR_RE.test(lines[j]); j++) {
         // rustc ends a diagnostic block with a blank line. Crossing it lets a bare
         // Cargo error borrow a later Clang/Ruff caret or help line in a mixed job.
         if (!lines[j].trim() && j > i + 1) break;
+        if (lines[j].trim()) end = j + 1;
         const am = lines[j].match(ARROW_RE);
         if (am && !STDLIB.test(am[1])) { if (j - i <= LOCATION_WINDOW) loc ??= { file: am[1], line: +am[2], col: +am[3] }; continue; }
         // rustc's inline annotation on the caret line carries the real explanation. It is
@@ -187,7 +195,7 @@ export default {
       // An `error:` with no location, no E-code and no lint behind it is not a rustc
       // diagnostic - it is a line that happens to start with the word.
       if (!loc && !m[1] && !lint && !CARGO_OWN.test(m[2])) continue;
-      failures.push({
+      failures.push(withSource({
         file: loc?.file, line: loc?.line, col: loc?.col,
         // rustc's E-code, or clippy's lint name, is the identity. Where there is
         // neither - a manifest that will not parse - "error" is the constant cargo
@@ -196,7 +204,7 @@ export default {
         title: m[1] ?? lint ?? "", code: m[1] ?? (lint || undefined),
         label: m[1] || lint ? undefined : "error",
         severity: "error", message: [m[2], note].filter(Boolean).join("\n"), stmt,
-      });
+      }, i, end));
     }
 
     if (!failures.length) return null;

@@ -6,7 +6,7 @@
 //    9 |
 //   10 | let x: Int = "hello"
 //      |              `- error: cannot convert value of type 'String' to specified type 'Int'
-import { SOURCE_RANGE } from "../ownership.js";
+import { joinSources, withSource } from "../ownership.js";
 
 const DIAGNOSTIC_RE = /^(.+?):(\d+):(\d+):[^\S\n]+(error|warning|note):[^\S\n]+(.+)$/;
 // Newer swiftc tags a diagnostic with the group it belongs to, which is what you would
@@ -37,7 +37,7 @@ const swiftText = {
     const lines = s.split("\n");
     const failures = [];
     let warnings = 0;
-    const seen = new Set();
+    const seen = new Map();
 
     for (let i = 0; i < lines.length; i++) {
       const line = lines[i];
@@ -46,10 +46,10 @@ const swiftText = {
       if (driver) {
         // swiftc doubles the word when the driver speaks: "error: error opening input
         // file 'x' (No such file or directory)". The second one is the message.
-        failures.push({
+        failures.push(withSource({
           title: driver[1], label: driver[1], severity: "error",
           message: driver[2].replace(/^error:[^\S\n]+/, ""),
-        });
+        }, i, i + 1));
         continue;
       }
 
@@ -83,14 +83,17 @@ const swiftText = {
         const src = lines[j].match(SOURCE_RE);
         if (src && +src[1] === +m[2]) { stmt = src[2].trim(); break; }
       }
+      // The diagnostic and the source it draws in the gutter under it.
+      let end = i + 1;
+      while (end < lines.length && end <= i + 12 && GUTTER_RE.test(lines[end])) end++;
 
       // swiftc reports the same diagnostic once per compilation job, so a file built for
-      // several targets says it several times.
+      // several targets says it several times - each one a place it was read.
       const key = `${m[1]}:${m[2]}:${m[3]}:${message}`;
-      if (seen.has(key)) continue;
-      seen.add(key);
+      if (seen.has(key)) { failures[seen.get(key)] = joinSources(failures[seen.get(key)], withSource({}, i, end)); continue; }
+      seen.set(key, failures.length);
 
-      failures.push({
+      failures.push(withSource({
         file: m[1], line: +m[2], col: +m[3],
         title: group ? group[1] : "compile error",
         // A failure has to say what it is or clustering cannot group it: eight identical
@@ -101,7 +104,7 @@ const swiftText = {
         code: group ? group[1] : undefined,
         label: group ? undefined : "error",
         severity: "error", message, stmt,
-      });
+      }, i, end));
     }
 
     if (!failures.length) return null;
@@ -192,11 +195,9 @@ export default {
       const location = failure.file && failure.line && failure.col
         ? `${failure.file}:${failure.line}:${failure.col}:` : null;
       const owner = records.find(({ value }) => !location || value.output.includes(location));
+      // Read from the record whose output holds it, not from the joined text.
       const copy = { ...failure };
-      if (owner) Object.defineProperty(copy, SOURCE_RANGE, {
-        value: { start: owner.start, end: owner.end }, enumerable: false,
-      });
-      return copy;
+      return owner ? withSource(copy, owner.start, owner.end) : copy;
     });
     return { ...result, failures };
   },

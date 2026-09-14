@@ -14,6 +14,8 @@
 // has one. Its own "FAILED: [code=1] <object>" line restates the failure without adding
 // to it, exactly as make's exit line does. make does have a parser, but only for the
 // failures make itself raises - see src/extractors/make.js for where that line is drawn.
+import { withSource } from "../ownership.js";
+
 const HEAD_RE = /^CMake (Error|Warning|Deprecation Warning)(?:[^\S\n]+at[^\S\n]+(.+?):(\d+)(?:[^\S\n]+\(([^)]+)\))?)?:[^\S\n]*$/;
 // Everything from here down is the run reporting that it gave up.
 const TAIL_RE = /^(?:--[^\S\n]|CMake Generate step failed|Configuring incomplete)/;
@@ -34,20 +36,22 @@ export default {
       const h = lines[i].match(HEAD_RE);
       if (!h) continue;
       const message = [];
+      // The heading and the indented prose under it.
+      let end = i + 1;
       for (let j = i + 1; j < lines.length && message.length < MAX_MESSAGE; j++) {
         if (HEAD_RE.test(lines[j]) || TAIL_RE.test(lines[j])) break;
         // the block is indented; an unindented line has left it
         if (lines[j].trim() && !/^[^\S\n]/.test(lines[j])) break;
-        if (lines[j].trim()) message.push(lines[j].trim());
+        if (lines[j].trim()) { message.push(lines[j].trim()); end = j + 1; }
       }
       if (h[1] !== "Error") { warnings++; continue; }
-      failures.push({
+      failures.push(withSource({
         file: h[2], line: h[3] ? +h[3] : undefined,
         // The command that raised it - add_executable, find_package - is the closest
         // thing CMake gives to a code, and is what you would search for.
         title: h[4] ?? "cmake error", ...(h[4] ? { code: h[4] } : { label: "cmake error" }),
         severity: "error", message: message.join("\n"),
-      });
+      }, i, end));
     }
     if (!failures.length) return null;
     const n = failures.length;

@@ -1,4 +1,5 @@
 import { uniqueFailures } from "../util.js";
+import { alsoFrom, withSource } from "../ownership.js";
 
 const FAIL_RE = /^[^\S\n]*--- (FAIL|SKIP): (\S+)/;
 const PANIC_RE = /^panic: (.+?)(?:[^\S\n]\[recovered.*\])?$/m;
@@ -37,24 +38,26 @@ const RESULT_RE = /^[^\S\n]*--- (PASS|FAIL|SKIP): (\S+)/;
 // as the same test as a TestAdd in the next.
 const TRAILER_RE = /^(?:(?:FAIL|ok)[^\S\n]+\S+[^\S\n]+(?:[\d.]+s|\(cached\))|FAIL|PASS)[^\S\n]*$/;
 
-/** What one test printed: its location, its messages, and a panic's own frame. */
-function details(block) {
+/** What one test printed: its location, its messages, and a panic's own frame - and the
+ *  lines of the log each came from, `at[j]` being where `block[j]` was. */
+function details(block, at) {
   let file, line;
-  const msg = [];
+  const msg = [], used = [];
   for (let j = 0; j < block.length; j++) {
     const lm = block[j].match(LOC_RE);
-    if (lm) { file ??= lm[1]; line ??= +lm[2]; if (lm[3]) msg.push(lm[3]); continue; }
+    if (lm) { file ??= lm[1]; line ??= +lm[2]; if (lm[3]) msg.push(lm[3]); used.push(at[j]); continue; }
     const pm = block[j].match(/^panic: (.+?)(?:\s\[recovered.*\])?$/);
     if (pm) {
       msg.push(`panic: ${pm[1]}`);
+      used.push(at[j]);
       // first goroutine frame that is not runtime/testing
       for (let k = j + 1; k < block.length; k++) {
         const fm = block[k].match(/^\t(.+?):(\d+)(?:\s|$)/);
-        if (fm && !STDLIB.test(fm[1])) { file = fm[1]; line = +fm[2]; break; }
+        if (fm && !STDLIB.test(fm[1])) { file = fm[1]; line = +fm[2]; used.push(at[k]); break; }
       }
     }
   }
-  return { file, line, msg };
+  return { file, line, msg, used };
 }
 
 /** In a verbose log, the lines each failing test printed, keyed by the index of its
@@ -74,10 +77,13 @@ function verboseBlocks(lines) {
     if (r) { if (r[1] === "FAIL") pending.push([i, r[2], seg]); continue; }
     if (TRAILER_RE.test(l)) { current = null; seg = new Map(); continue; }
     if (current == null) continue;
-    if (!seg.has(current)) seg.set(current, []);
-    seg.get(current).push(l);
+    // Each line with where it was: parallel tests interleave, so a test's lines are
+    // not one stretch of the log.
+    if (!seg.has(current)) seg.set(current, { block: [], at: [] });
+    seg.get(current).block.push(l);
+    seg.get(current).at.push(i);
   }
-  for (const [i, name, s] of pending) out.set(i, s.get(name) ?? []);
+  for (const [i, name, s] of pending) out.set(i, s.get(name) ?? { block: [], at: [] });
   return out;
 }
 
@@ -90,13 +96,15 @@ function standalonePanic(lines) {
   for (let i = 0; i < lines.length; i++) {
     const pm = lines[i].match(/^panic: (.+?)(?:[^\S\n]\[recovered.*\])?$/);
     if (!pm) continue;
-    let file, line;
+    let file, line, frame = -1;
     for (let k = i + 1; k < lines.length; k++) {
       const fm = lines[k].match(/^\t(.+?):(\d+)(?:[^\S\n]|$)/);
-      if (fm && !STDLIB.test(fm[1])) { file = fm[1]; line = +fm[2]; break; }
+      if (fm && !STDLIB.test(fm[1])) { file = fm[1]; line = +fm[2]; frame = k; break; }
     }
-    return { file, line, title: "panic", label: "panic", category: "runtime",
-      severity: "error", message: pm[1] };
+    // The panic, and the frame in your code that the dump names.
+    const panic = withSource({ file, line, title: "panic", label: "panic", category: "runtime",
+      severity: "error", message: pm[1] }, i, i + 1);
+    return frame >= 0 ? alsoFrom(panic, frame, frame + 1) : panic;
   }
   return null;
 }
@@ -118,7 +126,7 @@ export default {
 
     // --- compile errors: "./file.go:4:17: cannot use 42 ..." ---
     let vetted = false;
-    for (const l of lines) {
+    lines.forEach((l, i) => {
       const m = l.match(BUILD_RE);
       if (m && !/^\s/.test(l) && !LINTER_TAG.test(l)) {
         if (m[1]) vetted = true;
@@ -126,9 +134,9 @@ export default {
         // in `label` - but the line still needs a name, or it renders as a bare
         // "broken.go:4" that the problem matcher cannot read and CI never annotates.
         // "compile error" is what whatbroke calls it, which is what `title` is for.
-        failures.push({ file: m[2], line: +m[3], col: +m[4], title: "compile error", severity: "error", message: m[5] });
+        failures.push(withSource({ file: m[2], line: +m[3], col: +m[4], title: "compile error", severity: "error", message: m[5] }, i, i + 1));
       }
-    }
+    });
     // Compile errors used to end the read here. `go test ./...` over a package that will
     // not compile and another whose tests fail writes both into one stream - that is one
     // ordinary invocation, not two glued together - and returning here reported "1
@@ -141,17 +149,19 @@ export default {
       if (!/^WARNING: DATA RACE[^\S\n]*$/.test(lines[i])) continue;
       let file, line;
       const what = [];
-      for (let j = i + 1; j < lines.length && !/^={10,}$/.test(lines[j]); j++) {
+      // The warning down to the rule of = signs the race detector closes it with.
+      let j = i + 1;
+      for (; j < lines.length && !/^={10,}$/.test(lines[j]); j++) {
         const op = lines[j].match(/^((?:Previous )?(?:read|write)) at 0x[0-9a-f]+ by (goroutine \d+|main goroutine)/i);
         if (op) { what.push(`${op[1]} by ${op[2]}`); continue; }
         const at = lines[j].match(/^[^\S\n]+(\S+):(\d+) \+0x[0-9a-f]+[^\S\n]*$/);
         if (at && !file && !STDLIB.test(at[1])) { file = at[1]; line = +at[2]; }
       }
       if (!what.length) continue;
-      failures.push({
+      failures.push(withSource({
         file, line, title: "DATA RACE", label: "DATA RACE", category: "test", severity: "error",
         message: what.slice(0, 2).join(", ") + " - the same memory, without synchronisation",
-      });
+      }, i, j < lines.length ? j + 1 : j));
     }
 
     // --- test failures ---
@@ -165,15 +175,19 @@ export default {
       // test that printed nothing of its own - read on from the result line as a plain
       // log is laid out, but never into the next test's frame.
       const own = attributed.get(i);
-      let found = own ? details(own) : { msg: [] };
+      let found = own ? details(own.block, own.at) : { msg: [], used: [] };
       if (!found.msg.length && !found.file) {
-        const ahead = [];
-        for (let j = i + 1; j < lines.length && !FAIL_RE.test(lines[j]) && !FRAME_RE.test(lines[j]); j++) ahead.push(lines[j]);
-        found = details(ahead);
+        const ahead = [], at = [];
+        for (let j = i + 1; j < lines.length && !FAIL_RE.test(lines[j]) && !FRAME_RE.test(lines[j]); j++) { ahead.push(lines[j]); at.push(j); }
+        found = details(ahead, at);
       }
-      const { file, line, msg } = found;
+      const { file, line, msg, used } = found;
       if (!msg.length && !file) continue;
-      failures.push({ file, line, title: name, subject: name, category: "test", severity: "error", message: msg.join("\n") });
+      // The result line, and each line the test's own output was read from - a verbose
+      // log interleaves parallel tests, so those need not sit together.
+      let failure = withSource({ file, line, title: name, subject: name, category: "test", severity: "error", message: msg.join("\n") }, i, i + 1);
+      for (const at of used) failure = alsoFrom(failure, at, at + 1);
+      failures.push(failure);
     }
 
     const distinct = uniqueFailures(failures);

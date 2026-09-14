@@ -13,10 +13,12 @@
 // The rebuilding happens inside the parser, not as a rewrite of the log, so each
 // failure's private source range is still located in the JSON that was actually given.
 import gotest from "./gotest.js";
+import { throughOrigin } from "../ownership.js";
 
 const EVENT = /^[^\S\n]*\{.*"Action"[^\S\n]*:.*\}[^\S\n]*$/;
 
-/** The verbose log a test2json stream was made from, or null if this is not one. */
+/** The verbose log a test2json stream was made from, and the line of the stream each of
+ *  its lines came from - or null if this is not one. */
 function rebuild(s) {
   let events = 0;
   const out = s.split("\n").map((line) => {
@@ -31,7 +33,14 @@ function rebuild(s) {
     return (e.Action === "output" || e.Action === "build-output") && typeof e.Output === "string"
       ? e.Output.replace(/\r?\n$/, "") : "";
   });
-  return events ? out.join("\n") : null;
+  if (!events) return null;
+  // An event's output is one line as a rule; one that holds a line break becomes more.
+  const origin = [];
+  out.forEach((line, i) => {
+    origin.push(i);
+    if (line.includes("\n")) for (let k = line.split("\n").length - 1; k > 0; k--) origin.push(i);
+  });
+  return { text: out.join("\n"), origin };
 }
 
 export default {
@@ -42,7 +51,10 @@ export default {
   detect: (s) => rebuild(s) !== null,
 
   extract(s) {
-    const text = rebuild(s);
-    return text === null ? null : gotest.extract(text);
+    const rebuilt = rebuild(s);
+    const result = rebuilt === null ? null : gotest.extract(rebuilt.text);
+    if (!result) return null;
+    // go's parser says where in the rebuilt log; the events are where in this one.
+    return { ...result, failures: result.failures.map((f) => throughOrigin(f, rebuilt.origin)) };
   },
 };

@@ -1,4 +1,5 @@
-import { jsonDocuments } from "../util.js";
+import { jsonDocuments, jsonDocumentsAt } from "../util.js";
+import { joinSources, withSource } from "../ownership.js";
 // `go vet -json` writes its findings as documents rather than as lines:
 //
 //   {
@@ -24,18 +25,20 @@ import { jsonDocuments } from "../util.js";
 // so the finding carries `printf` or `copylocks` as its code.
 const POSN_RE = /^(.*):(\d+):(\d+)$/;
 
-/** Every finding in the document, grouped by package and then by analyzer. */
-function findings(doc) {
+/** Every finding in the document, grouped by package and then by analyzer - each where
+ *  its own object was written. */
+function findings({ value: doc, where }) {
   const out = [];
   for (const byAnalyzer of Object.values(doc)) {
     for (const [analyzer, list] of Object.entries(byAnalyzer)) {
       for (const d of list) {
         const at = d.posn.match(POSN_RE);
-        out.push({
+        const { start, end } = where(d);
+        out.push(withSource({
           file: at[1], line: +at[2], col: +at[3],
           title: analyzer, code: analyzer, category: "lint", severity: "error",
           message: String(d.message).trim(),
-        });
+        }, start, end));
       }
     }
   }
@@ -74,13 +77,14 @@ export default {
 
   extract(s) {
     const failures = [];
-    const seen = new Set();
-    for (const doc of reports(s)) {
+    const seen = new Map();
+    for (const doc of s.includes('"posn"') ? jsonDocumentsAt(s, REPORT) : []) {
       for (const f of findings(doc)) {
-        // A package can be listed under more than one module path in one run.
+        // A package can be listed under more than one module path in one run - and the
+        // finding was read under each.
         const key = [f.file, f.line, f.col, f.code].join("\u0000");
-        if (seen.has(key)) continue;
-        seen.add(key);
+        if (seen.has(key)) { failures[seen.get(key)] = joinSources(failures[seen.get(key)], f); continue; }
+        seen.set(key, failures.length);
         failures.push(f);
       }
     }

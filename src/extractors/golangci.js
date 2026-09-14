@@ -1,4 +1,5 @@
-import { colonPlaces, elements, jsonDocuments, tailFirst, xmlAttributes, xmlText } from "../util.js";
+import { colonPlaces, elements, jsonDocuments, jsonDocumentsAt, lineAt, tailFirst, xmlAttributes, xmlText } from "../util.js";
+import { withSource } from "../ownership.js";
 // golangci-lint is what a Go CI job usually fails on. Its findings look almost exactly
 // like `go build`'s, and go's parser was claiming them - so a lint run came back as
 // "6 compile errors" from a tool called `go build`, with the linter's name left sitting
@@ -52,7 +53,7 @@ const BREAKDOWN = /^\* [\w-]+: \d+[^\S\n]*$/m;
 // prints after any of them.
 const GO_FILE = /\.go$/;
 const TAB = /^(?:\.[\\/])?(\S+?\.go):(\d+):(\d+)[^\S\n]+([\w-]+)[^\S\n]{2,}(\S.*?)[^\S\n]*$/;
-const CHECKSTYLE_FILE = /<file\b([^>]*)>([\s\S]*?)<\/file>/g;
+const CHECKSTYLE_FILE = /<file\b([^>]*)>([\s\S]*?)<\/file>/dg;
 const CHECKSTYLE_ERROR = /<error\b([^>]*?)(?:\/>|>[\s\S]*?<\/error>)/g;
 const CHECKSTYLE_FILE_ELEMENT = { open: /<file\b/, close: () => "</file>" };
 const CHECKSTYLE_ERROR_ELEMENT = { open: /<error\b/, close: () => "</error>", selfClosing: true };
@@ -76,15 +77,20 @@ const SARIF_MARK = (v) => !!v && typeof v === "object" && Array.isArray(v.runs) 
   v.runs.some((r) => r?.tool?.driver?.name === "golangci-lint");
 const positive = (n) => (Number.isInteger(+n) && +n > 0 ? +n : undefined);
 
-/** The issues of every machine format golangci-lint writes, in `s`. */
-function reported(s, lines) {
+/** The issues of every machine format golangci-lint writes, in `s` - each with the lines
+ *  [from, to) it was read from when `placed`, which deciding whether to claim a log does
+ *  not need and reading a report for them costs. */
+function reported(s, lines, placed = false) {
   const out = [];
+  const documents = (mark) => (placed ? [...jsonDocumentsAt(s, mark)]
+    : [...jsonDocuments(s, mark)].map((value) => ({ value, where: () => ({ start: 0, end: 1 }) })));
+  const inText = (at, length) => ({ from: lineAt(s, at), to: lineAt(s, at + length - 1) + 1 });
   const tallied = TALLY.test(s) && BREAKDOWN.test(s);
   if (tallied) {
-    for (const line of lines) {
+    lines.forEach((line, i) => {
       const m = line.match(TAB);
-      if (m) out.push({ file: m[1], line: +m[2], col: +m[3], code: m[4], message: m[5] });
-    }
+      if (m) out.push({ file: m[1], line: +m[2], col: +m[3], code: m[4], message: m[5], from: i, to: i + 1 });
+    });
   }
   if (tallied && s.includes("<checkstyle")) {
     for (const f of elements(s, CHECKSTYLE_FILE, CHECKSTYLE_FILE_ELEMENT)) {
@@ -93,7 +99,8 @@ function reported(s, lines) {
       for (const e of elements(f[2], CHECKSTYLE_ERROR, CHECKSTYLE_ERROR_ELEMENT)) {
         const a = xmlAttributes(e[1]);
         if (!a.source) continue;
-        out.push({ file, line: positive(a.line), col: positive(a.column), code: a.source, message: String(a.message ?? "").trim() });
+        out.push({ file, line: positive(a.line), col: positive(a.column), code: a.source, message: String(a.message ?? "").trim(),
+          ...inText(f.indices[2][0] + e.index, e[0].length) });
       }
     }
   }
@@ -109,39 +116,43 @@ function reported(s, lines) {
       const said = `${where[1]}:${where[2]}:${where[3]}: `;
       const message = String(failure.message ?? "");
       const stmt = body.match(/^Details: (.*)$/m)?.[1].trim();
+      // The test case, from its opening tag to its failure's closing one.
       out.push({ file: where[1], line: +where[2], col: +where[3], code: test.name,
-        message: (message.startsWith(said) ? message.slice(said.length) : message).trim(), ...(stmt ? { stmt } : {}) });
+        message: (message.startsWith(said) ? message.slice(said.length) : message).trim(), ...(stmt ? { stmt } : {}),
+        ...inText(c.index, c[0].length) });
     }
   }
   if (TEAMCITY_OWN.test(s)) {
-    for (const line of lines) {
+    lines.forEach((line, index) => {
       const m = line.match(TEAMCITY);
-      if (!m) continue;
+      if (!m) return;
       const a = Object.fromEntries([...m[1].matchAll(TEAMCITY_ATTR)].map(([, k, v]) => [k, teamcity(v)]));
-      if (!a.typeId || !a.file) continue;
-      out.push({ file: a.file, line: positive(a.line), code: a.typeId, message: String(a.message ?? "").trim() });
-    }
+      if (!a.typeId || !a.file) return;
+      out.push({ file: a.file, line: positive(a.line), code: a.typeId, message: String(a.message ?? "").trim(), from: index, to: index + 1 });
+    });
   }
-  for (const doc of s.includes('"Issues"') ? jsonDocuments(s, JSON_MARK) : []) {
+  // A record in a report is read from its own object's lines.
+  const record = (where, node) => { const { start, end } = where(node); return { from: start, to: end }; };
+  for (const { value: doc, where } of s.includes('"Issues"') ? documents(JSON_MARK) : []) {
     for (const i of doc.Issues) {
       const stmt = typeof i.SourceLines?.[0] === "string" ? i.SourceLines[0].trim() : undefined;
       out.push({ file: i.Pos.Filename, line: positive(i.Pos.Line), col: positive(i.Pos.Column), code: i.FromLinter,
-        message: String(i.Text ?? "").trim(), ...(stmt ? { stmt } : {}) });
+        message: String(i.Text ?? "").trim(), ...(stmt ? { stmt } : {}), ...record(where, i) });
     }
   }
-  for (const doc of s.includes('"check_name"') ? jsonDocuments(s, CLIMATE_MARK) : []) {
+  for (const { value: doc, where } of s.includes('"check_name"') ? documents(CLIMATE_MARK) : []) {
     for (const d of doc) {
       out.push({ file: d.location.path, line: positive(d.location.lines?.begin), code: d.check_name,
-        message: d.description.slice(d.check_name.length + 2).trim() });
+        message: d.description.slice(d.check_name.length + 2).trim(), ...record(where, d) });
     }
   }
-  for (const doc of s.includes('"golangci-lint"') ? jsonDocuments(s, SARIF_MARK) : []) {
+  for (const { value: doc, where } of s.includes('"golangci-lint"') ? documents(SARIF_MARK) : []) {
     for (const run of doc.runs.filter((r) => r?.tool?.driver?.name === "golangci-lint")) {
       for (const r of run.results ?? []) {
         const at = r?.locations?.[0]?.physicalLocation;
         if (typeof at?.artifactLocation?.uri !== "string" || typeof r.ruleId !== "string") continue;
         out.push({ file: at.artifactLocation.uri, line: positive(at.region?.startLine), col: positive(at.region?.startColumn),
-          code: r.ruleId, message: String(r.message?.text ?? "").trim() });
+          code: r.ruleId, message: String(r.message?.text ?? "").trim(), ...record(where, r) });
       }
     }
   }
@@ -170,19 +181,20 @@ export default {
       const m = issueLine(lines[i]);
       if (!m) continue;
       const stmt = CARETS.test(lines[i + 2] ?? "") ? lines[i + 1].trim() : undefined;
-      failures.push({
+      // The issue, and the source and caret under it when they are there.
+      failures.push(withSource({
         file: m[1], line: +m[2], col: +m[3],
         // The linter that raised it is what you would disable, and what groups a run of
         // findings into one thing to fix.
         title: m[5], code: m[5], severity: "error", message: m[4],
         ...(stmt ? { stmt } : {}),
-      });
+      }, i, stmt ? i + 3 : i + 1));
     }
-    for (const f of reported(s, lines)) {
-      failures.push({
+    for (const f of reported(s, lines, true)) {
+      failures.push(withSource({
         file: f.file, line: f.line, ...(f.col ? { col: f.col } : {}),
         title: f.code, code: f.code, severity: "error", message: f.message, ...(f.stmt ? { stmt: f.stmt } : {}),
-      });
+      }, f.from, f.to));
     }
     if (!failures.length) return null;
     const declared = s.match(TALLY);

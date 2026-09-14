@@ -279,6 +279,28 @@ const MAX_PLACES = 8;
 /** Every range in a range: the first, and the others it was also read from. */
 const placesOf = (range) => (range.also ? [range, ...range.also] : [range]);
 
+/** `places` - in order, apart and not touching - with lines [start, end) among them. Lines
+ *  that touch or overlap one already there are the same stretch of the log, and become one
+ *  place: a test's result line and the message lines under it are one reading, not three. */
+function withPlace(places, { start, end }) {
+  const out = [];
+  let from = start, to = end, added = false;
+  for (const p of places) {
+    if (p.end < from) out.push(p);
+    else if (to < p.start) { if (!added) { out.push({ start: from, end: to }); added = true; } out.push(p); }
+    else { from = Math.min(from, p.start); to = Math.max(to, p.end); }
+  }
+  if (!added) out.push({ start: from, end: to });
+  return out;
+}
+
+/** `failure`, or a copy of it, read from lines [start, end) as well as where it says -
+ *  for a finding whose parts are in two places, like a test's result and the diagnostic
+ *  its harness printed somewhere else. */
+export function alsoFrom(failure, start, end) {
+  return joinSources(failure, withSource({}, start, end));
+}
+
 /** One diagnosis read in two places is kept once, and keeps both places.
  *
  *  A parser that reads one run printed two ways keeps one reading of each finding. A
@@ -287,28 +309,40 @@ const placesOf = (range) => (range.also ? [range, ...range.also] : [range]);
  *  concise lines, and flake8, reading those same concise lines, reported them again.
  *
  *  Returns `kept`, or a copy of it that carries the places `dropped` was read from as
- *  well. A guessed range is left as it is - a guess is about one line, and joining two
- *  would make both into claims. */
-/** `failure`, or a copy of it, read from lines [start, end) as well as where it says -
- *  for a finding whose parts are in two places, like a test's result and the diagnostic
- *  its harness printed somewhere else. */
-export function alsoFrom(failure, start, end) {
-  return joinSources(failure, withSource({}, start, end));
-}
-
+ *  well, the earliest first. A guessed range is left as it is - a guess is about one
+ *  line, and joining two would make both into claims. */
 export function joinSources(kept, dropped) {
   const a = Object.getOwnPropertyDescriptor(kept, SOURCE_RANGE);
   const b = Object.getOwnPropertyDescriptor(dropped, SOURCE_RANGE);
   if (!a?.value || !b?.value) return kept;
-  const places = placesOf(a.value).map(({ start, end }) => ({ start, end }));
-  for (const { start, end } of placesOf(b.value)) {
-    if (places.length >= MAX_PLACES) break;
-    if (!places.some((p) => p.start === start && p.end === end)) places.push({ start, end });
+  const had = placesOf(a.value).reduce(withPlace, []);
+  let places = had;
+  for (const place of placesOf(b.value)) {
+    const next = withPlace(places, place);
+    if (next.length > MAX_PLACES) break;
+    places = next;
   }
-  if (places.length === placesOf(a.value).length) return kept;
+  const unchanged = places.length === placesOf(a.value).length &&
+    places.every((p, i) => p.start === placesOf(a.value)[i].start && p.end === placesOf(a.value)[i].end);
+  if (unchanged) return kept;
   const [first, ...also] = places;
   const copy = { ...kept };
-  Object.defineProperty(copy, SOURCE_RANGE, { value: { ...first, also }, enumerable: false, configurable: true });
+  Object.defineProperty(copy, SOURCE_RANGE, { value: also.length ? { ...first, also } : first, enumerable: false, configurable: true });
+  return copy;
+}
+
+/** `failure` read from a text rebuilt out of the log, with its places moved onto the log's
+ *  own lines: `origin[k]` is the line of the log that line k of the rebuilt text came from.
+ *  go test -json is read as the verbose log its events carry, and the lines a failure was
+ *  read from are the events, not the log they rebuild. */
+export function throughOrigin(failure, origin) {
+  const own = Object.getOwnPropertyDescriptor(failure, SOURCE_RANGE);
+  if (!own?.value) return failure;
+  const [first, ...also] = placesOf(own.value)
+    .map(({ start, end }) => ({ start: origin[start], end: origin[end - 1] + 1 }))
+    .reduce(withPlace, []);
+  const copy = { ...failure };
+  Object.defineProperty(copy, SOURCE_RANGE, { value: also.length ? { ...first, also } : first, enumerable: false, configurable: true });
   return copy;
 }
 
