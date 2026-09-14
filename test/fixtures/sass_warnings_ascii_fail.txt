@@ -1,0 +1,40 @@
+DEPRECATION WARNING [import]: Sass @import rules are deprecated and will be removed in Dart Sass 3.0.0.
+
+More info and automated migrator: https://sass-lang.com/d/import
+
+  ,
+1 | @import "good";
+  |         ^^^^^^
+  '
+    warns.scss 1:9  root stylesheet
+
+DEPRECATION WARNING [global-builtin]: Global built-in functions are deprecated and will be removed in Dart Sass 3.0.0.
+Use color.adjust instead.
+
+More info and automated migrator: https://sass-lang.com/d/import
+
+  ,
+3 |   color: lighten(red, 10%);
+  |          ^^^^^^^^^^^^^^^^^
+  '
+    warns.scss 3:10  root stylesheet
+
+DEPRECATION WARNING [color-functions]: lighten() is deprecated. Suggestions:
+
+color.scale($color, $lightness: 20%)
+color.adjust($color, $lightness: 10%)
+
+More info: https://sass-lang.com/d/color-functions
+
+  ,
+3 |   color: lighten(red, 10%);
+  |          ^^^^^^^^^^^^^^^^^
+  '
+    warns.scss 3:10  root stylesheet
+
+Error: Undefined variable.
+  ,
+4 |   width: $missing;
+  |          ^^^^^^^^
+  '
+  warns.scss 4:10  root stylesheet

@@ -1,0 +1,9 @@
+Error: Two forwarded modules both define a variable named $x.
+  ,
+1 | @forward "v1";
+  | ============= original @forward
+2 | @forward "v2";
+  | ^^^^^^^^^^^^^ new @forward
+  '
+  cross/_both.scss 2:1     @use
+  cross/conflict.scss 1:1  root stylesheet

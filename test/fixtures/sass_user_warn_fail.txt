@@ -1,0 +1,9 @@
+WARNING: careful: 2
+    userwarn.scss 1:1  root stylesheet
+
+Error: Undefined variable.
+  ╷
+3 │ .f { width: $nope; }
+  │             ^^^^^
+  ╵
+  userwarn.scss 3:13  root stylesheet

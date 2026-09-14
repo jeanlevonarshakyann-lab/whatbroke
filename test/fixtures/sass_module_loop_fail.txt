@@ -1,0 +1,12 @@
+Error: Module loop: this module is already being loaded.
+  ┌──> cross/_b.scss
+1 │ @use "a";
+  │ ^^^^^^^^ new load
+  ╵
+  ┌──> cross/loop.scss
+1 │ @use "a";
+  │ ━━━━━━━━ original load
+  ╵
+  cross/_b.scss 1:1    @use
+  cross/_a.scss 1:1    @use
+  cross/loop.scss 1:1  root stylesheet

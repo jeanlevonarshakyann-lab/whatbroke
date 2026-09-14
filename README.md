@@ -298,7 +298,7 @@ Where the interleaving matters, merge the streams in the command itself:
 | **less** | the class, message, `file:line:col` and the offending line — lessc puts all of it on one line, with the location as prose at the end |
 | **swc** | the message and location miette drew, not the `Failed to compile 1 file with swc.` tally underneath them |
 | **babel** | the file out of the middle of the message and the marked line of its code frame — not the twenty `@babel/parser` frames underneath |
-| **sass** | the message from the head of its box and the location from the foot — reading only the first line found the problem and never where it was |
+| **sass** | the message from the head of its box and the location from the foot — reading only the first line found the problem and never where it was. The box in ASCII too, as `--no-unicode` draws it; the line an error is about where it draws two; a module loop, whose box opens with a file's name; a deprecation made fatal, which explains itself before its box; and its warnings, counted |
 | **webpack** | the module, the line and the explanation — not the forty lines of resolver diary that follow it |
 | **prettier** | which files failed the format check, so a job that exits non-zero on formatting says which ones |
 | **Biome** | the rule path as the code, `file:line:col`, and what is wrong — not the `i` advice lines or the fix diff under them. `parse` and `format` sections count too: they are where biome puts a file it could not read and a file whose formatting differs, and the latter carries no line at all. Severity comes from the glyph biome draws — `×` for what failed, `!` for what it disliked |
