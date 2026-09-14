@@ -1,4 +1,5 @@
-import { elements, findJsonDocument, jsonDocuments, xmlAttributes } from "../util.js";
+import { elements, jsonDocumentsAt, jsonPlaces, lineAt, xmlAttributes } from "../util.js";
+import { joinSources, withSource } from "../ownership.js";
 // ruff emits rustc-style diagnostics: a header line, then " --> file:line:col".
 const HEAD_RE = /^([A-Z]+\d+)(?:[^\S\n]+\[[*x]\])?[^\S\n]+(.+)$/;
 // Not everything ruff reports has a rule code. A file it cannot parse is reported as
@@ -59,9 +60,9 @@ const JSON_LINE_RE = /^\{"cell":.*"filename":.*\}[^\S\n]*$/;
 // description repeating that code in front of the message.
 const PYTHON = /\.(?:py|pyi|pyw|ipynb)$/;
 const CODE = /^[A-Z]+\d+$/;
-const JUNIT_DOC_RE = /<testsuites\b[^>]*\bname="ruff"[^>]*>([\s\S]*?)<\/testsuites>/g;
-const JUNIT_SUITE_RE = /<testsuite\b([^>]*)>([\s\S]*?)<\/testsuite>/g;
-const JUNIT_CASE_RE = /<testcase\b([^>]*?)(?<!\/)>([\s\S]*?)<\/testcase>/g;
+const JUNIT_DOC_RE = /<testsuites\b[^>]*\bname="ruff"[^>]*>([\s\S]*?)<\/testsuites>/dg;
+const JUNIT_SUITE_RE = /<testsuite\b([^>]*)>([\s\S]*?)<\/testsuite>/dg;
+const JUNIT_CASE_RE = /<testcase\b([^>]*?)(?<!\/)>([\s\S]*?)<\/testcase>/dg;
 const JUNIT_FAILURE_RE = /<failure\b([^>]*)/;
 const JUNIT_DOC = { open: /<testsuites\b/, close: () => "</testsuites>" };
 const JUNIT_SUITE = { open: /<testsuite\b/, close: () => "</testsuite>" };
@@ -74,6 +75,7 @@ const GITLAB_MARK = (v) => Array.isArray(v) && v.length > 0 && v.every((d) =>
   String(d.description ?? "").startsWith(`${d.check_name}: `));
 const AZURE_RE = /^##vso\[task\.logissue\b([^\]]*)\](.*)$/;
 const unfile = (uri) => (String(uri).startsWith("file://") ? decodeURIComponent(String(uri).slice(7)) : String(uri));
+const placed = (failure, { start, end }) => withSource(failure, start, end);
 const finding = (file, line, col, code, message) => ({
   file, line, ...(col ? { col } : {}), title: code ?? "ruff", ...(code ? { code } : { label: "ruff" }),
   severity: "error", message,
@@ -83,67 +85,71 @@ const finding = (file, line, col, code, message) => ({
 function reported(s, lines) {
   const out = [];
   if (s.includes('{"cell":')) {
-    for (const line of lines) {
-      if (!JSON_LINE_RE.test(line)) continue;
+    lines.forEach((line, i) => {
+      if (!JSON_LINE_RE.test(line)) return;
       let r;
-      try { r = JSON.parse(line); } catch { continue; }
-      if (isRecord(r)) out.push(fromRecord(r));
-    }
+      try { r = JSON.parse(line); } catch { return; }
+      if (isRecord(r)) out.push(withSource(fromRecord(r), i, i + 1));
+    });
   }
   if (s.includes('name="ruff"')) {
     for (const doc of elements(s, JUNIT_DOC_RE, JUNIT_DOC)) {
+      const inDoc = doc.indices[1][0];
       for (const suite of elements(doc[1], JUNIT_SUITE_RE, JUNIT_SUITE)) {
         const file = xmlAttributes(suite[1]).name;
+        const inSuite = inDoc + suite.indices[2][0];
         for (const c of elements(suite[2], JUNIT_CASE_RE, JUNIT_CASE)) {
           const a = xmlAttributes(c[1]);
           const failure = c[2].match(JUNIT_FAILURE_RE);
           if (!failure || !file) continue;
           const code = String(a.name ?? "").replace(/^org\.ruff\./, "");
-          out.push(finding(file, +a.line || undefined, +a.column || undefined, CODE.test(code) ? code : undefined,
-            String(xmlAttributes(failure[1]).message ?? "").trim()));
+          // The finding is its test case, from the opening tag to the closing one.
+          const at = inSuite + c.index;
+          out.push(withSource(finding(file, +a.line || undefined, +a.column || undefined, CODE.test(code) ? code : undefined,
+            String(xmlAttributes(failure[1]).message ?? "").trim()), lineAt(s, at), lineAt(s, at + c[0].length - 1) + 1));
         }
       }
     }
   }
   if (s.includes('"diagnostics"')) {
-    for (const doc of jsonDocuments(s, RDJSON_MARK)) {
+    for (const { value: doc, where } of jsonDocumentsAt(s, RDJSON_MARK)) {
       for (const d of doc.diagnostics) {
         const start = d?.location?.range?.start;
         if (typeof d?.location?.path !== "string") continue;
-        out.push(finding(d.location.path, start?.line, start?.column, d.code?.value, String(d.message ?? "").trim()));
+        out.push(placed(finding(d.location.path, start?.line, start?.column, d.code?.value, String(d.message ?? "").trim()), where(d)));
       }
     }
   }
   if (s.includes('"ruff"')) {
-    for (const doc of jsonDocuments(s, SARIF_MARK)) {
+    for (const { value: doc, where } of jsonDocumentsAt(s, SARIF_MARK)) {
       for (const run of doc.runs.filter((r) => r?.tool?.driver?.name === "ruff")) {
         for (const r of run.results ?? []) {
           const at = r?.locations?.[0]?.physicalLocation;
           if (typeof at?.artifactLocation?.uri !== "string") continue;
           const fix = r.fixes?.[0]?.description?.text;
-          out.push(finding(unfile(at.artifactLocation.uri), at.region?.startLine, at.region?.startColumn, r.ruleId,
-            [String(r.message?.text ?? "").trim(), fix].filter(Boolean).join("\n")));
+          out.push(placed(finding(unfile(at.artifactLocation.uri), at.region?.startLine, at.region?.startColumn, r.ruleId,
+            [String(r.message?.text ?? "").trim(), fix].filter(Boolean).join("\n")), where(r)));
         }
       }
     }
   }
   if (s.includes('"check_name"')) {
-    for (const doc of jsonDocuments(s, GITLAB_MARK)) {
+    for (const { value: doc, where } of jsonDocumentsAt(s, GITLAB_MARK)) {
       for (const d of doc) {
         const begin = d.location.positions?.begin ?? {};
-        out.push(finding(d.location.path, begin.line ?? d.location.lines?.begin, begin.column, d.check_name,
-          d.description.slice(d.check_name.length + 2).trim()));
+        out.push(placed(finding(d.location.path, begin.line ?? d.location.lines?.begin, begin.column, d.check_name,
+          d.description.slice(d.check_name.length + 2).trim()), where(d)));
       }
     }
   }
   if (s.includes("##vso[task.logissue")) {
-    for (const line of lines) {
+    lines.forEach((line, i) => {
       const m = line.match(AZURE_RE);
-      if (!m) continue;
+      if (!m) return;
       const props = Object.fromEntries(m[1].split(";").map((p) => p.trim().split("=")).filter(([k, v]) => k && v !== undefined));
-      if (!CODE.test(props.code ?? "") || !PYTHON.test(props.sourcepath ?? "")) continue;
-      out.push(finding(props.sourcepath, +props.linenumber || undefined, +props.columnnumber || undefined, props.code, m[2].trim()));
-    }
+      if (!CODE.test(props.code ?? "") || !PYTHON.test(props.sourcepath ?? "")) return;
+      out.push(withSource(finding(props.sourcepath, +props.linenumber || undefined, +props.columnnumber || undefined, props.code, m[2].trim()), i, i + 1));
+    });
   }
   return out;
 }
@@ -152,34 +158,36 @@ function reported(s, lines) {
 function oneLinePerFinding(lines) {
   const failures = [];
   let group = null;
-  for (const line of lines) {
+  for (let i = 0; i < lines.length; i++) {
+    const line = lines[i];
     const gh = line.match(GITHUB_RE);
     if (gh) {
       // "%0A  help: Remove unused import" - the fix advice, on its own line once decoded.
       const text = gh[5].replace(/%0A/g, "\n").replace(/%25/g, "%").split("\n");
       const head = text[0].replace(/^.*?:\d+:\d+:[^\S\n]+[A-Z]+\d+[^\S\n]*/, "").trim();
       const help = text.slice(1).map((l) => l.replace(/^[^\S\n]*help:[^\S\n]*/, "").trim()).filter(Boolean);
-      failures.push({
+      failures.push(withSource({
         file: gh[2], line: +gh[3], col: +gh[4],
         title: gh[1], code: gh[1], severity: "error",
         message: [head, ...help].filter(Boolean).join("\n"),
-      });
+      }, i, i + 1));
       continue;
     }
     const c = line.match(CONCISE_RE);
     if (c) {
-      failures.push({
+      failures.push(withSource({
         file: c[1], line: +c[2], col: +c[3],
         title: c[4], code: c[4], severity: "error", message: c[5].trim(),
-      });
+      }, i, i + 1));
       continue;
     }
     const g = group && line.match(GROUP_ENTRY_RE);
     if (g) {
-      failures.push({
+      // The entry's own line: the file it belongs to is a heading shared with the others.
+      failures.push(withSource({
         file: group, line: +g[1], col: +g[2],
         title: g[3], code: g[3], severity: "error", message: g[4].trim(),
-      });
+      }, i, i + 1));
       continue;
     }
     const f = line.match(GROUP_FILE_RE);
@@ -223,10 +231,10 @@ function arrayAt(text, start) {
     if (c === '"') { inString = true; continue; }
     if (c === "[") depth++;
     else if (c === "]" && --depth === 0) {
-      let parsed;
-      try { parsed = JSON.parse(out.join("")); } catch { return []; }
-      if (!Array.isArray(parsed)) return [];
-      return parsed.filter(isRecord).map(fromRecord);
+      const source = out.join("");
+      try { if (!Array.isArray(JSON.parse(source))) return []; } catch { return []; }
+      const { value, where } = jsonPlaces(text, start, source);
+      return value.filter(isRecord).map((r) => placed(fromRecord(r), where(r)));
     }
   }
   return [];
@@ -251,27 +259,31 @@ export default {
       const h = headerAt(i);
       if (!h) continue;
       const a = lines[i + 1].match(ARROW_RE);
-      let fix = "";
+      let fix = "", end = i + 2;
       for (let j = i + 2; j < lines.length && !headerAt(j); j++) {
         if (!lines[j].trim() || /^Found \d+ errors?\.?$/.test(lines[j])) break;
+        end = j + 1;
         const f = lines[j].match(/^[^\S\n]*help:[^\S\n]*(.+)$/);
         if (f) { fix = f[1]; break; }
       }
-      failures.push({
+      // The header, its location, and the source and help read under them.
+      failures.push(withSource({
         file: a[1], line: +a[2], col: +a[3],
         title: h[1], code: h[1], severity: "error", message: [h[2], fix].filter(Boolean).join("\n"),
-      });
+      }, i, end));
       i++;
     }
     // The other formats are read whatever the default form gave, because one log can
     // hold two ruff runs - `ruff check a; ruff check --output-format=json b` - and
     // reading only the first left the second run's findings out without a word. A
     // finding already reported is not added twice.
-    const seen = new Set(failures.map((f) => `${f.file}\u0000${f.line}\u0000${f.col}\u0000${f.code}`));
+    // ...but where it was read is kept, so another tool reading the same line knows it.
+    const key = (f) => `${f.file}\u0000${f.line}\u0000${f.col}\u0000${f.code}`;
+    const seen = new Map();
+    failures.forEach((f, i) => { if (!seen.has(key(f))) seen.set(key(f), i); });
     for (const f of [...jsonFindings(s), ...(RUFF_SAYS_SO.test(s) ? oneLinePerFinding(lines) : []), ...reported(s, lines)]) {
-      const key = `${f.file}\u0000${f.line}\u0000${f.col}\u0000${f.code}`;
-      if (seen.has(key)) continue;
-      seen.add(key);
+      if (seen.has(key(f))) { failures[seen.get(key(f))] = joinSources(failures[seen.get(key(f))], f); continue; }
+      seen.set(key(f), failures.length);
       failures.push(f);
     }
     if (!failures.length) return null;

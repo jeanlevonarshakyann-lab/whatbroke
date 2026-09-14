@@ -17,13 +17,17 @@
 // object alongside the rule metadata. Requiring a bracketed line meant the second form
 // was not read at all.
 const LOOKS_LIKE = /^[^\S\n]*[[{].*[\]}][^\S\n]*$/;
+import { withSource } from "../ownership.js";
 
 function results(s) {
   // Parsing a document to decide whether to claim it is worth avoiding when the answer
   // is obviously no, and "a bracketed line mentioning filePath" is nearly free.
   if (!s.includes('"filePath"')) return null;
+  // Each file's result, and the line of the report it was read from.
   const out = [];
-  for (const line of s.split("\n")) {
+  const lines = s.split("\n");
+  for (let i = 0; i < lines.length; i++) {
+    const line = lines[i];
     if (!LOOKS_LIKE.test(line) || !line.includes('"filePath"')) continue;
     let parsed;
     try { parsed = JSON.parse(line); } catch { continue; }
@@ -32,7 +36,7 @@ function results(s) {
     if (!list?.length) continue;
     parsed = list;
     if (!parsed.every((r) => r && typeof r.filePath === "string" && Array.isArray(r.messages))) continue;
-    out.push(...parsed);
+    out.push(...parsed.map((file) => ({ file, at: i })));
   }
   return out.length ? out : null;
 }
@@ -49,18 +53,18 @@ export default {
     if (!files) return null;
     const failures = [];
     let warnings = 0;
-    for (const file of files) {
+    for (const { file, at } of files) {
       for (const m of file.messages) {
         if (m.severity !== 2) { if (m.severity === 1) warnings++; continue; }
         // A fatal message is a file eslint could not parse at all. It carries no rule,
         // because no rule ran.
         const rule = typeof m.ruleId === "string" ? m.ruleId : null;
-        failures.push({
+        failures.push(withSource({
           file: file.filePath, line: m.line, col: m.column,
           title: rule ?? (m.fatal ? "parse error" : "error"),
           ...(rule ? { code: rule } : { label: m.fatal ? "parse error" : "error" }),
           severity: "error", message: String(m.message ?? "").trim(),
-        });
+        }, at, at + 1));
       }
     }
     if (!failures.length) return null;

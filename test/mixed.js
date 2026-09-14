@@ -8,7 +8,7 @@
 //
 // `failures` still means "what the winning tool reported" and is unchanged. Everything
 // else arrives under `others`, attributed to the tool that produced it.
-import { readFileSync } from "node:fs";
+import { readFileSync, writeFileSync } from "node:fs";
 import { fileURLToPath } from "node:url";
 import { dirname, join } from "node:path";
 import { spawnSync } from "node:child_process";
@@ -16,7 +16,7 @@ import assert from "node:assert/strict";
 import { isDeepStrictEqual } from "node:util";
 import { readdirSync } from "node:fs";
 import { analyse } from "../src/index.js";
-import { parserOf, sourceRange } from "../src/ownership.js";
+import { parserOf, SOURCE_RANGE, sourceRange } from "../src/ownership.js";
 
 const here = dirname(fileURLToPath(import.meta.url));
 const cli = join(here, "..", "bin", "whatbroke.js");
@@ -124,24 +124,32 @@ test("one diagnosis is never reported under two tools", () => {
 // for EVERY parser that claims the text. A single-tool log paid for all of it and read
 // none of it: 90 eslint problems inside a 100k-line build log cost 4.5s, against 0.56s
 // with the work skipped. The ranges are the same either way; what changed is when.
+//
+// eslint writes its ranges down now, and a range written down costs nothing to ask for, so
+// it can no longer show when a guess is made. mypy's are still guessed: two of its runs,
+// the second over a different package, are 82 failures to place.
 test("a log with one tool in it never pays for source ownership", () => {
   const noise = Array(60000).fill("  vite:build transforming src/components/Widget.tsx +2ms").join("\n");
-  const log = `${noise}\n${fx("eslint_bulk_fail.txt")}`;
+  const mypy = fx("mypy_notes_fail.txt");
+  const log = `${noise}\n${mypy}\n${mypy.replaceAll("src/requests/", "src/sessions/")}`;
 
   const started = Date.now();
   const r = analyse(log);
   const took = Date.now() - started;
 
-  assert.equal(r.tool, "eslint");
-  assert.equal(r.failures.length, 90);
+  assert.equal(r.tool, "mypy");
+  assert.equal(r.failures.length, 82);
   assert.equal(r.others, undefined, "this log holds one tool, so nothing needs a range");
-  // Locating 90 failures in 60k lines costs about as much again as reading the log - 650ms
-  // against 750ms here. That was once seconds, and a bound of 2000ms caught it; on a slow
-  // macOS runner the reading alone now comes close to that and the bound failed runs
-  // that computed nothing eagerly. So the question is asked of the ranges themselves:
-  // asking for them after the read still has to cost a real share of the read. Had they
-  // been computed during it, asking would cost nothing. Both sides of that slow down
-  // together on a slower machine, so the answer does not depend on the machine.
+  assert.ok(r.failures.every((f) => "get" in Object.getOwnPropertyDescriptor(f, SOURCE_RANGE)),
+    "mypy writes its ranges down now, so this measures nothing - use a parser that still guesses");
+  // Locating 82 failures in 60k lines costs a little over half as much again as reading
+  // the log - 440ms against 770ms here, as 90 of eslint's did. That was once seconds, and
+  // a bound of 2000ms caught it; on a slow macOS runner the reading alone now comes close
+  // to that and the bound failed runs that computed nothing eagerly. So the question is
+  // asked of the ranges themselves: asking for them after the read still has to cost a
+  // real share of the read. Had they been computed during it, asking would cost nothing.
+  // Both sides of that slow down together on a slower machine, so the answer does not
+  // depend on the machine.
   const asked = Date.now();
   for (const f of r.failures) sourceRange(f);
   const locating = Date.now() - asked;
@@ -609,6 +617,28 @@ const identity = (f) => JSON.stringify([
   f.severity ?? null, f.message ?? "", f.stmt ?? null, f.trace ?? null,
 ]);
 const identities = (failures) => failures.map(identity).sort();
+
+// The sweep below skips these pairs, because one run said twice is not two runs - and so
+// nothing held them to anything. A table and its JSON report came apart once ranges were
+// written down instead of guessed, every finding was shown twice, and every test stayed
+// green. How many failures each pair reads as is recorded, and changes only on purpose:
+//
+//   node test/mixed.js --update-same-run
+const sameRunPath = join(here, "same-run.json");
+test("one run printed two ways reads as many failures as it did", () => {
+  const current = {};
+  for (const group of SAME_RUN_TWO_ENCODINGS) {
+    for (const a of group) for (const b of group) {
+      if (a !== b) current[`${a} + ${b}`] = allFailures(analyse(`${fx(a)}\n${fx(b)}`)).length;
+    }
+  }
+  if (process.argv.includes("--update-same-run")) writeFileSync(sameRunPath, JSON.stringify(current, null, 2) + "\n");
+  const recorded = JSON.parse(readFileSync(sameRunPath, "utf8"));
+  const changed = [...new Set([...Object.keys(recorded), ...Object.keys(current)])]
+    .filter((pair) => recorded[pair] !== current[pair])
+    .map((pair) => `${pair}: ${recorded[pair]} recorded, ${current[pair]} now`);
+  assert.deepEqual(changed.slice(0, 8), [], `${changed.length} pairs read differently - if that is meant, node test/mixed.js --update-same-run`);
+});
 
 test("different monorepo task prefixes preserve every tool region", () => {
   // These are existing real captures. Only the relay layer is synthesized: one task
