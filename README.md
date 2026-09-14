@@ -194,6 +194,32 @@ Pin `version` to a known npm release for reproducible CI. The action preserves
 the command's exit status and emits file/line annotations when a parser finds
 them.
 
+## What it promises
+
+These hold whatever the log says, and each is a test that fails the day it stops being
+true.
+
+- **The exit code is the command's own**, in every output mode: the shell's code for a
+  signal, and 127 for a command that does not exist. *(test/guarantees.js)*
+- **A failed command never reads as anything else.** A headline over real failures never
+  sounds like success, and a guess says it is one. *(test/guarantees.js, test/run.js)*
+- **Output it cannot read is never swallowed.** The command's output streams as it runs
+  unless you pass `-q` or `--json`, and when nothing in it could be read, the captured
+  output comes back in every mode — printed, in JSON's `fallback.rawOutput`, or in the
+  GitHub summary — up to `--max-bytes`, with a note when it was cut. *(test/cli.js)*
+- **Reading takes time in proportion to the log**, whatever it holds.
+  *(test/bounds.js)*
+- **The directory it runs in is only read**, for the source lines around a failure. The
+  cache `--since-last` keeps and the step summary GitHub Actions names are all it writes.
+  *(test/guarantees.js)*
+
+One limit, stated rather than hidden: when whatbroke runs the command, stdout and stderr
+arrive on two pipes, so their order relative to each other is the order they reached
+whatbroke, not the order the command wrote them. A program that buffers stdout when it is
+not writing to a terminal — Python does, and so do most C programs — can look reordered.
+Where the interleaving matters, merge the streams in the command itself:
+`whatbroke sh -c 'pytest 2>&1'`, or set `PYTHONUNBUFFERED=1` for Python.
+
 ## What it reads
 
 | Tool | What you get |
@@ -618,13 +644,17 @@ Extractors are ~40 lines and self-contained. Drop a file in `src/extractors/`, e
 
 Real captured output only — no hand-written samples. Every parser in here was built against output actually produced on a real machine, which is why they work.
 
-Wanted: `webpack`.
-
 ## Test
 
 ```bash
 npm test
 ```
+
+That runs both halves. `npm run test:fast` is everything but the shredded-log suite and
+runs in a few minutes; `npm run test:heavy` is `test/mixed.js`, which weaves every pair of
+fixtures into one log, and `test/bounds.js`, which feeds each parser logs built to make it
+slow. CI runs the fast half on every platform and Node version, and the heavy half on
+Linux with the oldest and newest Node, and everywhere once a night.
 
 ## License
 
