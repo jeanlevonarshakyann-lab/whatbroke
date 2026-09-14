@@ -35,11 +35,7 @@ const test = (name, fn) => {
 };
 
 // The parsers whose failures still carry a guessed range on at least one fixture.
-const GUESSING = new Set([
-  "docker", "generic", "git", "kubectl", "node",
-  "npm", "pnpm", "shellcheck", "terraform",
-  "yamllint", "yarn",
-]);
+const GUESSING = new Set([]);
 
 // Every parser that claims every fixture, on the text the way analyse hands it over.
 const readings = [];
@@ -53,10 +49,12 @@ for (const name of readdirSync(join(here, "fixtures")).sort()) {
 }
 
 // What a range has to hold to be about its failure: the file's name, the code, the name of
-// the test, or the start of the message - as written, or as JSON or XML would have escaped
-// it. A test's result line often says nothing but its name.
+// the test, or the start or end of a line of the message - as written, or as JSON or XML
+// would have escaped it. A test's result line often says nothing but its name, and a line
+// said twice can differ in front: PHP writes a fatal to its error log as `PHP Parse
+// error:  ...` and to stdout as `Parse error: ...`.
 function evidenced(failure, lines, { start, end }) {
-  const said = lines.slice(start, end).join("\n");
+  const said = lines.slice(start, end).join("\n").replace(/[^\S\n]+/g, " ");
   const forms = (value) => {
     const v = String(value);
     return [v, JSON.stringify(v).slice(1, -1),
@@ -67,9 +65,14 @@ function evidenced(failure, lines, { start, end }) {
   const base = failure.file ? String(failure.file).split(/[\\/]/).pop() : null;
   // A place can hold a later line of the message rather than its first: go's test prints
   // each of its messages on a line of its own, and parallel tests interleave them.
-  const starts = String(failure.message ?? "").split("\n").map((l) => l.trim().slice(0, 16)).filter((l) => l.length >= 6);
+  const messageLines = String(failure.message ?? "").split("\n").map((l) => l.trim().replace(/[^\S\n]+/g, " "));
+  const starts = messageLines.flatMap((l) => [l.slice(0, 16), l.slice(-16)]).filter((l) => l.length >= 6);
   const names = [failure.subject, failure.title].map((v) => String(v ?? "").trim()).filter((v) => v.length >= 4);
-  return holds(base) || holds(failure.code) || starts.some(holds) || names.some(holds);
+  // A message too short to search for - the generic reader's `FAIL` - has to be a whole
+  // line of the range.
+  const whole = String(failure.message ?? "").split("\n").map((l) => l.trim()).filter((l) => l && l.length < 6);
+  const lineIs = (text) => lines.slice(start, end).some((l) => l.trim() === text);
+  return holds(base) || holds(failure.code) || starts.some(holds) || names.some(holds) || whole.some(lineIs);
 }
 
 console.log("\nwhere failures were read from");

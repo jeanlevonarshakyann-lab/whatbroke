@@ -1,4 +1,5 @@
-import { findJsonDocument } from "../util.js";
+import { findJsonDocument, jsonDocumentsAt } from "../util.js";
+import { alsoFrom, withSource } from "../ownership.js";
 // npm's own failures - a missing script, a bad engine, an unreachable registry.
 // Modern npm prefixes every line with "npm error"; older versions used "npm ERR!".
 // Neither starts with the word "error", so the generic fallback never matched them
@@ -43,16 +44,17 @@ export default {
   detect: (s) => /^npm (?:error|ERR!)\s/m.test(s) || report(s) !== null,
 
   extract(s) {
-    let code = "";
+    let code = "", codeAt = -1;
     const msg = [];
-    for (const line of s.split("\n")) {
-      const m = line.match(LINE_RE);
+    const lines = s.split("\n");
+    for (let i = 0; i < lines.length; i++) {
+      const m = lines[i].match(LINE_RE);
       if (!m) continue;
       const t = m[1].trim();
       if (!t) continue;
       const c = t.match(CODE_RE);
-      if (c) { code ||= c[1]; continue; }
-      msg.push(t);
+      if (c) { if (!code) { code = c[1]; codeAt = i; } continue; }
+      msg.push({ text: t, at: i });
     }
     // npm repeats the code in front of every line of the block it belongs to -
     // "npm error 404 Not Found - GET ..." - and prints the bare code on the lines
@@ -63,8 +65,8 @@ export default {
     // HTTP status underneath it. That is the only case where the two differ, and it is
     // bounded to it: EPERM is not stripped down to PERM.
     const repeated = [code, /^E\d+$/.test(code) ? code.slice(1) : null].filter(Boolean);
-    const said = [];
-    for (const line of msg) {
+    const said = [], saidAt = [];
+    for (const { text: line, at } of msg) {
       let without = line;
       for (const token of repeated) {
         if (without === token) { without = ""; break; }
@@ -75,35 +77,41 @@ export default {
       // came off never matched it, and half the message was spent on it.
       if (!without || CHATTER.some((re) => re.test(without))) continue;
       said.push(without);
+      saidAt.push(at);
       if (said.length >= MAX_MESSAGE_LINES) break;
     }
 
     // The document says the same thing, so it is only read when the block is not there.
     // Where both are, the block is what npm showed the person running it.
     if (!said.length) {
-      const doc = report(s);
+      let doc = null, where = null;
+      if (s.includes('"summary"')) for (const found of jsonDocumentsAt(s, REPORT)) { ({ value: doc, where } = found); break; }
       if (!doc) return null;
       const detail = doc.error.detail.split("\n").map((l) => l.trim())
         .filter((l) => l && !CHATTER.some((re) => re.test(l)));
+      const { start, end } = where(doc.error);
       return {
         tool: "npm",
         summary: undefined,
-        failures: [{
+        failures: [withSource({
           title: doc.error.code, code: doc.error.code, severity: "error",
           message: [doc.error.summary.trim(), ...detail].slice(0, MAX_MESSAGE_LINES).join("\n"),
-        }],
+        }, start, end)],
       };
     }
+    // The lines of npm's block the message was read from, and the one that named the code.
+    let failure = withSource({
+      title: code, ...(code ? { code } : { label: "npm" }),
+      severity: "error", message: said.join("\n"),
+    }, saidAt[0], saidAt[0] + 1);
+    for (const at of [...saidAt.slice(1), ...(codeAt >= 0 ? [codeAt] : [])]) failure = alsoFrom(failure, at, at + 1);
     return {
       tool: "npm",
       summary: undefined,
       // npm only sometimes prints a code (ENOENT, ELIFECYCLE). Without one the failure
       // still has to say what it is, or it reads as unclassified and gets filtered as an
       // unanchored claim when it turns up alongside another tool's output.
-      failures: [{
-        title: code, ...(code ? { code } : { label: "npm" }),
-        severity: "error", message: said.join("\n"),
-      }],
+      failures: [failure],
     };
   },
 };

@@ -8,6 +8,8 @@
 //
 // Nothing recognised the klog shape, so that run produced no diagnosis at all - and had
 // it been recognised naively it would have produced five.
+import { joinSources, withSource } from "../ownership.js";
+
 const KLOG_RE = /^[EWF]\d{4}[^\S\n]+[\d:.]+[^\S\n]+\d+[^\S\n]+(\S+?):(\d+)\][^\S\n]*(.*)$/;
 const ERROR_RE = /^(?:error|Error):[^\S\n]+(.+)$/;
 // `error: <anything>` is not kubectl's alone - deno writes "error: Test failed" - so in
@@ -42,21 +44,26 @@ export default {
 
   extract(s) {
     const failures = [];
-    const said = new Set();
+    const said = new Map();
+    let at = 0;
     const push = (f) => {
-      // The klog lines repeat verbatim, once per retry.
+      // The klog lines repeat verbatim, once per retry - each a place it was read.
       const key = f.message;
-      if (!key || said.has(key)) return;
-      said.add(key);
-      failures.push({ severity: "error", ...f });
+      if (!key) return;
+      const failure = withSource({ severity: "error", ...f }, at, at + 1);
+      if (said.has(key)) { failures[said.get(key)] = joinSources(failures[said.get(key)], failure); return; }
+      said.set(key, failures.length);
+      failures.push(failure);
     };
 
-    for (const line of s.split("\n")) {
+    const lines = s.split("\n");
+    for (; at < lines.length; at++) {
+      const line = lines[at];
       const err = line.match(ERROR_RE);
       if (err && KUBE_ISH.test(err[1])) {
-        const at = line.match(IN_MESSAGE_LOC);
+        const where = line.match(IN_MESSAGE_LOC);
         push({
-          file: at?.[1], line: at ? +at[2] : undefined,
+          file: where?.[1], line: where ? +where[2] : undefined,
           title: "error", label: "error", message: clean(err[1]),
         });
         continue;

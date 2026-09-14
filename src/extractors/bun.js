@@ -164,7 +164,9 @@ export default {
         msg.push(err ? err[1] : t);
       }
       from = i + 1;
-      // The block above the "(fail)" line, and the line itself.
+      // The block above the "(fail)" line, and the line itself. A banner below the line -
+      // a log whose lines arrive out of order - leaves no block above it at all.
+      start = Math.min(start, i);
       while (start < i && !lines[start].trim()) start++;
       failures.push(withSource({
         file, line, col, title: (head[1] ?? head[2]), subject: (head[1] ?? head[2]), severity: "error",

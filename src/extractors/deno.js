@@ -222,7 +222,9 @@ function denoJunit(text) {
           col: /^\d+$/.test(test.col) ? +test.col : undefined,
           title: test.name || "test", subject: test.name || "test", severity: "error",
           message: blockMessage(decoded) || usefulMessage(decoded),
-        }, i, end + 1));
+          // A document cut off before its closing tag reads to the end of the log, and no
+          // further.
+        }, i, Math.min(end, lines.length - 1) + 1));
         i = end;
         break;
       }
