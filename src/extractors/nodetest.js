@@ -14,7 +14,7 @@
 // Everything worth showing is in there; the trick is that `error: |-` is a YAML
 // block scalar, so its content is the following lines indented one level deeper.
 import { isNoise, xmlText, xmlAttributes } from "../util.js";
-import { SOURCE_RANGE } from "../ownership.js";
+import { alsoFrom, withSource } from "../ownership.js";
 
 const NOT_OK_RE = /^([^\S\n]*)not ok[^\S\n]+\d+[^\S\n]+-[^\S\n]+(.+?)[^\S\n]*$/;
 const SUBTEST_RE = /^([^\S\n]*)# Subtest:\s/;
@@ -62,10 +62,7 @@ function alternateMessage(lines, start, end) {
   return "test failed";
 }
 
-function rangedFailure(failure, start, end) {
-  Object.defineProperty(failure, SOURCE_RANGE, { value: { start, end }, enumerable: false });
-  return failure;
-}
+const rangedFailure = withSource;
 
 const FILE_TITLE_RE = /\.(?:[cm]?[jt]sx?)$/i;
 
@@ -254,33 +251,38 @@ export default {
 
       let file, line, col, errName = "", failureType;
       const msg = [];
+      // The result line and its YAML block: to the `...` that closes it, or to the last
+      // key read when nothing does.
+      let end = i + 1;
       for (let j = i + 1; j < lines.length && !NOT_OK_RE.test(lines[j]); j++) {
-        if (/^[^\S\n]*\.\.\.[^\S\n]*$/.test(lines[j])) break;
+        if (/^[^\S\n]*\.\.\.[^\S\n]*$/.test(lines[j])) { end = j + 1; break; }
         const type = lines[j].match(FAILURE_TYPE_RE);
-        if (type) { failureType = type[1]; continue; }
+        if (type) { failureType = type[1]; end = j + 1; continue; }
         const loc = lines[j].match(LOCATION_RE);
-        if (loc) { file = loc[1]; line = +loc[2]; col = +loc[3]; continue; }
+        if (loc) { file = loc[1]; line = +loc[2]; col = +loc[3]; end = j + 1; continue; }
         const nm = lines[j].match(NAME_RE);
-        if (nm) { errName = nm[1]; continue; }
+        if (nm) { errName = nm[1]; end = j + 1; continue; }
 
         const block = lines[j].match(ERROR_RE);
         if (block) {
+          end = j + 1;
           // a YAML block scalar: take the lines indented deeper than the key
           const indent = block[1].length;
           for (let k = j + 1; k < lines.length; k++) {
             const text = lines[k];
             const deeper = text.search(/\S/) > indent;
             if (!deeper && text.trim()) break;
-            if (text.trim() && msg.length < MAX_MESSAGE_LINES) msg.push(text.trim());
+            if (text.trim() && msg.length < MAX_MESSAGE_LINES) { msg.push(text.trim()); end = k + 1; }
             j = k;
           }
           continue;
         }
         if (!msg.length && ERROR_INLINE_RE.test(lines[j]) && !ERROR_RE.test(lines[j])) {
           msg.push(lines[j].match(ERROR_INLINE_RE)[1]);
+          end = j + 1;
           continue;
         }
-        if (KEY_RE.test(lines[j])) continue;
+        if (KEY_RE.test(lines[j])) { end = j + 1; continue; }
       }
 
       // A block with none of node's own YAML keys is not node's. `tap` writes TAP 14
@@ -299,11 +301,11 @@ export default {
       // "test failed" is node's own wording for a file that threw before declaring a
       // test, and it says nothing. What actually happened was printed to stderr above
       // the subtest, as TAP comments, and that is the only place it appears.
-      let detail = message;
+      let detail = message, said = -1;
       if (/^(?:test failed|ERR_TEST_FAILURE)$/.test(message.trim())) {
         for (let k = i - 1; k >= 0 && k >= i - 60; k--) {
           const c = lines[k].match(/^#[^\S\n]+((?:[A-Z]\w*)?(?:Error|Exception)(?:[^\S\n]\[[\w_]+\])?: .+)$/);
-          if (c) { detail = c[1]; break; }
+          if (c) { detail = c[1]; said = k; break; }
           if (/^not ok /.test(lines[k])) break;   // a previous failure's block, not ours
         }
       }
@@ -311,7 +313,9 @@ export default {
       const start = scopeStarts.get(head[1].length);
       scopeStarts.delete(head[1].length);
       if (failureType === "subtestsFailed" && start !== undefined && failures.length > start) continue;
-      failures.push({ file, line, col, title: head[2], subject: head[2], severity: "error", message: detail });
+      // ...and the comment above that said what happened, when the block did not.
+      const failure = withSource({ file, line, col, title: head[2], subject: head[2], severity: "error", message: detail }, i, end);
+      failures.push(said >= 0 ? alsoFrom(failure, said, said + 1) : failure);
     }
 
     if (!failures.length && !alternateFailures.length) return null;

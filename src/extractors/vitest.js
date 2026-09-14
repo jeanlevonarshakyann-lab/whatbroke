@@ -1,4 +1,5 @@
-import { elements, firstElement, githubAnnotations, xmlAttributes, xmlText } from "../util.js";
+import { elements, firstElement, githubAnnotations, lineAt, xmlAttributes, xmlText } from "../util.js";
+import { joinSources, withSource } from "../ownership.js";
 const FAIL_RE = /^[^\S\n]*FAIL[^\S\n]+(.+?)[^\S\n]+>[^\S\n]+(.+?)[^\S\n]*$/;
 // A suite that throws before any test is declared cannot be named after a test, so
 // vitest lists it under "Failed Suites" with the file in brackets instead of a test
@@ -58,7 +59,8 @@ function vitestTap(text) {
     if (!TAP_YAML_OPEN_RE.test(lines[i + 1] ?? "")) continue;
     let file, line, col, name, message;
     const compared = {};
-    for (let j = i + 2; j < lines.length && !TAP_YAML_END_RE.test(lines[j]); j++) {
+    let j = i + 2;
+    for (; j < lines.length && !TAP_YAML_END_RE.test(lines[j]); j++) {
       const at = lines[j].match(TAP_AT_RE);
       if (at) { dialect = true; [, file, line, col] = at; continue; }
       const field = lines[j].match(TAP_FIELD_RE);
@@ -71,7 +73,8 @@ function vitestTap(text) {
     // alone, and the file is already carried as the location.
     const title = (head[2] || "test").replace(/[^\S\n]*#[^\S\n]*time=.*$/, "").trim()
       .split(/[^\S\n]+>[^\S\n]+/).pop();
-    failures.push({
+    // The result line and its YAML block, to the `...` that closes it.
+    failures.push(withSource({
       file, line: line ? +line : undefined, col: col ? +col : undefined,
       title, subject: title, severity: "error",
       // The pretty reporter prints the two values under the sentence; TAP carries them
@@ -80,7 +83,7 @@ function vitestTap(text) {
       message: ([name, message].filter(Boolean).join(": ") || title) +
         (compared.expected !== undefined && compared.actual !== undefined
           ? `\n- ${compared.expected}\n+ ${compared.actual}` : ""),
-    });
+    }, i, Math.min(j, lines.length - 1) + 1));
   }
   return dialect && failures.length ? { failures, passed } : null;
 }
@@ -96,7 +99,7 @@ function vitestTap(text) {
 // The document is cut out before it is read. A log can hold two JUnit reports - vitest's
 // beside PHPUnit's or node's - and deciding on the whole log and then reading the whole
 // log is not a bound: it hands vitest everybody else's test cases.
-const VITEST_DOC_RE = /<testsuites\b[^>]*\bname="vitest tests"[^>]*>([\s\S]*?)<\/testsuites>/g;
+const VITEST_DOC_RE = /<testsuites\b[^>]*\bname="vitest tests"[^>]*>([\s\S]*?)<\/testsuites>/dg;
 const VITEST_SUITES = /<testsuites\b[^>]*\bname="vitest tests"/;
 const JUNIT_CASE_RE = /<testcase\b([^>]*?)(?:\/>|>([\s\S]*?)<\/testcase>)/g;
 const JUNIT_FAILURE_RE = /<(failure|error)\b([^>]*?)(?:\/>|>([\s\S]*?)<\/\1>)/;
@@ -132,8 +135,8 @@ function saidIn(body) {
 function vitestJunit(s) {
   if (!VITEST_SUITES.test(s)) return [];
   const out = [];
-  const mine = [...elements(s, VITEST_DOC_RE, VITEST_DOC)].map((d) => d[1]).join("\n");
-  for (const test of elements(mine, JUNIT_CASE_RE, JUNIT_CASE)) {
+  for (const doc of elements(s, VITEST_DOC_RE, VITEST_DOC)) {
+  for (const test of elements(doc[1], JUNIT_CASE_RE, JUNIT_CASE)) {
     if (!test[2]) continue;
     const a = xmlAttributes(test[1]);
     const outcome = firstElement(test[2], JUNIT_FAILURE_RE, JUNIT_FAILURE);
@@ -147,9 +150,12 @@ function vitestJunit(s) {
     // The first line of the body is the message with its class in front of it, which is
     // what the pretty reporter prints; the attribute holds the same text without it.
     const message = saidIn(body) || xmlAttributes(outcome[2]).message || "";
-    out.push({
+    // The test case, from its opening tag to its closing one.
+    const at = doc.indices[1][0] + test.index;
+    out.push(withSource({
       file, line, col, title: a.name, subject: a.name, severity: "error", message,
-    });
+    }, lineAt(s, at), lineAt(s, at + test[0].length - 1) + 1));
+  }
   }
   return out;
 }
@@ -171,9 +177,9 @@ function vitestAnnotations(s) {
       if (at) { file = at[1]; line = +at[2]; col = +at[3]; break; }
     }
     const name = parts.slice(1).join(" > ");
-    out.push({
+    out.push(withSource({
       file, line, col, title: name, subject: name, severity: "error", message: saidIn(body),
-    });
+    }, a.line, a.line + 1));
   }
   return out;
 }
@@ -226,17 +232,21 @@ export default {
       }
       if (!message) continue;
       const stop = Math.min(nextFail[j + 1], nextLoc[j + 1]);
+      // The header down to the assertion, the diff lines kept under it and the location
+      // line that closes it.
+      let end = j + 1;
       if (stop < n && nextFail[j + 1] !== stop) {
         const lm = lines[stop].match(LOC_RE);
         loc = { file: lm[1], line: +lm[2], col: +lm[3] };
+        end = stop + 1;
       }
       const diff = [];
-      for (let k = nextDiff[j + 1]; k < stop && diff.length < 4; k = nextDiff[k + 1]) diff.push(lines[k].trim());
+      for (let k = nextDiff[j + 1]; k < stop && diff.length < 4; k = nextDiff[k + 1]) { diff.push(lines[k].trim()); end = Math.max(end, k + 1); }
       if (suite) unloaded++;
-      failures.push({
+      failures.push(withSource({
         file: loc?.file ?? file, line: loc?.line, col: loc?.col,
         title, subject: title, severity: "error", message: [message, ...diff].join("\n"),
-      });
+      }, i, end));
     }
 
     // "Tests  no tests" is what vitest prints when a suite never got far enough to
@@ -254,14 +264,19 @@ export default {
     // rendering from a second run is the failure itself: same test, same line, same
     // column. The file is compared by its last segment, because TAP prints the absolute
     // path where the pretty reporter prints the one you typed.
+    // One failure rendered twice keeps both places.
+    const addAll = (more) => {
+      const key = (f) => `${base(f.file)}\u0000${f.line}\u0000${f.col}\u0000${f.title}`;
+      const seen = new Map();
+      failures.forEach((f, i) => { if (!seen.has(key(f))) seen.set(key(f), i); });
+      for (const f of more) {
+        if (seen.has(key(f))) failures[seen.get(key(f))] = joinSources(failures[seen.get(key(f))], f);
+        else { seen.set(key(f), failures.length); failures.push(f); }
+      }
+    };
     const tap = vitestTap(s);
     if (tap) {
-      const seen = new Set(failures.map((f) =>
-        `${String(f.file ?? "").split(/[\\/]/).pop()}\u0000${f.line}\u0000${f.col}\u0000${f.title}`));
-      for (const f of tap.failures) {
-        const key = `${String(f.file ?? "").split(/[\\/]/).pop()}\u0000${f.line}\u0000${f.col}\u0000${f.title}`;
-        if (!seen.has(key)) { seen.add(key); failures.push(f); }
-      }
+      addAll(tap.failures);
       summary ??= `${failures.length} failed | ${tap.passed} passed (${failures.length + tap.passed})`;
     }
     // ...and the machine reporters, on the same terms: same test, same line, same
@@ -269,12 +284,7 @@ export default {
     // because they print the absolute path where the pretty reporter prints yours.
     const machine = [...vitestJunit(s), ...vitestAnnotations(s)];
     if (machine.length) {
-      const seen = new Set(failures.map((f) =>
-        `${base(f.file)}\u0000${f.line}\u0000${f.col}\u0000${f.title}`));
-      for (const f of machine) {
-        const key = `${base(f.file)}\u0000${f.line}\u0000${f.col}\u0000${f.title}`;
-        if (!seen.has(key)) { seen.add(key); failures.push(f); }
-      }
+      addAll(machine);
       // Neither reporter prints a tally line of its own.
       summary ??= `${failures.length} failed (${failures.length})`;
     }
@@ -284,15 +294,16 @@ export default {
       // is more than saying nothing.
       const wrote = s.match(REPORT_WRITTEN);
       if (!wrote) return null;
+      const said = lines.findIndex((l) => REPORT_WRITTEN.test(l));
       return {
         tool: "vitest",
         // "a report was written" does not say anything went wrong, and the guarantees
         // suite rejects a headline that reads like nothing did.
         summary: `the run failed and its ${wrote[1]} report is not in this log`,
-        failures: [{
+        failures: [withSource({
           title: "report", label: "report", severity: "error",
           message: `vitest wrote its ${wrote[1]} report to ${wrote[2]}; this log holds none of what it said`,
-        }],
+        }, said, said + 1)],
       };
     }
     const files = s.match(/^[^\S\n]*Test Files[^\S\n]+(.+?)[^\S\n]*$/m);

@@ -1,4 +1,5 @@
 import { isNoise } from "../util.js";
+import { withSource } from "../ownership.js";
 
 // `deno run` and `deno check`, as opposed to `deno test` - which has its own parser and
 // its own shape. Deno writes the word in lower case and puts its frames on file:// URLs:
@@ -71,6 +72,8 @@ export default {
       // became a deno failure at a TypeScript file nothing had reported.
       const FIRST_FRAME = 5;
       const frames = [];
+      // The message, the source deno drew under it, and its frames.
+      let end = i + 1;
       for (let j = i + 1; j < lines.length && j <= i + 12; j++) {
         // A diagnostic cannot own a stack that another diagnostic stands in front of.
         // Bounding the distance was not enough on its own: cargo's "error: could not
@@ -83,12 +86,15 @@ export default {
           if (!frames.length && j - i > FIRST_FRAME) break;
           frames.push({ fn: f[1] ?? "<anonymous>", file: unfile(f[2]), line: +f[3], col: +f[4],
             url: f[2].startsWith("file://") });
+          end = j + 1;
           continue;
         }
         if (frames.length) break;
-        if (!lines[j].trim() || GUTTER_RE.test(lines[j]) || CARET_RE.test(lines[j])) continue;
+        if (!lines[j].trim()) continue;
+        if (GUTTER_RE.test(lines[j]) || CARET_RE.test(lines[j])) { end = j + 1; continue; }
         // Anything else is deno echoing the offending line, which comes before the caret.
         if (j - i > 3) break;
+        end = j + 1;
       }
       const user = frames.filter((f) => !isNoise(f.file));
       const at = user[0] ?? frames[0];
@@ -103,7 +109,7 @@ export default {
       // A module it could not resolve names the missing file as a URL inside the message.
       const message = (check ? check[2] : err[2]).replace(/"file:\/\/(\S+?)"/g, (_, p) => `"${decodeURIComponent(p)}"`);
 
-      failures.push({
+      failures.push(withSource({
         file: at?.file, line: at?.line, col: at?.col,
         title: check ? check[1] : (err[1] ?? "error"),
         code: check ? check[1] : err[1],
@@ -111,7 +117,7 @@ export default {
         severity: "error", message,
         trace: user.slice(0, 4).map((f) => `${f.fn} (${f.file}:${f.line}:${f.col})`),
         hiddenFrames: frames.length - user.length,
-      });
+      }, i, end));
       i += frames.length;
     }
 

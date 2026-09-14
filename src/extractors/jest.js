@@ -1,4 +1,5 @@
 import { githubAnnotations } from "../util.js";
+import { joinSources, withSource } from "../ownership.js";
 // With multiple jest projects the display name comes first: "FAIL jsdom src/a.js".
 // Take the last token, which is always the path.
 const FILE_RE = /^[^\S\n]*(?:FAIL|PASS)[^\S\n]+(?:\S+[^\S\n]+)*?(\S+)[^\S\n]*$/;
@@ -73,10 +74,10 @@ function annotated(s) {
       const am = l.match(FRAME_IN_MESSAGE);
       if (am && !/node_modules|node:internal/.test(am[1])) loc = { file: am[1], line: +am[2], col: +am[3] };
     }
-    out.push({
+    out.push(withSource({
       file: loc?.file ?? a.props.file, line: loc?.line ?? (+a.props.line || undefined), col: loc?.col,
       title: a.props.title, subject: a.props.title, severity: "error", message: msg.join("\n"),
-    });
+    }, a.line, a.line + 1));
   }
   return out;
 }
@@ -118,10 +119,13 @@ export default {
       }
 
       if (!msg.length) continue;
-      failures.push({
+      // The bullet and its block, without the blank lines that close it.
+      let end = j;
+      while (end > i + 1 && !lines[end - 1].trim()) end--;
+      failures.push(withSource({
         file: loc?.file ?? file, line: loc?.line, col: loc?.col,
         title: tm[1], subject: tm[1], severity: "error", message: msg.join("\n"),
-      });
+      }, i, end));
       i = j - 1;
     }
 
@@ -135,21 +139,24 @@ export default {
     // ...and the same failures as the GitHub reporter annotated them. It repeats each
     // one inside a ::group::, so a run read from the group blocks would already have
     // them; a failure read twice is read once.
-    const said = new Set(failures.map((f) => [f.subject, f.file, f.line].join("\u0000")));
+    // Where it was read twice, it keeps both places.
+    const said = new Map();
+    failures.forEach((f, i) => { const key = [f.subject, f.file, f.line].join("\u0000"); if (!said.has(key)) said.set(key, i); });
     for (const f of annotated(s)) {
       const key = [f.subject, f.file, f.line].join("\u0000");
-      if (said.has(key)) continue;
+      if (said.has(key)) { failures[said.get(key)] = joinSources(failures[said.get(key)], f); continue; }
       // A group block whose frame was cut off - by a truncated log, which is exactly
       // when this reporter's two copies stop agreeing - carries the test's name and no
       // location at all. That is the same failure as the annotation naming it, not a
       // second one, so the annotation completes it rather than standing beside it.
-      const partial = failures.find((q) => q.subject === f.subject && q.line === undefined);
-      if (partial) {
-        partial.file = f.file; partial.line = f.line; partial.col = f.col;
-        said.add(key);
+      const partial = failures.findIndex((q) => q.subject === f.subject && q.line === undefined);
+      if (partial >= 0) {
+        Object.assign(failures[partial], { file: f.file, line: f.line, col: f.col });
+        failures[partial] = joinSources(failures[partial], f);
+        said.set(key, partial);
         continue;
       }
-      said.add(key);
+      said.set(key, failures.length);
       failures.push(f);
     }
 

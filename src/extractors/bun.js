@@ -1,4 +1,5 @@
-import { elements, firstElement, isNoise, xmlAttributes, xmlText } from "../util.js";
+import { elements, firstElement, isNoise, lineAt, xmlAttributes, xmlText } from "../util.js";
+import { joinSources, withSource } from "../ownership.js";
 
 // node writes stack paths as file:// URLs when a module throws; bun writes plain paths,
 // but a bun process running an ESM entry can produce either.
@@ -62,7 +63,7 @@ const NO_BLOCK = "bun reported this test as failed; its output is not in this lo
 // JUnit is a shape every runner writes, so the bound is the suite bun names itself. The
 // suites nest - a describe block inside a file - and cases hang off both levels, so the
 // document is read whole rather than a level at a time.
-const BUN_DOC_RE = /<testsuites\b[^>]*\bname="bun test"[^>]*>([\s\S]*?)<\/testsuites>/g;
+const BUN_DOC_RE = /<testsuites\b[^>]*\bname="bun test"[^>]*>([\s\S]*?)<\/testsuites>/dg;
 const BUN_SUITES = /<testsuites\b[^>]*\bname="bun test"/;
 const CASE_RE = /<testcase\b([^>]*?)(?:\/>|>([\s\S]*?)<\/testcase>)/g;
 const OUTCOME_RE = /<(failure|error)\b([^>]*?)(?:\/>|>([\s\S]*?)<\/\1>)/;
@@ -74,8 +75,8 @@ const OUTCOME = { open: /<(failure|error)\b/, close: (name) => `</${name}>`, sel
 function junitCases(s) {
   if (!BUN_SUITES.test(s)) return [];
   const out = [];
-  const mine = [...elements(s, BUN_DOC_RE, DOC)].map((d) => d[1]).join("\n");
-  for (const test of elements(mine, CASE_RE, CASE)) {
+  for (const doc of elements(s, BUN_DOC_RE, DOC)) {
+  for (const test of elements(doc[1], CASE_RE, CASE)) {
     const body = test[2] ?? "";
     const outcome = firstElement(body, OUTCOME_RE, OUTCOME);
     if (!outcome) continue;
@@ -84,14 +85,17 @@ function junitCases(s) {
     // The describe block is the classname, and bun's own reporter writes the two with a
     // chevron between them. A test declared outside one has no classname at all.
     const name = [a.classname, a.name].filter(Boolean).join(" > ");
-    out.push({
+    // The test case, from its opening tag to its closing one.
+    const at = doc.indices[1][0] + test.index;
+    out.push(withSource({
       file: a.file, line: /^\d+$/.test(a.line) ? +a.line : undefined,
       // The test's name is what identifies it; the outcome's `type` is a class name
       // with nothing behind it in this format, and a failure carries one handle or the
       // other, never both.
       title: name, subject: name, severity: "error",
       message: detail || NO_BLOCK,
-    });
+    }, lineAt(s, at), lineAt(s, at + test[0].length - 1) + 1));
+  }
   }
   return out;
 }
@@ -160,20 +164,23 @@ export default {
         msg.push(err ? err[1] : t);
       }
       from = i + 1;
-      failures.push({
+      // The block above the "(fail)" line, and the line itself.
+      while (start < i && !lines[start].trim()) start++;
+      failures.push(withSource({
         file, line, col, title: (head[1] ?? head[2]), subject: (head[1] ?? head[2]), severity: "error",
         // A failure whose block is not in the log still happened. Saying so is the
         // whole of what the log supports; taking the next test's block is not.
         message: msg.length ? msg.join("\n") : NO_BLOCK,
-      });
+      }, start, i + 1));
     }
 
     // ...and the document, when a job kept that as well as - or instead of - the
     // console output. A test already read from the console is not read again.
-    const said = new Set(failures.map((f) => f.subject));
+    const said = new Map();
+    failures.forEach((f, i) => { if (!said.has(f.subject)) said.set(f.subject, i); });
     for (const f of junitCases(s)) {
-      if (said.has(f.subject)) continue;
-      said.add(f.subject);
+      if (said.has(f.subject)) { failures[said.get(f.subject)] = joinSources(failures[said.get(f.subject)], f); continue; }
+      said.set(f.subject, failures.length);
       failures.push(f);
     }
 
@@ -258,16 +265,17 @@ export const bunRuntime = {
 
     // The echoed source sits directly above the message, numbered, with a caret under
     // the column. Only those two shapes, so the walk cannot reach into another tool.
-    let stmt;
+    let stmt, top = at;
     if (where) {
       for (let j = at - 1; j >= 0 && j >= at - 8; j--) {
         if (!RUNTIME_SRC_RE.test(lines[j]) && !CARET_RE.test(lines[j])) break;
         const src = lines[j].match(RUNTIME_SRC_RE);
-        if (src && +src[1] === where.line) { stmt = src[2].trim(); break; }
+        if (src && +src[1] === where.line) { stmt = src[2].trim(); top = j; break; }
       }
     }
 
-    const failures = [{
+    // The quoted source when there is one, the message, its frames and bun's footer.
+    const failures = [withSource({
       file: where?.file, line: where?.line, col: where?.col,
       // A thrown builtin names its class, which is the searchable handle. bun's own
       // diagnostics write a bare "error:" - a constant it prints for a whole class of
@@ -276,7 +284,7 @@ export const bunRuntime = {
       severity: "error", message: m[2], stmt,
       trace: user.slice(0, 4).map((f) => `${f.fn} (${f.file}:${f.line}:${f.col})`),
       hiddenFrames: frames.length - user.length,
-    }];
+    }, top, foot + 1)];
     if (!failures.length) return null;
     return { tool: "bun", failures };
   },
