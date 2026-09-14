@@ -36,8 +36,8 @@ const test = (name, fn) => {
 
 // The parsers whose failures still carry a guessed range on at least one fixture.
 const GUESSING = new Set([
-  "docker", "dotnet", "dotnet test", "generic", "git", "junit jvm", "jvm", "kubectl", "node",
-  "npm", "perl", "php", "phpunit", "pnpm", "rspec", "ruby", "shellcheck", "terraform",
+  "docker", "generic", "git", "kubectl", "node",
+  "npm", "pnpm", "shellcheck", "terraform",
   "yamllint", "yarn",
 ]);
 

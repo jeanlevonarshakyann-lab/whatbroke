@@ -1,4 +1,5 @@
-import { elements, firstElement, xmlAttributes, xmlText } from "../util.js";
+import { elements, firstElement, lineAt, xmlAttributes, xmlText } from "../util.js";
+import { alsoFrom, joinSources, withSource } from "../ownership.js";
 const LOCATION_RE = /^[^\S\n]*(.+?):(\d+)$/;
 // PHPUnit separates an assertion that did not hold ("failure") from an exception that
 // escaped ("error") and heads each block differently. Reading only the first meant an
@@ -47,24 +48,26 @@ function teamcityResults(s) {
   const started = new Map();
   const results = [];
   let count;
-  for (const line of s.split("\n")) {
-    const m = line.match(TEAMCITY_RE);
+  const lines = s.split("\n");
+  for (let i = 0; i < lines.length; i++) {
+    const m = lines[i].match(TEAMCITY_RE);
     if (!m) continue;
     const a = Object.fromEntries([...m[2].matchAll(TEAMCITY_ATTR_RE)].map(([, k, v]) => [k, unescape(v)]));
     const key = `${a.flowId ?? ""}\u0000${a.name ?? ""}`;
     if (m[1] === "testCount") { count = (count ?? 0) + (+a.count || 0); continue; }
     if (m[1] === "testStarted") {
       const hint = String(a.locationHint ?? "").match(PHP_QN_RE);
-      if (hint) started.set(key, { file: hint[1], name: `${hint[2].split("\\").pop()}::${hint[3]}` });
+      if (hint) started.set(key, { file: hint[1], name: `${hint[2].split("\\").pop()}::${hint[3]}`, at: i });
       continue;
     }
     const test = started.get(key);
     if (!test) continue;
     const body = bodyOf(String(a.details ?? ""));
-    results.push({
+    // The failure's message, and the message that started the test and named it.
+    results.push(alsoFrom(withSource({
       file: body.file ?? test.file, line: body.line, title: test.name, subject: test.name, severity: "error",
       message: String(a.message ?? "").trim() || body.message,
-    });
+    }, i, i + 1), test.at, test.at + 1));
   }
   return { results, count };
 }
@@ -97,10 +100,11 @@ function junitResults(s) {
     const [first, ...rest] = text.split("\n");
     if (first.trim() !== name) continue;
     const body = bodyOf(rest.join("\n"));
-    out.push({
+    // The test case, from its opening tag to its closing one.
+    out.push(withSource({
       file: body.file ?? a.file, line: body.line ?? (+a.line || undefined),
       title: name, subject: name, severity: "error", message: body.message,
-    });
+    }, lineAt(s, test.index), lineAt(s, test.index + test[0].length - 1) + 1));
   }
   return out;
 }
@@ -127,10 +131,11 @@ function testdoxResults(s) {
     }
     if (!body.length) continue;
     const read = bodyOf(body.join("\n"));
-    out.push({
+    // The test's line and the body ruled off under it.
+    out.push(withSource({
       ...read, title: group ? `${group} › ${test[1]}` : test[1],
       subject: group ? `${group} › ${test[1]}` : test[1], severity: "error",
-    });
+    }, i, i + 1 + body.length));
   }
   return out;
 }
@@ -157,11 +162,14 @@ export default {
       const message = s.match(/^Message:[^\S\n]+(.+)$/m);
       const at = s.match(/^Location:[^\S\n]+(.+?):(\d+)$/m);
       if (message || at) {
-        internal.push({
+        // The Message: and Location: lines PHPUnit wrote, wherever each is.
+        const [first, second] = [message, at].filter(Boolean).map((m) => lineAt(s, m.index));
+        const failure = withSource({
           file: at?.[1], line: at ? +at[2] : undefined,
           title: "load error", label: "load error", severity: "error",
           message: message?.[1] ?? "An error occurred inside PHPUnit.",
-        });
+        }, first, first + 1);
+        internal.push(second === undefined ? failure : alsoFrom(failure, second, second + 1));
       }
     }
     // PHPUnit's numbered blocks live under "There were N failures:" and nowhere else.
@@ -188,6 +196,8 @@ export default {
       const message = [];
       let file;
       let line;
+      // The numbered block, down to its last line that is not blank.
+      let end = i + 1;
       // A block ends at the next numbered block, at the run's own closing lines - and
       // at the rule PHPUnit draws between its sections. Without that last one the errors
       // section ran into the failures section, and the error carried "--" and
@@ -197,6 +207,7 @@ export default {
         !/^[^\S\n]*--[^\S\n]*$/.test(lines[j]) &&
         !TALLY_RE.test(lines[j]) &&
         !/^[^\S\n]*(?:Tests:|Time:|OK\b|FAILURES!|ERRORS!|WARNINGS!)/.test(lines[j]); j++) {
+        if (lines[j].trim()) end = j + 1;
         const location = lines[j].match(LOCATION_RE);
         if (location && /\.[a-z]+$/i.test(location[1])) {
           file = location[1];
@@ -205,12 +216,13 @@ export default {
           message.push(lines[j].trim());
         }
       }
-      failures.push({ file, line, title: header[1], subject: header[1], severity: "error", message: message.join("\n") });
+      failures.push(withSource({ file, line, title: header[1], subject: header[1], severity: "error", message: message.join("\n") }, i, end));
     }
     }
     // ...and the same run as one of PHPUnit's other outputs wrote it. A result already
     // read from the console blocks is not read twice.
-    const said = new Set(failures.map((f) => [f.subject, f.file, f.line].join("\u0000")));
+    const said = new Map();
+    failures.forEach((f, index) => { const key = [f.subject, f.file, f.line].join("\u0000"); if (!said.has(key)) said.set(key, index); });
     // Every output is read, not just the one that fills in for the others. --testdox
     // replaces the standard printer rather than joining it, so a log holding both is a
     // log holding two runs - and reading testdox only when nothing else was found lost
@@ -219,8 +231,8 @@ export default {
     const other = [...junitResults(s), ...testdoxResults(s), ...teamcity.results];
     for (const f of other) {
       const key = [f.subject, f.file, f.line].join("\u0000");
-      if (said.has(key)) continue;
-      said.add(key);
+      if (said.has(key)) { failures[said.get(key)] = joinSources(failures[said.get(key)], f); continue; }
+      said.set(key, failures.length);
       failures.push(f);
     }
 

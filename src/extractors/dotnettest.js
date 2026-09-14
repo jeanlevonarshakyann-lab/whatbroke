@@ -16,8 +16,8 @@
 // VSTest uses `Failed Namespace.Class.Method [2 ms]`, followed by labelled Error
 // Message and Stack Trace blocks. It may also print xUnit's prefixed copy first; the
 // labelled result is the stable cross-framework surface and is the one parsed below.
-import { SOURCE_RANGE } from "../ownership.js";
-import { elements, firstElement, xmlAttributes, xmlText } from "../util.js";
+import { joinSources, withSource } from "../ownership.js";
+import { elements, firstElement, lineAt, xmlAttributes, xmlText } from "../util.js";
 
 const MTP_FAILED_RE = /^failed[^\S\n]+(\S+)[^\S\n]+\((\d+(?:\.\d+)?)[^\S\n]*m?s\)[^\S\n]*$/;
 // Microsoft.Testing.Platform speaks the SDK's languages too, and translates more than
@@ -130,12 +130,13 @@ function trx(s) {
       const at = raw.match(AT_RE);
       if (at && !FRAMEWORK.test(at[1])) { file = at[2]; line = +at[3]; break; }
     }
-    out.push({
+    // The result element, from its opening tag to its closing one.
+    out.push(withSource({
       file, line,
       title: shortName(a.testName), subject: shortName(a.testName), severity: "error",
       message: xmlText(message?.[1] ?? "").split("\n").map((l) => l.trim())
         .filter(Boolean).slice(0, MAX_MESSAGE_LINES).join("\n"),
-    });
+    }, lineAt(s, result.index), lineAt(s, result.index + result[0].length - 1) + 1));
   }
   return out;
 }
@@ -146,10 +147,7 @@ function shortName(fq) {
   return parts.length > 2 ? parts.slice(-2).join(".") : fq;
 }
 
-function rangedFailure(failure, start, end) {
-  Object.defineProperty(failure, SOURCE_RANGE, { value: { start, end }, enumerable: false });
-  return failure;
-}
+const rangedFailure = withSource;
 
 function summaryNumber(text, key) {
   if (key === "total") {
@@ -262,38 +260,49 @@ export default {
       if (!head) continue;
 
       const msg = [];
-      let file, line, repeated = false;
+      // The heading, down to the frame in your code or the last line of the message read
+      // under it - not the rest of the log a last failure goes on scanning for frames.
+      let file, line, repeated = false, end = i + 1;
       for (let j = i + 1; j < lines.length && !mtpHead(lines[j], words); j++) {
         const at = lines[j].match(AT_RE) ?? lines[j].match(MTP_FRAME_RE);
         if (at) {
           // the first frame in the user's own code wins; the rest is the runner
-          if (!file && !FRAMEWORK.test(at[1])) { file = at[2]; line = +at[3]; }
+          if (!file && !FRAMEWORK.test(at[1])) { file = at[2]; line = +at[3]; end = j + 1; }
           continue;
         }
         // `from <dll>` closes the first copy of the message. Everything after it is
         // the same text re-indented, so stop collecting - but keep scanning, because
         // the stack frames that carry the location come after the repeat.
-        if (/^[^\S\n]*from[^\S\n]+\S+\.dll/.test(lines[j]) || MTP_FROM_RE.test(lines[j])) { repeated = true; continue; }
+        if (/^[^\S\n]*from[^\S\n]+\S+\.dll/.test(lines[j]) || MTP_FROM_RE.test(lines[j])) { repeated = true; if (!file) end = j + 1; continue; }
         const t = lines[j].trim();
         if (repeated || !t || msg.length >= MAX_MESSAGE_LINES) continue;
         if (/^Standard output:/.test(t) || /^Test run summary:/.test(t) || /^Exit code:/.test(t)) break;
         msg.push(t);
+        if (!file) end = j + 1;
       }
 
-      failures.push({
+      failures.push(withSource({
         file, line,
         title: shortName(head[1]), subject: shortName(head[1]), severity: "error",
         message: msg.join("\n"),
-      });
+      }, i, end));
     }
 
     // ...and the trx document, which a job keeps beside its console output rather than
     // instead of it. A result already read from the console is not read twice.
     const fromDocument = trx(s);
     if (fromDocument.length) {
-      const said = new Set([...(vs?.failures ?? []), ...failures]
-        .map((f) => [f.subject, f.file, f.line].join("\u0000")));
-      const fresh = fromDocument.filter((f) => !said.has([f.subject, f.file, f.line].join("\u0000")));
+      // ...though where it was read in the document is kept with it.
+      const keyOf = (f) => [f.subject, f.file, f.line].join("\u0000");
+      const said = new Map();
+      for (const list of [vs?.failures ?? [], failures]) {
+        list.forEach((f, index) => { if (!said.has(keyOf(f))) said.set(keyOf(f), { list, index }); });
+      }
+      const fresh = fromDocument.filter((f) => {
+        const earlier = said.get(keyOf(f));
+        if (earlier) earlier.list[earlier.index] = joinSources(earlier.list[earlier.index], f);
+        return !earlier;
+      });
       if (!failures.length && !vs) {
         const c = s.match(TRX_COUNTERS_RE);
         const counts = c ? xmlAttributes(c[1]) : {};

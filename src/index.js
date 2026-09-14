@@ -161,7 +161,12 @@ function sameLocatedDiagnostic(a, b) {
   // message is the other's with lines added under it, is the same failure told at more
   // length. Whole lines, so a message that merely begins the same way is not taken.
   const [shorter, longer] = text.length < other.length ? [text, other] : [other, text];
-  return !!a.title && a.title === b.title && longer.startsWith(`${shorter}\n`);
+  if (!a.title || a.title !== b.title) return false;
+  if (longer.startsWith(`${shorter}\n`)) return true;
+  // A console summary names what an exception said and not what it was: Surefire's
+  // `CartTest.totalsAnInvoice:9 expected: <6> but was: <4>` is its report's
+  // `org.opentest4j.AssertionFailedError: expected: <6> but was: <4>` without the class.
+  return longer.replace(/^[\w.$]*(?:Error|Exception)[\w$]*:[^\S\n]+/, "") === shorter;
 }
 
 // How many pairs of readings one log may compare by text before it stops asking.

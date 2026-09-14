@@ -1,4 +1,5 @@
-import { findJsonDocument } from "../util.js";
+import { findJsonDocument, jsonDocumentsAt } from "../util.js";
+import { joinSources, withSource } from "../ownership.js";
 const LOCATION_RE = /^[^\S\n]+#[^\S\n]+(.+):(\d+):in\b/;
 // A spec file that raises while being loaded never becomes a numbered example, so it is
 // reported as prose above the tally instead - and the tally then says "0 examples, 0
@@ -38,16 +39,17 @@ export default {
     for (let i = 0; i < lines.length; i++) {
       const load = lines[i].match(LOAD_ERROR_RE);
       if (load) {
-        let file = load[1], line, message = [];
+        let file = load[1], line, message = [], end = i + 1;
         for (let j = i + 1; j < lines.length && !/^No examples found\.|^Finished in /.test(lines[j]); j++) {
           const at = lines[j].match(/^#[^\S\n]+(.+?):(\d+):in\b/) ?? lines[j].match(LOCATION_RE);
-          if (at) { file = at[1]; line = +at[2]; continue; }
-          if (lines[j].trim()) message.push(lines[j].trim());
+          if (at) { file = at[1]; line = +at[2]; end = j + 1; continue; }
+          if (lines[j].trim()) { message.push(lines[j].trim()); end = j + 1; }
         }
-        failures.push({
+        // rspec's sentence and what it says under it, down to its tally.
+        failures.push(withSource({
           file, line, title: "load error", label: "load error", severity: "error",
           message: message.join("\n").replace(/^Failure\/Error:[^\S\n]*/, ""),
-        });
+        }, i, end));
         continue;
       }
       const header = lines[i].match(/^[^\S\n]+\d+\)[^\S\n]+(.+)$/);
@@ -78,16 +80,21 @@ export default {
         if (location) { file = location[1]; line = +location[2]; }
         if (l.trim() && !/^[^\S\n]+# /.test(l)) message.push(l.trim());
       }
-      failures.push({
+      // The numbered example and its indented block, without the blank lines that close it.
+      let end = i + 1 + body.length;
+      while (end > i + 1 && !lines[end - 1].trim()) end--;
+      failures.push(withSource({
         file, line, title: header[1], subject: header[1], severity: "error",
         message: message.join("\n").replace(/^Failure\/Error:[^\S\n]*/, ""),
-      });
+      }, i, end));
     }
     // ...and the same run as `-f json` wrote it. A log can hold both - rspec can be
     // asked for two formatters at once, one to the console and one to a file - and an
     // example already read is not read twice.
-    const doc = report(s);
-    const said = new Set(failures.map((f) => [f.subject, f.file, f.line].join("\u0000")));
+    let doc = null, where = () => ({ start: 0, end: 1 });
+    if (s.includes('"full_description"')) for (const found of jsonDocumentsAt(s, REPORT)) { ({ value: doc, where } = found); break; }
+    const said = new Map();
+    failures.forEach((f, index) => { const key = [f.subject, f.file, f.line].join("\u0000"); if (!said.has(key)) said.set(key, index); });
     let pending = 0;
     for (const e of doc?.examples ?? []) {
       if (e.status !== "failed") { if (e.status === "pending") pending++; continue; }
@@ -98,17 +105,18 @@ export default {
       const file = frame ? frame[1] : e.file_path;
       const line = frame ? +frame[2] : e.line_number;
       const key = [e.full_description, file, line].join("\u0000");
-      if (said.has(key)) continue;
-      said.add(key);
+      const place = where(e);
+      if (said.has(key)) { failures[said.get(key)] = joinSources(failures[said.get(key)], withSource({}, place.start, place.end)); continue; }
+      said.set(key, failures.length);
       // An expectation that went unmet is reported by its message alone, exactly as the
       // text form reports it; anything else is named by its class first, also as the
       // text form does.
       const cls = String(e.exception?.class ?? "");
       const body = String(e.exception?.message ?? "").split("\n").map((l) => l.trim()).filter(Boolean);
-      failures.push({
+      failures.push(withSource({
         file, line, title: e.full_description, subject: e.full_description, severity: "error",
         message: (EXPECTATION.test(cls) || !cls ? body : [`${cls}:`, ...body]).join("\n"),
-      });
+      }, place.start, place.end));
     }
 
     if (!failures.length) return null;

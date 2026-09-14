@@ -3,6 +3,8 @@
 // INSIDE the path here - every file began with four spaces, and an editor link or a
 // source lookup pointed at a file that cannot exist. Skipped rather than captured, so a
 // filename that genuinely contains spaces still keeps them.
+import { joinSources, withSource } from "../ownership.js";
+
 const DIAGNOSTIC_RE = /^[^\S\n]*(.+?\.(?:cs|fs|vb))\((\d+),(\d+)\):[^\S\n]+(error|warning)[^\S\n]+([A-Z]\w*\d+):[^\S\n]+(.+)$/m;
 // Not every .NET failure comes from the compiler. A missing project file and a package
 // that will not restore are both reported by MSBuild or NuGet with a code but no
@@ -28,8 +30,19 @@ export default {
   extract(s) {
     const failures = [];
     const seen = new Set();
+    // An error printed as it happens and again in the "Build FAILED." summary is one
+    // error, read in both places.
+    const errors = new Map();
+    const add = (key, failure, at) => {
+      const placed = withSource(failure, at, at + 1);
+      if (errors.has(key)) { failures[errors.get(key)] = joinSources(failures[errors.get(key)], placed); return; }
+      errors.set(key, failures.length);
+      failures.push(placed);
+    };
     let warnings = 0;
-    for (const line of s.split("\n")) {
+    const lines = s.split("\n");
+    for (let i = 0; i < lines.length; i++) {
+      const line = lines[i];
       const project = line.match(PROJECT_RE);
       if (project) {
         // The same restore error is printed once as it happens and again in the
@@ -41,7 +54,7 @@ export default {
         };
         const k = JSON.stringify(f);
         if (project[2] === "warning") { if (!seen.has(`w:${k}`)) warnings++; seen.add(`w:${k}`); continue; }
-        if (!seen.has(k)) { seen.add(k); failures.push(f); }
+        add(k, f, i);
         continue;
       }
       const match = line.match(DIAGNOSTIC_RE);
@@ -57,9 +70,7 @@ export default {
         seen.add(`warning:${key}`);
         continue;
       }
-      if (seen.has(key)) continue;
-      seen.add(key);
-      failures.push(failure);
+      add(key, failure, i);
     }
     if (!failures.length) return null;
     return {
