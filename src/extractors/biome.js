@@ -1,4 +1,5 @@
-import { elements, findJsonDocument, firstElement, githubAnnotations, xmlAttributes, xmlText } from "../util.js";
+import { elements, findJsonDocument, firstElement, githubAnnotations, jsonDocumentsAt, lineAt, xmlAttributes, xmlText } from "../util.js";
+import { joinSources, preserveSourceRange, withSource } from "../ownership.js";
 // Biome heads each finding with the location and the rule, then says what is wrong on
 // the line under it, then draws the source and offers fixes:
 //
@@ -98,11 +99,11 @@ const GITLAB_MARK = (v) => Array.isArray(v) && v.length > 0 && v.every((d) =>
 // deno's suites as well, because deciding on the whole log and then reading the whole
 // log are not the same bound. The document is cut out first, and a case still has to
 // carry biome's own class path to be read.
-const JUNIT_DOC_RE = /<testsuites\b[^>]*\bname="Biome"[^>]*>([\s\S]*?)<\/testsuites>/g;
+const JUNIT_DOC_RE = /<testsuites\b[^>]*\bname="Biome"[^>]*>([\s\S]*?)<\/testsuites>/dg;
 const JUNIT_SUITES = /<testsuites\b[^>]*\bname="Biome"/;
 const BIOME_CLASS = /^org\.biome\./;
 const JUNIT_CASE_RE = /<testcase\b([^>]*)>([\s\S]*?)<\/testcase>/g;
-const JUNIT_SUITE_RE = /<testsuite\b([^>]*)>([\s\S]*?)<\/testsuite>/g;
+const JUNIT_SUITE_RE = /<testsuite\b([^>]*)>([\s\S]*?)<\/testsuite>/dg;
 const JUNIT_FAILURE_RE = /<failure\b([^>]*?)(?:\/>|>([\s\S]*?)<\/failure>)/;
 const JUNIT_DOC = { open: /<testsuites\b/, close: () => "</testsuites>" };
 const JUNIT_SUITE = { open: /<testsuite\b/, close: () => "</testsuite>" };
@@ -118,15 +119,23 @@ const SUMMARY_ITEM = /^[^\S\n]*-[^\S\n]+(\S.*?)(?:[^\S\n]+\(([^)]*)\))?[^\S\n]*$
 const SUMMARY_RULES = /^[^\S\n]*i[^\S\n]+The following lint rules have violations:[^\S\n]*$/;
 const SUMMARY_RULE_ROW = /^[^\S\n]*([\w-]+\/[\w-]+(?:\/[\w-]+)*)[^\S\n]{2,}\d+/;
 
-/** Every reading of `s` that came from one of biome's machine reporters. */
-function reported(s) {
+/** Every reading of `s` that came from one of biome's machine reporters - each with the
+ *  lines it was read from when `placed`, which deciding whether to claim a log does not
+ *  need and reading a report for them costs. */
+function reported(s, placed = false) {
   const out = [];
+  const firstDocument = (mark) => {
+    if (!placed) { const value = findJsonDocument(s, mark); return value === null ? null : { value, where: () => ({ start: 0, end: 1 }) }; }
+    for (const doc of jsonDocumentsAt(s, mark)) return doc;
+    return null;
+  };
+  const at = (f, { start, end }) => (placed ? withSource(f, start, end) : f);
   // Each scan is skipped unless the log holds the one string that reporter must
   // print, so asking biome about a large log it has nothing to do with stays cheap.
-  const doc = s.includes('"diagnostics"') ? findJsonDocument(s, JSON_MARK) : null;
-  for (const d of doc?.diagnostics ?? []) {
+  const doc = s.includes('"diagnostics"') ? firstDocument(JSON_MARK) : null;
+  for (const d of doc?.value.diagnostics ?? []) {
     const start = d.location.span?.[0] ?? d.location.start ?? {};
-    out.push({
+    out.push(at({
       file: d.location.path?.file ?? d.location.path ?? undefined,
       // A whole-file notice is padded out to a position biome does not really mean -
       // line 0 in this reporter, line 1 in the next. Line 0 does not exist, so it is
@@ -136,7 +145,7 @@ function reported(s) {
       title: d.category, code: d.category,
       severity: d.severity === "error" || d.severity === "fatal" ? "error" : "warning",
       message: String(d.message ?? "").trim(),
-    });
+    }, doc.where(d)));
   }
 
   // --reporter=github. Every tool's annotations look alike, so what marks these as
@@ -147,25 +156,26 @@ function reported(s) {
     if (!title || !CATEGORY.test(title) || !a.props.file) continue;
     const line = Number(a.props.line);
     const col = Number(a.props.col ?? a.props.column);
-    out.push({
+    out.push(at({
       file: a.props.file,
       line: Number.isFinite(line) && line > 0 ? line : undefined,
       col: Number.isFinite(col) && col > 0 ? col : undefined,
       title, code: title,
       severity: a.severity === "error" ? "error" : "warning",
       message: a.message.trim(),
-    });
+    }, { start: a.line, end: a.line + 1 }));
   }
 
-  for (const d of (s.includes('"check_name"') ? findJsonDocument(s, GITLAB_MARK) : null) ?? []) {
-    out.push({
+  const gitlab = s.includes('"check_name"') ? firstDocument(GITLAB_MARK) : null;
+  for (const d of gitlab?.value ?? []) {
+    out.push(at({
       file: d.location.path,
       line: d.location.lines?.begin > 0 ? d.location.lines.begin : undefined,
       title: d.check_name, code: d.check_name,
       // GitLab's own scale. Biome writes error as critical and warning as major.
       severity: d.severity === "critical" || d.severity === "blocker" ? "error" : "warning",
       message: String(d.description ?? "").trim(),
-    });
+    }, gitlab.where(d)));
   }
 
   for (const doc of JUNIT_SUITES.test(s) ? elements(s, JUNIT_DOC_RE, JUNIT_DOC) : []) {
@@ -178,7 +188,9 @@ function reported(s) {
         // `org.biome.lint.suspicious.noDebugger` is the category with its separators
         // changed for a format that expects a class name; this changes them back.
         const code = String(a.name ?? "").replace(/^org\.biome\./, "").replace(/\./g, "/");
-        out.push({
+        // The test case, from its opening tag to its closing one.
+        const offset = doc.indices[1][0] + suite.indices[2][0] + test.index;
+        out.push(at({
           file, line: +a.line > 0 ? +a.line : undefined,
           col: +a.column > 0 ? +a.column : undefined,
           title: code, code,
@@ -187,7 +199,7 @@ function reported(s) {
           // here pretends to - the run failed and these are what it said.
           severity: "error",
           message: xmlText(xmlAttributes(f[1]).message ?? f[2] ?? "").trim(),
-        });
+        }, { start: lineAt(s, offset), end: lineAt(s, offset + test[0].length - 1) + 1 }));
       }
     }
   }
@@ -204,7 +216,9 @@ function summarised(s) {
   const files = [];
   const rules = [];
   let listing = null;
-  for (const line of s.split("\n")) {
+  const lines = s.split("\n");
+  for (let i = 0; i < lines.length; i++) {
+    const line = lines[i];
     if (SUMMARY_SECTION.test(line)) { listing = null; continue; }
     if (SUMMARY_FILES.test(line)) { listing = "files"; continue; }
     if (SUMMARY_RULES.test(line)) { listing = "rules"; continue; }
@@ -215,7 +229,7 @@ function summarised(s) {
     if (listing !== "files") continue;
     const m = line.match(SUMMARY_ITEM);
     if (!m) { if (line.trim()) listing = null; continue; }
-    files.push({ file: m[1], counts: m[2] });
+    files.push({ file: m[1], counts: m[2], at: i });
   }
   return { files, rules };
 }
@@ -235,13 +249,13 @@ export default {
       const h = header(lines[i]);
       if (!h) continue;
 
-      let message = "", marker = "", stmt;
+      let message = "", marker = "", stmt, end = i + 1;
       for (let j = i + 1; j < lines.length && j <= i + 8; j++) {
         if (header(lines[j])) break;
         const m = lines[j].match(MESSAGE_RE);
-        if (m && !message) { marker = m[1]; message = m[2]; continue; }
+        if (m && !message) { marker = m[1]; message = m[2]; end = j + 1; continue; }
         const marked = lines[j].match(MARKED_RE);
-        if (marked && !stmt) { stmt = marked[2].trim(); }
+        if (marked && !stmt) { stmt = marked[2].trim(); end = j + 1; }
       }
       // Biome says which it is with the glyph it draws: × and ✖ for what failed, ! and
       // ⚠ for what it merely disliked. It always draws one, so a section without one is
@@ -251,26 +265,28 @@ export default {
       // being applied.
       if (!marker) continue;
       if (RESTATEMENT.test(message)) continue;
-      found.push({
+      // The header, its message, and the marked line of the source it draws.
+      found.push(withSource({
         ...h, severity: marker === "!" || marker === "\u26a0" ? "warning" : "error",
         message: message || h.code, stmt,
-      });
+      }, i, end));
     }
     // ...and the same run as one of biome's machine reporters printed it. A log can
     // hold both - CI keeps the human output and writes the report beside it - so what
     // the text form already said is not said again. The reporters disagree over whether
     // a column is printed at all, so the column is not part of what makes a finding
     // distinct.
-    const seen = new Set(found.map((f) => [f.file, f.line, f.code].join("\u0000")));
-    for (const f of reported(s)) {
+    const seen = new Map();
+    found.forEach((f, i) => { const key = [f.file, f.line, f.code].join("\u0000"); if (!seen.has(key)) seen.set(key, i); });
+    for (const f of reported(s, true)) {
       // The machine reporters carry biome's closing remarks as diagnostics of their own,
       // and "Code formatting aborted due to parsing errors" is the parse error above it
       // said a second time. The text reader already steps over those; so does this, or a
       // file biome could not parse is reported as two things going wrong instead of one.
       if (RESTATEMENT.test(f.message)) continue;
       const key = [f.file, f.line, f.code].join("\u0000");
-      if (seen.has(key)) continue;
-      seen.add(key);
+      if (seen.has(key)) { found[seen.get(key)] = joinSources(found[seen.get(key)], f); continue; }
+      seen.set(key, found.length);
       found.push(f);
     }
 
@@ -278,14 +294,15 @@ export default {
     // resort: a log can hold a `biome format` run and a `--reporter=summary` run, and
     // reading the summary only when nothing else was found lost the second one whole.
     const { files, rules } = summarised(s);
-    for (const { file, counts } of files) {
+    for (const { file, counts, at } of files) {
       const key = [file, undefined, "violations"].join("\u0000");
-      if (seen.has(key)) continue;
-      seen.add(key);
-      found.push({
+      const failure = withSource({
         file, title: "violations", label: "violations", severity: "error",
         message: counts ? `biome reported ${counts} here` : "biome reported violations here",
-      });
+      }, at, at + 1);
+      if (seen.has(key)) { found[seen.get(key)] = joinSources(found[seen.get(key)], failure); continue; }
+      seen.set(key, found.length);
+      found.push(failure);
     }
 
     if (!found.length) return null;
@@ -306,7 +323,7 @@ export default {
     // The house rule everywhere else here: an error is what failed the run, and warnings
     // stand behind it - unless they are all there is, and then they are the reason.
     const errors = found.filter((f) => f.severity === "error");
-    const shown = (errors.length ? errors : found).map((f) => ({ ...f, severity: "error" }));
+    const shown = (errors.length ? errors : found).map((f) => preserveSourceRange(f, { ...f, severity: "error" }));
     const hidden = found.length - shown.length;
     const n = shown.length;
     return {

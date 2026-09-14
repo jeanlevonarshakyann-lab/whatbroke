@@ -1,4 +1,5 @@
-import { findJsonDocument } from "../util.js";
+import { findJsonDocument, jsonDocumentsAt } from "../util.js";
+import { joinSources, withSource } from "../ownership.js";
 // markdownlint writes one line per violation and nothing else:
 //
 //   doc.md:3:1 error MD018/no-missing-space-atx No space after hash on atx style
@@ -36,36 +37,45 @@ export default {
 
   extract(s) {
     const failures = [];
-    const seen = new Set();
-    for (const line of s.split("\n")) {
-      const m = line.match(VIOLATION_RE);
+    const seen = new Map();
+    const lines = s.split("\n");
+    for (let i = 0; i < lines.length; i++) {
+      const m = lines[i].match(VIOLATION_RE);
       if (!m) continue;
       const key = `${m[1]}:${m[2]}:${m[3] ?? ""}:${m[4]}`;
-      if (seen.has(key)) continue;
-      seen.add(key);
-      failures.push({
+      const failure = withSource({
         file: m[1], line: +m[2], col: m[3] ? +m[3] : undefined,
         title: m[4], code: m[4], severity: "error",
         // the rule's name is in the code's own documentation; the message is the point
         message: m[6].replace(CONTEXT_RE, "").trim() || m[5],
-      });
+      }, i, i + 1);
+      if (seen.has(key)) { failures[seen.get(key)] = joinSources(failures[seen.get(key)], failure); continue; }
+      seen.set(key, failures.length);
+      failures.push(failure);
     }
     // --json: the same violations as records. Read whatever the text form gave, since a
-    // log can hold both, and a violation already reported is not added twice.
-    const records = findJsonDocument(s, JSON_MARK);
-    for (const r of records ?? []) {
-      const code = r.ruleNames[0];
-      const key = `${r.fileName}:${r.lineNumber}::${code}`;
-      if (seen.has(key) || failures.some((f) => f.file === r.fileName && f.line === r.lineNumber && f.code === code)) continue;
-      seen.add(key);
-      failures.push({
-        file: r.fileName, line: r.lineNumber,
-        col: Array.isArray(r.errorRange) ? r.errorRange[0] : undefined,
-        title: code, code, severity: "error",
-        // Worded exactly as the text form words it, so one run printed both ways is one
-        // failure rather than two that differ in punctuation.
-        message: r.errorDetail ? `${r.ruleDescription} [${r.errorDetail}]` : r.ruleDescription,
-      });
+    // log can hold both, and a violation already reported is not added twice - it keeps
+    // the place it was reported in as well.
+    for (const { value: records, where } of jsonDocumentsAt(s, JSON_MARK)) {
+      for (const r of records) {
+        const code = r.ruleNames[0];
+        const key = `${r.fileName}:${r.lineNumber}::${code}`;
+        const place = where(r);
+        const failure = withSource({
+          file: r.fileName, line: r.lineNumber,
+          col: Array.isArray(r.errorRange) ? r.errorRange[0] : undefined,
+          title: code, code, severity: "error",
+          // Worded exactly as the text form words it, so one run printed both ways is one
+          // failure rather than two that differ in punctuation.
+          message: r.errorDetail ? `${r.ruleDescription} [${r.errorDetail}]` : r.ruleDescription,
+        }, place.start, place.end);
+        const earlier = seen.has(key) ? seen.get(key)
+          : failures.findIndex((f) => f.file === r.fileName && f.line === r.lineNumber && f.code === code);
+        if (earlier >= 0) { failures[earlier] = joinSources(failures[earlier], failure); continue; }
+        seen.set(key, failures.length);
+        failures.push(failure);
+      }
+      break;
     }
     if (!failures.length) return null;
     const n = failures.length;

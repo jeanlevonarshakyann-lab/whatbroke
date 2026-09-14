@@ -1,4 +1,5 @@
-import { elements, firstElement, githubAnnotations, jsonDocuments, xmlAttributes, xmlText } from "../util.js";
+import { elements, firstElement, githubAnnotations, jsonDocuments, jsonDocumentsAt, lineAt, xmlAttributes, xmlText } from "../util.js";
+import { joinSources, withSource } from "../ownership.js";
 // oxlint prints one run ten ways, and it chooses among them itself: a terminal gets a
 // drawn report, a GitHub Actions job gets workflow annotations, an AI agent gets one line
 // per finding. Only that last one was read. The report a developer sees and the
@@ -72,7 +73,7 @@ const JSON_MARK = (v) => !!v && typeof v === "object" && Array.isArray(v.diagnos
 
 // -f checkstyle and -f gitlab are shapes other linters write, so a finding in them is
 // oxlint's by its rule.
-const CHECKSTYLE_FILE_RE = /<file\b([^>]*)>([\s\S]*?)<\/file>/g;
+const CHECKSTYLE_FILE_RE = /<file\b([^>]*)>([\s\S]*?)<\/file>/dg;
 const CHECKSTYLE_ERROR_RE = /<error\b([^>]*?)\/?>/g;
 const GITLAB_MARK = (v) => Array.isArray(v) && v.length > 0 && v.every((d) =>
   d && typeof d.check_name === "string" && typeof d.fingerprint === "string" &&
@@ -80,8 +81,8 @@ const GITLAB_MARK = (v) => Array.isArray(v) && v.length > 0 && v.every((d) =>
 
 // -f junit names itself on the document. A warning is written as a <failure> and an
 // error as an <error>, and the body says where: `line 2, column 1, <message>`.
-const JUNIT_DOC_RE = /<testsuites\b[^>]*\bname="Oxlint"[^>]*>([\s\S]*?)<\/testsuites>/g;
-const JUNIT_SUITE_RE = /<testsuite\b([^>]*)>([\s\S]*?)<\/testsuite>/g;
+const JUNIT_DOC_RE = /<testsuites\b[^>]*\bname="Oxlint"[^>]*>([\s\S]*?)<\/testsuites>/dg;
+const JUNIT_SUITE_RE = /<testsuite\b([^>]*)>([\s\S]*?)<\/testsuite>/dg;
 const JUNIT_CASE_RE = /<testcase\b([^>]*)>([\s\S]*?)<\/testcase>/g;
 const JUNIT_OUTCOME_RE = /<(error|failure)\b([^>]*?)(?:\/>|>([\s\S]*?)<\/\1>)/;
 const CHECKSTYLE_FILE = { open: /<file\b/, close: () => "</file>" };
@@ -98,36 +99,46 @@ const SARIF_MARK = (v) => !!v && typeof v === "object" && Array.isArray(v.runs) 
 const rule = (text) => String(text ?? "").match(RULE_RE)?.[2];
 const positive = (n) => (Number.isInteger(+n) && +n > 0 ? +n : undefined);
 
-/** Every finding in `s`, errors and warnings, in whichever formats it holds. */
-function findings(s) {
+/** Every finding in `s`, errors and warnings, in whichever formats it holds - each with
+ *  the lines [from, to) it was read from when `placed`, which reading a report for them
+ *  costs and deciding whether to claim it does not need. */
+function findings(s, placed = false) {
   const lines = s.split("\n");
   const out = [];
+  const documents = (mark) => (placed ? [...jsonDocumentsAt(s, mark)]
+    : [...jsonDocuments(s, mark)].map((value) => ({ value, where: () => ({ start: 0, end: 1 }) })));
+  const inText = (at, length) => ({ from: lineAt(s, at), to: lineAt(s, at + length - 1) + 1 });
   let stylishFile, reports;
   for (let i = 0; i < lines.length; i++) {
     const line = lines[i];
     const agent = line.match(FINDING_RE);
     if (agent) {
       out.push({ file: agent[1], line: +agent[2], col: +agent[3], severity: agent[4], code: agent[6],
-        message: agent[7].replace(HELP_RE, "").trim() });
+        message: agent[7].replace(HELP_RE, "").trim(), from: i, to: i + 1 });
       continue;
     }
     const unix = line.match(UNIX_RE);
     if (unix) {
       out.push({ file: unix[1], line: +unix[2], col: +unix[3], severity: unix[5].toLowerCase(), code: unix[7],
-        message: unix[4] });
+        message: unix[4], from: i, to: i + 1 });
       continue;
     }
     const head = line.match(DRAWN_HEAD_RE);
     const at = head && lines[i + 1]?.match(DRAWN_AT_RE);
     if (at && (head[3] || (reports ??= reportsBelow(lines))[i + 1])) {
+      // The heading, the location under it, and the box drawn below them.
+      let to = i + 2;
+      for (let j = i + 2; j < lines.length && DRAWN_BODY_RE.test(lines[j]) && !DRAWN_HEAD_RE.test(lines[j]); j++) {
+        if (lines[j].trim()) to = j + 1;
+      }
       out.push({ file: at[1], line: +at[2], col: +at[3],
-        severity: head[1] === "x" || head[1] === "\u00d7" ? "error" : "warning", code: head[3], message: head[4] });
+        severity: head[1] === "x" || head[1] === "\u00d7" ? "error" : "warning", code: head[3], message: head[4], from: i, to });
       i++;
       continue;
     }
     const row = line.match(STYLISH_ROW_RE);
     if (row && stylishFile) {
-      out.push({ file: stylishFile, line: +row[1], col: +row[2], severity: row[3], code: row[6], message: row[4] });
+      out.push({ file: stylishFile, line: +row[1], col: +row[2], severity: row[3], code: row[6], message: row[4], from: i, to: i + 1 });
       continue;
     }
     // A table row belongs to the last unindented line above it.
@@ -142,16 +153,20 @@ function findings(s) {
       const said = `${a.props.file}:${a.props.line}:${a.props.col}: `;
       if (!a.message.startsWith(said)) continue;
       out.push({ file: a.props.file, line: positive(a.props.line), col: positive(a.props.col),
-        severity: a.severity === "error" ? "error" : "warning", code, message: a.message.slice(said.length).trim() });
+        severity: a.severity === "error" ? "error" : "warning", code, message: a.message.slice(said.length).trim(),
+        from: a.line, to: a.line + 1 });
     }
   }
 
-  const docs = s.includes('"number_of_rules"') ? [...jsonDocuments(s, JSON_MARK)] : [];
-  for (const d of docs.flatMap((doc) => doc.diagnostics)) {
-    const span = d?.labels?.[0]?.span;
-    if (typeof d?.filename !== "string" || typeof d.message !== "string") continue;
-    out.push({ file: d.filename, line: positive(span?.line), col: positive(span?.column),
-      severity: d.severity === "error" ? "error" : "warning", code: rule(d.code), message: d.message.trim() });
+  const docs = s.includes('"number_of_rules"') ? documents(JSON_MARK) : [];
+  for (const { value, where } of docs) {
+    for (const d of value.diagnostics) {
+      const span = d?.labels?.[0]?.span;
+      if (typeof d?.filename !== "string" || typeof d.message !== "string") continue;
+      const { start, end } = where(d);
+      out.push({ file: d.filename, line: positive(span?.line), col: positive(span?.column),
+        severity: d.severity === "error" ? "error" : "warning", code: rule(d.code), message: d.message.trim(), from: start, to: end });
+    }
   }
 
   if (s.includes("<checkstyle")) {
@@ -162,19 +177,23 @@ function findings(s) {
         const code = rule(a.source);
         if (!code || !file) continue;
         out.push({ file, line: positive(a.line), col: positive(a.column),
-          severity: a.severity === "error" ? "error" : "warning", code, message: String(a.message ?? "").trim() });
+          severity: a.severity === "error" ? "error" : "warning", code, message: String(a.message ?? "").trim(),
+          ...inText(f.indices[2][0] + e.index, e[0].length) });
       }
     }
   }
 
-  for (const d of (s.includes('"check_name"') ? [...jsonDocuments(s, GITLAB_MARK)] : []).flat()) {
-    const code = rule(d.check_name);
-    if (!code) continue;
-    out.push({ file: d.location.path, line: positive(d.location.lines?.begin),
-      // GitLab's own scale, onto which oxlint writes an error as critical and a warning
-      // as major. The format has nowhere to put a column.
-      severity: d.severity === "critical" || d.severity === "blocker" ? "error" : "warning",
-      code, message: String(d.description ?? "").trim() });
+  for (const { value, where } of s.includes('"check_name"') ? documents(GITLAB_MARK) : []) {
+    for (const d of value) {
+      const code = rule(d.check_name);
+      if (!code) continue;
+      const { start, end } = where(d);
+      out.push({ file: d.location.path, line: positive(d.location.lines?.begin),
+        // GitLab's own scale, onto which oxlint writes an error as critical and a warning
+        // as major. The format has nowhere to put a column.
+        severity: d.severity === "critical" || d.severity === "blocker" ? "error" : "warning",
+        code, message: String(d.description ?? "").trim(), from: start, to: end });
+    }
   }
 
   if (s.includes('name="Oxlint"')) {
@@ -185,24 +204,29 @@ function findings(s) {
           const outcome = firstElement(test[2], JUNIT_OUTCOME_RE, JUNIT_OUTCOME);
           if (!outcome || !file) continue;
           const where = xmlText(outcome[3] ?? "").trim().match(JUNIT_WHERE_RE);
+          // The test case, from its opening tag to its closing one.
           out.push({ file, line: positive(where?.[1]), col: positive(where?.[2]),
             severity: outcome[1] === "error" ? "error" : "warning", code: rule(xmlAttributes(test[1]).name),
-            message: String(xmlAttributes(outcome[2]).message ?? "").trim() });
+            message: String(xmlAttributes(outcome[2]).message ?? "").trim(),
+            ...inText(doc.indices[1][0] + suite.indices[2][0] + test.index, test[0].length) });
         }
       }
     }
   }
 
-  const sarif = s.includes('"oxlint"') ? [...jsonDocuments(s, SARIF_MARK)] : [];
-  for (const run of sarif.flatMap((d) => d.runs).filter((r) => r?.tool?.driver?.name === "oxlint")) {
-    for (const r of run.results ?? []) {
-      const where = r?.locations?.[0]?.physicalLocation;
-      if (typeof where?.artifactLocation?.uri !== "string") continue;
-      out.push({ file: where.artifactLocation.uri, line: positive(where.region?.startLine),
-        col: positive(where.region?.startColumn), severity: r.level === "error" ? "error" : "warning",
-        // A file that does not parse is given an id of oxlint's own, `OXL0001`, where the
-        // other formats give none; it is not a rule you could disable.
-        code: rule(r.ruleId), message: String(r.message?.text ?? "").trim() });
+  const sarif = s.includes('"oxlint"') ? documents(SARIF_MARK) : [];
+  for (const { value, where: placeOf } of sarif) {
+    for (const run of value.runs.filter((r) => r?.tool?.driver?.name === "oxlint")) {
+      for (const r of run.results ?? []) {
+        const where = r?.locations?.[0]?.physicalLocation;
+        if (typeof where?.artifactLocation?.uri !== "string") continue;
+        const { start, end } = placeOf(r);
+        out.push({ file: where.artifactLocation.uri, line: positive(where.region?.startLine),
+          col: positive(where.region?.startColumn), severity: r.level === "error" ? "error" : "warning",
+          // A file that does not parse is given an id of oxlint's own, `OXL0001`, where the
+          // other formats give none; it is not a rule you could disable.
+          code: rule(r.ruleId), message: String(r.message?.text ?? "").trim(), from: start, to: end });
+      }
     }
   }
   return out;
@@ -217,17 +241,19 @@ export default {
 
   extract(s) {
     const failures = [];
-    const seen = new Set(), warned = new Set();
-    for (const f of findings(s)) {
+    const seen = new Map(), warned = new Set();
+    for (const f of findings(s, true)) {
       const key = [f.file, f.line, f.col, f.code, f.message].join("\u0000");
       if (f.severity !== "error") { warned.add(key); continue; }
-      if (seen.has(key)) continue;
-      seen.add(key);
-      failures.push({
+      const failure = withSource({
         file: f.file, line: f.line, col: f.col,
         title: f.code ?? "error", ...(f.code ? { code: f.code } : { label: "error" }),
         severity: "error", message: f.message,
-      });
+      }, f.from, f.to);
+      // One run printed in two formats is one finding, read in both places.
+      if (seen.has(key)) { failures[seen.get(key)] = joinSources(failures[seen.get(key)], failure); continue; }
+      seen.set(key, failures.length);
+      failures.push(failure);
     }
     if (!failures.length) return null;
     const n = failures.length, w = warned.size;

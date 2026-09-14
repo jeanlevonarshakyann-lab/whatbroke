@@ -9,6 +9,8 @@
 //
 // The message is on the first line and the file, line and column are on the last, which
 // is why reading only the first line found the problem and never where it was.
+import { withSource } from "../ownership.js";
+
 const HEAD_RE = /^(Error|Warning|DEPRECATION WARNING)(?:[^\S\n]+on line \d+.*)?:[^\S\n]*(.*)$/;
 // "  bad.scss 2:10  root stylesheet" - the trailing phrase names the enclosing rule.
 const WHERE_RE = /^[^\S\n]+(\S.*?)[^\S\n]+(\d+):(\d+)[^\S\n]*(?:[^\S\n]{2,}(.*))?$/;
@@ -50,21 +52,22 @@ export default {
       if (!opens) continue;
       if (head[1] !== "Error") { warnings++; continue; }
 
-      let where = null, stmt;
+      // The message, the box under it, and the location at its foot.
+      let where = null, stmt, end = i + 1;
       for (let j = i + 1; j < lines.length && j <= i + 12; j++) {
         if (HEAD_RE.test(lines[j])) break;
         const src = lines[j].match(SOURCE_RE);
-        if (src) { stmt ??= src[2].trim(); continue; }
-        if (BOX_RE.test(lines[j])) continue;
+        if (src) { stmt ??= src[2].trim(); end = j + 1; continue; }
+        if (BOX_RE.test(lines[j])) { end = j + 1; continue; }
         const w = lines[j].match(WHERE_RE);
-        if (w) { where = { file: w[1], line: +w[2], col: +w[3], scope: w[4]?.trim() }; break; }
+        if (w) { where = { file: w[1], line: +w[2], col: +w[3], scope: w[4]?.trim() }; end = j + 1; break; }
       }
 
-      failures.push({
+      failures.push(withSource({
         file: where?.file, line: where?.line, col: where?.col,
         title: "sass error", label: "sass error", severity: "error",
         message: head[2].trim(), stmt,
-      });
+      }, i, end));
       if (where) i += 1;
     }
 

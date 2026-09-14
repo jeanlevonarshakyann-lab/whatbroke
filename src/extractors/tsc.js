@@ -1,3 +1,5 @@
+import { withSource } from "../ownership.js";
+
 const CHAIN_RE = /^[^\S\n]+\S/;   // tsc indents each level of its explanation
 const MAX_CHAIN = 3;
 const LINE_RE = /^(.+?)\((\d+),(\d+)\): (error|warning) (TS\d+): (.*)$/;
@@ -24,7 +26,7 @@ export default {
       const bare = lines[i].match(BARE_RE);
       if (bare) {
         if (bare[1] === "error") {
-          failures.push({ title: bare[2], code: bare[2], severity: "error", message: bare[3] });
+          failures.push(withSource({ title: bare[2], code: bare[2], severity: "error", message: bare[3] }, i, i + 1));
         }
         continue;
       }
@@ -38,10 +40,11 @@ export default {
         chain.push(lines[j].trim());
         if (chain.length >= MAX_CHAIN) break;
       }
-      failures.push({
+      // The diagnostic and the chain of explanation read under it.
+      failures.push(withSource({
         file: m[1], line: +m[2], col: +m[3], title: m[5], code: m[5], severity: "error",
         message: [m[6], ...chain].join("\n"),
-      });
+      }, i, i + 1 + chain.length));
     }
     if (!failures.length) return null;
     // A config-level error belongs to no file, so counting files would say "in 0 files".

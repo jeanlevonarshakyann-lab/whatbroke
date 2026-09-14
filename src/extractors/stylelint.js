@@ -1,4 +1,5 @@
-import { colonPlaces, findJsonDocument, tailFirst } from "../util.js";
+import { colonPlaces, findJsonDocument, jsonDocumentsAt, tailFirst } from "../util.js";
+import { joinSources, withSource } from "../ownership.js";
 // stylelint reports like eslint - the file on its own line, the problems indented under
 // it - but marks severity with a glyph rather than a word:
 //
@@ -51,7 +52,8 @@ function tap(lines) {
   const out = [];
   let file = null, rule = null, current = null;
   const flush = () => { if (current) out.push(current); current = null; };
-  for (const line of lines) {
+  for (let i = 0; i < lines.length; i++) {
+    const line = lines[i];
     const f = line.match(TAP_FILE_RE);
     if (f) { flush(); file = f[1]; rule = null; continue; }
     if (!file) continue;
@@ -63,11 +65,12 @@ function tap(lines) {
       flush();
       let text;
       try { text = JSON.parse(m[1]); } catch { continue; }
-      current = { file, rule, message: String(text).replace(TRAILING_RULE_RE, "") };
+      // A problem is its `- message:` item and the fields under it.
+      current = { file, rule, message: String(text).replace(TRAILING_RULE_RE, ""), from: i, to: i + 1 };
       continue;
     }
     const field = current && line.match(TAP_FIELD_RE);
-    if (field) current[field[1]] = field[1] === "severity" ? field[2] : +field[2];
+    if (field) { current[field[1]] = field[1] === "severity" ? field[2] : +field[2]; current.to = i + 1; }
   }
   flush();
   // Every field has to be there: that is stylelint's block, and not a YAML block that
@@ -96,16 +99,18 @@ export default {
     let file = null;
     let warnings = 0;
 
-    for (const line of lines) {
+    for (let i = 0; i < lines.length; i++) {
+      const line = lines[i];
       const p = line.match(PROBLEM_RE);
       if (p) {
         // ⚠ is a warning and ⓘ is a note; neither failed the run
         if (p[3] !== "✖") { warnings++; continue; }
-        failures.push({
+        // The problem's own line: the file it belongs to is a heading shared with the others.
+        failures.push(withSource({
           file: file ?? undefined, line: +p[1], col: +p[2],
           title: p[5], code: p[5], severity: "error",
           message: p[4].trim(),
-        });
+        }, i, i + 1));
         continue;
       }
       if (NOISE_RE.test(line) || SUMMARY_RE.test(line)) continue;
@@ -114,43 +119,50 @@ export default {
     }
 
     // The machine formats, read whatever the table gave: one log can hold two runs.
-    const already = new Set(failures.map((f) => `${f.file}\u0000${f.line}\u0000${f.col}\u0000${f.code}`));
-    const add = (f) => {
-      const key = `${f.file}\u0000${f.line}\u0000${f.col}\u0000${f.code}`;
-      if (already.has(key)) return;
-      already.add(key);
-      failures.push(f);
+    // A problem read again keeps the place it was read in.
+    const keyOf = (f) => `${f.file}\u0000${f.line}\u0000${f.col}\u0000${f.code}`;
+    const already = new Map();
+    failures.forEach((f, i) => { if (!already.has(keyOf(f))) already.set(keyOf(f), i); });
+    const add = (f, start, end) => {
+      const placed = withSource(f, start, end);
+      if (already.has(keyOf(f))) { failures[already.get(keyOf(f))] = joinSources(failures[already.get(keyOf(f))], placed); return; }
+      already.set(keyOf(f), failures.length);
+      failures.push(placed);
     };
     // The machine formats print no tally, and the counts they hold are the same ones the
     // table's tally states - so the summary is stylelint's own sentence either way.
     const warned = new Set();
     const warn = (file, line, col, rule) => warned.add(`${file}\u0000${line}\u0000${col}\u0000${rule}`);
-    for (const line of s.split("\n")) {
+    lines.forEach((line, i) => {
       const u = unixLine(line);
       if (u && u[6] === "error") {
-        add({ file: u[1], line: +u[2], col: +u[3], title: u[5], code: u[5], severity: "error", message: u[4] });
+        add({ file: u[1], line: +u[2], col: +u[3], title: u[5], code: u[5], severity: "error", message: u[4] }, i, i + 1);
       } else if (u) warn(u[1], u[2], u[3], u[5]);
-    }
-    for (const line of lines) {
+    });
+    lines.forEach((line, i) => {
       const c = line.match(COMPACT_RE);
       if (c && c[4] === "error") {
-        add({ file: c[1], line: +c[2], col: +c[3], title: c[6], code: c[6], severity: "error", message: c[5] });
+        add({ file: c[1], line: +c[2], col: +c[3], title: c[6], code: c[6], severity: "error", message: c[5] }, i, i + 1);
       } else if (c) warn(c[1], c[2], c[3], c[6]);
-    }
+    });
     for (const p of /^not ok\b/m.test(s) ? tap(lines) : []) {
       if (p.severity !== "error") { warn(p.file, p.line, p.column, p.rule); continue; }
-      add({ file: p.file, line: p.line, col: p.column, title: p.rule, code: p.rule, severity: "error", message: p.message });
+      add({ file: p.file, line: p.line, col: p.column, title: p.rule, code: p.rule, severity: "error", message: p.message }, p.from, p.to);
     }
-    for (const file of findJsonDocument(s, JSON_MARK) ?? []) {
-      for (const w of file.warnings) {
-        if (w.severity === "warning") { warn(file.source, w.line, w.column, w.rule); continue; }
-        add({
-          file: file.source, line: w.line, col: w.column,
-          title: w.rule, code: w.rule, severity: "error",
-          // stylelint repeats the rule in brackets at the end of its own text.
-          message: String(w.text ?? "").replace(/[^\S\n]*\([\w-]+(?:\/[\w-]+)?\)[^\S\n]*$/, ""),
-        });
+    for (const { value, where } of jsonDocumentsAt(s, JSON_MARK)) {
+      for (const file of value) {
+        for (const w of file.warnings) {
+          if (w.severity === "warning") { warn(file.source, w.line, w.column, w.rule); continue; }
+          const { start, end } = where(w);
+          add({
+            file: file.source, line: w.line, col: w.column,
+            title: w.rule, code: w.rule, severity: "error",
+            // stylelint repeats the rule in brackets at the end of its own text.
+            message: String(w.text ?? "").replace(/[^\S\n]*\([\w-]+(?:\/[\w-]+)?\)[^\S\n]*$/, ""),
+          }, start, end);
+        }
       }
+      break;
     }
     if (!failures.length) return null;
     const summary = s.match(SUMMARY_RE);
