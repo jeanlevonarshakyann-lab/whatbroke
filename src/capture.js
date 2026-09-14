@@ -109,6 +109,10 @@ const PROBABLE_DIAGNOSTIC = new RegExp([
   "^[CWEFRI]:[^\\S\\n]*\\d+:[^\\S\\n]*\\d+:[^\\S\\n]",
   "^# RuboCop Inspection Report",
   "^### [^\\n]+ - \\(\\d+ offenses?\\)",
+  // sass ends every diagnostic with a trace whose last frame is the root stylesheet, and a
+  // module loop draws a box for each file between its message and that trace - more than
+  // the eight lines kept after the message, and the trace is how sass's is told apart.
+  "^[^\\S\\n]+\\S[^\\n]*[^\\S\\n]\\d+:\\d+[^\\S\\n]+root stylesheet[^\\S\\n]*$",
   "^[^\\S\\n]*\\* \\*\\*Line # \\d+ - \\w+:\\*\\*",
 ].join("|"), "im");
 

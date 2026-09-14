@@ -3940,6 +3940,30 @@
     ],
     "shadow": {}
   },
+  "sass_ascii_fail.txt": {
+    "winner": "sass",
+    "parser": "sass",
+    "failures": 1,
+    "claimants": [
+      "sass",
+      "generic"
+    ],
+    "shadow": {
+      "generic": 1
+    }
+  },
+  "sass_configured_twice_fail.txt": {
+    "winner": "sass",
+    "parser": "sass",
+    "failures": 1,
+    "claimants": [
+      "sass",
+      "generic"
+    ],
+    "shadow": {
+      "generic": 1
+    }
+  },
   "sass_fail.txt": {
     "winner": "sass",
     "parser": "sass",
@@ -3952,7 +3976,79 @@
       "generic": 1
     }
   },
+  "sass_fatal_deprecation_fail.txt": {
+    "winner": "sass",
+    "parser": "sass",
+    "failures": 1,
+    "claimants": [
+      "sass",
+      "generic"
+    ],
+    "shadow": {
+      "generic": 1
+    }
+  },
+  "sass_forward_conflict_ascii_fail.txt": {
+    "winner": "sass",
+    "parser": "sass",
+    "failures": 1,
+    "claimants": [
+      "sass",
+      "generic"
+    ],
+    "shadow": {
+      "generic": 1
+    }
+  },
   "sass_import_fail.txt": {
+    "winner": "sass",
+    "parser": "sass",
+    "failures": 1,
+    "claimants": [
+      "sass",
+      "generic"
+    ],
+    "shadow": {
+      "generic": 1
+    }
+  },
+  "sass_module_loop_ascii_fail.txt": {
+    "winner": "sass",
+    "parser": "sass",
+    "failures": 1,
+    "claimants": [
+      "sass",
+      "generic"
+    ],
+    "shadow": {
+      "generic": 1
+    }
+  },
+  "sass_module_loop_fail.txt": {
+    "winner": "sass",
+    "parser": "sass",
+    "failures": 1,
+    "claimants": [
+      "sass",
+      "generic"
+    ],
+    "shadow": {
+      "generic": 1
+    }
+  },
+  "sass_user_warn_fail.txt": {
+    "winner": "sass",
+    "parser": "sass",
+    "failures": 1,
+    "claimants": [
+      "sass",
+      "generic"
+    ],
+    "shadow": {
+      "generic": 1
+    }
+  },
+  "sass_warnings_ascii_fail.txt": {
     "winner": "sass",
     "parser": "sass",
     "failures": 1,

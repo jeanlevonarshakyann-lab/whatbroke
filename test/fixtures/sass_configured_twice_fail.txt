@@ -1,0 +1,8 @@
+Error: This module was already loaded, so it can't be configured using "with".
+  ╷
+1 │ @use "lib";
+  │ ━━━━━━━━━━ original load
+2 │ @use "lib" with ($a: 2);
+  │ ^^^^^^^^^^^^^^^^^^^^^^^ new load
+  ╵
+  multi/twice.scss 2:1  root stylesheet

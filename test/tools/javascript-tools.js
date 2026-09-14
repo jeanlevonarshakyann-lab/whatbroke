@@ -79,6 +79,59 @@ const CASES = [
       assert.equal(r.failures[0].line, 1);
       assert.match(r.failures[0].message, /Can't find stylesheet to import/);
     } },
+  // Captured with Dart Sass 1.104.0. sass_fail.txt's run again with --no-unicode, which
+  // draws the box in ASCII - `,` above it, `|` down it, `'` under it - and every run in that
+  // mode read as a guess with no location. The two are compared as formats of one run.
+  { file: "sass_ascii_fail.txt", tool: "sass", n: 1, check: (r) => {
+      assert.deepEqual([r.failures[0].file, r.failures[0].line, r.failures[0].col], ["bad.scss", 2, 10]);
+      assert.equal(r.failures[0].stmt, "color: $undefined-var;");
+      assert.equal(r.guessed, undefined);
+    } },
+  // A module loop draws both loads, each under a heading naming its file, where the box
+  // usually opens with its cap - so nothing under the message looked like sass's box, and the
+  // loop was a guess. The trace's last frame, `root stylesheet`, is in every sass trace.
+  { file: "sass_module_loop_fail.txt", tool: "sass", n: 1, check: (r) => {
+      assert.deepEqual([r.failures[0].file, r.failures[0].line, r.failures[0].col], ["cross/_b.scss", 1, 1]);
+      assert.equal(r.failures[0].message, "Module loop: this module is already being loaded.");
+      assert.equal(r.failures[0].stmt, '@use "a";');
+    } },
+  { file: "sass_module_loop_ascii_fail.txt", tool: "sass", n: 1, check: (r) => {
+      assert.deepEqual([r.failures[0].file, r.failures[0].line, r.failures[0].col], ["cross/_b.scss", 1, 1]);
+      assert.equal(r.failures[0].message, "Module loop: this module is already being loaded.");
+    } },
+  // An error about two lines draws both and marks the one it is about with ^^^ - the other
+  // with ━━━, or === in ASCII. The quoted line was the first in the box, which here is the
+  // first load and not the one that failed.
+  { file: "sass_configured_twice_fail.txt", tool: "sass", n: 1, check: (r) => {
+      assert.deepEqual([r.failures[0].line, r.failures[0].col], [2, 1]);
+      assert.equal(r.failures[0].stmt, '@use "lib" with ($a: 2);');
+    } },
+  { file: "sass_forward_conflict_ascii_fail.txt", tool: "sass", n: 1, check: (r) => {
+      assert.deepEqual([r.failures[0].file, r.failures[0].line], ["cross/_both.scss", 2]);
+      assert.equal(r.failures[0].message, "Two forwarded modules both define a variable named $x.");
+      assert.equal(r.failures[0].stmt, '@forward "v2";');
+    } },
+  // A deprecation made fatal says why it is an error, and where to read about it, before it
+  // draws the box - more lines than the box was looked for under the message. The import
+  // deprecation above it is only a warning, and is counted as one.
+  { file: "sass_fatal_deprecation_fail.txt", tool: "sass", n: 1, check: (r) => {
+      assert.deepEqual([r.failures[0].file, r.failures[0].line, r.failures[0].col], ["warns.scss", 3, 10]);
+      assert.equal(r.failures[0].message, "Global built-in functions are deprecated and will be removed in Dart Sass 3.0.0.");
+      assert.equal(r.failures[0].stmt, "color: lighten(red, 10%);");
+      assert.equal(r.summary, "1 error — 1 warning hidden");
+    } },
+  // Warnings were never counted: a deprecation warning's box is under its explanation, and
+  // an @warn draws no box at all.
+  { file: "sass_warnings_ascii_fail.txt", tool: "sass", n: 1, check: (r) => {
+      assert.deepEqual([r.failures[0].file, r.failures[0].line], ["warns.scss", 4]);
+      assert.equal(r.summary, "1 error — 3 warnings hidden");
+      assert.doesNotMatch(JSON.stringify(r.failures), /deprecated/);
+    } },
+  { file: "sass_user_warn_fail.txt", tool: "sass", n: 1, check: (r) => {
+      assert.deepEqual([r.failures[0].file, r.failures[0].line, r.failures[0].col], ["userwarn.scss", 3, 13]);
+      assert.equal(r.summary, "1 error — 1 warning hidden");
+      assert.doesNotMatch(JSON.stringify(r.failures), /careful/);
+    } },
   // Captured with webpack 5. Each error is followed by the resolver's entire search -
   // forty lines of how webpack looked rather than what went wrong.
   { file: "webpack_resolve_fail.txt", tool: "webpack", n: 1, check: (r) => {
@@ -617,6 +670,9 @@ const CASES = [
 let pass = 0, fail = 0;
 for (const result of [runCases(CASES), agreeAcrossFormats([
   ["markdownlint", ["markdownlint_aliases_fail.txt", "markdownlint_json_fail.txt"]],
+  // Unicode or ASCII, sass draws the same diagnostic.
+  ["sass", ["sass_fail.txt", "sass_ascii_fail.txt"]],
+  ["sass module loop", ["sass_module_loop_fail.txt", "sass_module_loop_ascii_fail.txt"]],
   ["stylelint", ["stylelint_string_fail.txt", "stylelint_unix_fail.txt", "stylelint_json_fail.txt",
     "stylelint_compact_fail.txt", "stylelint_tap_fail.txt", "stylelint_verbose_fail.txt"]],
   ["stylelint warnings", ["stylelint_warn_string_fail.txt", "stylelint_warn_compact_fail.txt",

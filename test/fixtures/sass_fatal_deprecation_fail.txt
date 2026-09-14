@@ -1,0 +1,22 @@
+DEPRECATION WARNING [import]: Sass @import rules are deprecated and will be removed in Dart Sass 3.0.0.
+
+More info and automated migrator: https://sass-lang.com/d/import
+
+  ╷
+1 │ @import "good";
+  │         ^^^^^^
+  ╵
+    warns.scss 1:9  root stylesheet
+
+Error: Global built-in functions are deprecated and will be removed in Dart Sass 3.0.0.
+Use color.adjust instead.
+
+More info and automated migrator: https://sass-lang.com/d/import
+
+This is only an error because you've set the global-builtin deprecation to be fatal.
+Remove this setting if you need to keep using this feature.
+  ╷
+3 │   color: lighten(red, 10%);
+  │          ^^^^^^^^^^^^^^^^^
+  ╵
+  warns.scss 3:10  root stylesheet
