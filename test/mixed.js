@@ -16,7 +16,7 @@ import assert from "node:assert/strict";
 import { isDeepStrictEqual } from "node:util";
 import { readdirSync } from "node:fs";
 import { analyse } from "../src/index.js";
-import { parserOf, SOURCE_RANGE, sourceRange, timesLocated } from "../src/ownership.js";
+import { parserOf, sourceRange } from "../src/ownership.js";
 
 const here = dirname(fileURLToPath(import.meta.url));
 const cli = join(here, "..", "bin", "whatbroke.js");
@@ -119,59 +119,18 @@ test("one diagnosis is never reported under two tools", () => {
   assert.equal(r.others, undefined, "the traceback reading of the same failures leaked through");
 });
 
-// Ownership exists so two parsers describing the same raw region can suppress one
-// another, which only happens in a log holding more than one tool - but it is computed
-// for EVERY parser that claims the text. A single-tool log paid for all of it and read
-// none of it: 90 eslint problems inside a 100k-line build log cost 4.5s, against 0.56s
-// with the work skipped. The ranges are the same either way; what changed is when.
-//
-// This was measured by timing how long the ranges took to ask for after the read, which
-// needed a parser whose ranges are guessed - and parsers are writing theirs down, one
-// family at a time. So the reader counts how often it locates, and the log is built from
-// whichever fixture one parser reads alone with the most failures still guessed: nothing
-// may be located while it is read, and asking for a range locates it.
-test("a log with one tool in it never pays for source ownership", () => {
-  const noise = Array(60000).fill("  vite:build transforming src/components/Widget.tsx +2ms").join("\n");
-  const guessed = (r) => r.failures.every((f) => "get" in (Object.getOwnPropertyDescriptor(f, SOURCE_RANGE) ?? {}));
-  const candidates = readdirSync(join(here, "fixtures"))
-    .map((name) => ({ name, r: analyse(fx(name)) }))
-    .filter(({ r }) => r && r.tool !== "output" && !r.others && r.failures.length > 0 && guessed(r))
-    .sort((a, b) => b.r.failures.length - a.r.failures.length);
-  let r = null, took = 0, during = 0;
-  for (const { name } of candidates) {
-    const before = timesLocated();
-    const started = Date.now();
-    const read = analyse(`${noise}\n${fx(name)}`);
-    took = Date.now() - started;
-    if (read.others || !guessed(read)) continue;
-    r = read;
-    during = timesLocated() - before;
-    break;
-  }
-  if (!r) {
-    console.log("       no single-tool fixture has its ranges guessed any more; nothing to locate");
-    return;
-  }
-  assert.equal(during, 0, `${r.tool}'s ${r.failures.length} failures were located while the log was read`);
-  const before = timesLocated();
-  for (const f of r.failures) sourceRange(f);
-  assert.equal(timesLocated() - before, 1, "asking for the ranges locates them, once for all of them");
-  // ...and a read that has become several times slower is a regression of its own.
-  assert.ok(took < 8000, `${took}ms to read one tool out of 60k lines`);
-});
-
-// The same again with more than one tool in the log. Ownership is only consulted when
-// two parsers describe the same TEXT, and that is a string comparison - so a mixed log
-// whose tools disagree about everything should not locate anything either.
+// A log holding three tools costs little more to read than the same log holding one.
+// Ranges are only compared when two parsers describe the same TEXT, and that is a string
+// comparison - when ranges were guessed rather than written, comparing them was what cost.
 test("a mixed log only pays for ownership where two parsers agree", () => {
   const noise = Array(60000).fill("  vite:build transforming src/components/Widget.tsx +2ms").join("\n");
   const log = `${noise}\n${fx("eslint_bulk_fail.txt")}\n${fx("tsc_plain.txt")}\n${fx("jest_fail.txt")}`;
 
   // Measured against the SAME noise carrying one tool, so the bound is a ratio rather
-  // than a wall-clock number and does not go flaky on a slower runner. Locating ranges
-  // for a log this size is several times the cost of parsing it: on this machine the
-  // mixed log ran 310ms with the cheap check first and 1090ms with it second, against
-  // roughly 300ms for the single-tool baseline.
+  // than a wall-clock number and does not go flaky on a slower runner. Guessing ranges for
+  // a log this size was several times the cost of parsing it: the mixed log ran 310ms
+  // with the cheap check first and 1090ms with it second, against roughly 300ms for the
+  // single-tool baseline.
   const alone = `${noise}\n${fx("eslint_bulk_fail.txt")}`;
   const time = (t) => { const at = Date.now(); analyse(t); return Math.max(Date.now() - at, 1); };
   const baseline = time(alone);
@@ -183,11 +142,11 @@ test("a mixed log only pays for ownership where two parsers agree", () => {
   assert.equal(r.others.length, 2, "three tools are in this log");
   assert.equal(r.failures.length + r.others.reduce((n, o) => n + o.failures.length, 0), 95);
   assert.ok(took < baseline * 2,
-    `${took}ms against a ${baseline}ms single-tool baseline - a mixed log is locating ranges it never compares`);
+    `${took}ms against a ${baseline}ms single-tool baseline - a mixed log costs what its comparisons should not`);
 
-  // and asking for one still answers, with the same range it always gave
+  // and every failure still says where it came from
   const range = sourceRange(r.failures[0]);
-  assert.ok(range && range.end > range.start, "a range is still available on request");
+  assert.ok(range && range.end > range.start, "a range is still there to ask for");
 });
 
 test("source ownership is attached internally without changing JSON v1", () => {

@@ -70,7 +70,7 @@ import generic from "./extractors/generic.js";
 import { stripAnsi, stripCiPrefix, isNoise, collapseRepeats } from "./util.js";
 import { clusterFailures } from "./cluster.js";
 import { stripRedrawnCiPrefix, wrapperCandidates } from "./normalize.js";
-import { addSourceRanges, joinSources, ownershipBudget, preserveSourceRange, rangesOverlap, releaseOwnership, setParser, sourceRange } from "./ownership.js";
+import { joinSources, preserveSourceRange, rangesOverlap, setParser, sourceRange } from "./ownership.js";
 
 // order matters: most specific first, generic last
 export const EXTRACTORS = [pytest, nodetest, bun, bunRuntime, deno, denoRuntime, denoLint, denoFmt, playwright, jestjson, jest, mochajson, mochaxunit, mocha, ava, jasmine, rubocop, tap, taptext, vitest, unittest, traceback, eslintjson, eslint, ruff, pylint, flake8, golangci, markdownlint, stylelint, shellcheck, yamllint, biome, oxlint, black, prettier, sass, less, webpack, babel, swc, pyright, mypy, cmake, terraform, swift, clang, ruby, perl, php, rspec, junitjvm, jvm, dotnettest, dotnet, phpunit, cargojson, cargo, govetjson, gojson, gotest, esbuild, vite, node, tsc, git, kubectl, docker, make, npm, pnpm, yarn, pip, generic];
@@ -182,7 +182,7 @@ const MAX_TEXT_COMPARISONS = 4_000_000;
  *
  *  `failures` still means "what the winning tool reported", unchanged, so nothing that
  *  reads it sees a different shape. Everything else arrives here, attributed. */
-function otherTools(s, winner, mine, cluster, budget) {
+function otherTools(s, winner, mine, cluster) {
   const exact = (f) => JSON.stringify([f.file ?? null, f.line ?? null, f.col ?? null, f.title ?? "", f.message ?? ""]);
   const claimed = new Map();
   const claim = (f) => claimed.set(exact(f), [...(claimed.get(exact(f)) ?? []), f]);
@@ -230,9 +230,8 @@ function otherTools(s, winner, mine, cluster, budget) {
     // Different parsers may describe one raw line with different public fields, so the
     // private source range is the tie-breaker: only readings grounded in the same raw
     // region, and carrying the same message, may suppress one another. Text goes first
-    // because comparing it is free, and asking for a range locates every range in the
-    // result. A reading whose lines could not be worked out overlaps nothing, so once
-    // that is known there is nothing left to compare it with.
+    // because it is the cheaper question. A reading that carries no range overlaps
+    // nothing, so once that is known there is nothing left to compare it with.
     let located;
     const overlaps = (g) => !quoteDiffers(f, g) && (located ??= !!sourceRange(f)) && rangesOverlap(f, g);
     // The same message can be every finding in a large run - "Unexpected any" a thousand
@@ -249,7 +248,7 @@ function otherTools(s, winner, mine, cluster, budget) {
   for (const ex of EXTRACTORS) {
     if (ex === winner || ex.name === "generic") continue;
     let r = null;
-    try { if (ex.detect(s)) r = addSourceRanges(s, ex.extract(s), budget); } catch { r = null; }
+    try { if (ex.detect(s)) r = ex.extract(s); } catch { r = null; }
     if (!r?.failures?.length) continue;
     // A shared location does not prove a shared diagnostic, and missing locations
     // say nothing at all. Compare diagnostic content consistently for the winner and other tools.
@@ -343,10 +342,10 @@ function ordered(command) {
 }
 
 /** The extractor loop: first parser that claims the text AND finds something owns it. */
-function parse(s, command, budget) {
+function parse(s, command) {
   for (const ex of ordered(command)) {
     let r = null;
-    try { if (ex.detect(s)) r = addSourceRanges(s, ex.extract(s), budget); } catch { r = null; }
+    try { if (ex.detect(s)) r = ex.extract(s); } catch { r = null; }
     if (r?.failures?.length) return { extractor: ex, result: r };
   }
   return null;
@@ -429,9 +428,9 @@ function better(candidate, cand, current) {
 const MAX_WRAPPER_LAYERS = 3;   // CI stamps a monorepo runner that stamps a container
 
 /** Peel wrapper prefixes for as long as peeling demonstrably improves the parse. */
-function unwrap(s, command, budget) {
+function unwrap(s, command) {
   let text = s;
-  let hit = parse(text, command, budget);
+  let hit = parse(text, command);
   const wrappers = [];
   // At most one literal strip. Once a wrapper is off, the tool's OWN uniform prefix is
   // the next thing a literal search finds - Maven leads every line with `[INFO] ` - and
@@ -442,7 +441,7 @@ function unwrap(s, command, budget) {
     let found = null;
     for (const c of wrapperCandidates(text)) {
       if (c.kind === "literal" && literalsTaken) continue;
-      const candidate = parse(c.text, command, budget);
+      const candidate = parse(c.text, command);
       if (better(c, candidate, hit)) { found = { ...c, hit: candidate }; break; }
       // Wrappers stack: a monorepo runner relaying a container relaying a test run.
       // Peeling only the outer one is often no improvement by itself, and a strictly
@@ -451,7 +450,7 @@ function unwrap(s, command, budget) {
       if (real(candidate)) continue;
       for (const inner of wrapperCandidates(c.text)) {
         if (inner.kind === "literal" && (literalsTaken || c.kind === "literal")) continue;
-        const deeper = parse(inner.text, command, budget);
+        const deeper = parse(inner.text, command);
         if (better(inner, deeper, hit)) { found = { ...c, text: inner.text, wrapper: c.wrapper, hit: deeper, then: inner.wrapper }; break; }
       }
       if (found) break;
@@ -506,8 +505,7 @@ function analyseWhole(raw, { cluster = true, command = null } = {}) {
   const base = collapseExactRetries(
     stripRedrawnCiPrefix(stripCiPrefix(stripAnsi(raw.replace(/^\uFEFF/, ""))))
       .replace(/\r\n?/g, "\n"));
-  const budget = ownershipBudget();
-  const { text: s, hit, wrappers } = unwrap(base, command, budget);
+  const { text: s, hit, wrappers } = unwrap(base, command);
   if (!hit) return null;
   const r = hit.result;
   // dedupe first: it collapses the SAME diagnostic printed twice, so cluster
@@ -515,8 +513,7 @@ function analyseWhole(raw, { cluster = true, command = null } = {}) {
   const failures = dedupeFailures(r.failures)
     .map((f) => preserveSourceRange(f, { tool: r.tool, category: hit.extractor.category, ...f }));
   const clusters = cluster ? clusterFailures(failures) : null;
-  const others = otherTools(s, hit.extractor, failures, cluster, budget);
-  releaseOwnership(budget);
+  const others = otherTools(s, hit.extractor, failures, cluster);
   const answer = {
     ...r, failures, clusters,
     ...(others.length ? { others } : {}),

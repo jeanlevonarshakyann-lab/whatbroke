@@ -1,14 +1,12 @@
 // Where each failure was read from.
 //
 // When a log holds two tools, whatbroke decides that two readings are one diagnosis when
-// they came from the same lines. A parser that says which lines it read a failure from
-// makes that a fact; for the ones that do not say yet, src/ownership.js guesses, by
-// scoring every line of the log against the failure. The guess has been wrong in ways
-// that cost a failure, and it is most of the time a log with many tools in it takes.
+// they came from the same lines. Every parser says which lines it read each failure from,
+// which makes that a fact. It used to be a guess - every line of the log scored against
+// the failure - and the guess was wrong in ways that cost a failure or showed one twice.
 //
-// So every range a parser writes down is held to the text it points at, and the parsers
-// still guessing are listed by name. The list can only shrink: a parser that starts
-// writing ranges has to come off it, and one that stops cannot quietly go back on.
+// So every parser has to write its ranges down, and every range it writes is held to the
+// text it points at. test/fuzz.js asks the same of damaged logs.
 import assert from "node:assert/strict";
 import { readFileSync, readdirSync } from "node:fs";
 import { dirname, join } from "node:path";
@@ -33,9 +31,6 @@ const test = (name, fn) => {
     console.log(`  ok   ${name}`); pass++;
   } catch (e) { console.log(`  FAIL ${name}\n       ${e.message}`); fail++; }
 };
-
-// The parsers whose failures still carry a guessed range on at least one fixture.
-const GUESSING = new Set([]);
 
 // Every parser that claims every fixture, on the text the way analyse hands it over.
 const readings = [];
@@ -101,12 +96,13 @@ test("every range a parser writes down holds the failure it describes", () => {
   assert.ok(written > 0, "no parser wrote a range, which tests nothing");
 });
 
-test("only the parsers listed as guessing leave the guessing to ownership", () => {
-  const guessed = new Set(readings.filter((r) => !Object.getOwnPropertyDescriptor(r.failure, SOURCE_RANGE)).map((r) => r.parser));
-  const unlisted = [...guessed].filter((p) => !GUESSING.has(p)).sort();
-  const stale = [...GUESSING].filter((p) => !guessed.has(p)).sort();
-  assert.deepEqual(unlisted, [], "these parsers guess and are not listed - write their ranges down");
-  assert.deepEqual(stale, [], "these parsers no longer guess - take them off the list");
+test("every parser writes down where each failure came from", () => {
+  // Nothing guesses a range any more. A failure that carries none overlaps nothing, so a
+  // second tool's reading of the same lines is kept beside it - which is a failure shown
+  // twice, and why a parser that forgets its ranges fails here instead.
+  const unwritten = [...new Set(readings.filter((r) => !Object.getOwnPropertyDescriptor(r.failure, SOURCE_RANGE)?.value)
+    .map((r) => `${r.parser} on ${r.name}`))].sort();
+  assert.deepEqual(unwritten.slice(0, 10), [], "these read failures without saying where from - write their ranges down");
 });
 
 // A finding one parser keeps once, having read it twice - ruff's full form and its concise
@@ -126,12 +122,11 @@ test("a finding read in two places keeps both, and overlaps a reading of either"
   assert.equal(joinSources(kept, line), kept, "a place it already has is not added again");
 });
 
-test("a guess is not joined, and one finding keeps at most eight places", () => {
-  const guessed = {};
-  Object.defineProperty(guessed, SOURCE_RANGE, { get: () => ({ start: 3, end: 4 }), enumerable: false });
+test("a failure with no range is not joined, and one finding keeps at most eight places", () => {
+  const unplaced = {};
   const written = withSource({}, 0, 1);
-  assert.equal(joinSources(written, guessed), written);
-  assert.equal(joinSources(guessed, written), guessed);
+  assert.equal(joinSources(written, unplaced), written);
+  assert.equal(joinSources(unplaced, written), unplaced);
   let many = withSource({}, 0, 1);
   for (let i = 1; i < 1000; i++) many = joinSources(many, withSource({}, 2 * i, 2 * i + 1));
   assert.equal(1 + sourceRange(many).also.length, 8);
