@@ -13,6 +13,8 @@
 //
 // The last line is the tally and says nothing; reading it - which is what happened
 // before, under node's name - lost both the message and the location.
+import { withSource } from "../ownership.js";
+
 const MESSAGE_RE = /^[^\S\n]*[x×✗][^\S\n]+(\S.*?)[^\S\n]*$/;
 const AT_RE = /^[^\S\n]*,-\[(.+?):(\d+):(\d+)\][^\S\n]*$/;
 const SOURCE_RE = /^[^\S\n]*(\d+)[^\S\n]*\|[^\S\n]?(.*)$/;
@@ -38,16 +40,17 @@ export default {
       const at = lines[i + 1]?.match(AT_RE);
       if (!at) continue;
 
-      let stmt;
+      let stmt, end = i + 2;
       for (let j = i + 2; j < lines.length && j <= i + 8; j++) {
         const src = lines[j].match(SOURCE_RE);
-        if (src && +src[1] === +at[2]) { stmt = src[2].trim(); break; }
+        if (src && +src[1] === +at[2]) { stmt = src[2].trim(); end = j + 1; break; }
       }
-      failures.push({
+      // The message, its location, and the source line it points at.
+      failures.push(withSource({
         file: at[1], line: +at[2], col: +at[3],
         title: "syntax error", label: "syntax error", severity: "error",
         message: m[1], stmt,
-      });
+      }, i, end));
       i += 1;
     }
     if (!failures.length) return null;

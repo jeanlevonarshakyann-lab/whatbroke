@@ -5,6 +5,8 @@
 //   1 .a { color: @undefined-var; }
 //
 // Self-bounding: there is nothing to scan for, because the whole diagnostic is one line.
+import { withSource } from "../ownership.js";
+
 const HEAD_RE = /^(\w*(?:Error|Exception)):[^\S\n]*(.+?)[^\S\n]+in[^\S\n]+(\S+)[^\S\n]+on line[^\S\n]+(\d+)(?:,[^\S\n]+column[^\S\n]+(\d+))?:?[^\S\n]*$/;
 // "1 .a { color: @undefined-var; }" - the number, a space, the source.
 const SOURCE_RE = /^[^\S\n]*(\d+)[^\S\n](.*)$/;
@@ -22,16 +24,17 @@ export default {
     for (let i = 0; i < lines.length; i++) {
       const m = lines[i].match(HEAD_RE);
       if (!m) continue;
-      let stmt;
+      let stmt, end = i + 1;
       for (let j = i + 1; j < lines.length && j <= i + 3; j++) {
         const src = lines[j].match(SOURCE_RE);
-        if (src && +src[1] === +m[4]) { stmt = src[2].trim(); break; }
+        if (src && +src[1] === +m[4]) { stmt = src[2].trim(); end = j + 1; break; }
       }
-      failures.push({
+      // The header, and the source it echoes when it does.
+      failures.push(withSource({
         file: m[3], line: +m[4], col: m[5] ? +m[5] : undefined,
         title: m[1], code: m[1], severity: "error",
         message: m[2].trim(), stmt,
-      });
+      }, i, end));
     }
     if (!failures.length) return null;
     const n = failures.length;

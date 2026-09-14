@@ -1,4 +1,5 @@
 import { isNoise } from "../util.js";
+import { joinSources, withSource } from "../ownership.js";
 
 // Babel names the file inside the message and follows the code frame with its own
 // parser's stack - twenty frames of @babel/parser, which is the bulk of the log:
@@ -28,7 +29,7 @@ export default {
   extract(s) {
     const lines = s.split("\n");
     const failures = [];
-    const seen = new Set();
+    const seen = new Map();
     for (let i = 0; i < lines.length; i++) {
       const m = lines[i].match(HEAD_RE);
       if (!m) continue;
@@ -36,19 +37,21 @@ export default {
       if (!/[/\\]|\.\w+$/.test(m[2])) continue;
       if (isNoise(m[2])) continue;
       const key = `${m[2]}:${m[4]}:${m[5]}`;
-      if (seen.has(key)) continue;
-      seen.add(key);
 
-      let stmt;
+      let stmt, end = i + 1;
       for (let j = i + 1; j < lines.length && j <= i + 6; j++) {
         const marked = lines[j].match(MARKED_RE);
-        if (marked) { stmt = marked[2].trim(); break; }
+        if (marked) { stmt = marked[2].trim(); end = j + 1; break; }
       }
-      failures.push({
+      // The header, down to the marked line of the code frame under it.
+      const failure = withSource({
         file: m[2], line: +m[4], col: +m[5],
         title: m[1], code: m[1], severity: "error",
         message: m[3].trim(), stmt,
-      });
+      }, i, end);
+      if (seen.has(key)) { failures[seen.get(key)] = joinSources(failures[seen.get(key)], failure); continue; }
+      seen.set(key, failures.length);
+      failures.push(failure);
     }
     if (!failures.length) return null;
     const n = failures.length;

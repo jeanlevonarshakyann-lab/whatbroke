@@ -9,6 +9,8 @@
 //   ... forty more lines of the same
 //
 // The trace is how webpack looked, not what went wrong, and it is the bulk of the log.
+import { withSource } from "../ownership.js";
+
 const HEAD_RE = /^(ERROR|WARNING) in (\S+?)(?:[^\S\n]+(\d+):(\d+)(?:-\d+)?)?[^\S\n]*$/;
 const TALLY_RE = /^webpack [\d.]+ compiled with (\d+) errors?(?:[^\S\n]+and[^\S\n]+(\d+) warnings?)?/m;
 // Where the explanation stops and the resolver's diary begins.
@@ -38,24 +40,27 @@ export default {
       if (head[1] !== "ERROR") { warnings++; continue; }
 
       const msg = [];
-      let stmt;
+      // The heading, down to the last line of explanation or drawn source under it - not
+      // the resolver's search, which is how webpack looked rather than what it found.
+      let stmt, end = i + 1;
       for (let j = i + 1; j < lines.length && j <= i + 20; j++) {
         if (HEAD_RE.test(lines[j]) || TALLY_RE.test(lines[j])) break;
         if (TRACE_RE.test(lines[j]) || ADVICE_RE.test(lines[j])) continue;
         const src = lines[j].match(SOURCE_RE);
-        if (src) { stmt ??= src[2].trim(); continue; }
-        if (GUTTER_RE.test(lines[j])) continue;
+        if (src) { stmt ??= src[2].trim(); end = j + 1; continue; }
+        if (GUTTER_RE.test(lines[j])) { end = j + 1; continue; }
         if (lines[j].trim() && msg.length < MAX_MESSAGE_LINES) {
           // "Module not found: Error: Can't resolve ..." says the same thing twice
           msg.push(lines[j].trim().replace(/^Module not found:[^\S\n]*Error:[^\S\n]*/, "Module not found: "));
+          end = j + 1;
         }
       }
 
-      failures.push({
+      failures.push(withSource({
         file: head[2], line: head[3] ? +head[3] : undefined, col: head[4] ? +head[4] : undefined,
         title: "build error", label: "build error", severity: "error",
         message: msg.join("\n") || "webpack reported an error with no explanation", stmt,
-      });
+      }, i, end));
     }
 
     if (!failures.length) return null;

@@ -3,6 +3,8 @@
 // to read an esbuild failure as `Command failed: .../esbuild --bundle` pointing at
 // node:internal/errors, with the actual syntax error nowhere on screen.
 
+import { withSource } from "../ownership.js";
+
 const ESBUILD_DIAG = /^[✘▲] \[(ERROR|WARNING)\] (?:\[plugin ([^\]]+)\] )?(.+)$/;
 // esbuild puts the location on its own line, indented, with a trailing colon:
 //     src/app.js:5:24:
@@ -23,21 +25,23 @@ export const esbuild = {
     for (let i = 0; i < lines.length; i++) {
       const d = lines[i].match(ESBUILD_DIAG);
       if (!d || d[1] !== "ERROR") continue;      // warnings are counted, not reported
-      let file, line, col, stmt;
+      // The diagnostic, its location, and the source line under that.
+      let file, line, col, stmt, end = i + 1;
       for (let j = i + 1; j < lines.length && j <= i + 4; j++) {
         const loc = lines[j].match(ESBUILD_LOC);
         if (loc) {
           [, file, line, col] = loc;
           stmt = lines[j + 1]?.match(ESBUILD_SRC)?.[1]?.trim();
+          end = stmt === undefined ? j + 1 : j + 2;
           break;
         }
         if (ESBUILD_DIAG.test(lines[j])) break;
       }
-      failures.push({
+      failures.push(withSource({
         file, line: line ? +line : undefined, col: col ? +col : undefined,
         title: d[2] ?? "build error", label: d[2] ?? "build error",
         severity: "error", message: d[3], stmt,
-      });
+      }, i, end));
     }
     if (!failures.length) return null;
     const counted = s.match(/^(\d+) errors?$/m);
@@ -77,22 +81,24 @@ export const vite = {
     for (let i = start < 0 ? 0 : start; i < lines.length; i++) {
       const d = lines[i].match(VITE_DIAG);
       if (!d || LOG_LEVEL.test(d[1])) continue;
-      let file, line, col, stmt;
+      // The code and message, the box's location, and the source line drawn in it.
+      let file, line, col, stmt, end = i + 1;
       for (let j = i + 1; j < lines.length && j <= i + 3; j++) {
         const loc = lines[j].match(VITE_LOC);
         if (loc) {
           [, file, line, col] = loc;
+          end = j + 1;
           for (let k = j + 1; k < lines.length && k <= j + 3; k++) {
             const src = lines[k].match(VITE_SRC);
-            if (src?.[1]?.trim()) { stmt = src[1].trim(); break; }
+            if (src?.[1]?.trim()) { stmt = src[1].trim(); end = k + 1; break; }
           }
           break;
         }
       }
-      failures.push({
+      failures.push(withSource({
         file, line: line ? +line : undefined, col: col ? +col : undefined,
         title: d[1], code: d[1], severity: "error", message: d[2] || d[1], stmt,
-      });
+      }, i, end));
     }
     if (!failures.length) return null;
     const n = s.match(/^Build failed with (\d+) errors?/m)?.[1] ?? failures.length;
