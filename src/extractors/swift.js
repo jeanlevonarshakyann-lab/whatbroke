@@ -21,6 +21,8 @@ const SOURCE_RE = /^[^\S\n]*(\d+)[^\S\n]*\|[^\S\n]?(.*)$/;
 
 const swiftText = {
   name: "swift",
+  // Strings a log has to hold for this parser to read anything from it - see src/router.js.
+  signals: ["swift", "<unknown>:0:", "fatalError", "terminated(", "Compiling for"],
   category: "compile",
   commands: ["swift", "swiftc", "xcrun"],
 

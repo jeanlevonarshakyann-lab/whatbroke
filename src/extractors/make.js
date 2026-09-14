@@ -34,6 +34,8 @@ const MISSING_AT_LINE = new RegExp(`^([^\\s:]+):(\\d+):[^\\S\\n]+${NAME}:[^\\S\\
 
 export default {
   name: "make",
+  // Strings a log has to hold for this parser to read anything from it - see src/router.js.
+  signals: ["Stop.", "make", "No such file or directory", "Permission denied"],
   category: "build",
   commands: ["make", "gmake", "bmake"],
 

@@ -33,6 +33,8 @@ const DENO_TAP_DIAGNOSTIC = /"severity"[^\S\n]*:[^\S\n]*"fail"/;
 
 const denoPretty = {
   name: "deno test",
+  // Strings a log has to hold for this parser to read anything from it - see src/router.js.
+  signals: ["ERRORS", "Test failed", "name=\"deno test\""],
   category: "test",
   commands: ["deno"],
   detect: (s) => /^[^\S\n]*ERRORS[^\S\n]*$/m.test(s) && SUMMARY_RE.test(s),

@@ -34,6 +34,8 @@ function diagnostics(s) {
 
 export default {
   name: "cargo --message-format=json",
+  // Strings a log has to hold for this parser to read anything from it - see src/router.js.
+  signals: ["\"spans\""],
   category: "compile",
   commands: ["cargo", "rustc"],
 

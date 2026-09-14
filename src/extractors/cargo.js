@@ -73,6 +73,8 @@ const TALLY_RE = /^could not compile|^aborting due to|^test failed, to rerun|^fa
 
 export default {
   name: "cargo",
+  // Strings a log has to hold for this parser to read anything from it - see src/router.js.
+  signals: ["error[E", "-->", "test result:", "error: ", ".rs:", "panicked at"],
   category: "compile",
   commands: ["cargo"],
   // A bare "error: ..." line is not enough: bun test writes exactly that. Require

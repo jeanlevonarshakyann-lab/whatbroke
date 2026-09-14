@@ -101,6 +101,8 @@ function parsedDocuments(text) {
 
 export default {
   name: "jest --json",
+  // Strings a log has to hold for this parser to read anything from it - see src/router.js.
+  signals: ["\"testResults\""],
   category: "test",
   commands: ["jest"],
 

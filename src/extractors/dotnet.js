@@ -20,6 +20,8 @@ const PROJECT_RE = /^[^\S\n]*(\S.*?)[^\S\n]+:[^\S\n]+(error|warning)[^\S\n]+((?:
 
 export default {
   name: "dotnet",
+  // Strings a log has to hold for this parser to read anything from it - see src/router.js.
+  signals: ["cs(", "fs(", "vb(", "MSB", "NU", "NETSDK"],
   category: "compile",
   commands: ["dotnet", "msbuild"],
   // A --no-restore build has no restore banner. Source extensions distinguish

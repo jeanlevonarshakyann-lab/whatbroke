@@ -29,6 +29,8 @@ const clean = (t) => t.replace(ADVICE_RE, "").trim();
 
 export default {
   name: "kubectl",
+  // Strings a log has to hold for this parser to read anything from it - see src/router.js.
+  signals: ["The connection to the server", "Unable to connect to the server:", "kubectl", "kubeconfig", "openapi", "apiVersion", "namespace", "kubernetes", "error converting YAML to JSON", "]"],
   category: "deploy",
   commands: ["kubectl", "oc", "helm"],
 

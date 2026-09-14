@@ -84,6 +84,8 @@ function annotated(s) {
 
 export default {
   name: "jest",
+  // Strings a log has to hold for this parser to read anything from it - see src/router.js.
+  signals: ["Tests:", "\u25cf", "::group::Errors thrown in"],
   category: "test",
   commands: ["jest"],
   detect: (s) => /^Tests:[^\S\n]+\d/m.test(s) || (/^[^\S\n]*●[^\S\n]+/m.test(s) && /^[^\S\n]*FAIL[^\S\n]+/m.test(s)) ||

@@ -32,6 +32,8 @@ function idParts(id) {
 
 export default {
   name: "pytest",
+  // Strings a log has to hold for this parser to read anything from it - see src/router.js.
+  signals: ["test session starts", "short test summary info"],
   category: "test",
   commands: ["pytest", "py.test"],
   detect: (s) =>

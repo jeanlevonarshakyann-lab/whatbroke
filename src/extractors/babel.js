@@ -19,6 +19,8 @@ const MARKED_RE = /^[^\S\n]*>[^\S\n]*(\d+)[^\S\n]*\|[^\S\n]?(.*)$/;
 
 export default {
   name: "babel",
+  // Strings a log has to hold for this parser to read anything from it - see src/router.js.
+  signals: ["Error", "Exception"],
   category: "compile",
   commands: ["babel", "babel-node"],
 

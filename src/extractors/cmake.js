@@ -23,6 +23,8 @@ const MAX_MESSAGE = 4;
 
 export default {
   name: "cmake",
+  // Strings a log has to hold for this parser to read anything from it - see src/router.js.
+  signals: ["CMake "],
   category: "build",
   commands: ["cmake", "ctest"],
 

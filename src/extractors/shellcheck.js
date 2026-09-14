@@ -93,6 +93,8 @@ function machine(s, placed = false) {
 
 export default {
   name: "shellcheck",
+  // Strings a log has to hold for this parser to read anything from it - see src/router.js.
+  signals: ["line", "[SC", "\"level\"", "ShellCheck.SC"],
   category: "lint",
   commands: ["shellcheck"],
 

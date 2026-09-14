@@ -196,6 +196,8 @@ function flatValidateDiagnostics(text) {
 
 export default {
   name: "terraform",
+  // Strings a log has to hold for this parser to read anything from it - see src/router.js.
+  signals: ["\"format_version\"", "\"terraform.ui\"", "Error:", "Warning:"],
   category: "build",
   commands: ["terraform", "tofu", "terragrunt"],
 

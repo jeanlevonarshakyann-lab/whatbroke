@@ -38,6 +38,8 @@ const MAX_MESSAGE_LINES = 4;
 
 export default {
   name: "mocha",
+  // Strings a log has to hold for this parser to read anything from it - see src/router.js.
+  signals: ["passing", "failing", "pending", "Exception during run:"],
   category: "test",
   commands: ["mocha", "_mocha"],
 

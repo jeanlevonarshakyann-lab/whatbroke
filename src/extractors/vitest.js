@@ -186,6 +186,8 @@ function vitestAnnotations(s) {
 
 export default {
   name: "vitest",
+  // Strings a log has to hold for this parser to read anything from it - see src/router.js.
+  signals: ["TAP version", "name=\"vitest tests\"", "::error", "report written to", "RUN", "Failed ", "FAIL"],
   category: "test",
   commands: ["vitest"],
   detect: (s) => vitestTap(s) !== null || vitestJunit(s).length > 0 ||

@@ -53,6 +53,8 @@ const MAX_MESSAGE_LINES = 2;
 
 export default {
   name: "tap-text",
+  // Strings a log has to hold for this parser to read anything from it - see src/router.js.
+  signals: ["not ok"],
   category: "test",
   commands: ["tap", "prove", "mocha", "tape"],
 

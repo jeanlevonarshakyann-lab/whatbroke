@@ -84,6 +84,8 @@ const JSON_MARK = (v) => Array.isArray(v) && v.length > 0 &&
 
 export default {
   name: "stylelint",
+  // Strings a log has to hold for this parser to read anything from it - see src/router.js.
+  signals: ["\"warnings\"", "[error]", "[warning]", ", col ", "not ok", "problem", "\u2716", "\u26a0", "\u24d8"],
   category: "lint",
   commands: ["stylelint"],
 

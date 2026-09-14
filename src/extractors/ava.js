@@ -47,6 +47,8 @@ const unfile = (p) => (p.startsWith("file://") ? decodeURIComponent(p.slice(7)) 
 
 export default {
   name: "ava",
+  // Strings a log has to hold for this parser to read anything from it - see src/router.js.
+  signals: ["failed", "uncaught exception", "[fail]:"],
   category: "test",
   commands: ["ava"],
 

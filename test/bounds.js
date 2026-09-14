@@ -41,11 +41,25 @@ const test = (name, fn) => {
   } catch (e) { console.log(`  FAIL ${name}\n       ${e.message}`); fail++; }
 };
 
+// A read that takes a fraction of a millisecond is mostly the clock and whatever else the
+// process happens to be doing, and the ratio of two of them says nothing about growth: once
+// a parser is asked only about logs it could read, a long line of node frames read in a
+// third of a millisecond, and four times as much "took eleven times as long". So a read is
+// repeated until twenty milliseconds have passed, and its time is the average. A read that
+// is slow on its own - which a quadratic one is - is still taken once.
+//
+// Every parser is asked about every log here. A parser is only asked about a log holding
+// one of its signals, and most of these shapes hold none - a log of lines that each open a
+// brace names no JSON report - so with the router on they would never reach the readers
+// they exist to hold to account. A log that holds the shape and a signal does.
+const FLOOR_MS = 20;
 const took = (text) => {
+  let runs = 0;
   const at = performance.now();
-  analyse(text);
-  return performance.now() - at;
+  do { analyse(text, { route: false }); runs++; } while (performance.now() - at < FLOOR_MS);
+  return (performance.now() - at) / runs;
 };
+const ms = (t) => (t < 10 ? t.toFixed(1) : Math.round(t));
 const fastest = (text, runs) => Math.min(...Array.from({ length: runs }, () => took(text)));
 
 /** Reading `grow(4n)` costs about four times reading `grow(n)`, not sixteen. The larger
@@ -57,7 +71,7 @@ function linear(grow, n) {
   let large = took(big);
   if (large < small * 8) large = Math.min(large, fastest(big, 2));
   assert.ok(large < small * 8,
-    `${Math.round(small)}ms for the log, ${Math.round(large)}ms for four times as much - x${(large / small).toFixed(1)}`);
+    `${ms(small)}ms for the log, ${ms(large)}ms for four times as much - x${(large / small).toFixed(1)}`);
 }
 
 /** Reading `text` costs at most twenty times reading build chatter of the same size. One
@@ -72,7 +86,7 @@ function nearOrdinary(text) {
   let hostile = took(text);
   if (hostile < ordinary * 20) hostile = Math.min(hostile, fastest(text, 2));
   assert.ok(hostile < ordinary * 20,
-    `${Math.round(hostile)}ms against ${Math.round(ordinary)}ms for ordinary output of the same size - x${(hostile / ordinary).toFixed(1)}`);
+    `${ms(hostile)}ms against ${ms(ordinary)}ms for ordinary output of the same size - x${(hostile / ordinary).toFixed(1)}`);
 }
 
 // An even number of identical lines is an exact retry of itself and collapses before any

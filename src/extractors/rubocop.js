@@ -167,6 +167,8 @@ function offenses(s) {
 
 export default {
   name: "rubocop",
+  // Strings a log has to hold for this parser to read anything from it - see src/router.js.
+  signals: ["/"],
   category: "lint",
   commands: ["rubocop"],
 

@@ -15,6 +15,8 @@ const ERROR_RE = /^\[error\][^\S\n]+(\S.*?)[^\S\n]*$/;
 
 export default {
   name: "prettier",
+  // Strings a log has to hold for this parser to read anything from it - see src/router.js.
+  signals: ["Checking formatting", "Code style issues found"],
   category: "lint",
   commands: ["prettier"],
 

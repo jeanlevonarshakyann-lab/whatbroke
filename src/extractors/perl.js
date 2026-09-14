@@ -62,6 +62,8 @@ function tapComment(m) {
 
 export default {
   name: "perl",
+  // Strings a log has to hold for this parser to read anything from it - see src/router.js.
+  signals: ["line", "aborted", "Compilation failed"],
   category: "runtime",
   commands: ["perl", "prove"],
 

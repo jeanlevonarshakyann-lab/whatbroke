@@ -45,6 +45,8 @@ function rebuild(s) {
 
 export default {
   name: "go test -json",
+  // Strings a log has to hold for this parser to read anything from it - see src/router.js.
+  signals: ["\"Action\""],
   category: "test",
   commands: ["gotestsum"],
 

@@ -22,6 +22,8 @@ const placedRecords = (s) => s.includes('"severity"') ? [...jsonDocumentsAt(s, R
 
 export default {
   name: "mypy",
+  // Strings a log has to hold for this parser to read anything from it - see src/router.js.
+  signals: ["\"severity\"", "Found ", ".py"],
   category: "typecheck",
   commands: ["mypy"],
   detect: (s) =>

@@ -14,6 +14,8 @@ const MAX_MESSAGE_LINES = 3;
 
 export default {
   name: "mocha xunit",
+  // Strings a log has to hold for this parser to read anything from it - see src/router.js.
+  signals: ["name=\"Mocha Tests\""],
   category: "test",
   commands: ["mocha"],
 

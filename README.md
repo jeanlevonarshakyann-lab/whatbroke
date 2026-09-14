@@ -579,10 +579,18 @@ single line took eight seconds, and now takes 70 milliseconds. `test/bounds.js` 
 each shape at one size and at four times it, and fails if the larger takes more than
 eight times as long.
 
-One step has a ceiling instead. Telling that two tools read the same line means working
-out which lines each finding came from, and past a fixed amount of that work in one log
-it stops: both readings are kept. A huge log with many tools in it can show a finding
-twice, rather than hide one as a copy of something it was never compared with.
+A parser is only asked about a log that holds one of the strings it can read nothing
+without - `Traceback (most recent call last):` for Python's tracebacks, `.go:` or
+`--- FAIL` for go - and one pass over the log finds which are there. 10 MiB of build
+output that no parser reads takes 0.7 seconds, where asking every parser took 3.3; 10 MiB
+of an eslint run takes 0.9 where it took 2.3. A log holding every tool's output at once
+still asks all of them: 10 MiB of the whole corpus takes 5.5 seconds. `npm run bench`
+prints the times on your machine.
+
+One step has a ceiling instead. Telling that two tools read the same line means comparing
+what each one read, and past four million comparisons in one log it stops: both readings
+are kept. A huge log with many tools in it can show a finding twice, rather than hide one
+as a copy of something it was never compared with.
 
 ## Safety
 

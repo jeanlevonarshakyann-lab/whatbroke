@@ -38,6 +38,8 @@ const report = (s) => s.includes('"summary"') ? findJsonDocument(s, REPORT) : nu
 
 export default {
   name: "npm",
+  // Strings a log has to hold for this parser to read anything from it - see src/router.js.
+  signals: ["npm error", "npm ERR!", "\"summary\""],
   category: "package",
   commands: ["npm", "pnpm", "yarn"],
   commandHints: [],

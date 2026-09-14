@@ -244,6 +244,8 @@ function mtpTranslated(s) {
 
 export default {
   name: "dotnet test",
+  // Strings a log has to hold for this parser to read anything from it - see src/router.js.
+  signals: ["Test run summary:", ".dll", "Test Run Failed.", "Failed!", "TeamTest"],
   category: "test",
   commands: ["dotnet"],
   detect: (s) => (MTP_FAILED_RE.test(s.split("\n").find((l) => MTP_FAILED_RE.test(l)) ?? "") &&

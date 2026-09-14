@@ -150,6 +150,8 @@ function compileError(lines) {
 
 export const traceback = {
   name: "python",
+  // Strings a log has to hold for this parser to read anything from it - see src/router.js.
+  signals: ["Traceback (most recent call last):", "SyntaxError", "IndentationError", "TabError"],
   category: "runtime",
   commands: ["python", "python3"],
   detect: (s) => /^Traceback \(most recent call last\):$/m.test(s) ||
@@ -191,6 +193,8 @@ export const traceback = {
 
 export const unittest = {
   name: "unittest",
+  // Strings a log has to hold for this parser to read anything from it - see src/router.js.
+  signals: ["Ran "],
   category: "test",
   commands: ["python", "python3"],
   detect: (s) => /^Ran \d+ tests? in /m.test(s) && /^(FAIL|ERROR): /m.test(s),

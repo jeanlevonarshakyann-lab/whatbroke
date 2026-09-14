@@ -45,6 +45,8 @@ function printedOutput(lines, step) {
 
 export default {
   name: "docker",
+  // Strings a log has to hold for this parser to read anything from it - see src/router.js.
+  signals: ["ERROR:"],
   category: "build",
   commands: ["docker", "buildx", "podman"],
 

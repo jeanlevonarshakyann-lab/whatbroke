@@ -24,6 +24,8 @@ const SOURCE_RE = /^[^\S\n]*(\d+)[^\S\n]*│[^\S\n]?(.*)$/;
 
 export default {
   name: "sass",
+  // Strings a log has to hold for this parser to read anything from it - see src/router.js.
+  signals: ["\u2577"],
   category: "compile",
   commands: ["sass", "scss", "node-sass"],
 

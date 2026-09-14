@@ -51,6 +51,8 @@ const requirementOf = (s) => s.match(/^Processing (\S+)/m)?.[1]
 
 export default {
   name: "pip",
+  // Strings a log has to hold for this parser to read anything from it - see src/router.js.
+  signals: ["Could not find a version that satisfies", "No matching distribution found", "Could not open requirements file", "Invalid requirement:", "subprocess-exited-with-error", "ResolutionImpossible", "Getting requirements to build wheel", "A new release of pip"],
   category: "package",
   commands: ["pip", "pip3", "uv", "poetry"],
   // uv and Poetry may merely launch the tool that owns the useful diagnostic.

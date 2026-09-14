@@ -94,6 +94,8 @@ function gradleTests(s) {
 
 export default {
   name: "jvm",
+  // Strings a log has to hold for this parser to read anything from it - see src/router.js.
+  signals: ["[ERROR]", "> Task ", "FAILURE: Build failed", ".java:"],
   category: "compile",
   commands: ["javac", "mvn", "maven", "gradle", "gradlew"],
   detect: (s) =>

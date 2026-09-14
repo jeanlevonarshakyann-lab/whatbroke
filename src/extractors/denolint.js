@@ -108,6 +108,8 @@ function findings(s, placed = false) {
 
 export default {
   name: "deno lint",
+  // Strings a log has to hold for this parser to read anything from it - see src/router.js.
+  signals: ["error[", ", col ", "\"diagnostics\""],
   category: "lint",
   commands: ["deno"],
 
@@ -141,6 +143,8 @@ const FMT_FILE_RE = /^from[^\S\n]+(.+?):[^\S\n]*$/;
 
 export const denoFmt = {
   name: "deno fmt",
+  // Strings a log has to hold for this parser to read anything from it - see src/router.js.
+  signals: ["not formatted file"],
   category: "lint",
   commands: ["deno"],
 

@@ -33,6 +33,8 @@ const GIT_MARKERS = /(not a git repository|CONFLICT \(|failed to push some refs|
 
 export default {
   name: "git",
+  // Strings a log has to hold for this parser to read anything from it - see src/router.js.
+  signals: ["not a git repository", "CONFLICT (", "failed to push some refs", "would be overwritten by", "did not match any file(s) known to git", "not something we can merge", "No configured push destination", "unknown revision or path not in the working tree", "Automatic merge failed", "unmerged files"],
   category: "vcs",
   commands: ["git"],
 

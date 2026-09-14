@@ -42,6 +42,8 @@ function annotated(s) {
 
 export default {
   name: "yamllint",
+  // Strings a log has to hold for this parser to read anything from it - see src/router.js.
+  signals: ["error", "warning"],
   category: "lint",
   commands: ["yamllint"],
 

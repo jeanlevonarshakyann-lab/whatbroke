@@ -40,6 +40,8 @@ const SUGGEST_RE = /^Did you mean\?[^\S\n]*(.+)$/;
 
 export default {
   name: "ruby",
+  // Strings a log has to hold for this parser to read anything from it - see src/router.js.
+  signals: [":in ", "syntax error"],
   category: "runtime",
   commands: ["ruby", "rake", "irb"],
 

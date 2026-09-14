@@ -29,6 +29,8 @@ const CONTEXT_RE = /[^\S\n]*\[Context:[^\]]*\][^\S\n]*$/;
 
 export default {
   name: "markdownlint",
+  // Strings a log has to hold for this parser to read anything from it - see src/router.js.
+  signals: ["MD", "\"ruleNames\""],
   category: "lint",
   commands: ["markdownlint", "markdownlint-cli2"],
 

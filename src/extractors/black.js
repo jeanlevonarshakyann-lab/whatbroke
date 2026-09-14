@@ -19,6 +19,8 @@ const AT_RE = /Cannot parse:[^\S\n]*(\d+):(\d+):?[^\S\n]*(.*)$/;
 
 export default {
   name: "black",
+  // Strings a log has to hold for this parser to read anything from it - see src/router.js.
+  signals: ["would reformat", "would be reformatted", "cannot format"],
   category: "lint",
   commands: ["black"],
 

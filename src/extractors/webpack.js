@@ -24,6 +24,8 @@ const MAX_MESSAGE_LINES = 2;
 
 export default {
   name: "webpack",
+  // Strings a log has to hold for this parser to read anything from it - see src/router.js.
+  signals: ["compiled with", "ERROR in"],
   category: "compile",
   commands: ["webpack", "webpack-cli"],
 

@@ -161,6 +161,8 @@ function reported(s, lines, placed = false) {
 
 export default {
   name: "golangci-lint",
+  // Strings a log has to hold for this parser to read anything from it - see src/router.js.
+  signals: [".go:", "issues:", "Category: ", "Golangci-lint reports", "\"Issues\"", "\"check_name\"", "\"golangci-lint\""],
   category: "lint",
   commands: ["golangci-lint"],
 

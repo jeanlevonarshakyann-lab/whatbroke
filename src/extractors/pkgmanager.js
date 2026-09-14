@@ -83,6 +83,8 @@ function boxed(s) {
 
 export const pnpm = {
   name: "pnpm",
+  // Strings a log has to hold for this parser to read anything from it - see src/router.js.
+  signals: ["ERR_PNPM_", "ELIFECYCLE", "Error:"],
   category: "package",
   commands: ["pnpm", "pnpx"],
   commandHints: [],
@@ -127,6 +129,8 @@ const YARN_ADVICE = /^info Visit https:\/\/yarnpkg\.com/;
 
 export const yarn = {
   name: "yarn",
+  // Strings a log has to hold for this parser to read anything from it - see src/router.js.
+  signals: ["yarn run v", "yarnpkg.com", "error Command failed"],
   category: "package",
   commands: ["yarn"],
   commandHints: [],
