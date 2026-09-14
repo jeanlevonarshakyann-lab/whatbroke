@@ -1,4 +1,5 @@
 import { githubAnnotations } from "../util.js";
+import { joinSources, preserveSourceRange, withSource } from "../ownership.js";
 // yamllint's default output puts the filename on its own line and indents the findings
 // under it, so no line carries both a location and a message and the whole run came back
 // "could not identify a diagnostic". Under `-f parsable` each finding is one line and the
@@ -33,8 +34,8 @@ function annotated(s) {
     // annotation, whatever else it is.
     if (!inner || !a.props.file) continue;
     if (a.props.line !== inner[1] || (a.props.col ?? a.props.column) !== inner[2]) continue;
-    out.push({ file: a.props.file, line: +inner[1], col: +inner[2],
-      severity: a.severity === "error" ? "error" : "warning", message: inner[4], code: inner[3] });
+    out.push(withSource({ file: a.props.file, line: +inner[1], col: +inner[2],
+      severity: a.severity === "error" ? "error" : "warning", message: inner[4], code: inner[3] }, a.line, a.line + 1));
   }
   return out;
 }
@@ -60,20 +61,25 @@ export default {
   extract(s) {
     const found = [];
     let file = null;
-    for (const line of s.split("\n")) {
+    const lines = s.split("\n");
+    for (let i = 0; i < lines.length; i++) {
+      const line = lines[i];
       const p = line.match(PARSABLE);
-      if (p) { found.push({ file: p[1], line: +p[2], col: +p[3], severity: p[4], message: p[5], code: p[6] }); continue; }
+      if (p) { found.push(withSource({ file: p[1], line: +p[2], col: +p[3], severity: p[4], message: p[5], code: p[6] }, i, i + 1)); continue; }
+      // A finding's own line: the file it belongs to is a heading shared with the others.
       const t = line.match(TTY);
-      if (t) { if (file) found.push({ file, line: +t[1], col: +t[2], severity: t[3], message: t[4], code: t[5] }); continue; }
+      if (t) { if (file) found.push(withSource({ file, line: +t[1], col: +t[2], severity: t[3], message: t[4], code: t[5] }, i, i + 1)); continue; }
       if (line.trim() && !/^[^\S\n]/.test(line)) file = line.trim();
     }
     // ...and the same run as `-f github` printed it, if that is what this log holds. A
-    // finding already read from one of the text forms is not read again.
-    const seen = new Set(found.map((f) => [f.file, f.line, f.col, f.code].join("\u0000")));
+    // finding already read from one of the text forms is not read again - it keeps both
+    // places.
+    const seen = new Map();
+    found.forEach((f, i) => { const key = [f.file, f.line, f.col, f.code].join("\u0000"); if (!seen.has(key)) seen.set(key, i); });
     for (const f of annotated(s)) {
       const key = [f.file, f.line, f.col, f.code].join("\u0000");
-      if (seen.has(key)) continue;
-      seen.add(key);
+      if (seen.has(key)) { found[seen.get(key)] = joinSources(found[seen.get(key)], f); continue; }
+      seen.set(key, found.length);
       found.push(f);
     }
     if (!found.length) return null;
@@ -88,7 +94,7 @@ export default {
       tool: "yamllint",
       summary: `${shown.length} error${shown.length > 1 ? "s" : ""}` +
         (hidden ? ` — ${hidden} warning${hidden > 1 ? "s" : ""} hidden` : ""),
-      failures: shown.map((f) => ({
+      failures: shown.map((f) => preserveSourceRange(f, {
         file: f.file, line: f.line, col: f.col, title: f.code, code: f.code,
         severity: f.severity, message: f.message,
       })),

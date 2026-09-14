@@ -12,6 +12,8 @@
 // spaces made this claim vitest's " FAIL  src/x.spec.ts > name" lines as pnpm failures -
 // 56 of them across the fixture corpus. pnpm's codes are ERR_PNPM_* or a node-style
 // E-code: ELIFECYCLE, ENOENT, EACCES.
+import { joinSources, withSource } from "../ownership.js";
+
 const PNPM_LINE = /^[^\S\n]+(ERR_PNPM_[A-Z0-9_]+|E[A-Z]{3,})[^\S\n]{2,}(.+?)[^\S\n]*$/;
 const PNPM_WARN = /^(?:WARN|WARNING|INFO|DEBUG|NOTICE)$/;
 
@@ -41,14 +43,15 @@ const PNPM_CAUSE = /^[^\S\n]*╰─▶[^\S\n]*(.*)$/;
  *  two. Anywhere else the break is between words and the space belongs. */
 function unwrap(lines, at, indent) {
   let text = lines[at].replace(PNPM_BOX, "$1").trimEnd();
-  for (let i = at + 1; i < lines.length; i++) {
+  let i = at + 1;
+  for (; i < lines.length; i++) {
     const line = lines[i];
     if (!line.trim() || PNPM_BOX.test(line) || PNPM_HEAD.test(line)) break;
     const width = line.length - line.trimStart().length;
     if (width <= indent) break;
     text += (/[-/]$/.test(text) ? "" : " ") + line.trim();
   }
-  return text;
+  return { text, end: i };
 }
 
 /** The failure a boxed pnpm error describes, or null. */
@@ -58,20 +61,24 @@ function boxed(s) {
   if (at < 0) return null;
   const code = lines[at].match(PNPM_HEAD)[1];
   const said = [];
+  let end = at + 1;
   for (let i = at + 1; i < lines.length; i++) {
     if (PNPM_HEAD.test(lines[i])) break;
     if (!PNPM_BOX.test(lines[i])) continue;
     const indent = lines[i].length - lines[i].trimStart().length;
-    said.push({ cause: PNPM_CAUSE.test(lines[i]), text: unwrap(lines, i, indent) });
+    const wrapped = unwrap(lines, i, indent);
+    said.push({ cause: PNPM_CAUSE.test(lines[i]), text: wrapped.text });
+    end = wrapped.end;
   }
   if (!said.length) return null;
   // The arrow says what went wrong; the cross only says what pnpm was in the middle of.
   const cause = said.find((p) => p.cause) ?? said[0];
   const rest = said.filter((p) => p !== cause && !p.cause).map((p) => p.text);
-  return {
+  // The heading and the box drawn under it.
+  return withSource({
     title: code, code, severity: "error",
     message: [cause.text, ...rest].filter(Boolean).slice(0, 3).join("\n"),
-  };
+  }, at, end);
 }
 
 export const pnpm = {
@@ -88,13 +95,16 @@ export const pnpm = {
 
   extract(s) {
     const failures = [];
-    for (const l of s.split("\n")) {
+    s.split("\n").forEach((l, i) => {
       const m = l.match(PNPM_LINE);
-      if (!m || PNPM_WARN.test(m[1])) continue;
-      failures.push({ title: m[1], code: m[1], severity: "error", message: m[2] });
-    }
+      if (!m || PNPM_WARN.test(m[1])) return;
+      failures.push(withSource({ title: m[1], code: m[1], severity: "error", message: m[2] }, i, i + 1));
+    });
     const box = boxed(s);
-    if (box && !failures.some((f) => f.code === box.code)) failures.push(box);
+    // A code already read from its column keeps the box it was drawn in as well.
+    const same = box ? failures.findIndex((f) => f.code === box.code) : -1;
+    if (same >= 0) failures[same] = joinSources(failures[same], box);
+    else if (box) failures.push(box);
     if (!failures.length) return null;
     // ELIFECYCLE only says the script exited non-zero; a more specific code above it
     // says why, and that is the one worth leading with.
@@ -134,14 +144,15 @@ export const yarn = {
     // and vite opens a failed build with "error during build:" - which is exactly the
     // shape. When there is no banner the whole log is the block, as before.
     const banner = lines.findIndex((l) => /^yarn run v\d/.test(l));
-    for (const l of lines.slice(banner < 0 ? 0 : banner)) {
+    for (let i = banner < 0 ? 0 : banner; i < lines.length; i++) {
+      const l = lines[i];
       if (YARN_ADVICE.test(l)) break;
       const m = l.match(YARN_LINE);
       if (!m || m[1] !== "error") continue;
       // TypeScript's location-free diagnostics also start with "error ". Its code
       // identifies the owner even when a yarn banner is elsewhere in the same log.
       if (/^TS\d+: /.test(m[2])) continue;
-      failures.push({ title: "error", label: "error", severity: "error", message: m[2] });
+      failures.push(withSource({ title: "error", label: "error", severity: "error", message: m[2] }, i, i + 1));
     }
     if (!failures.length) return null;
     return { tool: "yarn", summary: failures[0].message, failures };

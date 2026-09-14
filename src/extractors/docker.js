@@ -24,6 +24,8 @@
 // BuildKit says which case it is, so this does not have to be guessed at: it tags every
 // line a step printed with that step's own number and elapsed time. A failing step with
 // no such line said nothing, and docker's account of it is the only one there is.
+import { alsoFrom, withSource } from "../ownership.js";
+
 const LOC = /^(\S+):(\d+)[^\S\n]*$/;
 const FENCE = /^-{5,}[^\S\n]*$/;
 // `   2 | >>> COPY missing-file.txt /tmp/` - BuildKit marks the offending line itself.
@@ -61,40 +63,47 @@ export default {
 
   extract(s) {
     const lines = s.split("\n");
-    let file, line, stmt, step, final, relayed;
+    let file, line, stmt, step, final, relayed, excerpt;
+    // Where each part was read: the step's error, docker's closing one, the relayed exit.
+    let stepAt, finalAt, relayedAt;
     for (let i = 0; i < lines.length; i++) {
       // A location is only docker's if the fenced excerpt follows it, which is also what
       // keeps `foo.py:3` from somewhere else in the log being read as one.
       const at = lines[i].match(LOC);
       if (at && FENCE.test(lines[i + 1] ?? "")) {
         file = at[1]; line = +at[2];
-        for (let j = i + 2; j < lines.length && !FENCE.test(lines[j]); j++) {
+        let j = i + 2;
+        for (; j < lines.length && !FENCE.test(lines[j]); j++) {
           const p = lines[j].match(POINTED);
           if (p) stmt = p[1];
         }
+        excerpt = [i, Math.min(j, lines.length - 1) + 1];
         continue;
       }
       const st = lines[i].match(STEP_ERROR);
       // BuildKit repeats each step's error at the end, prefixed. Keeping the first
       // real one and ignoring the restatement is what stops the doubled report.
       if (st) {
-        if (!RELAYED.test(st[2])) step ??= st[2];
-        else if (!relayed && !printedOutput(lines, st[1])) relayed = st[2];
+        if (!RELAYED.test(st[2])) { if (step === undefined) { step = st[2]; stepAt = i; } }
+        else if (!relayed && !printedOutput(lines, st[1])) { relayed = st[2]; relayedAt = i; }
         continue;
       }
       const fin = lines[i].match(FINAL_ERROR);
-      if (fin && !RELAYED.test(fin[1])) final ??= fin[1];
+      if (fin && !RELAYED.test(fin[1]) && final === undefined) { final = fin[1]; finalAt = i; }
     }
     const message = step ?? final ?? relayed;
     if (!message) return null;
+    // The line the message was read from, and the fenced excerpt that located it.
+    const said = step !== undefined ? stepAt : final !== undefined ? finalAt : relayedAt;
+    const failure = withSource({
+      ...(file ? { file, line } : {}),
+      title: "build failed", label: "build failed", severity: "error",
+      message, ...(stmt ? { stmt } : {}),
+    }, said, said + 1);
     return {
       tool: "docker",
       summary: "1 error",
-      failures: [{
-        ...(file ? { file, line } : {}),
-        title: "build failed", label: "build failed", severity: "error",
-        message, ...(stmt ? { stmt } : {}),
-      }],
+      failures: [excerpt ? alsoFrom(failure, ...excerpt) : failure],
     };
   },
 };

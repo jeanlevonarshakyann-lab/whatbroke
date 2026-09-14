@@ -1,3 +1,5 @@
+import { joinSources, withSource } from "../ownership.js";
+
 /** Last resort: no parser matched. Surface the lines most likely to matter. */
 const SIGNAL = [
   /^[^\S\n]*(error|fatal|panic|exception)\b/i,
@@ -51,13 +53,14 @@ const FRAME_RE = /^[^\S\n]*at[^\S\n]+(?:.*?\()?((?:file:\/\/)?[^\s()]+?):(\d+)(?
 const INLINE_LOC_RE = /[^\S\n](?:in|at)[^\S\n]((?:\/|[A-Za-z]:\\)[^\s:]+?):(\d+)\b/;
 const unfile = (p) => (p.startsWith("file://") ? decodeURIComponent(p.slice(7)) : p);
 
-/** Where a message says it happened, if it says at all. */
+/** Where a message says it happened, if it says at all - and the line of the frame that
+ *  said so, when it is a frame. */
 function locate(lines, i, text) {
   // deno prints the offending source line and a caret between the message and the
   // frames, so stopping at the first line that is not a frame never reaches them.
   for (let j = i + 1; j < lines.length && j <= i + 5; j++) {
     const m = lines[j].match(FRAME_RE);
-    if (m) return { file: unfile(m[1]), line: +m[2], col: m[3] ? +m[3] : undefined };
+    if (m) return { file: unfile(m[1]), line: +m[2], col: m[3] ? +m[3] : undefined, frame: j };
   }
   const inline = text.match(INLINE_LOC_RE);
   return inline ? { file: inline[1], line: +inline[2] } : null;
@@ -90,24 +93,28 @@ export default {
       while (i < a.length && i < b.length && a[i] === b[i]) i++;
       return [a.slice(i), b.slice(i)];
     };
+    // Which earlier line this one repeats, if any.
     const repeats = (t) => {
       const flat = t.replace(/\s+/g, " ").trim();
-      return said.some((prev) => {
+      return said.findIndex((prev) => {
         const [x, y] = afterCommonPrefix(prev, flat);
         return x.length > 0 && y.length > 0 && (x.includes(y) || y.includes(x));
       });
     };
     const failures = [];
     for (const h of hits.slice(0, 12)) {
-      if (repeats(h.text)) continue;
+      // A line told twice is read from both places.
+      const earlier = repeats(h.text);
+      if (earlier >= 0) { failures[earlier] = joinSources(failures[earlier], withSource({}, h.i, h.i + 1)); continue; }
       said.push(h.text.replace(/\s+/g, " ").trim());
       const loc = h.text.match(/^([^\s:]+):(\d+)(?::(\d+))?:[^\S\n]*(.*)$/);
       if (loc) {
-        failures.push({ file: loc[1], line: +loc[2], col: loc[3] ? +loc[3] : undefined, title: "", severity: "error", message: loc[4] });
+        failures.push(withSource({ file: loc[1], line: +loc[2], col: loc[3] ? +loc[3] : undefined, title: "", severity: "error", message: loc[4] }, h.i, h.i + 1));
         continue;
       }
-      const at = locate(lines, h.i, h.text);
-      failures.push({ ...(at ?? {}), title: "", severity: "error", message: h.text });
+      const { frame, ...at } = locate(lines, h.i, h.text) ?? {};
+      // The line, and the frame under it that said where.
+      failures.push(withSource({ ...at, title: "", severity: "error", message: h.text }, h.i, frame === undefined ? h.i + 1 : frame + 1));
       if (failures.length >= 8) break;
     }
     return { tool: "output", failures, guessed: true };

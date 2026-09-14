@@ -14,6 +14,7 @@ import { dirname, join } from "node:path";
 import assert from "node:assert/strict";
 import { analyse, EXTRACTORS } from "../src/index.js";
 import { stripAnsi, stripCiPrefix } from "../src/util.js";
+import { SOURCE_RANGE } from "../src/ownership.js";
 
 const here = dirname(fileURLToPath(import.meta.url));
 const fixtures = join(here, "fixtures");
@@ -104,6 +105,59 @@ test("a mutated real log never crashes or stalls a parser", () => {
   assert.deepEqual(crashes, [], "a mutated log threw");
   assert.deepEqual(slow, [], `a mutated log took longer than ${SLOW_MS}ms`);
   console.log(`       ${runs} mutations x ${EXTRACTORS.length} parsers = ${runs * EXTRACTORS.length} calls, seed ${SEED}`);
+});
+
+// Every parser says which lines it read each failure from, and the reader believes it: two
+// tools' readings of the same lines are one diagnosis. A range is only checked on the logs
+// in the corpus, and a parser's code for a damaged log is exactly where one could go
+// missing or point past the end of the log - bun's read back from a banner that a log out
+// of order had put below the failure, and deno's ran past a JUnit document cut off before
+// its closing tag.
+test("every failure read from a mutated log says where it came from, inside the log", () => {
+  seed = SEED + 2;
+  const files = readdirSync(fixtures);
+  const wrong = [];
+  let read = 0;
+  // Random mutations, and every fixture cut off a quarter, a half and three quarters of
+  // the way through - a capture that stopped is the commonest damage, and the one that
+  // leaves a report without its closing tag.
+  const logs = [];
+  for (let round = 0; round < 6; round++) {
+    for (const f of files) {
+      let text = readFileSync(join(fixtures, f), "utf8");
+      const applied = [];
+      for (let k = 0; k < 1 + Math.floor(rnd() * 3); k++) {
+        const name = pick(Object.keys(MUTATIONS));
+        applied.push(name);
+        text = MUTATIONS[name](text);
+      }
+      logs.push({ f, applied, text });
+    }
+  }
+  for (const f of files) {
+    const all = readFileSync(join(fixtures, f), "utf8").split("\n");
+    for (const part of [0.25, 0.5, 0.75]) {
+      logs.push({ f, applied: [`cut at ${part}`], text: all.slice(0, Math.floor(all.length * part)).join("\n") });
+    }
+  }
+  for (const { f, applied, text } of logs) {
+    const s = normalise(text);
+    const count = s.split("\n").length;
+    for (const ex of EXTRACTORS) {
+      let r = null;
+      try { if (ex.detect(s)) r = ex.extract(s); } catch { continue; }
+      for (const failure of r?.failures ?? []) {
+        read++;
+        const range = Object.getOwnPropertyDescriptor(failure, SOURCE_RANGE)?.value;
+        const places = range ? [range, ...(range.also ?? [])] : [];
+        const inside = places.length > 0 && places.every((p) => Number.isInteger(p.start) &&
+          Number.isInteger(p.end) && p.start >= 0 && p.start < p.end && p.end <= count);
+        if (!inside) wrong.push(`${ex.name} on ${f} after ${applied.join("+")}: ${JSON.stringify(range)} of ${count} lines`);
+      }
+    }
+  }
+  assert.ok(read > 5000, `only ${read} failures read`);
+  assert.deepEqual(wrong.slice(0, 6), [], `${wrong.length} failures had no range, or one outside the log`);
 });
 
 test("a mutated log never reports a warning as a failure", () => {

@@ -6,6 +6,8 @@
 // hint: explaining fast-forwards - the answer is the one ! [rejected] line. Both were
 // coming back as a labelled guess pointing at the wrong line, or as nothing at all.
 
+import { alsoFrom, withSource } from "../ownership.js";
+
 const CONFLICT = /^CONFLICT \(([^)]+)\): (?:Merge conflict in|.*? in) (.+)$/;
 const REJECTED = /^[^\S\n]*!\s+\[([^\]]+)\][^\S\n]+(\S+)[^\S\n]+->[^\S\n]+(\S+)(?:[^\S\n]+\((.+)\))?$/;
 const OVERWRITE = /^error: Your local changes to the following files would be overwritten by (\w+):$/;
@@ -60,30 +62,31 @@ export default {
       const c = l.match(CONFLICT);
       if (c) {
         conflicts++;
-        failures.push({ file: c[2], title: "merge conflict", label: "merge conflict", severity: "error", message: `${c[1]} conflict` });
+        failures.push(withSource({ file: c[2], title: "merge conflict", label: "merge conflict", severity: "error", message: `${c[1]} conflict` }, i, i + 1));
         continue;
       }
 
       const r = l.match(REJECTED);
       if (r) {
         rejected = true;
-        failures.push({ title: r[1], label: r[1], severity: "error", subject: undefined,
-          message: `${r[2]} -> ${r[3]}${r[4] ? ` (${r[4]})` : ""}` });
+        failures.push(withSource({ title: r[1], label: r[1], severity: "error", subject: undefined,
+          message: `${r[2]} -> ${r[3]}${r[4] ? ` (${r[4]})` : ""}` }, i, i + 1));
         continue;
       }
 
       const o = l.match(OVERWRITE);
       if (o) {
         // the files follow, one per line, indented
+        // Each file's own line, and the sentence above them all that says what would happen.
         for (let j = i + 1; j < lines.length && /^[^\S\n]+\S/.test(lines[j]); j++) {
-          failures.push({ file: lines[j].trim(), title: "local changes", label: "local changes", severity: "error",
-            message: `would be overwritten by ${o[1]}` });
+          failures.push(alsoFrom(withSource({ file: lines[j].trim(), title: "local changes", label: "local changes", severity: "error",
+            message: `would be overwritten by ${o[1]}` }, j, j + 1), i, i + 1));
         }
         continue;
       }
 
       const d = l.match(DIAGNOSTIC);
-      if (d && GIT_ISH.test(d[2]) && !(rejected && RESTATES.test(d[2]))) bare.push({ title: d[1], label: d[1], severity: "error", message: d[2] });
+      if (d && GIT_ISH.test(d[2]) && !(rejected && RESTATES.test(d[2]))) bare.push(withSource({ title: d[1], label: d[1], severity: "error", message: d[2] }, i, i + 1));
     }
 
     if (!failures.length) failures.push(...bare);

@@ -12,7 +12,7 @@
 //
 // Read as prose that comes to "│ Error: Missing required argument" and nothing else -
 // no file, no line, and not the sentence at the bottom that says what to do about it.
-import { SOURCE_RANGE } from "../ownership.js";
+import { withSource } from "../ownership.js";
 
 const BAR = /^[^\S\n]*[│|][^\S\n]?/;
 const HEAD_RE = /^[^\S\n]*[│|][^\S\n]*(Error|Warning):[^\S\n]*(.*)$/;
@@ -142,18 +142,14 @@ function jsonDiagnostics(text) {
       const snippetLine = Number.isInteger(start?.line) && Number.isInteger(snippet?.start_line)
         ? String(snippet.code ?? "").split("\n")[start.line - snippet.start_line]
         : undefined;
-      const failure = {
+      // One JSON document is the raw region that supports every diagnostic it carries.
+      failures.push(withSource({
         file: range?.filename, line: start?.line, col: start?.column,
         title: diagnostic.summary, subject: snippet?.context, severity: "error",
         message: typeof diagnostic.detail === "string" && diagnostic.detail.trim()
           ? diagnostic.detail.trim() : diagnostic.summary,
         ...(snippetLine?.trim() ? { stmt: snippetLine.trim() } : {}),
-      };
-      // One JSON document is the raw region that supports every diagnostic it carries.
-      Object.defineProperty(failure, SOURCE_RANGE, {
-        value: { start: report.start, end: report.end }, enumerable: false,
-      });
-      failures.push(failure);
+      }, report.start, report.end));
     }
   }
   return { failures, warnings };
@@ -167,7 +163,7 @@ function flatValidateDiagnostics(text) {
   for (let i = 0; i < lines.length; i++) {
     const head = lines[i].match(FLAT_HEAD_RE);
     if (!head) continue;
-    let file, line, subject, stmt;
+    let file, line, subject, stmt, end = i + 1;
     const detail = [];
     for (let j = i + 1; j < lines.length && j <= i + 16; j++) {
       if (FLAT_HEAD_RE.test(lines[j])) break;
@@ -177,21 +173,23 @@ function flatValidateDiagnostics(text) {
       // mixed CI log, changing the failure even though its count happened to agree.
       if (!inner && detail.length) break;
       const at = inner.match(AT_RE);
-      if (at) { file ??= at[1]; line ??= +at[2]; subject ??= at[3]; continue; }
+      if (at) { file ??= at[1]; line ??= +at[2]; subject ??= at[3]; end = j + 1; continue; }
       const source = inner.match(SRC_RE);
       if (source) {
         if (+inner.slice(0, inner.indexOf(":")) === line) stmt ??= source[1].trim();
+        end = j + 1;
         continue;
       }
-      if (file && inner && detail.length < MAX_MESSAGE) detail.push(inner);
+      if (file && inner && detail.length < MAX_MESSAGE) { detail.push(inner); end = j + 1; }
     }
     // `Error:` is universal. The nearby Terraform location is what owns this form.
     if (!file || !/\.tf(?:\.json)?$/.test(file) || !line) continue;
     if (head[1] === "Warning") { warnings++; continue; }
-    failures.push({
+    // The header, its location, the source it quotes and the prose under it.
+    failures.push(withSource({
       file, line, title: head[2].trim(), subject, severity: "error",
       message: detail.length ? detail.join("\n") : head[2].trim(), stmt,
-    });
+    }, i, end));
   }
   return { failures, warnings };
 }
@@ -217,11 +215,12 @@ export default {
     for (let i = 0; i < lines.length; i++) {
       const h = lines[i].match(HEAD_RE);
       if (!h) continue;
-      let file, line, block, stmt;
+      let file, line, block, stmt, end = i + 1;
       const message = [];
       for (let j = i + 1; j < lines.length; j++) {
         if (CLOSE_RE.test(lines[j]) || HEAD_RE.test(lines[j])) break;
         if (!BAR.test(lines[j])) break;
+        end = j + 1;
         const inner = lines[j].replace(BAR, "").trimEnd();
         const at = inner.match(AT_RE);
         if (at) { file ??= at[1]; line ??= +at[2]; block ??= at[3]; continue; }
@@ -230,12 +229,13 @@ export default {
         if (inner.trim() && message.length < MAX_MESSAGE) message.push(inner.trim());
       }
       if (h[1] !== "Error") { warnings++; continue; }
-      failures.push({
+      // The boxed diagnostic, from its header down to the box's last line.
+      failures.push(withSource({
         file, line, title: h[2], subject: block, severity: "error",
         // The headline is already the title; repeating it as the first line of the
         // message says it twice. The prose underneath is what it did not say.
         message: (message.length ? message : [h[2]]).join("\n"), stmt,
-      });
+      }, i, end));
     }
     if (!failures.length && INIT_BANNER_RE.test(s)) {
       // Bounded to the window after terraform's own banner. init says what it is doing
@@ -265,16 +265,18 @@ export default {
         // A blank line separates the header from the prose, so it cannot end it - but a
         // blank AFTER the prose has started does.
         const prose = [];
+        let end = i + 1;
         for (let j = i + 1; j < lines.length && j <= i + 8 && prose.length < MAX_MESSAGE; j++) {
           if (FLAT_HEAD_RE.test(lines[j])) break;
           if (!lines[j].trim()) { if (prose.length) break; else continue; }
           prose.push(lines[j].trim());
+          end = j + 1;
         }
         if (h[1] === "Warning") { warnings++; continue; }
-        failures.push({
+        failures.push(withSource({
           title: h[2].trim(), label: h[2].trim(), severity: "error",
           message: prose.length ? prose.join(" ") : h[2].trim(),
-        });
+        }, i, end));
       }
     }
     if (!failures.length) return null;

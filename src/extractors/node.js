@@ -1,4 +1,5 @@
 import { isNoise } from "../util.js";
+import { withSource } from "../ownership.js";
 
 // A frame is `at fn (file:line:col)`: `/^[^\S\n]+at .+\(.+:\d+:\d+\)$/m`. As `.+\(.+`, a
 // line holding many parentheses was split at each of them in turn, reading to the end of
@@ -65,21 +66,24 @@ export default {
       // Frames follow the error closely. A diagnostic cannot own a stack that another
       // diagnostic stands in front of, even when the distance would otherwise fit.
       const frames = [];
+      let end = errIdx + 1;
       for (let i = errIdx + 1; i < lines.length; i++) {
         if (ERR_RE.test(lines[i]) || OTHER_DIAGNOSTIC.test(lines[i])) break;
         const m = lines[i].match(/^[^\S\n]+at (?:(.+?) \()?(.+?):(\d+):(\d+)\)?$/);
         if (!m) { if (frames.length || i - errIdx > FRAME_GAP) break; else continue; }
         frames.push({ fn: m[1] ?? "<anonymous>", file: unfile(m[2]), line: +m[3], col: +m[4] });
+        end = i + 1;
       }
       const user = frames.filter((f) => !isNoise(f.file));
 
       // Uncaught syntax/import failures put source and a caret immediately above this
       // exception. Searching any earlier part of a mixed log borrows another tool's
       // source, so the window is intentionally small and walks backward from here.
-      let stmt, header;
+      let stmt, header, start = errIdx;
       for (let i = errIdx - 1; i >= 0 && i >= errIdx - SOURCE_GAP; i--) {
         if (/^[^\S\n]*\^+[^\S\n]*$/.test(lines[i]) && i >= 1) {
           stmt = lines[i - 1].trim();
+          start = i - 1;
           // A path, not a sentence. `^(\S.*?):(\d+)$` accepts anything ending in a
           // number, and black's "error: cannot format cantparse.py: Cannot parse: 1:7"
           // ends in one - under a caret and a source line, which is node's exact shape,
@@ -88,7 +92,7 @@ export default {
           // Colons cannot be what rules it out: node writes "file:///abs/syn.mjs:1".
           // Whitespace can - a path has none, and a sentence has plenty.
           const h = lines[i - 2]?.match(/^(\S+):(\d+)$/);
-          if (h) header = { file: unfile(h[1]), line: +h[2] };
+          if (h) { header = { file: unfile(h[1]), line: +h[2] }; start = i - 2; }
           break;
         }
         if (ERR_RE.test(lines[i]) || OTHER_DIAGNOSTIC.test(lines[i])) break;
@@ -100,12 +104,13 @@ export default {
       if (!frames.length && !header) continue;
       const usable = (loc) => (loc && !isNoise(loc.file) ? loc : null);
       const top = user[0] ?? usable(header) ?? usable(frames[0]);
-      failures.push({
+      // The source node quotes above the exception, the exception, and its stack.
+      failures.push(withSource({
         file: top?.file, line: top?.line, col: top?.col,
         title: error[1], code: error[1], severity: "error", message: error[2], stmt,
         trace: user.slice(0, 4).map((f) => `${f.fn} (${f.file}:${f.line}:${f.col})`),
         hiddenFrames: frames.length - user.length,
-      });
+      }, start, end));
     }
 
     if (!failures.length) return null;

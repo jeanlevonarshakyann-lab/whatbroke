@@ -1,4 +1,5 @@
-import { colonPlaces, elements, findJsonDocument, tailFirst, xmlAttributes } from "../util.js";
+import { colonPlaces, elements, findJsonDocument, jsonDocumentsAt, lineAt, tailFirst, xmlAttributes } from "../util.js";
+import { joinSources, preserveSourceRange, withSource } from "../ownership.js";
 // shellcheck writes two formats a CI job is likely to produce, and neither was read.
 // Its default is a block per location:
 //
@@ -48,17 +49,30 @@ const comments = (s) => {
 };
 // checkstyle is a shape other linters write too, so what makes it shellcheck's is the
 // source attribute: every finding declares `ShellCheck.SC####` as the check that made it.
-const CHECKSTYLE_FILE = /<file\b([^>]*)>([\s\S]*?)<\/file>/g;
+const CHECKSTYLE_FILE = /<file\b([^>]*)>([\s\S]*?)<\/file>/dg;
 const CHECKSTYLE_ERROR = /<error\b([^>]*?)\/?>/g;
 const CHECKSTYLE_FILE_ELEMENT = { open: /<file\b/, close: () => "</file>" };
 const SHELLCHECK_SOURCE = /^ShellCheck\.(SC\d+)$/;
 
-/** The findings of a run in one of the three machine formats. */
-function machine(s) {
+/** The findings of a run in one of the three machine formats - each with the lines it was
+ *  read from when `placed`, which deciding whether to claim a log does not need. */
+function machine(s, placed = false) {
   const out = [];
-  for (const c of comments(s)) {
-    out.push({ file: c.file, line: c.line, col: c.column, code: `SC${c.code}`,
-      severity: c.level, message: String(c.message).trim() });
+  const at = (f, start, end) => (placed ? withSource(f, start, end) : f);
+  if (placed) {
+    for (const { value, where } of s.includes('"level"') ? jsonDocumentsAt(s, JSON_MARK) : []) {
+      for (const c of Array.isArray(value) ? value : value.comments) {
+        const { start, end } = where(c);
+        out.push(at({ file: c.file, line: c.line, col: c.column, code: `SC${c.code}`,
+          severity: c.level, message: String(c.message).trim() }, start, end));
+      }
+      break;
+    }
+  } else {
+    for (const c of comments(s)) {
+      out.push({ file: c.file, line: c.line, col: c.column, code: `SC${c.code}`,
+        severity: c.level, message: String(c.message).trim() });
+    }
   }
   if (s.includes("ShellCheck.SC")) {
     for (const doc of elements(s, CHECKSTYLE_FILE, CHECKSTYLE_FILE_ELEMENT)) {
@@ -67,8 +81,10 @@ function machine(s) {
         const a = xmlAttributes(err[1]);
         const source = SHELLCHECK_SOURCE.exec(a.source ?? "");
         if (!source || !file) continue;
-        out.push({ file, line: +a.line, col: +a.column, code: source[1],
-          severity: a.severity, message: String(a.message ?? "").trim() });
+        const offset = doc.indices[2][0] + err.index;
+        out.push(at({ file, line: +a.line, col: +a.column, code: source[1],
+          severity: a.severity, message: String(a.message ?? "").trim() },
+        lineAt(s, offset), lineAt(s, offset + err[0].length - 1) + 1));
       }
     }
   }
@@ -87,25 +103,26 @@ export default {
   extract(s) {
     const lines = s.split("\n");
     let found = [];
-    let file = null, line = null, stmt = null;
+    let file = null, line = null, stmt = null, header = -1;
     for (let i = 0; i < lines.length; i++) {
       const g = gccLine(lines[i]);
       if (g) {
-        found.push({ file: g[1], line: +g[2], col: +g[3], code: g[6], severity: g[4], message: g[5] });
+        found.push(withSource({ file: g[1], line: +g[2], col: +g[3], code: g[6], severity: g[4], message: g[5] }, i, i + 1));
         continue;
       }
       const h = lines[i].match(HEADER);
       if (h) {
-        file = h[1]; line = +h[2];
+        file = h[1]; line = +h[2]; header = i;
         // The line under the header is the source shellcheck is pointing at. It is the
         // one thing here worth quoting back, and it is quoted from the log verbatim.
         stmt = lines[i + 1]?.trim() || null;
         continue;
       }
+      // The block's header, the source under it, and the caret line naming this finding.
       const c = file && lines[i].match(CARET);
-      if (c) found.push({ file, line, col: c[1].length + 1, code: c[2], severity: c[3], message: c[4], stmt });
+      if (c) found.push(withSource({ file, line, col: c[1].length + 1, code: c[2], severity: c[3], message: c[4], stmt }, header, i + 1));
     }
-    found.push(...machine(s));
+    found.push(...machine(s, true));
     if (!found.length) return null;
     // A log can hold both formats - two shellcheck runs, or one job rendering twice - and
     // the same finding then arrives once per format. They are not two problems. The code
@@ -115,7 +132,11 @@ export default {
     const seen = new Map();
     for (const f of found) {
       const key = `${f.file}\u0000${f.line}\u0000${f.col}\u0000${f.code}`;
-      if (!seen.has(key) || (f.stmt && !seen.get(key).stmt)) seen.set(key, f);
+      const kept = seen.get(key);
+      // Either way, the finding keeps both places it was read.
+      if (!kept) seen.set(key, f);
+      else if (f.stmt && !kept.stmt) seen.set(key, joinSources(f, kept));
+      else seen.set(key, joinSources(kept, f));
     }
     found = [...seen.values()];
     // shellcheck ranks its findings error > warning > info > style, and exits non-zero on
@@ -141,7 +162,7 @@ export default {
         ? `${errors.length} error${errors.length > 1 ? "s" : ""}`
         : `failed on ${shown.length} ${kinds.join("/")} finding${shown.length > 1 ? "s" : ""}`) +
         (hidden ? ` — ${hidden} lower-severity finding${hidden > 1 ? "s" : ""} hidden` : ""),
-      failures: shown.map((f) => ({
+      failures: shown.map((f) => preserveSourceRange(f, {
         file: f.file, line: f.line, col: f.col, title: f.code, code: f.code,
         severity: "error", message: f.message, ...(f.stmt ? { stmt: f.stmt } : {}),
       })),
