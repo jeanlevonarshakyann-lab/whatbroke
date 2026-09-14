@@ -1,3 +1,5 @@
+import { joinSources } from "./ownership.js";
+
 // CSI covers colours plus cursor/erase controls; OSC covers terminal hyperlinks and
 // window-title commands, terminated by BEL or ST. Both have seven- and eight-bit
 // encodings. Keeping this local avoids a runtime dependency while handling the control
@@ -25,16 +27,18 @@ export const stripAnsi = (s) => {
  * headline use this before counting so a retried/concatenated log cannot say more
  * failures were shown than survive the reader's final de-duplication. */
 export function uniqueFailures(failures) {
-  const seen = new Set();
-  return failures.filter((failure) => {
+  const seen = new Map();
+  const unique = [];
+  for (const failure of failures) {
     const key = JSON.stringify([
       failure.file ?? null, failure.line ?? null, failure.col ?? null,
       failure.title ?? "", failure.message ?? "", failure.stmt ?? "",
     ]);
-    if (seen.has(key)) return false;
-    seen.add(key);
-    return true;
-  });
+    // A copy says where it was read, and the first keeps that.
+    if (seen.has(key)) unique[seen.get(key)] = joinSources(unique[seen.get(key)], failure);
+    else { seen.set(key, unique.length); unique.push(failure); }
+  }
+  return unique;
 }
 
 /** Node/py internals and vendored code are almost never what you're looking for. */
@@ -339,14 +343,84 @@ function documentSpans(text) {
   return spans;
 }
 
-function parseSpan(text, { start, end, foreign }) {
+function spanSource(text, { start, end, foreign }) {
   let source = text.slice(start, end + 1);
   if (foreign) {
     const chars = source.split("");
     for (const at of foreign) chars[at - start] = " ";
     source = chars.join("");
   }
-  try { return JSON.parse(source); } catch { return null; }
+  return source;
+}
+
+function parseSpan(text, span) {
+  try { return JSON.parse(spanSource(text, span)); } catch { return null; }
+}
+
+/** `JSON.parse(source)` for a source it has already accepted, keeping where every object
+ *  and array in it opens and closes: { value, places }, places mapping each to [open,
+ *  close] offsets into `source`.
+ *
+ *  JSON.parse gives no positions, and a report pretty-printed across hundreds of lines
+ *  says which lines hold each finding only through them. The value is built the way
+ *  JSON.parse builds it - members in order, a repeated key keeping its first place and its
+ *  last value, `__proto__` an ordinary key - so a parser reads the same document either
+ *  way. test/evidence.js compares the two. The source is known to parse, so nothing here
+ *  checks it again. */
+export function parsePlaced(source) {
+  const places = new WeakMap();
+  const stack = [];
+  let i = 0, root;
+  const complete = (value) => {
+    const top = stack[stack.length - 1];
+    if (!top) { root = value; return; }
+    if (top.array) top.node.push(value);
+    else {
+      if (top.key === "__proto__") Object.defineProperty(top.node, top.key, { value, writable: true, enumerable: true, configurable: true });
+      else top.node[top.key] = value;
+      top.key = undefined;
+    }
+  };
+  const stringEnd = (from) => {
+    for (let j = from + 1; ; j++) {
+      const code = source.charCodeAt(j);
+      if (code === 0x5c) j++;
+      else if (code === 0x22) return j;
+    }
+  };
+  while (root === undefined || stack.length) {
+    let code = source.charCodeAt(i);
+    while (code === 0x20 || code === 0x09 || code === 0x0a || code === 0x0d) code = source.charCodeAt(++i);
+    const top = stack[stack.length - 1];
+    if (code === 0x2c) { i++; continue; }
+    if (code === 0x7d || code === 0x5d) {
+      stack.pop();
+      places.set(top.node, [top.open, i++]);
+      complete(top.node);
+      continue;
+    }
+    if (top && !top.array && top.key === undefined) {
+      const end = stringEnd(i);
+      top.key = JSON.parse(source.slice(i, end + 1));
+      i = source.indexOf(":", end) + 1;
+      continue;
+    }
+    if (code === 0x7b || code === 0x5b) {
+      stack.push({ node: code === 0x7b ? {} : [], array: code === 0x5b, open: i++, key: undefined });
+    } else if (code === 0x22) {
+      const end = stringEnd(i);
+      complete(JSON.parse(source.slice(i, end + 1)));
+      i = end + 1;
+    } else if (code === 0x74) { complete(true); i += 4; }
+    else if (code === 0x66) { complete(false); i += 5; }
+    else if (code === 0x6e) { complete(null); i += 4; }
+    else {
+      const from = i;
+      for (code = source.charCodeAt(i); (code >= 0x30 && code <= 0x39) || code === 0x2d || code === 0x2b || code === 0x2e || code === 0x65 || code === 0x45; code = source.charCodeAt(++i));
+      complete(Number(source.slice(from, i)));
+    }
+  }
+  return { value: root, places };
 }
 
 /** The first JSON document in `text` that opens a line and that `accept` recognises.
@@ -359,6 +433,42 @@ function parseSpan(text, { start, end, foreign }) {
 export function findJsonDocument(text, accept) {
   for (const value of jsonDocuments(text, accept)) return value;
   return null;
+}
+
+let lineStartsOf = { text: null, starts: null };
+
+/** The line of `text` holding character `offset`, counted from 0. */
+export function lineAt(text, offset) {
+  if (lineStartsOf.text !== text) {
+    const starts = [0];
+    for (let at = text.indexOf("\n"); at !== -1; at = text.indexOf("\n", at + 1)) starts.push(at + 1);
+    lineStartsOf = { text, starts };
+  }
+  const { starts } = lineStartsOf;
+  let lo = 0, hi = starts.length - 1;
+  while (lo < hi) { const mid = (lo + hi + 1) >> 1; if (starts[mid] <= offset) lo = mid; else hi = mid - 1; }
+  return lo;
+}
+
+/** Where the JSON document `source`, written at offset `at` of `text`, put each of its
+ *  parts: { value, where }. `value` is what JSON.parse gives for `source`, which must
+ *  parse. `where(node)` is the lines [start, end) of `text` holding `node`, any object or
+ *  array inside `value`; given anything else - a string, or nothing - it is the lines of
+ *  the whole document. */
+export function jsonPlaces(text, at, source) {
+  const { value, places } = parsePlaced(source);
+  const lines = (open, close) => ({ start: lineAt(text, at + open), end: lineAt(text, at + close) + 1 });
+  const whole = lines(0, source.length - 1);
+  return { value, where: (node) => { const place = node !== null && typeof node === "object" && places.get(node); return place ? lines(...place) : whole; } };
+}
+
+/** `jsonDocuments`, and where each document put each of its parts: { value, where }, as
+ *  `jsonPlaces` gives them. */
+export function* jsonDocumentsAt(text, accept) {
+  for (const span of documentSpans(text)) {
+    const accepted = parseSpan(text, span);
+    if (accepted !== null && accept(accepted)) yield jsonPlaces(text, span.start, spanSource(text, span));
+  }
 }
 
 /** Every JSON document in `text` that opens a line and that `accept` recognises.
@@ -390,8 +500,9 @@ const ANNOTATION_RE = /^[^\S\n]*::(error|warning|notice)[^\S\n]+([^:\n]*)::(.*)$
  *  `::error::` because some tool printed it is a log, not an instruction. */
 export function githubAnnotations(text) {
   const out = [];
-  for (const line of text.split("\n")) {
-    const m = line.match(ANNOTATION_RE);
+  const lines = text.split("\n");
+  for (let index = 0; index < lines.length; index++) {
+    const m = lines[index].match(ANNOTATION_RE);
     if (!m) continue;
     const props = {};
     // `title` may contain a comma in principle; every other property is a number or a
@@ -402,7 +513,7 @@ export function githubAnnotations(text) {
     }
     // GitHub percent-escapes the three characters that would end the command early.
     const message = m[3].replace(/%0D/g, "").replace(/%0A/g, "\n").replace(/%25/g, "%");
-    out.push({ severity: m[1], props, message });
+    out.push({ severity: m[1], props, message, line: index });
   }
   return out;
 }

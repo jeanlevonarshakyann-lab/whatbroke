@@ -257,6 +257,48 @@ function locate(text, all, budget) {
 }
 
 
+/** Record that `failure` was read from lines [start, end) of the text its parser was given.
+ *  A parser knows this as it reads; the guess made above is for the ones that do not yet
+ *  say. Written ranges are what `test/evidence.js` holds to the text they point at. */
+export function withSource(failure, start, end) {
+  Object.defineProperty(failure, SOURCE_RANGE, { value: { start, end }, enumerable: false, configurable: true });
+  return failure;
+}
+
+// How many places one diagnosis keeps. A run printed twice - as a table and as JSON - is
+// two; a log holding the same finding thousands of times would make every join, and every
+// comparison of ranges, cost as much as all the copies before it.
+const MAX_PLACES = 8;
+
+/** Every range in a range: the first, and the others it was also read from. */
+const placesOf = (range) => (range.also ? [range, ...range.also] : [range]);
+
+/** One diagnosis read in two places is kept once, and keeps both places.
+ *
+ *  A parser that reads one run printed two ways keeps one reading of each finding. A
+ *  range written for that reading alone says the finding is in one place, and another
+ *  tool's reading of the other place is then a stranger: ruff's full form wins over its
+ *  concise lines, and flake8, reading those same concise lines, reported them again.
+ *
+ *  Returns `kept`, or a copy of it that carries the places `dropped` was read from as
+ *  well. A guessed range is left as it is - a guess is about one line, and joining two
+ *  would make both into claims. */
+export function joinSources(kept, dropped) {
+  const a = Object.getOwnPropertyDescriptor(kept, SOURCE_RANGE);
+  const b = Object.getOwnPropertyDescriptor(dropped, SOURCE_RANGE);
+  if (!a?.value || !b?.value) return kept;
+  const places = placesOf(a.value).map(({ start, end }) => ({ start, end }));
+  for (const { start, end } of placesOf(b.value)) {
+    if (places.length >= MAX_PLACES) break;
+    if (!places.some((p) => p.start === start && p.end === end)) places.push({ start, end });
+  }
+  if (places.length === placesOf(a.value).length) return kept;
+  const [first, ...also] = places;
+  const copy = { ...kept };
+  Object.defineProperty(copy, SOURCE_RANGE, { value: { ...first, also }, enumerable: false, configurable: true });
+  return copy;
+}
+
 export function preserveSourceRange(from, to) {
   // Carry the accessor across rather than its value, so a copy made on the way to the
   // reader does not force a computation nothing has asked for.
@@ -271,7 +313,11 @@ export function sourceRange(failure) {
 
 export function rangesOverlap(a, b) {
   const x = sourceRange(a), y = sourceRange(b);
-  return !!x && !!y && x.start < y.end && y.start < x.end;
+  if (!x || !y) return false;
+  for (const p of placesOf(x)) {
+    for (const q of placesOf(y)) if (p.start < q.end && q.start < p.end) return true;
+  }
+  return false;
 }
 
 export function setParser(result, parser) {

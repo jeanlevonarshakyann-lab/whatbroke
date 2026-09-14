@@ -70,7 +70,7 @@ import generic from "./extractors/generic.js";
 import { stripAnsi, stripCiPrefix, isNoise, collapseRepeats } from "./util.js";
 import { clusterFailures } from "./cluster.js";
 import { stripRedrawnCiPrefix, wrapperCandidates } from "./normalize.js";
-import { addSourceRanges, ownershipBudget, preserveSourceRange, rangesOverlap, releaseOwnership, setParser, sourceRange } from "./ownership.js";
+import { addSourceRanges, joinSources, ownershipBudget, preserveSourceRange, rangesOverlap, releaseOwnership, setParser, sourceRange } from "./ownership.js";
 
 // order matters: most specific first, generic last
 export const EXTRACTORS = [pytest, nodetest, bun, bunRuntime, deno, denoRuntime, denoLint, denoFmt, playwright, jestjson, jest, mochajson, mochaxunit, mocha, ava, jasmine, rubocop, tap, taptext, vitest, unittest, traceback, eslintjson, eslint, ruff, pylint, flake8, golangci, markdownlint, stylelint, shellcheck, yamllint, biome, oxlint, black, prettier, sass, less, webpack, babel, swc, pyright, mypy, cmake, terraform, swift, clang, ruby, perl, php, rspec, junitjvm, jvm, dotnettest, dotnet, phpunit, cargojson, cargo, govetjson, gojson, gotest, esbuild, vite, node, tsc, git, kubectl, docker, make, npm, pnpm, yarn, pip, generic];
@@ -113,7 +113,9 @@ function dedupeFailures(failures) {
       seen.set(key, [...candidates, unique.length]);
       unique.push(failure);
     } else if (!unique[index].stmt && failure.stmt) {
-      unique[index] = failure;
+      unique[index] = joinSources(failure, unique[index]);
+    } else {
+      unique[index] = joinSources(unique[index], failure);
     }
   }
   return unique;
@@ -132,7 +134,10 @@ function sameLocatedDiagnostic(a, b) {
       const suffix = ` [${code}]`;
       if (text.endsWith(suffix)) text = text.slice(0, -suffix.length).trimEnd();
     }
-    return text;
+    // eslint's table trims the full stop a rule ends its message with, as
+    // `message.replace(/([^ ])\.$/u, "$1")`, and its JSON report keeps it. One run printed
+    // both ways says the same thing twice, and only the full stop told them apart.
+    return text.replace(/([^ ])\.$/u, "$1");
   };
   const text = message(a);
   return text.length > 0 && text === message(b);

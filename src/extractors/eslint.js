@@ -1,4 +1,5 @@
 import { uniqueFailures } from "../util.js";
+import { withSource } from "../ownership.js";
 
 const PROB_RE = /^[^\S\n]+(\d+):(\d+)[^\S\n]+(error|warning)[^\S\n]+(.+?)\s{2,}([\w@/-]+)[^\S\n]*$/;
 
@@ -35,9 +36,11 @@ function refusal(s) {
     // reported it as its own advice in 596 of the sweep's ordered pairs.
     const lines = s.split("\n");
     const at = lines.findIndex((l) => l === m[0]);
-    const next = at >= 0 ? lines[at + 1] : undefined;
+    const next = lines[at + 1];
     const advice = next && next.trim() && !/^\s*(?:at\s|[A-Z]\w*Error:)/.test(next) ? next.trim() : null;
-    return { title: label, label, severity: "error", message: [m[0], advice].filter(Boolean).join(" ") };
+    // The sentence is a whole line, so the first line equal to it is where it matched.
+    return withSource({ title: label, label, severity: "error", message: [m[0], advice].filter(Boolean).join(" ") },
+      at, advice ? at + 2 : at + 1);
   }
   return null;
 }
@@ -71,7 +74,8 @@ export default {
       const at = relative < 0 || !CONFIG_ERROR.test(lines[from + 1 + relative]) ? -1 : from + 1 + relative;
       if (at >= 0) {
         const m = lines[at].match(CONFIG_ERROR);
-        configFailures.push({ title: m[1], code: m[1], severity: "error", message: m[2] });
+        // The banner, eslint's version under it, and the reason.
+        configFailures.push(withSource({ title: m[1], code: m[1], severity: "error", message: m[2] }, banner, at + 1));
       }
     }
     // ...and the refusals that are not crashes. The banner form is preferred where both
@@ -85,14 +89,16 @@ export default {
     let file = null;
     const warningLines = new Set();
 
-    for (const l of lines) {
+    for (let i = 0; i < lines.length; i++) {
+      const l = lines[i];
       const p = l.match(PROB_RE);
       if (p) {
         if (p[3] === "warning") {
           warningLines.add(JSON.stringify([file, +p[1], +p[2], p[4], p[5]]));
           continue;   // errors are what block you
         }
-        failures.push({ file, line: +p[1], col: +p[2], title: p[5], code: p[5], severity: p[3], message: p[4] });
+        // The problem's own line: the file it belongs to is a heading shared with the others.
+        failures.push(withSource({ file, line: +p[1], col: +p[2], title: p[5], code: p[5], severity: p[3], message: p[4] }, i, i + 1));
         continue;
       }
       if (l.trim() && !/^\s/.test(l) && !/^[✖x✔]/.test(l.trim())) file = l.trim();

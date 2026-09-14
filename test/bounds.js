@@ -146,6 +146,12 @@ test("numbers that each claim the rest of the log", () => {
   linear(claims, 16001);
 });
 
+test("one finding printed thousands of times", () => {
+  // Each copy is one more place the finding was read from, and joining a place into the
+  // ones kept compares it with each of them.
+  linear(repeat("lint_me.py:1:8: F401 'os' imported but unused"), 4001);
+});
+
 test("the first two lines of a terraform report, over and over", () => {
   // terraform balanced the braces of every report-looking line down to wherever they
   // balanced, and these never do.

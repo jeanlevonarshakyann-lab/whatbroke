@@ -1,4 +1,5 @@
-import { githubAnnotations, jsonDocuments, xmlAttributes, xmlText } from "../util.js";
+import { githubAnnotations, jsonDocumentsAt, xmlAttributes, xmlText } from "../util.js";
+import { withSource } from "../ownership.js";
 // RuboCop is what a Ruby CI job usually fails on, and its output had no parser: the
 // fallback scraped the lines but dropped the column, the cop name and the severity, and
 // reported a style convention as an error.
@@ -90,9 +91,10 @@ function offenses(s) {
       const carets = own(lines[i + 2]) ?? "";
       const stmt = source !== undefined && CARETS.test(carets) && carets.indexOf("^") === +m[4] - 1
         ? source.trim() : undefined;
+      // The offense, and the source and carets under it when they are its own.
       found.push({
         file: m[2], line: +m[3], col: +m[4], letter: m[5],
-        code: m[6], message: m[7], ...(stmt ? { stmt } : {}),
+        code: m[6], message: m[7], ...(stmt ? { stmt } : {}), from: i, to: stmt ? i + 3 : i + 1,
       });
       continue;
     }
@@ -100,7 +102,7 @@ function offenses(s) {
     if (header) { simpleFile = header[1]; continue; }
     const row = simpleFile && lines[i].match(SIMPLE_ROW);
     if (row) {
-      found.push({ file: simpleFile, line: +row[2], col: +row[3], letter: row[1], code: row[4], message: row[5] });
+      found.push({ file: simpleFile, line: +row[2], col: +row[3], letter: row[1], code: row[4], message: row[5], from: i, to: i + 1 });
       continue;
     }
     if (!markdown) continue;
@@ -108,19 +110,23 @@ function offenses(s) {
     if (section) { markdownFile = section[1]; continue; }
     const item = markdownFile && lines[i].match(MARKDOWN_ROW);
     if (item) {
-      found.push({ file: markdownFile, line: +item[1], letter: LETTER[item[2]], code: item[3], message: item[4] });
+      found.push({ file: markdownFile, line: +item[1], letter: LETTER[item[2]], code: item[3], message: item[4], from: i, to: i + 1 });
     }
   }
 
-  const docs = s.includes('"rubocop_version"') ? [...jsonDocuments(s, JSON_MARK)] : [];
-  for (const file of docs.flatMap((d) => d.files)) {
-    for (const o of file?.offenses ?? []) {
-      if (typeof o?.cop_name !== "string" || typeof file.path !== "string") continue;
-      const at = o.location ?? {};
-      found.push({
-        file: file.path, line: at.start_line ?? at.line, col: at.start_column ?? at.column,
-        letter: LETTER[o.severity], code: o.cop_name, message: unnamed(o.message, o.cop_name),
-      });
+  // An offense in the JSON report was written where its object is.
+  const docs = s.includes('"rubocop_version"') ? [...jsonDocumentsAt(s, JSON_MARK)] : [];
+  for (const { value, where } of docs) {
+    for (const file of value.files) {
+      for (const o of file?.offenses ?? []) {
+        if (typeof o?.cop_name !== "string" || typeof file.path !== "string") continue;
+        const at = o.location ?? {};
+        const { start, end } = where(o);
+        found.push({
+          file: file.path, line: at.start_line ?? at.line, col: at.start_column ?? at.column,
+          letter: LETTER[o.severity], code: o.cop_name, message: unnamed(o.message, o.cop_name), from: start, to: end,
+        });
+      }
     }
   }
 
@@ -135,13 +141,14 @@ function offenses(s) {
       const a = xmlAttributes(failure[1]);
       // The location is the failure's body. Another tool writing to the same log can put
       // a line of its own in between, so the body is looked for up to its closing tag.
-      let where = null;
-      for (let j = i + 1; j <= i + 3 && j < lines.length && !/<\/?(?:failure|testcase)\b/.test(lines[j]); j++) {
+      let where = null, j = i + 1;
+      for (; j <= i + 3 && j < lines.length && !/<\/?(?:failure|testcase)\b/.test(lines[j]); j++) {
         where = xmlText(lines[j]).match(WHERE);
         if (where) break;
       }
       if (!where || !cop.test(a.type ?? "")) continue;
-      found.push({ file: where[1], line: +where[2], col: +where[3], code: a.type, message: unnamed(a.message, a.type) });
+      // The failure's opening tag and the location that is its body.
+      found.push({ file: where[1], line: +where[2], col: +where[3], code: a.type, message: unnamed(a.message, a.type), from: i, to: j + 1 });
     }
   }
 
@@ -152,7 +159,7 @@ function offenses(s) {
       const m = a.props.title ? null : a.message.match(named);
       if (!m || !a.props.file || !(+a.props.line > 0)) continue;
       found.push({ file: a.props.file, line: +a.props.line, ...(+a.props.col > 0 ? { col: +a.props.col } : {}),
-        code: m[1], message: m[2].trim() });
+        code: m[1], message: m[2].trim(), from: a.line, to: a.line + 1 });
     }
   }
   return found;
@@ -184,10 +191,10 @@ export default {
       summary: `${n} problem${n === 1 ? "" : "s"}` +
         (hidden ? `, ${hidden} advisory hidden` : "") +
         (!errors.length && declared && +declared[1] !== n ? ` of ${declared[1]} offences` : ""),
-      failures: shown.map(({ file, line, col, code, message, stmt }) => ({
+      failures: shown.map(({ file, line, col, code, message, stmt, from, to }) => withSource({
         file, line, ...(col !== undefined ? { col } : {}), title: code, code, message,
         ...(stmt ? { stmt } : {}), severity: "error",
-      })),
+      }, from, to)),
     };
   },
 };
