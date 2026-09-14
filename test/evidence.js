@@ -14,7 +14,7 @@ import { readFileSync, readdirSync } from "node:fs";
 import { dirname, join } from "node:path";
 import { fileURLToPath } from "node:url";
 import { EXTRACTORS } from "../src/index.js";
-import { joinSources, rangesOverlap, SOURCE_RANGE, sourceRange, withSource } from "../src/ownership.js";
+import { alsoFrom, joinSources, rangesOverlap, SOURCE_RANGE, sourceRange, withSource } from "../src/ownership.js";
 import { jsonDocumentsAt, parsePlaced, stripAnsi } from "../src/util.js";
 
 const here = dirname(fileURLToPath(import.meta.url));
@@ -36,13 +36,8 @@ const test = (name, fn) => {
 
 // The parsers whose failures still carry a guessed range on at least one fixture.
 const GUESSING = new Set([
-  "cargo", "cargo --message-format=json", "clang", "cmake",
-  "docker", "dotnet", "dotnet test",
-  "generic", "git", "go", "go test -json", "go vet json", "golangci-lint",
-  "junit jvm", "jvm", "kubectl", "make",
-  "node", "npm", "perl", "php", "phpunit", "pnpm",
-  "rspec", "ruby", "shellcheck",
-  "swift", "terraform",
+  "docker", "dotnet", "dotnet test", "generic", "git", "junit jvm", "jvm", "kubectl", "node",
+  "npm", "perl", "php", "phpunit", "pnpm", "rspec", "ruby", "shellcheck", "terraform",
   "yamllint", "yarn",
 ]);
 
@@ -70,9 +65,11 @@ function evidenced(failure, lines, { start, end }) {
   };
   const holds = (value) => !!value && forms(value).some((form) => said.includes(form));
   const base = failure.file ? String(failure.file).split(/[\\/]/).pop() : null;
-  const start16 = String(failure.message ?? "").split("\n")[0].trim().slice(0, 16);
+  // A place can hold a later line of the message rather than its first: go's test prints
+  // each of its messages on a line of its own, and parallel tests interleave them.
+  const starts = String(failure.message ?? "").split("\n").map((l) => l.trim().slice(0, 16)).filter((l) => l.length >= 6);
   const names = [failure.subject, failure.title].map((v) => String(v ?? "").trim()).filter((v) => v.length >= 4);
-  return holds(base) || holds(failure.code) || (start16.length >= 6 && holds(start16)) || names.some(holds);
+  return holds(base) || holds(failure.code) || starts.some(holds) || names.some(holds);
 }
 
 console.log("\nwhere failures were read from");
@@ -116,7 +113,7 @@ test("a finding read in two places keeps both, and overlaps a reading of either"
   const table = withSource({ file: "a.py", line: 1, code: "F401", message: "`os` imported but unused" }, 7, 9);
   const line = withSource({ file: "a.py", line: 1, code: "F401", message: "`os` imported but unused" }, 0, 1);
   const kept = joinSources(table, line);
-  assert.deepEqual(sourceRange(kept), { start: 7, end: 9, also: [{ start: 0, end: 1 }] });
+  assert.deepEqual(sourceRange(kept), { start: 0, end: 1, also: [{ start: 7, end: 9 }] });
   assert.equal(sourceRange(table).also, undefined, "the reading it was joined from is left as it was");
   for (const [start, end, overlaps, what] of [[0, 1, true, "the concise line"], [8, 9, true, "the table"], [3, 7, false, "neither"]]) {
     const reading = withSource({}, start, end);
@@ -133,8 +130,19 @@ test("a guess is not joined, and one finding keeps at most eight places", () => 
   assert.equal(joinSources(written, guessed), written);
   assert.equal(joinSources(guessed, written), guessed);
   let many = withSource({}, 0, 1);
-  for (let i = 1; i < 1000; i++) many = joinSources(many, withSource({}, i, i + 1));
+  for (let i = 1; i < 1000; i++) many = joinSources(many, withSource({}, 2 * i, 2 * i + 1));
   assert.equal(1 + sourceRange(many).also.length, 8);
+});
+
+test("places that touch are one place", () => {
+  // A test's result line and the message lines under it, read one at a time.
+  let failure = withSource({}, 52, 53);
+  for (const line of [53, 54]) failure = alsoFrom(failure, line, line + 1);
+  assert.deepEqual(sourceRange(failure), { start: 52, end: 55 });
+  // ...and a place inside one already kept adds nothing.
+  assert.equal(alsoFrom(failure, 53, 54), failure);
+  // Apart, they stay apart, earliest first.
+  assert.deepEqual(sourceRange(alsoFrom(failure, 10, 12)), { start: 10, end: 12, also: [{ start: 52, end: 55 }] });
 });
 
 // A report pretty-printed over hundreds of lines says where each finding is only through

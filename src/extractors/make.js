@@ -12,6 +12,8 @@
 //
 // Everything matched here is anchored on a prefix make writes about itself, so the
 // parser never reads a line make did not produce. There is no surrounding-context scan.
+import { joinSources, withSource } from "../ownership.js";
+
 const QUOTED = /[`'"]([^`'"]+)['"]/;
 // `Makefile:2: *** missing separator.  Stop.` - a makefile make could not parse.
 const AT_LINE = /^([^\s:]+):(\d+):[^\S\n]+\*\*\*[^\S\n]+(.+?)[^\S\n]*Stop\.[^\S\n]*$/m;
@@ -43,13 +45,18 @@ export default {
     const failures = [];
     // make reports a missing include twice: once against the line that included it, then
     // again as a target it cannot build. The first knows where the problem is written.
-    const named = new Set();
+    const named = new Map();
+    let at = 0;
     const push = (f) => {
-      if (f.subject && named.has(f.subject)) return;
-      if (f.subject) named.add(f.subject);
-      failures.push({ severity: "error", ...f });
+      const failure = withSource({ severity: "error", ...f }, at, at + 1);
+      // ...and it was read in both places.
+      if (f.subject && named.has(f.subject)) { failures[named.get(f.subject)] = joinSources(failures[named.get(f.subject)], failure); return; }
+      if (f.subject) named.set(f.subject, failures.length);
+      failures.push(failure);
     };
-    for (const line of s.split("\n")) {
+    const lines = s.split("\n");
+    for (; at < lines.length; at++) {
+      const line = lines[at];
       let m;
       if ((m = line.match(MISSING_AT_LINE))) {
         push({ file: m[1], line: +m[2], title: m[3], subject: m[3], message: `${m[3]}: ${m[4]}` });
