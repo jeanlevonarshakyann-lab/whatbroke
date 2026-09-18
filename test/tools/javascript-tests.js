@@ -554,6 +554,18 @@ const CASES = [
       assert.equal(r.failures[0].title, "crash.test.js");
       assert.equal(r.failures[0].message, "test failed");
     } },
+  // Captured with bun 1.3. A thrown Error is printed as "error: boom"; a thrown builtin
+  // is printed with its class - "TypeError: null is not an object". Only the first was
+  // read, so the other two came back as "its output is not in this log" - with their
+  // output right there - and node's parser read the same lines as two crashes of its own.
+  { file: "bun_throw_fail.txt", tool: "bun test", n: 3, check: (r) => {
+      assert.equal(r.summary, "3 fail");
+      assert.deepEqual(r.failures.map((f) => f.message), ["boom",
+        "TypeError: null is not an object (evaluating 'null.charge')",
+        "RangeError: Array length must be a positive integer of safe magnitude."]);
+      assert.deepEqual(r.failures.map((f) => f.line), [2, 3, 4]);
+      assert.equal(r.others, undefined, "node read the thrown errors as crashes of its own");
+    } },
   { file: "bun_fail.txt", tool: "bun test", n: 2, check: (r) => {
       // real `bun test` run of pillarjs/path-to-regexp. bun writes "error:" at the
       // start of a line, which is exactly what the cargo parser looks for, so bun

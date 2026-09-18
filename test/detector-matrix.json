@@ -251,6 +251,20 @@
       "generic": 1
     }
   },
+  "bun_throw_fail.txt": {
+    "winner": "bun test",
+    "parser": "bun test",
+    "failures": 3,
+    "claimants": [
+      "bun test",
+      "node",
+      "generic"
+    ],
+    "shadow": {
+      "node": 2,
+      "generic": 1
+    }
+  },
   "bunrun_crash_fail.txt": {
     "winner": "bun",
     "parser": "bun",

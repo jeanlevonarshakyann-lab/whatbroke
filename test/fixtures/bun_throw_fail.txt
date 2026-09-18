@@ -1,0 +1,28 @@
+bun test v1.3.14 (0d9b296a)
+
+throw.test.ts:
+1 | import { test } from "bun:test";
+2 | test("plain error", () => { throw new Error("boom"); });
+                                                      ^
+error: boom
+      at <anonymous> (/home/dev/app/throw.test.ts:2:51)
+(fail) plain error [2.87ms]
+1 | import { test } from "bun:test";
+2 | test("plain error", () => { throw new Error("boom"); });
+3 | test("type error", () => { const o: any = null; o.charge(); });
+                                              ^
+TypeError: null is not an object (evaluating 'null.charge')
+      at <anonymous> (/home/dev/app/throw.test.ts:3:43)
+(fail) type error [0.68ms]
+1 | import { test } from "bun:test";
+2 | test("plain error", () => { throw new Error("boom"); });
+3 | test("type error", () => { const o: any = null; o.charge(); });
+4 | test("range", () => { new Array(-1); });
+                              ^
+RangeError: Array length must be a positive integer of safe magnitude.
+      at <anonymous> (/home/dev/app/throw.test.ts:4:27)
+(fail) range [0.19ms]
+
+ 0 pass
+ 3 fail
+Ran 3 tests across 1 file. [119.00ms]
