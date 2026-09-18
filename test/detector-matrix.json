@@ -1273,6 +1273,19 @@
     ],
     "shadow": {}
   },
+  "eslint_parse_fail.txt": {
+    "winner": "eslint",
+    "parser": "eslint",
+    "failures": 7,
+    "claimants": [
+      "eslint",
+      "stylelint",
+      "generic"
+    ],
+    "shadow": {
+      "generic": 1
+    }
+  },
   "eslint_text_same_fail.txt": {
     "winner": "eslint",
     "parser": "eslint",
