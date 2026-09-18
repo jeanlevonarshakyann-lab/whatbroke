@@ -1,7 +1,18 @@
-import { counted, uniqueFailures } from "../util.js";
+import { counted, lineAt, uniqueFailures } from "../util.js";
 import { withSource } from "../ownership.js";
 
 const PROB_RE = /^[^\S\n]+(\d+):(\d+)[^\S\n]+(error|warning)[^\S\n]+(.+?)\s{2,}([\w@/-]+)[^\S\n]*$/;
+// A file eslint could not parse is a problem with no rule, because no rule ran:
+//
+//   syn.js
+//     1:11  error  Parsing error: Unexpected token ;
+//
+// The table pattern above wants a rule at the end of the line, so this line matched
+// nothing and the one problem that stops a file from being linted at all was the one
+// dropped - under a tally that still counted it. "Parsing error:" is eslint's own
+// wording for it, and the -f json reader already reports the same problem as a parse
+// error, so this reads the table the same way.
+const PARSE_RE = /^[^\S\n]+(\d+):(\d+)[^\S\n]+error[^\S\n]+(Parsing error:[^\S\n].+?)[^\S\n]*$/;
 
 // eslint reports a broken config by crashing, so the log is a Node stack pointing into
 // eslint's own internals - and the node parser then reports node_modules/eslint/lib/... ,
@@ -34,11 +45,14 @@ function refusal(s) {
     // Taking the next non-blank line however far away it was is not a bound: in a log
     // that holds a second tool, that line is the second tool's first line, and eslint
     // reported it as its own advice in 596 of the sweep's ordered pairs.
+    // The line the sentence is on, from where it matched. Looking the sentence up as a
+    // whole line found nothing when a stray carriage return or U+2028 sat inside it: the
+    // pattern's `.` stops at those, so the match was not the line, and the failure was
+    // then read from line -1, which the report gave as evidence on line 0.
     const lines = s.split("\n");
-    const at = lines.findIndex((l) => l === m[0]);
+    const at = lineAt(s, m.index);
     const next = lines[at + 1];
     const advice = next && next.trim() && !/^\s*(?:at\s|[A-Z]\w*Error:)/.test(next) ? next.trim() : null;
-    // The sentence is a whole line, so the first line equal to it is where it matched.
     return withSource({ title: label, label, severity: "error", message: [m[0], advice].filter(Boolean).join(" ") },
       at, advice ? at + 2 : at + 1);
   }
@@ -103,6 +117,11 @@ export default {
         }
         // The problem's own line: the file it belongs to is a heading shared with the others.
         failures.push(withSource({ file, line: +p[1], col: +p[2], title: p[5], code: p[5], severity: p[3], message: p[4] }, i, i + 1));
+        continue;
+      }
+      const parse = l.match(PARSE_RE);
+      if (parse) {
+        failures.push(withSource({ file, line: +parse[1], col: +parse[2], title: "parse error", label: "parse error", severity: "error", message: parse[3] }, i, i + 1));
         continue;
       }
       if (l.trim() && !/^\s/.test(l) && !/^[✖x✔]/.test(l.trim())) file = l.trim();
