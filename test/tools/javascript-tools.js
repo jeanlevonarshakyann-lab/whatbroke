@@ -546,6 +546,16 @@ const CASES = [
       assert.equal(r.failures.length, 6);
       assert.doesNotMatch(JSON.stringify(r.failures), /Resolving dependencies|Saved lockfile/);
     } },
+  // Captured with eslint 9.39. A file that will not parse is a problem with no rule at
+  // the end of its line, so the table pattern skipped it: 7 errors in the tally, 6 shown,
+  // and the one hidden was the one that stopped a file being linted at all.
+  { file: "eslint_parse_fail.txt", tool: "eslint", n: 7, check: (r) => {
+      assert.match(r.summary, /^8 problems \(7 errors, 1 warning\)/);
+      const parse = r.failures.find((f) => f.label === "parse error");
+      assert.ok(parse, "the parsing error is missing");
+      assert.deepEqual([parse.file, parse.line, parse.col, parse.code], ["/home/dev/app/syn.js", 1, 11, undefined]);
+      assert.equal(parse.message, "Parsing error: Unexpected token ;");
+    } },
   { file: "eslint_json_parse_fail.txt", tool: "eslint", n: 1, check: (r) => {
       // A file eslint could not parse carries no rule, because no rule ran.
       assert.equal(r.failures[0].code, undefined);

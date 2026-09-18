@@ -2,6 +2,17 @@ import { counted, lineAt, uniqueFailures } from "../util.js";
 import { withSource } from "../ownership.js";
 
 const PROB_RE = /^[^\S\n]+(\d+):(\d+)[^\S\n]+(error|warning)[^\S\n]+(.+?)\s{2,}([\w@/-]+)[^\S\n]*$/;
+// A file eslint could not parse is a problem with no rule, because no rule ran:
+//
+//   syn.js
+//     1:11  error  Parsing error: Unexpected token ;
+//
+// The table pattern above wants a rule at the end of the line, so this line matched
+// nothing and the one problem that stops a file from being linted at all was the one
+// dropped - under a tally that still counted it. "Parsing error:" is eslint's own
+// wording for it, and the -f json reader already reports the same problem as a parse
+// error, so this reads the table the same way.
+const PARSE_RE = /^[^\S\n]+(\d+):(\d+)[^\S\n]+error[^\S\n]+(Parsing error:[^\S\n].+?)[^\S\n]*$/;
 
 // eslint reports a broken config by crashing, so the log is a Node stack pointing into
 // eslint's own internals - and the node parser then reports node_modules/eslint/lib/... ,
@@ -106,6 +117,11 @@ export default {
         }
         // The problem's own line: the file it belongs to is a heading shared with the others.
         failures.push(withSource({ file, line: +p[1], col: +p[2], title: p[5], code: p[5], severity: p[3], message: p[4] }, i, i + 1));
+        continue;
+      }
+      const parse = l.match(PARSE_RE);
+      if (parse) {
+        failures.push(withSource({ file, line: +parse[1], col: +parse[2], title: "parse error", label: "parse error", severity: "error", message: parse[3] }, i, i + 1));
         continue;
       }
       if (l.trim() && !/^\s/.test(l) && !/^[✖x✔]/.test(l.trim())) file = l.trim();
