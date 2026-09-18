@@ -3400,6 +3400,18 @@
     ],
     "shadow": {}
   },
+  "prettier_parse_fail.txt": {
+    "winner": "prettier",
+    "parser": "prettier",
+    "failures": 2,
+    "claimants": [
+      "prettier",
+      "generic"
+    ],
+    "shadow": {
+      "generic": 1
+    }
+  },
   "py_indent_fail.txt": {
     "winner": "python",
     "parser": "python",

@@ -155,6 +155,15 @@ const CASES = [
       // the loader advice is a suggestion, not what happened
       assert.doesNotMatch(JSON.stringify(r.failures), /appropriate loader|webpack\.js\.org/);
     } },
+  // Captured with prettier 3.6. A file that will not parse is followed by its code frame,
+  // every line of it tagged [error] like the diagnosis - and each was read as another
+  // unparsable file, so one such file counted as four.
+  { file: "prettier_parse_fail.txt", tool: "prettier", n: 2, check: (r) => {
+      assert.equal(r.summary, "2 files failed the format check");
+      assert.deepEqual(r.failures.map((f) => f.file), ["lint.js", "syn.js"]);
+      assert.deepEqual([r.failures[1].line, r.failures[1].col, r.failures[1].stmt], [1, 11, "const x = ;"]);
+      assert.doesNotMatch(JSON.stringify(r.failures), /\| +\^|2 \|/);
+    } },
   // Captured with prettier 3. It exits non-zero while naming only files.
   { file: "prettier_fail.txt", tool: "prettier", n: 1, check: (r) => {
       assert.equal(r.failures[0].file, "ugly.js");
