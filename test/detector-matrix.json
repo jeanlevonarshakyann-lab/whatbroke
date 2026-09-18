@@ -3941,6 +3941,16 @@
     ],
     "shadow": {}
   },
+  "ruff_github_multiline_fail.txt": {
+    "winner": "ruff",
+    "parser": "ruff",
+    "failures": 4,
+    "claimants": [
+      "ruff",
+      "generic"
+    ],
+    "shadow": {}
+  },
   "ruff_gitlab_fail.txt": {
     "winner": "ruff",
     "parser": "ruff",
