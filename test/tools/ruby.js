@@ -1,4 +1,4 @@
-// Ruby: rspec, ruby, rubocop.
+// Ruby: minitest, rspec, ruby, rubocop.
 //
 // Each case is a real capture in test/fixtures/, read the way whatbroke reads it; each
 // format group is one run captured in several formats, which have to agree. The checks
@@ -11,6 +11,67 @@ import { analyse } from "../../src/index.js";
 import { agreeAcrossFormats, cli, fx, here, runCases } from "./harness.js";
 
 const CASES = [
+  // Captured with minitest 5.11.3 on Ruby 2.6. minitest is Ruby's own test framework and
+  // what a Rails application runs; its run read as a guess with no test names and no
+  // locations - "1) Error:" and a bare KeyError, with the assertion's own numbers lost.
+  { file: "minitest_fail.txt", tool: "minitest", n: 2, check: (r) => {
+      assert.equal(r.summary, "3 runs, 2 assertions, 1 failures, 1 errors, 0 skips");
+      // An error says where it is in its backtrace; an assertion says so in brackets.
+      const [error, failure] = r.failures;
+      assert.deepEqual([error.subject, error.file, error.line], ["ShopTest#test_reads_the_expiry", "shop_test.rb", 14]);
+      assert.equal(error.message, 'KeyError: key not found: "exp"');
+      assert.deepEqual([failure.subject, failure.file, failure.line], ["ShopTest#test_totals_an_invoice", "shop_test.rb", 9]);
+      assert.equal(failure.message, "Expected: 1050\n  Actual: 1049");
+      assert.equal(r.guessed, undefined);
+    } },
+  // -v names each test as it runs; rake runs the same file from a task, which makes every
+  // path absolute and adds its own "rake aborted!" after the tally. One run, three ways.
+  { file: "minitest_verbose_fail.txt", tool: "minitest", n: 2, check: (r) => {
+      assert.deepEqual(r.failures.map((f) => f.subject),
+        ["ShopTest#test_reads_the_expiry", "ShopTest#test_totals_an_invoice"]);
+      assert.doesNotMatch(JSON.stringify(r.failures), /= 0\.00 s =/, "the verbose run's ticker is not a failure");
+    } },
+  { file: "minitest_rake_fail.txt", tool: "minitest", n: 2, check: (r) => {
+      assert.deepEqual(r.failures.map((f) => f.line), [14, 9]);
+      assert.equal(r.failures[0].file, "/home/dev/shop/shop_test.rb");
+      // rake says the command failed after the tally, which says nothing the tally did not
+      assert.doesNotMatch(JSON.stringify(r), /rake aborted/);
+    } },
+  // A second run: an assertion over two long strings, which minitest reports as a diff; a
+  // `flunk`; an `assert_raises` that raised nothing; a skip, which is not a failure; and an
+  // error raised in lib/, where the backtrace's first frame of yours is not the test.
+  { file: "minitest_invoice_fail.txt", tool: "minitest", n: 4, check: (r) => {
+      assert.equal(r.summary, "5 runs, 3 assertions, 3 failures, 1 errors, 1 skips");
+      assert.deepEqual(r.failures.map((f) => f.subject), [
+        "InvoiceTest#test_gives_up", "InvoiceTest#test_refuses_an_empty_invoice",
+        "InvoiceTest#test_renders_every_line", "InvoiceTest#test_totals_with_quantity"]);
+      assert.equal(r.failures[0].message, "rounding is not decided");
+      assert.equal(r.failures[1].message, "ArgumentError expected but nothing was raised.");
+      assert.match(r.failures[2].message, /^--- expected\n\+\+\+ actual\n/);
+      assert.match(r.failures[2].message, /-cake: 4"\n\+cake: 5"$/);
+      // the exception was raised in lib/, and that is where it says it is
+      assert.deepEqual([r.failures[3].file, r.failures[3].line], ["/home/dev/shop/lib/invoice.rb", 7]);
+      assert.deepEqual(r.failures[3].trace, [
+        "fetch (/home/dev/shop/lib/invoice.rb:7)", "block in total (/home/dev/shop/lib/invoice.rb:7)",
+        "sum (/home/dev/shop/lib/invoice.rb:7)", "total (/home/dev/shop/lib/invoice.rb:7)"]);
+      assert.doesNotMatch(JSON.stringify(r.failures), /waiting on the tax rules/, "a skip is not a failure");
+    } },
+  { file: "minitest_invoice_verbose_fail.txt", tool: "minitest", n: 4, check: (r) => {
+      // --verbose prints the skip as a numbered block of its own, between the failures
+      assert.deepEqual(r.failures.map((f) => f.subject), [
+        "InvoiceTest#test_gives_up", "InvoiceTest#test_refuses_an_empty_invoice",
+        "InvoiceTest#test_renders_every_line", "InvoiceTest#test_totals_with_quantity"]);
+      assert.doesNotMatch(JSON.stringify(r.failures), /waiting on the tax rules/);
+    } },
+  // An exception raised inside the standard library: the frames there are not yours, so the
+  // failure is at the first frame that is - the test - and the rest are counted.
+  { file: "minitest_stdlib_fail.txt", tool: "minitest", n: 1, check: (r) => {
+      assert.deepEqual([r.failures[0].file, r.failures[0].line], ["test/config_test.rb", 6]);
+      assert.match(r.failures[0].message, /^JSON::ParserError: /);
+      assert.deepEqual(r.failures[0].trace, ["test_reads_the_config (test/config_test.rb:6)"]);
+      assert.equal(r.failures[0].hiddenFrames, 2);
+      assert.doesNotMatch(JSON.stringify(r.failures), /Ruby\.framework/, "the standard library's frames are counted, not shown");
+    } },
   { file: "rspec_load_fail.txt", tool: "rspec", n: 1, check: (r) => {
       // A spec file that raises while loading never becomes a numbered example, so it
       // is reported as prose above the tally instead.
@@ -168,6 +229,9 @@ const CASES = [
 
 let pass = 0, fail = 0;
 for (const result of [runCases(CASES), agreeAcrossFormats([
+  // One minitest run, three ways of running it. rake writes absolute paths.
+  ["minitest", ["minitest_fail.txt", "minitest_verbose_fail.txt", "minitest_rake_fail.txt"]],
+  ["minitest with a skip", ["minitest_invoice_fail.txt", "minitest_invoice_verbose_fail.txt"]],
   // rspec's text reporters quote the failing example's source on a `Failure/Error:`
   // line; -f json carries no such thing, so the message is the one field that cannot
   // match. What it does carry is checked below, where the two are compared line by line.
@@ -204,6 +268,25 @@ try {
   console.log(`  FAIL rspec message silence\n       ${e.message}`);
   fail++;
 }
+
+// A CI job kills a suite, or a byte cap trips, and a minitest block arrives without the
+// tally that ends the run - with whatever the job printed next right below it. The blank
+// line minitest ends every block with is what stops the block there.
+try {
+  // everything up to the last block's last line, which minitest follows with a blank line
+  const block = fx("minitest_fail.txt").split("\n").slice(0, 18).join("\n");
+  const after = "src/app.py:3: error: Name \"x\" is not defined  [name-defined]\nFound 1 error in 1 file (checked 1 source file)\n";
+  const r = analyse(`${block}\n\n${after}`);
+  assert.equal(r?.tool, "mypy", "the tool that finished is the one that owns the log");
+  const minitest = (r.others ?? []).find((o) => o.tool === "minitest");
+  assert.ok(minitest, "the cut-off minitest blocks are still read");
+  assert.equal(minitest.failures.length, 2);
+  assert.equal(minitest.failures[1].message, "Expected: 1050\n  Actual: 1049");
+  assert.doesNotMatch(JSON.stringify(minitest.failures), /name-defined|Found 1 error/,
+    "the block ran on into what the job printed next");
+  console.log("  ok   a minitest block cut off from its tally stops where minitest ended it");
+  pass++;
+} catch (e) { console.log(`  FAIL minitest block without its tally\n       ${e.message}`); fail++; }
 
 console.log(`\n  ${pass} passed, ${fail} failed`);
 process.exit(fail ? 1 : 0);

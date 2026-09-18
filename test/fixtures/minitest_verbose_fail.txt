@@ -1,0 +1,22 @@
+Run options: --seed 4242 -v
+
+# Running:
+
+ShopTest#test_ok = 0.00 s = .
+ShopTest#test_reads_the_expiry = 0.00 s = E
+ShopTest#test_totals_an_invoice = 0.00 s = F
+
+Finished in 0.000331s, 9063.4452 runs/s, 6042.2968 assertions/s.
+
+  1) Error:
+ShopTest#test_reads_the_expiry:
+KeyError: key not found: "exp"
+    shop_test.rb:14:in `fetch'
+    shop_test.rb:14:in `test_reads_the_expiry'
+
+  2) Failure:
+ShopTest#test_totals_an_invoice [shop_test.rb:9]:
+Expected: 1050
+  Actual: 1049
+
+3 runs, 2 assertions, 1 failures, 1 errors, 0 skips

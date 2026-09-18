@@ -1,0 +1,25 @@
+Run options: --seed=4242
+
+# Running:
+
+.EF
+
+Finished in 0.000247s, 12145.7481 runs/s, 8097.1654 assertions/s.
+
+  1) Error:
+ShopTest#test_reads_the_expiry:
+KeyError: key not found: "exp"
+    /home/dev/shop/shop_test.rb:14:in `fetch'
+    /home/dev/shop/shop_test.rb:14:in `test_reads_the_expiry'
+
+  2) Failure:
+ShopTest#test_totals_an_invoice [/home/dev/shop/shop_test.rb:9]:
+Expected: 1050
+  Actual: 1049
+
+3 runs, 2 assertions, 1 failures, 1 errors, 0 skips
+rake aborted!
+Command failed with status (1)
+/Library/Ruby/Gems/2.6.0/gems/rake-12.3.3/exe/rake:27:in `<top (required)>'
+Tasks: TOP => test
+(See full trace by running task with --trace)

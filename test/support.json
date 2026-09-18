@@ -50,6 +50,7 @@
     "ruby": ["Ruby"],
     "perl": ["Perl"],
     "php": ["PHP"],
+    "minitest": ["minitest"],
     "rspec": ["RSpec", "RSpec `-f json`"],
     "junit jvm": ["JUnit XML from the JVM"],
     "jvm": ["javac / Maven / Gradle", "javac in other languages", "Gradle test failures"],

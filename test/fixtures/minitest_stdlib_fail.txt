@@ -1,0 +1,16 @@
+Run options: --seed 7
+
+# Running:
+
+E.
+
+Finished in 0.000258s, 7751.9349 runs/s, 3875.9675 assertions/s.
+
+  1) Error:
+ConfigTest#test_reads_the_config:
+JSON::ParserError: 767: unexpected token at '{"port": 8080,'
+    /System/Library/Frameworks/Ruby.framework/Versions/2.6/usr/lib/ruby/2.6.0/json/common.rb:156:in `parse'
+    /System/Library/Frameworks/Ruby.framework/Versions/2.6/usr/lib/ruby/2.6.0/json/common.rb:156:in `parse'
+    test/config_test.rb:6:in `test_reads_the_config'
+
+2 runs, 1 assertions, 0 failures, 1 errors, 0 skips

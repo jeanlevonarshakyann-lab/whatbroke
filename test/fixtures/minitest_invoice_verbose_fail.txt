@@ -1,0 +1,46 @@
+Run options: --seed 1 --verbose
+
+# Running:
+
+InvoiceTest#test_gives_up = 0.00 s = F
+InvoiceTest#test_not_written_yet = 0.00 s = S
+InvoiceTest#test_refuses_an_empty_invoice = 0.00 s = F
+InvoiceTest#test_renders_every_line = 0.01 s = F
+InvoiceTest#test_totals_with_quantity = 0.00 s = E
+
+Finished in 0.006228s, 802.8260 runs/s, 481.6956 assertions/s.
+
+  1) Failure:
+InvoiceTest#test_gives_up [test/invoice_test.rb:23]:
+rounding is not decided
+
+  2) Skipped:
+InvoiceTest#test_not_written_yet [test/invoice_test.rb:19]:
+waiting on the tax rules
+
+  3) Failure:
+InvoiceTest#test_refuses_an_empty_invoice [test/invoice_test.rb:15]:
+ArgumentError expected but nothing was raised.
+
+  4) Failure:
+InvoiceTest#test_renders_every_line [test/invoice_test.rb:7]:
+--- expected
++++ actual
+@@ -1,4 +1,4 @@
+ # encoding: UTF-8
+ "Invoice
+ tea: 3
+-cake: 4"
++cake: 5"
+
+
+  5) Error:
+InvoiceTest#test_totals_with_quantity:
+KeyError: key not found: :qty
+    /home/dev/shop/lib/invoice.rb:7:in `fetch'
+    /home/dev/shop/lib/invoice.rb:7:in `block in total'
+    /home/dev/shop/lib/invoice.rb:7:in `sum'
+    /home/dev/shop/lib/invoice.rb:7:in `total'
+    test/invoice_test.rb:11:in `test_totals_with_quantity'
+
+5 runs, 3 assertions, 3 failures, 1 errors, 1 skips

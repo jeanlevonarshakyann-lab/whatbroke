@@ -2338,6 +2338,80 @@
       "generic": 1
     }
   },
+  "minitest_fail.txt": {
+    "winner": "minitest",
+    "parser": "minitest",
+    "failures": 2,
+    "claimants": [
+      "minitest",
+      "generic"
+    ],
+    "shadow": {
+      "generic": 2
+    }
+  },
+  "minitest_invoice_fail.txt": {
+    "winner": "minitest",
+    "parser": "minitest",
+    "failures": 4,
+    "claimants": [
+      "minitest",
+      "go",
+      "generic"
+    ],
+    "shadow": {
+      "generic": 2
+    }
+  },
+  "minitest_invoice_verbose_fail.txt": {
+    "winner": "minitest",
+    "parser": "minitest",
+    "failures": 4,
+    "claimants": [
+      "minitest",
+      "go",
+      "generic"
+    ],
+    "shadow": {
+      "generic": 2
+    }
+  },
+  "minitest_rake_fail.txt": {
+    "winner": "minitest",
+    "parser": "minitest",
+    "failures": 2,
+    "claimants": [
+      "minitest",
+      "generic"
+    ],
+    "shadow": {
+      "generic": 3
+    }
+  },
+  "minitest_stdlib_fail.txt": {
+    "winner": "minitest",
+    "parser": "minitest",
+    "failures": 1,
+    "claimants": [
+      "minitest",
+      "generic"
+    ],
+    "shadow": {
+      "generic": 1
+    }
+  },
+  "minitest_verbose_fail.txt": {
+    "winner": "minitest",
+    "parser": "minitest",
+    "failures": 2,
+    "claimants": [
+      "minitest",
+      "generic"
+    ],
+    "shadow": {
+      "generic": 2
+    }
+  },
   "mocha_dot_fail.txt": {
     "winner": "mocha",
     "parser": "mocha",
