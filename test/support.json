@@ -45,6 +45,7 @@
     "mypy": ["mypy", "mypy `--output=json`"],
     "cmake": ["CMake"],
     "terraform": ["Terraform"],
+    "swift test": ["swift test"],
     "swift": ["Swift"],
     "clang": ["GCC/Clang", "clang `-fdiagnostics-format=msvc` / `vi`"],
     "ruby": ["Ruby"],

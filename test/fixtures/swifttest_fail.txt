@@ -1,0 +1,33 @@
+[0/1] Planning build
+Building for debugging...
+[0/3] Write sources
+[1/3] Write swift-version--58304C5D6DBC2206.txt
+[3/5] Compiling ShopTests InvoiceTests.swift
+[4/5] Emitting module ShopTests
+[4/6] Write Objects.LinkFileList
+[5/6] Linking ShopPackageTests
+Build complete! (0.60s)
+Test Suite 'All tests' started at 2026-09-18 22:06:29.999.
+Test Suite 'ShopPackageTests.xctest' started at 2026-09-18 22:06:30.005.
+Test Suite 'InvoiceTests' started at 2026-09-18 22:06:30.005.
+Test Case '-[ShopTests.InvoiceTests testPasses]' started.
+Test Case '-[ShopTests.InvoiceTests testPasses]' passed (0.000 seconds).
+Test Case '-[ShopTests.InvoiceTests testRefusesAMissingLine]' started.
+/home/dev/shop/Tests/ShopTests/InvoiceTests.swift:21: error: -[ShopTests.InvoiceTests testRefusesAMissingLine] : XCTAssertEqual failed: threw error "noSuchLine(3)"
+Test Case '-[ShopTests.InvoiceTests testRefusesAMissingLine]' failed (0.049 seconds).
+Test Case '-[ShopTests.InvoiceTests testSaysWhyItGaveUp]' started.
+/home/dev/shop/Tests/ShopTests/InvoiceTests.swift:25: error: -[ShopTests.InvoiceTests testSaysWhyItGaveUp] : failed - rounding is not decided
+Test Case '-[ShopTests.InvoiceTests testSaysWhyItGaveUp]' failed (0.001 seconds).
+Test Case '-[ShopTests.InvoiceTests testTotalsAnInvoice]' started.
+/home/dev/shop/Tests/ShopTests/InvoiceTests.swift:16: error: -[ShopTests.InvoiceTests testTotalsAnInvoice] : XCTAssertEqual failed: ("1049") is not equal to ("1050")
+Test Case '-[ShopTests.InvoiceTests testTotalsAnInvoice]' failed (0.000 seconds).
+Test Suite 'InvoiceTests' failed at 2026-09-18 22:06:30.056.
+	 Executed 4 tests, with 3 failures (1 unexpected) in 0.050 (0.051) seconds
+Test Suite 'ShopPackageTests.xctest' failed at 2026-09-18 22:06:30.056.
+	 Executed 4 tests, with 3 failures (1 unexpected) in 0.050 (0.051) seconds
+Test Suite 'All tests' failed at 2026-09-18 22:06:30.056.
+	 Executed 4 tests, with 3 failures (1 unexpected) in 0.050 (0.057) seconds
+◇ Test run started.
+↳ Testing Library Version: 1501
+↳ Target Platform: arm64e-apple-macos14.0
+✔ Test run with 0 tests in 0 suites passed after 0.001 seconds.
