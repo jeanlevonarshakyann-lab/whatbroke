@@ -355,6 +355,24 @@ const CASES = [
       // and the file is not repeated inside the test's name
       assert.doesNotMatch(JSON.stringify(r.failures.map((f) => f.subject)), /test\//);
     } },
+  // Captured with vitest 5.0. A frame inside a named function is written with the
+  // function in front of the file - `❯ lookup cart.js:2:40` - and everything before the
+  // position was read as the file, so a helper that threw was reported in a file called
+  // "lookup cart.js".
+  { file: "vitest_named_frame_fail.txt", tool: "vitest", n: 2, check: (r) => {
+      assert.equal(r.summary, "2 failed | 1 passed (3)");
+      assert.equal(r.failures[0].file, "cart.test.js");
+      assert.deepEqual([r.failures[1].file, r.failures[1].line, r.failures[1].col], ["cart.js", 2, 40]);
+      assert.match(r.failures[1].message, /TypeError: Cannot read properties of undefined/);
+    } },
+  // ...and a file that would not load unwinds through vitest's own bundler first. Those
+  // frames are not yours: the failure is in the file vitest named, at no line.
+  { file: "vitest_load_frames_fail.txt", tool: "vitest", n: 1, check: (r) => {
+      assert.equal(r.failures[0].file, "syn.test.js");
+      assert.equal(r.failures[0].line, undefined);
+      assert.doesNotMatch(String(r.failures[0].file), /node_modules|error /);
+      assert.match(r.failures[0].message, /Parse failure/);
+    } },
   { file: "vitest_fail.txt", tool: "vitest", n: 3, check: (r) => {
       assert.match(r.summary, /3 failed \| 1 passed/);
       const f = r.failures[0];
