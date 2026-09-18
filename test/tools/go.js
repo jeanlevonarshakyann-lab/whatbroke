@@ -289,5 +289,28 @@ try {
   pass++;
 } catch (e) { console.log(`  FAIL build and tests\n       ${e.message}`); fail++; }
 
+// `--- expected` heads one half of a unified diff, which is what minitest and PHPUnit print
+// between two values that differ - and it is the shape of go's own `--- FAIL:` line without
+// the word. go claimed five such captures and read nothing from any of them, which is the
+// only reason nothing went wrong; a parser that claims a log it cannot read is one change
+// away from diagnosing somebody else's failure.
+try {
+  const { EXTRACTORS } = await import("../../src/index.js");
+  const go = EXTRACTORS.find((ex) => ex.name === "go");
+  const claimed = [];
+  for (const name of ["minitest_invoice_fail.txt", "phpunit_text_same_fail.txt", "phpunit_junit_fail.txt"]) {
+    const text = fx(name);
+    assert.match(text, /^--- (?:expected|Expected)/m, `${name} no longer holds a diff`);
+    if (go.detect(text)) claimed.push(name);
+  }
+  assert.deepEqual(claimed, [], "go claimed a log whose only dashes are a diff's");
+  // and it still claims its own, whichever word follows the dashes
+  for (const name of ["gotest_fail.txt", "gotest_verbose_fail.txt"]) {
+    assert.equal(go.detect(fx(name)), true, `${name} is go's`);
+  }
+  console.log("  ok   a diff's `--- expected` is not go's test tally");
+  pass++;
+} catch (e) { console.log(`  FAIL a diff is not go's tally\n       ${e.message}`); fail++; }
+
 console.log(`\n  ${pass} passed, ${fail} failed`);
 process.exit(fail ? 1 : 0);

@@ -112,11 +112,15 @@ function standalonePanic(lines) {
 export default {
   name: "go",
   // Strings a log has to hold for this parser to read anything from it - see src/router.js.
-  signals: ["--- FAIL", "ok ", "ok\t", "FAIL ", "FAIL\t", "--- ", "---\t", ".go:", "goroutine "],
+  signals: ["--- FAIL", "--- PASS", "--- SKIP", "--- BENCH", "ok ", "ok\t", "FAIL ", "FAIL\t", ".go:", "goroutine "],
   category: "compile",
   commands: ["go"],
+  // `--- ` alone is not go's. A unified diff heads its two halves `--- expected` and
+  // `+++ actual`, which is what minitest and PHPUnit print between two values that differ,
+  // and go claimed every log holding one - reading nothing from it, which is the only reason
+  // nothing went wrong. What follows go's dashes is one of its own words.
   detect: (s) =>
-    /^[^\S\n]*--- FAIL: /m.test(s) || /^(ok|FAIL|---)[^\S\n]+\S+\s/m.test(s) || BUILD_ANY.test(s) ||
+    /^[^\S\n]*--- (?:FAIL|PASS|SKIP|BENCH)\b/m.test(s) || /^(ok|FAIL)[^\S\n]+\S+\s/m.test(s) || BUILD_ANY.test(s) ||
     // A binary that panics outside a test run has none of the above: no test tally, no
     // --- FAIL line, nothing but the panic and its goroutine dump. `go run` produces
     // exactly that, and it is the commonest way a Go program fails.

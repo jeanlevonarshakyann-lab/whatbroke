@@ -424,7 +424,6 @@
     "failures": 3,
     "claimants": [
       "cargo",
-      "go",
       "generic"
     ],
     "shadow": {
@@ -2356,7 +2355,6 @@
     "failures": 4,
     "claimants": [
       "minitest",
-      "go",
       "generic"
     ],
     "shadow": {
@@ -2369,7 +2367,6 @@
     "failures": 4,
     "claimants": [
       "minitest",
-      "go",
       "generic"
     ],
     "shadow": {
@@ -3158,7 +3155,6 @@
     "failures": 3,
     "claimants": [
       "phpunit",
-      "go",
       "generic"
     ],
     "shadow": {}
@@ -3190,7 +3186,6 @@
     "claimants": [
       "jest",
       "phpunit",
-      "go",
       "generic"
     ],
     "shadow": {
@@ -3217,7 +3212,6 @@
     "claimants": [
       "jest",
       "phpunit",
-      "go",
       "generic"
     ],
     "shadow": {
