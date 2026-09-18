@@ -4635,6 +4635,30 @@
       "generic": 2
     }
   },
+  "vitest_load_frames_fail.txt": {
+    "winner": "vitest",
+    "parser": "vitest",
+    "failures": 1,
+    "claimants": [
+      "vitest",
+      "generic"
+    ],
+    "shadow": {
+      "generic": 2
+    }
+  },
+  "vitest_named_frame_fail.txt": {
+    "winner": "vitest",
+    "parser": "vitest",
+    "failures": 2,
+    "claimants": [
+      "vitest",
+      "generic"
+    ],
+    "shadow": {
+      "generic": 4
+    }
+  },
   "vitest_projects_fail.txt": {
     "winner": "vitest",
     "parser": "vitest",
