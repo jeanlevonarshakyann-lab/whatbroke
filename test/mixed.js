@@ -834,6 +834,26 @@ test("two tools writing into one pipe never crash it or double a diagnosis", () 
   console.log(`       ${pairs} interleavings, seed ${20260910}`);
 });
 
+test("a structured reader and its text reader agree after repeated lines collapse", () => {
+  // go test -json rebuilds its event stream into text and delegates to the plain Go
+  // reader. In a mixed pipe it also preserves non-JSON lines, so both readers can see
+  // one plain failure. The winner normalized 24 repeated lines to `(x24)` before the
+  // readers were compared, while the other reader was normalized only afterwards; the
+  // same diagnosis therefore survived once under each reader.
+  const repeated = Array(24).fill("    command_test.go:1472: Unexpected response.").join("\n");
+  const mixed = [
+    '{"Action":"pass","Package":"p"}',
+    "--- FAIL: TestSuggestions (0.00s)",
+    repeated,
+    "FAIL",
+  ].join("\n");
+  const result = analyse(mixed);
+  assert.equal(result.tool, "go test");
+  assert.equal(result.failures.length, 1);
+  assert.equal(result.failures[0].message, "Unexpected response. (x24)");
+  assert.equal(result.others, undefined, "the plain reader reported the structured reader's diagnosis again");
+});
+
 // The cross-parser sweep above pairs logs from DIFFERENT tools. One tool's log twice is
 // the commoner shape in practice - `pnpm -r lint` and `turbo run test` put a package at
 // a time into one stream, and a CI job runs `cargo clippy` and then `cargo test` - and
