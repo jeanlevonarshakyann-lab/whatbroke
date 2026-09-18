@@ -1,0 +1,7 @@
+Checking formatting...
+[[33mwarn[39m] lint.js
+[[31merror[39m] syn.js: SyntaxError: Unexpected token (1:11)
+[[31merror[39m] > 1 | const x = ;
+[[31merror[39m]     |           ^
+[[31merror[39m]   2 |
+Error occurred when checking code style in the above file.

@@ -8,6 +8,7 @@ import { join } from "node:path";
 import assert from "node:assert/strict";
 import { spawnSync } from "node:child_process";
 import { analyse } from "../../src/index.js";
+import { createReport } from "../../src/report.js";
 import { agreeAcrossFormats, cli, fx, here, runCases } from "./harness.js";
 
 const CASES = [
@@ -153,6 +154,15 @@ const CASES = [
       assert.equal(r.failures[0].stmt.indexOf(";") + 1, r.failures[0].col);
       // the loader advice is a suggestion, not what happened
       assert.doesNotMatch(JSON.stringify(r.failures), /appropriate loader|webpack\.js\.org/);
+    } },
+  // Captured with prettier 3.6. A file that will not parse is followed by its code frame,
+  // every line of it tagged [error] like the diagnosis - and each was read as another
+  // unparsable file, so one such file counted as four.
+  { file: "prettier_parse_fail.txt", tool: "prettier", n: 2, check: (r) => {
+      assert.equal(r.summary, "2 files failed the format check");
+      assert.deepEqual(r.failures.map((f) => f.file), ["lint.js", "syn.js"]);
+      assert.deepEqual([r.failures[1].line, r.failures[1].col, r.failures[1].stmt], [1, 11, "const x = ;"]);
+      assert.doesNotMatch(JSON.stringify(r.failures), /\| +\^|2 \|/);
     } },
   // Captured with prettier 3. It exits non-zero while naming only files.
   { file: "prettier_fail.txt", tool: "prettier", n: 1, check: (r) => {
@@ -721,6 +731,20 @@ try {
   console.log("  ok   eslint -f json says what the table eslint printed says");
   pass++;
 } catch (e) { console.log(`  FAIL eslint json vs table\n       ${e.message}`); fail++; }
+
+// A refusal's range is where its sentence matched. The sentence was looked up as a whole
+// line, and a line break inside the quoted option - which `[^']*` steps over - made the
+// match two lines that equalled neither, so the failure was read from line -1 and the
+// report gave its evidence as line 0, which no report may say.
+try {
+  const text = "Invalid option '--\nbogus-flag' - perhaps you meant '--flag'?\n";
+  const report = createReport({ analysis: analyse(text), raw: text, exitCode: 2, inputMode: "pipe" });
+  assert.equal(report.tool, "eslint");
+  assert.equal(report.failures[0].label, "invalid option");
+  assert.deepEqual(report.failures[0].evidence, [{ start: 1, end: 2 }]);
+  console.log("  ok   an eslint refusal is read from the line it matched on");
+  pass++;
+} catch (e) { console.log(`  FAIL eslint refusal range\n       ${e.message}`); fail++; }
 
 console.log(`\n  ${pass} passed, ${fail} failed`);
 process.exit(fail ? 1 : 0);

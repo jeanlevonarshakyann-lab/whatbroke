@@ -1,4 +1,4 @@
-import { counted, uniqueFailures } from "../util.js";
+import { counted, lineAt, uniqueFailures } from "../util.js";
 import { withSource } from "../ownership.js";
 
 const PROB_RE = /^[^\S\n]+(\d+):(\d+)[^\S\n]+(error|warning)[^\S\n]+(.+?)\s{2,}([\w@/-]+)[^\S\n]*$/;
@@ -34,11 +34,14 @@ function refusal(s) {
     // Taking the next non-blank line however far away it was is not a bound: in a log
     // that holds a second tool, that line is the second tool's first line, and eslint
     // reported it as its own advice in 596 of the sweep's ordered pairs.
+    // The line the sentence is on, from where it matched. Looking the sentence up as a
+    // whole line found nothing when a stray carriage return or U+2028 sat inside it: the
+    // pattern's `.` stops at those, so the match was not the line, and the failure was
+    // then read from line -1, which the report gave as evidence on line 0.
     const lines = s.split("\n");
-    const at = lines.findIndex((l) => l === m[0]);
+    const at = lineAt(s, m.index);
     const next = lines[at + 1];
     const advice = next && next.trim() && !/^\s*(?:at\s|[A-Z]\w*Error:)/.test(next) ? next.trim() : null;
-    // The sentence is a whole line, so the first line equal to it is where it matched.
     return withSource({ title: label, label, severity: "error", message: [m[0], advice].filter(Boolean).join(" ") },
       at, advice ? at + 2 : at + 1);
   }
