@@ -242,8 +242,8 @@
           "type": "boolean"
         },
         "reason": {
-          "description": "Why nothing was compared.",
-          "enum": [null, "no-previous-run", "nothing-parsed"]
+          "description": "Why nothing was compared. `unidentified-pipe`: the log was piped in and not named with --id, so there is nothing to tell it from any other pipeline run in the same directory.",
+          "enum": [null, "no-previous-run", "nothing-parsed", "unidentified-pipe"]
         },
         "fresh": {
           "description": "The causes that were not in the previous run.",
@@ -261,7 +261,7 @@
         },
         "goneWithheld": {
           "description": "Why `gone` is null.",
-          "enum": [null, "truncated", "run-not-comparable", "identity-migration"]
+          "enum": [null, "truncated", "run-not-comparable", "identity-migration", "tool-changed"]
         },
         "recorded": {
           "description": "Whether this run was saved for the next one to compare with. A truncated run, or a command that could not be started, never is.",

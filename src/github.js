@@ -136,7 +136,9 @@ export function githubOutput(report, { quiet = false } = {}) {
     const sites = causes.reduce((n, c) => n + c.size, 0);
     const lead = [report.summary, causes.length &&
       `${causes.length} likely cause${causes.length > 1 ? "s" : ""}, ${sites} site${sites > 1 ? "s" : ""}`,
-      report.since?.compared && `${report.since.fresh.length} new since the last tracked run`]
+      report.since?.compared && `${report.since.fresh.length} new since the last tracked run`,
+      report.since?.reason === "unidentified-pipe"
+        && "not tracked: a piped log carries no command to tell it from another (name it with --id NAME)"]
       .filter(Boolean).join(" — ");
     if (lead) stdout += `::notice title=whatbroke::${escapeData(lead)}\n`;
     return { stdout, summary: summaryOf(report) };

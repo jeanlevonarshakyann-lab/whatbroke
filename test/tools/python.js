@@ -460,5 +460,147 @@ try {
   pass++;
 } catch (e) { console.log(`  FAIL ruff output formats\n       ${e.message}`); fail++; }
 
+// Two tests of one name is the ordinary shape of a test suite - test_total in the invoice
+// file and test_total in the cart file - and pytest's short summary is where a run that
+// printed no blocks is read from. Matching those lines on the bare name folded the second
+// into the first, so the run reported one failure while its own tally said two.
+try {
+  const r = analyse(`=========================== short test summary info ============================
+FAILED tests/test_a.py::test_total - assert 1 == 2
+FAILED tests/test_b.py::test_total - assert 3 == 4
+========================= 2 failed, 0 passed in 0.03s ==========================
+`);
+  assert.equal(r.tool, "pytest");
+  assert.equal(r.failures.length, 2, "the tally says two failed");
+  assert.deepEqual(r.failures.map((f) => f.file), ["tests/test_a.py", "tests/test_b.py"]);
+  assert.deepEqual(r.failures.map((f) => f.title), ["test_total", "test_total"]);
+  // The node id is the whole name of a test, and the only part the display drops is the
+  // file. It is what --since-last has to remember them apart by.
+  assert.deepEqual(r.failures.map((f) => f.subject),
+    ["tests/test_a.py::test_total", "tests/test_b.py::test_total"]);
+  assert.deepEqual(r.failures.map((f) => f.message), ["assert 1 == 2", "assert 3 == 4"]);
+  console.log("  ok   two pytest tests of one name are two failures");
+  pass++;
+} catch (e) { console.log(`  FAIL duplicate pytest test names\n       ${e.message}`); fail++; }
+
+// Same name, and a block each: the summary line still has to find its own block.
+try {
+  const r = analyse(`=================================== FAILURES ===================================
+__________________________________ test_total __________________________________
+>       assert total(a) == 2
+E       assert 1 == 2
+
+tests/test_a.py:4: AssertionError
+__________________________________ test_total __________________________________
+>       assert total(b) == 4
+E       assert 3 == 4
+
+tests/test_b.py:9: AssertionError
+=========================== short test summary info ============================
+FAILED tests/test_a.py::test_total - assert 1 == 2
+FAILED tests/test_b.py::test_total - assert 3 == 4
+========================= 2 failed in 0.03s ==========================
+`);
+  assert.equal(r.failures.length, 2, "two blocks and two summary lines are two failures, not four and not one");
+  assert.deepEqual(r.failures.map((f) => `${f.file}:${f.line}`), ["tests/test_a.py:4", "tests/test_b.py:9"]);
+  assert.deepEqual(r.failures.map((f) => f.subject),
+    ["tests/test_a.py::test_total", "tests/test_b.py::test_total"]);
+  console.log("  ok   each pytest summary line claims its own block, once");
+  pass++;
+} catch (e) { console.log(`  FAIL duplicate names with blocks\n       ${e.message}`); fail++; }
+
+// The other side of the same coin, and the one that makes the bare name insufficient
+// rather than merely imprecise: one run printed twice - the default traceback and then
+// --tb=line, or a job that reruns the suite - is the SAME failures, not twice as many.
+// The whole node id is what tells that apart from two different tests sharing a name.
+try {
+  const r = analyse(`=========================== short test summary info ============================
+FAILED tests/test_a.py::test_total - assert 1 == 2
+========================= 1 failed in 0.01s ==========================
+tests/test_a.py:4: assert 1 == 2
+=========================== short test summary info ============================
+FAILED tests/test_a.py::test_total - assert 1 == 2
+========================= 1 failed in 0.01s ==========================
+`);
+  assert.equal(r.failures.length, 1, "one test read twice is one failure");
+  assert.equal(r.failures[0].subject, "tests/test_a.py::test_total");
+  console.log("  ok   one pytest test read from two summaries is one failure");
+  pass++;
+} catch (e) { console.log(`  FAIL one run printed twice\n       ${e.message}`); fail++; }
+
+// --tb=line prints one "path:line: message" per failure, and two tests raising the same
+// exception - a shared fixture breaking, which is how this usually happens - have the same
+// message. Keyed on the message alone, the second overwrote the first and BOTH failures
+// were reported at the second one's file and line: the reader is sent to code that is fine.
+try {
+  const r = analyse(`tests/test_a.py:4: KeyError: 'id'
+tests/test_b.py:9: KeyError: 'id'
+=========================== short test summary info ============================
+FAILED tests/test_a.py::test_a - KeyError: 'id'
+FAILED tests/test_b.py::test_b - KeyError: 'id'
+========================= 2 failed in 0.02s ==========================
+`);
+  assert.equal(r.failures.length, 2);
+  assert.deepEqual(r.failures.map((f) => `${f.file}:${f.line}`), ["tests/test_a.py:4", "tests/test_b.py:9"]);
+  console.log("  ok   two pytest failures with one message keep their own locations");
+  pass++;
+} catch (e) { console.log(`  FAIL --tb=line locations by message\n       ${e.message}`); fail++; }
+
+// A lone candidate is used as it stands even when it names another file: --tb=line prints
+// where the exception came from, which is often a helper and is the more useful line.
+try {
+  const r = analyse(`tests/helpers.py:12: KeyError: 'id'
+=========================== short test summary info ============================
+FAILED tests/test_a.py::test_a - KeyError: 'id'
+========================= 1 failed in 0.01s ==========================
+`);
+  assert.equal(r.failures[0].file, "tests/helpers.py");
+  assert.equal(r.failures[0].line, 12);
+  console.log("  ok   one unambiguous pytest location is used even from another file");
+  pass++;
+} catch (e) { console.log(`  FAIL single --tb=line candidate\n       ${e.message}`); fail++; }
+
+// And where the file cannot separate them, no line at all: a line that might belong to the
+// other test is worse than none, and the summary's file is still known.
+try {
+  const r = analyse(`tests/test_a.py:4: KeyError: 'id'
+tests/test_a.py:31: KeyError: 'id'
+=========================== short test summary info ============================
+FAILED tests/test_a.py::test_one - KeyError: 'id'
+FAILED tests/test_a.py::test_two - KeyError: 'id'
+========================= 2 failed in 0.02s ==========================
+`);
+  assert.equal(r.failures.length, 2);
+  for (const f of r.failures) {
+    assert.equal(f.file, "tests/test_a.py");
+    assert.equal("line" in f && f.line !== undefined, false, "an ambiguous line is not invented");
+  }
+  console.log("  ok   an ambiguous pytest location is left out rather than guessed");
+  pass++;
+} catch (e) { console.log(`  FAIL ambiguous --tb=line candidates\n       ${e.message}`); fail++; }
+
+// The trailing "file:line: ExceptionType" is the whole message where a block has a marked
+// statement and no E lines. The pattern has three groups and the code read a fourth, so
+// what it raised was always dropped and the failure came back with an empty message.
+try {
+  const r = analyse(`=================================== FAILURES ===================================
+___________________________________ test_x ____________________________________
+
+    def test_x():
+>       raise RuntimeError("boom")
+
+test_x.py:2: RuntimeError
+=========================== short test summary info ============================
+FAILED test_x.py::test_x
+========================= 1 failed in 0.01s ==========================
+`);
+  assert.equal(r.failures.length, 1);
+  assert.equal(r.failures[0].message, "RuntimeError", "the exception it raised is the message");
+  assert.equal(r.failures[0].stmt, 'raise RuntimeError("boom")');
+  assert.equal(`${r.failures[0].file}:${r.failures[0].line}`, "test_x.py:2");
+  console.log("  ok   a pytest block with only a trailing exception keeps what it raised");
+  pass++;
+} catch (e) { console.log(`  FAIL trailing exception kind\n       ${e.message}`); fail++; }
+
 console.log(`\n  ${pass} passed, ${fail} failed`);
 process.exit(fail ? 1 : 0);

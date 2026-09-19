@@ -482,6 +482,9 @@ What keeps it honest:
   and is abstracted away.
 - A path must prove itself with separators or a known extension, so `cart.total` is
   never mistaken for a filename.
+- What a resolver says it could not find is the **operand**, not an incidental path, and
+  is kept whatever it looks like. `Cannot find module './a.js'` and `'./b.js'` are two
+  things to install, not one cause with two sites.
 - A signature carrying fewer than two real words is refused outright — forty
   unrelated `assert 1 == 2` failures do not become "one likely cause".
 - Three sites minimum. Two failures sharing a shape is usually coincidence.
@@ -515,20 +518,54 @@ $ whatbroke --since-last pytest
     KeyError: 'aud'
 ```
 
-A cause is identified by the same fingerprint the grouping uses, so it survives moving
-to another file, another line, or another position in the output — and two different
-bugs never collapse into one.
+A cause is identified by the fingerprint the grouping uses, so it survives moving to
+another file, another line, or another position in the output — and two different bugs
+never collapse into one. Where that fingerprint is too thin to group on, the test or
+symbol it happened to is part of the identity as well: `assert 1 == 2` and `assert 3 == 4`
+reduce to the same shape, and without that a second test failing would report nothing new
+and the first being fixed would report nothing gone.
 
-Runs only ever compare against runs of **the same command, for the same tool, in the
-same directory**. `pytest tests/unit` and `pytest tests/api` do not cover the same
-code, so a cause missing from one is not a cause that got fixed; they keep separate
-histories and never meet.
+Runs only ever compare against runs of **the same command, in the same directory**.
+`pytest tests/unit` and `pytest tests/api` do not cover the same code, so a cause missing
+from one is not a cause that got fixed; they keep separate histories and never meet. If the
+same command reports a different tool than it did last time — `npm test` moving from jest
+to vitest — the run still compares, but "no longer reported" is withheld, because every
+cause being missing is then a change of tool and not a change of code.
+
+**A run that succeeds is part of the history.** It writes the empty baseline: nothing is
+failing here now — decided by the exit code, not by the output, so a runner that exits
+zero having printed something readable still records that nothing is failing. What it
+printed is still reported in full; only the baseline is empty. Without it, a failure that came back after a green run was compared
+against the run that first found it and called nothing new — which is exactly the moment a
+reader wants to be told. Nothing is printed for a command that worked.
+
+**A piped log has to be named.** `pytest tests/unit | whatbroke --since-last` carries no
+command at all, so nothing tells it from `pytest tests/api | whatbroke --since-last` in the
+same directory: they shared one record, overwrote each other, and each reported the other's
+failures as fixed. Guessing the upstream command from its output is not available either —
+the log is the thing in question. So an unnamed pipe is not compared and not recorded, and
+says so; `--id NAME` is how a pipeline says which one it is.
+
+```console
+$ pytest tests/unit | whatbroke --since-last
+    not tracked: a piped log carries no command to tell it from another. Name it with --id NAME
+
+$ pytest tests/unit | whatbroke --since-last --id unit
+    1 new since your last run
+```
+
+A name is scoped to the directory it is used in, and to the tool the log turned out to be
+from, so one `--id ci` covering a job that pipes eslint and then pytest still keeps two
+records rather than having each run wipe the other.
 
 For mixed logs, the primary tool identifies the run, and comparison includes every
 reported tool's causes. New failures are marked in their own tool's section; identical
 messages from different tools keep separate identities. The last history format that
 used 32-bit identifiers is compared once during migration, then the completed run is
-saved under the current 96-bit identity. Unchanged causes are not called new; the "no
+saved under the current 96-bit identity — for a wrapped command, which names itself in
+its argv. A record that scheme wrote for a *piped* run was keyed on the directory and the
+tool alone, so it belongs to whichever unnamed pipe wrote it; a `--id` pipeline does not
+adopt one, and starts its own baseline instead. Unchanged causes are not called new; the "no
 longer reported" count is withheld for that transition because a collision in an old
 saved hash cannot be ruled out. Older incompatible records start a fresh baseline.
 

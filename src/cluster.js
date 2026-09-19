@@ -9,6 +9,7 @@
 import { createHash } from "node:crypto";
 
 export const MIN_CLUSTER = 3;   // two failures sharing a shape is usually coincidence
+export const MIN_CONTENT = 2;   // a signature of one word is a shape, not a bug
 
 // Quoted content that is short and has no whitespace is a NAME - unquote and keep it,
 // so KeyError: 'exp' stays distinct from KeyError: 'sub'. Anything else is DATA.
@@ -18,6 +19,16 @@ const QUOTED = /(?<![A-Za-z0-9_])'(?:[^'\\\n]|\\.)*'|"(?:[^"\\\n]|\\.)*"|`(?:[^`
 const NAME_MAX = 32;
 
 const SRC_EXT = "js|jsx|mjs|cjs|ts|tsx|py|pyi|rs|go|java|kt|kts|rb|php|c|cc|cpp|cxx|h|hh|hpp|m|mm|cs|swift|scala|sh|sql|json|ya?ml|toml|lock";
+
+// What a resolver could not find is the OPERAND of the failure, not an incidental place
+// in it. Step 3 turned "Cannot find module './a.js'" into "Cannot find module <path>", so
+// three different missing modules became one "likely cause" - the reader adds one
+// dependency, reruns, and watches the other two fail. These phrases name the thing that is
+// missing, and whatever follows them is held out of the path rules and put back after.
+const MISSING_OPERAND = /\b(?:(?:cannot|could not|can't|couldn't|unable to)[^\S\n]+(?:find|resolve|locate|load)(?:[^\S\n]+(?:module|package|crate|dependency|declaration file for module))?|no[^\S\n]+module[^\S\n]+named|unresolved[^\S\n]+import|module[^\S\n]+not[^\S\n]+found:?(?:[^\S\n]+Error:)?(?:[^\S\n]+Can't[^\S\n]+resolve)?|failed[^\S\n]+to[^\S\n]+resolve)[^\S\n]*:?[^\S\n]+(?!in\b|from\b)([^\s,;]+)/gi;
+// Letters then digits: no word boundary sits between "F" and "0", so steps 4 and 5 - which
+// all begin with \b - cannot see a number here and the marker survives them intact.
+const HELD = (n) => `MODULEREF${n}`;
 
 /** Reduce a message to its shape, keeping the parts that identify WHICH bug it is.
  *  Rule order is load-bearing; each step assumes the previous ones have run. */
@@ -38,6 +49,7 @@ export function skeleton(text) {
 function reduce(text) {
   let s = String(text ?? "").slice(0, 1000);
   s = s.replace(/\s+/g, " ").trim();
+  const held = [];
 
   // 1. quoted values, before anything that could chew their insides
   s = s.replace(QUOTED, (m) => {
@@ -47,6 +59,10 @@ function reduce(text) {
 
   // 2. urls before paths, or the // in https:// counts as separators
   s = s.replace(/\b[a-z][\w+.-]*:\/\/\S+/gi, "<url>");
+
+  // 2b. hold aside what a resolver said it could not find, before the path rules run
+  s = s.replace(MISSING_OPERAND, (whole, operand) =>
+    whole.slice(0, whole.length - operand.length) + HELD(held.push(operand) - 1));
 
   // 3. paths must PROVE themselves - a drive prefix, two separators, or a known source
   //    extension. Otherwise "cart.total" and "result.output" get eaten.
@@ -65,6 +81,10 @@ function reduce(text) {
   // 5. numbers. \b on both sides is what keeps TS2551, E0308, i64, utf8 intact.
   s = s.replace(/\b\d+(?:\.\d+)?\b/g, "<num>");
   s = s.replace(/<num>(?:\s*,\s*<num>)+/g, "<num>*");
+
+  // and put it back, so two runs that lost the same module still meet and two that lost
+  // different ones never do.
+  if (held.length) s = s.replace(/MODULEREF(\d+)/g, (m, n) => held[+n] ?? m);
 
   return s.replace(/\s+/g, " ").trim().slice(0, 512);
 }
@@ -103,6 +123,10 @@ const part = (f) => [
 export const keyOf = (f) => JSON.stringify(part(f));
 export const signatureOf = (f) => part(f).filter(Boolean).join("  ·  ");
 
+/** Whether a signature carries too little to group two failures on. The display already
+ *  refuses these; `causeId` asks the same question so history refuses them too. */
+export const tooWeakToGroup = (f) => contentScore(signatureOf(f)) < MIN_CONTENT;
+
 const PLACEHOLDER = /<(?:str|num|path|url|hex|uuid|addr)>\*?/g;
 // Node's assertion header describes the matcher, not the bug. After numeric
 // values disappear, it must not turn an otherwise empty signature into evidence.
@@ -121,8 +145,21 @@ export function contentScore(sig) {
  *
  *  Deliberately not a cluster's own `id`: an unreported cluster mixes its member
  *  index into that id, so the same lone failure is named differently the moment
- *  another failure appears before it. The content key is what identifies the bug. */
-export const causeId = (failure) => fingerprint(keyOf(failure));
+ *  another failure appears before it. The content key is what identifies the bug.
+ *
+ *  Nor is it the display's key. "assert <num> == <num>" is one word once the numbers are
+ *  gone, and the display refuses to group on that - but history went on treating every
+ *  numeric assertion in a suite as one cause, so a second test failing reported "nothing
+ *  new" and a first test fixed reported nothing gone. Where the signature is too weak to
+ *  group on, the subject decides instead: it is what tells two such failures apart, and
+ *  unlike a file or a line it survives the code being moved. */
+export function historyKeyOf(failure) {
+  const key = keyOf(failure);
+  if (!tooWeakToGroup(failure)) return key;
+  return JSON.stringify([key, String(failure.subject ?? failure.title ?? "")]);
+}
+
+export const causeId = (failure) => fingerprint(historyKeyOf(failure));
 
 export function fingerprint(key) {
   return createHash("sha256").update(String(key)).digest("hex").slice(0, 24);
@@ -151,7 +188,7 @@ export function clusterFailures(failures) {
     const sig = signatureOf(failures[members[0]]);
     // prefer an exemplar that can actually show source
     const located = members.find((i) => failures[i].file && failures[i].line);
-    const reported = members.length >= MIN_CLUSTER && contentScore(sig) >= 2;
+    const reported = members.length >= MIN_CLUSTER && contentScore(sig) >= MIN_CONTENT;
     if (reported) {
       clusters.push({ id: fingerprint(key), signature: sig, size: members.length, members, exemplar: located ?? members[0], reported: true });
     } else {

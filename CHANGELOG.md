@@ -2,6 +2,66 @@
 
 ## Unreleased
 
+- pytest no longer loses a failure to a name another test already has. Two tests called
+  `test_total`, in different files or different classes, folded into each other because
+  the short test summary was matched on the bare name - so a run reported one failure
+  while its own tally said two. Each summary line now claims one failure and only one,
+  and the node id it names becomes the failure's subject, which is what tells two tests
+  of one name apart for `--since-last`.
+- pytest no longer gives two failures the same location. `--tb=line` prints one
+  `path:line: message` per failure, and these were indexed by message alone: two tests
+  raising the same exception - a shared fixture breaking, which is the ordinary way this
+  happens - overwrote each other and BOTH failures were reported at the last one's file
+  and line, sending the reader to code that is fine. Every candidate is kept and the
+  summary's own filename decides; where that cannot single one out, the failure keeps the
+  file the summary named and goes without a line rather than borrowing another test's.
+- A pytest block whose only words were a trailing `test_x.py:2: RuntimeError` reported an
+  empty message. The pattern has three capture groups and the code read a fourth.
+- A command that succeeds now writes the empty `--since-last` baseline instead of nothing
+  at all. Before, a green run left yesterday's failure in the record, so when that failure
+  came back it was compared against the run that first found it and called nothing new -
+  the one moment a reader most wants to be told. Nothing is printed for a command that
+  worked. The run identity no longer includes the tool, because a run that succeeds prints
+  nothing to name a tool with; what the command was is already in its argv. Success is the
+  exit code's statement and not the output's: a runner that exits zero having printed
+  something readable - a suite told to tolerate a known failure, a wrapper echoing the last
+  run's summary - still records that nothing is failing, in every output format, and still
+  reports in full everything it read.
+- Two failures whose signatures are too thin to group on are two causes in history, not
+  one. `assert 1 == 2` and `assert 3 == 4` reduce to the same shape, and the display
+  already refused to group them - but history keyed on that shape alone, so a second test
+  failing reported "nothing new" and the first being fixed reported nothing gone. The test
+  or symbol is part of the identity when the shape is that thin, and identity still
+  survives the code moving to another file or line.
+- A piped log is tracked only when it is named. `pytest tests/unit | whatbroke
+  --since-last` and `pytest tests/api | whatbroke --since-last` carry no command at all,
+  so in one directory they shared a record: each overwrote the other and each reported the
+  other's failures as GONE - a claim that something was fixed, about a suite that had not
+  run. An unnamed pipe is now neither compared nor recorded and says so in the terminal,
+  in JSON and in the GitHub notice; `--id NAME` names a pipeline. A named pipeline also
+  starts its own baseline rather than migrating a record from the previous identity
+  scheme: that scheme had no `--id`, so the record sitting under a pipeline's directory
+  and tool was written by some unnamed pipe, and adopting it would hand a brand-new
+  pipeline another one's history and call the two compared.
+- Different missing modules are different causes. `Cannot find module './a.js'` and
+  `'./b.js'` were reduced to the same shape, because the path rules ate the one part of
+  the message that identifies it - so three things to install became one "likely cause",
+  and the reader adds one dependency, reruns, and watches two more fail. What a resolver
+  says it could not find is now kept whatever it looks like.
+- The wrapped command's live output honours the terminal's backpressure. `write()`
+  returning false was ignored, so a command printing faster than its destination could
+  read queued every later chunk in whatbroke's memory - unbounded, while `--max-bytes`
+  carefully bounds the copy kept for diagnosis. The child's stream is paused until the
+  destination drains.
+- Comparing two runs is linear. `--since-last` scanned the whole current list once per
+  remembered cause, so 40,000 causes each way took 1.3 seconds of string comparison for
+  one number; it now takes 8 milliseconds.
+- Paths under the working directory are shortened on Windows. The test was for the
+  working directory followed by `/`, so on a platform whose separator is `\` nothing was
+  ever shortened and every diagnostic showed its full absolute path.
+- The exhaustive phases of `npm run test:heavy` report where they are. They take minutes,
+  and a suite that prints nothing for minutes cannot be told from one that has hung.
+
 - Byte-identical CI retry blocks are collapsed before parsing. De-duplication already
   showed each diagnostic once, but 67 of 200 duplicated fixtures still changed their
   headline or another public field because parser-specific tallies counted both copies.

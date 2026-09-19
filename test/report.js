@@ -194,8 +194,9 @@ test("everything the command line prints as JSON keeps to the schema", () => {
     ["a command that could not start", ["--json", "definitely-not-a-command-whatbroke"], ""],
     ["a truncated capture", ["--json", "--max-bytes", "1024"], "chatter\n".repeat(400) + pytest],
     ["unclustered", ["--json", "--no-cluster"], pytest],
-    ["the first tracked run", ["--json", "--since-last"], pytest],
-    ["the second tracked run", ["--json", "--since-last"], pytest],
+    ["a piped log nobody named", ["--json", "--since-last"], pytest],
+    ["the first tracked run", ["--json", "--since-last", "--id", "schema-case"], pytest],
+    ["the second tracked run", ["--json", "--since-last", "--id", "schema-case"], pytest],
     ["a wrapped log", ["--json"], read("docker_buildkit_npm_fail.txt")],
     ["two tools in one log", ["--json"], read("golangci_typecheck_fail.txt")],
   ];
@@ -207,8 +208,12 @@ test("everything the command line prints as JSON keeps to the schema", () => {
     for (const problem of problems(report)) wrong.push(`${label}: ${problem}`);
   }
   assert.deepEqual(wrong, []);
-  const tracked = JSON.parse(run(["--json", "--since-last"], pytest).stdout);
+  // Named, like the two cases above it: an unnamed pipe is deliberately never compared.
+  const tracked = JSON.parse(run(["--json", "--since-last", "--id", "schema-case"], pytest).stdout);
   assert.equal(tracked.since.compared, true, "the tracked runs never compared, so since was only checked empty");
+  const unnamed = JSON.parse(run(["--json", "--since-last"], pytest).stdout);
+  assert.equal(unnamed.since.compared, false);
+  assert.equal(unnamed.since.reason, "unidentified-pipe");
   // and what it prints is the report, not a copy assembled beside it
   assert.deepEqual(JSON.parse(run(["--json"], pytest).stdout), asJson(reportOf(pytest)));
 });
