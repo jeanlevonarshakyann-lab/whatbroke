@@ -92,6 +92,11 @@ const PROBABLE_DIAGNOSTIC = new RegExp([
   // the path at the start of the line - so a format check buried in a build log lost every
   // place it found, and a one-place run lost the only one it had.
   "^Diff in [^\\s][^\\n]*:\\d+:[^\\S\\n]*$",
+  // `gofmt -d` has the same problem and a different shape: it names the file once, in a
+  // header with no failure word in it either, and every place it found is an @@ line
+  // underneath. Losing the header loses every place in that file, because nothing else
+  // in the diff says which file it is about.
+  "^diff [^\\s]+\\.orig [^\\s]+[^\\S\\n]*$",
   // VSTest's console is translated into the SDK's thirteen UI languages, and every
   // failure word above is English. What survives translation is the shape: a result line
   // is an indented word or two, the test, and its timing in brackets; the run's tally

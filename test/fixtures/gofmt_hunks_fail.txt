@@ -1,0 +1,21 @@
+diff invoice/invoice.go.orig invoice/invoice.go
+--- invoice/invoice.go.orig
++++ invoice/invoice.go
+@@ -17,8 +17,8 @@
+ }
+ 
+ // Due is what is owed.
+-func Due( lines []int , paid int ) int {
+-	return Total(lines)-paid
++func Due(lines []int, paid int) int {
++	return Total(lines) - paid
+ }
+ 
+ // Label names it.
+@@ -28,5 +28,5 @@
+ 
+ // Overdue says whether it is.
+ func Overdue(days int) bool {
+-	return days>30
++	return days > 30
+ }

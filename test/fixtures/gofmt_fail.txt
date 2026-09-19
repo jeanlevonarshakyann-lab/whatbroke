@@ -1,0 +1,43 @@
+diff cart/cart.go.orig cart/cart.go
+--- cart/cart.go.orig
++++ cart/cart.go
+@@ -1,10 +1,10 @@
+ package cart
+ 
+-type Cart struct{
+-Items []int
+-	Name string
+-}
+-
+-func (c *Cart) Add(i int)  {
+-	c.Items=append(c.Items,i)
++type Cart struct {
++	Items []int
++	Name  string
++}
++
++func (c *Cart) Add(i int) {
++	c.Items = append(c.Items, i)
+ }
+diff main.go.orig main.go
+--- main.go.orig
++++ main.go
+@@ -2,12 +2,14 @@
+ 
+ import "fmt"
+ 
+-func total( items []int ) int {
+-	sum:=0
+-	for _,i:=range items { sum+=i }
++func total(items []int) int {
++	sum := 0
++	for _, i := range items {
++		sum += i
++	}
+ 	return sum
+ }
+ 
+ func main() {
+-fmt.Println(total([]int{1,2,3}))
++	fmt.Println(total([]int{1, 2, 3}))
+ }
