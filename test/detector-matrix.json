@@ -1527,6 +1527,26 @@
       "generic": 3
     }
   },
+  "gofmt_fail.txt": {
+    "winner": "gofmt",
+    "parser": "gofmt",
+    "failures": 2,
+    "claimants": [
+      "gofmt",
+      "generic"
+    ],
+    "shadow": {}
+  },
+  "gofmt_hunks_fail.txt": {
+    "winner": "gofmt",
+    "parser": "gofmt",
+    "failures": 2,
+    "claimants": [
+      "gofmt",
+      "generic"
+    ],
+    "shadow": {}
+  },
   "golangci_checkstyle_fail.txt": {
     "winner": "golangci-lint",
     "parser": "golangci-lint",

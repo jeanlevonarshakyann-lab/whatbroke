@@ -215,6 +215,26 @@ const CASES = [
       const test = r.failures.find((f) => f.title === "TestRace");
       assert.ok(test && test.line === 17, "the assertion failure is still there");
     } },
+  // Captured with go 1.27.1. `gofmt -d` is the other half of Go's format gate, and it was
+  // read as nothing: the job failed and whatbroke said there was no parser for it. The
+  // file is named once in the header and each @@ hunk says where in it.
+  { file: "gofmt_fail.txt", tool: "gofmt", n: 2, check: (r) => {
+      assert.equal(r.summary, "2 files failed the format check");
+      // The line the change starts at, not the hunk's: a hunk opens with up to three
+      // unchanged lines of context, and cart.go's first changed line is its third.
+      assert.deepEqual(r.failures.map((f) => `${f.file}:${f.line}`),
+        ["cart/cart.go:3", "main.go:5"]);
+      // The first line it would remove is the source as it stands.
+      assert.equal(r.failures[0].stmt, "type Cart struct{");
+      assert.equal(r.failures[1].stmt, "func total( items []int ) int {");
+    } },
+  { file: "gofmt_hunks_fail.txt", tool: "gofmt", n: 2, check: (r) => {
+      // One file, two regions: a hunk is a place, which is what the @@ line is for.
+      assert.equal(r.summary, "1 file failed the format check");
+      assert.deepEqual(r.failures.map((f) => `${f.file}:${f.line}`),
+        ["invoice/invoice.go:20", "invoice/invoice.go:31"]);
+      assert.equal(r.failures[1].stmt, "return days>30");
+    } },
 ];
 
 let pass = 0, fail = 0;
@@ -311,6 +331,44 @@ try {
   console.log("  ok   a diff's `--- expected` is not go's test tally");
   pass++;
 } catch (e) { console.log(`  FAIL a diff is not go's tally\n       ${e.message}`); fail++; }
+
+// A gofmt diff ends where its own diff ends. It is not the only thing that draws @@ hunks:
+// minitest writes `--- expected` / `+++ actual` / `@@` between two values that differ, and
+// so does PHPUnit - so a CI job running gofmt and then a test suite put both in one log.
+// Keeping the header's file current for the rest of the log read that suite's diff as more
+// unformatted Go, and the pair gained a failure neither half had. test/mixed.js found it
+// by pairing every two captures in the corpus.
+try {
+  const gofmt = fx("gofmt_fail.txt"), minitest = fx("minitest_invoice_fail.txt");
+  const count = (r) => (r?.failures.length ?? 0) + (r?.others ?? []).reduce((n, o) => n + o.failures.length, 0);
+  const apart = count(analyse(gofmt)) + count(analyse(minitest));
+  assert.equal(count(analyse(`${gofmt}\n${minitest}`)), apart,
+    "a gofmt diff must not read on into another tool's diff");
+  // And the failures are still each tool's own.
+  const both = analyse(`${gofmt}\n${minitest}`);
+  const tools = new Set([both.tool, ...(both.others ?? []).map((o) => o.tool)]);
+  assert.deepEqual([...tools].sort(), ["gofmt", "minitest"]);
+  console.log("  ok   a gofmt diff stops where its own diff stops");
+  pass++;
+} catch (e) { console.log(`  FAIL gofmt diff bound\n       ${e.message}`); fail++; }
+
+// The header has to be "diff <path>.orig <path>" with the SAME path twice. That is what
+// keeps gofmt off every other diff a build prints - git's, and a plain `diff a b`, either
+// of which it would otherwise read as somebody's unformatted Go.
+try {
+  const { EXTRACTORS } = await import("../../src/index.js");
+  const gofmt = EXTRACTORS.find((e) => e.name === "gofmt");
+  const hunk = "@@ -1,4 +1,4 @@\n-old\n+new\n";
+  assert.equal(gofmt.detect(`diff --git a/src/main.go b/src/main.go\nindex 1234567..89abcde 100644\n--- a/src/main.go\n+++ b/src/main.go\n${hunk}`), false, "a git diff is not gofmt's");
+  assert.equal(gofmt.detect(`diff a.txt b.txt\n${hunk}`), false, "a plain diff is not gofmt's");
+  assert.equal(gofmt.detect(`diff x.go.orig y.go\n${hunk}`), false, "two different files are not one file's backup");
+  assert.equal(gofmt.detect(`diff x.go.orig x.go\n${hunk}`), true);
+  const claimed = readdirSync(join(here, "fixtures")).sort()
+    .filter((n) => { try { return gofmt.detect(fx(n)); } catch { return false; } });
+  assert.deepEqual(claimed, ["gofmt_fail.txt", "gofmt_hunks_fail.txt"]);
+  console.log("  ok   gofmt reads its own diffs and nobody else's");
+  pass++;
+} catch (e) { console.log(`  FAIL gofmt diff shape\n       ${e.message}`); fail++; }
 
 console.log(`\n  ${pass} passed, ${fail} failed`);
 process.exit(fail ? 1 : 0);

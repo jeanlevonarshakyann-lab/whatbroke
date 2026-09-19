@@ -61,6 +61,7 @@ import gotest from "./extractors/gotest.js";
 import cargo from "./extractors/cargo.js";
 import cargojson from "./extractors/cargojson.js";
 import rustfmt from "./extractors/rustfmt.js";
+import gofmt from "./extractors/gofmt.js";
 import { esbuild, vite } from "./extractors/bundler.js";
 import git from "./extractors/git.js";
 import kubectl from "./extractors/kubectl.js";
@@ -77,7 +78,7 @@ import { stripRedrawnCiPrefix, wrapperCandidates } from "./normalize.js";
 import { joinSources, preserveSourceRange, rangesOverlap, setLines, setParser, sourceRange } from "./ownership.js";
 
 // order matters: most specific first, generic last
-export const EXTRACTORS = [pytest, nodetest, bun, bunRuntime, deno, denoRuntime, denoLint, denoFmt, playwright, jestjson, jest, mochajson, mochaxunit, mocha, ava, jasmine, rubocop, tap, taptext, vitest, unittest, traceback, eslintjson, eslint, ruff, pylint, flake8, golangci, markdownlint, stylelint, shellcheck, yamllint, biome, oxlint, black, prettier, sass, less, webpack, babel, swc, pyright, mypy, cmake, terraform, swifttest, swift, clang, minitest, ruby, perl, php, rspec, junitjvm, jvm, dotnettest, dotnet, phpunit, cargojson, rustfmt, cargo, govetjson, gojson, gotest, esbuild, vite, node, tsc, git, kubectl, docker, make, npm, pnpm, yarn, pip, generic];
+export const EXTRACTORS = [pytest, nodetest, bun, bunRuntime, deno, denoRuntime, denoLint, denoFmt, playwright, jestjson, jest, mochajson, mochaxunit, mocha, ava, jasmine, rubocop, tap, taptext, vitest, unittest, traceback, eslintjson, eslint, ruff, pylint, flake8, golangci, markdownlint, stylelint, shellcheck, yamllint, biome, oxlint, black, prettier, sass, less, webpack, babel, swc, pyright, mypy, cmake, terraform, swifttest, swift, clang, minitest, ruby, perl, php, rspec, junitjvm, jvm, dotnettest, dotnet, phpunit, cargojson, rustfmt, cargo, gofmt, govetjson, gojson, gotest, esbuild, vite, node, tsc, git, kubectl, docker, make, npm, pnpm, yarn, pip, generic];
 
 /** Whether two readings each quote the offending source line, and quote different ones.
  *
@@ -100,15 +101,23 @@ function quoteDiffers(a, b) {
  *  The corpus holds every parser to the same promise before this is reached; see
  *  test/report.js. */
 function located(failure) {
-  const { file, line, col } = failure;
+  const { file, line, col, subject } = failure;
   const fileOk = file === undefined || (typeof file === "string" && file.length > 0);
   const lineOk = line === undefined || (Number.isInteger(line) && line >= 1);
   const colOk = col === undefined || (Number.isInteger(col) && col >= 1 && lineOk && line !== undefined);
-  if (fileOk && lineOk && colOk) return failure;
+  // `subject` is the name of the thing that failed, and an empty one names nothing. A
+  // parser reaches this whenever the output it read had the name blank - Playwright's JSON
+  // carries the test's title as a field, and a document whose titles are empty produced
+  // `subject: ""` - and a field whose only value is "there is no value" is the absence the
+  // report already has a spelling for. It is also what history falls back to when a
+  // signature is too weak to group on, and "" tells two failures apart from nothing.
+  const subjectOk = subject === undefined || (typeof subject === "string" && subject.length > 0);
+  if (fileOk && lineOk && colOk && subjectOk) return failure;
   const copy = { ...failure };
   if (!fileOk) delete copy.file;
   if (!lineOk) delete copy.line;
   if (!lineOk || !colOk) delete copy.col;
+  if (!subjectOk) delete copy.subject;
   return preserveSourceRange(failure, copy);
 }
 

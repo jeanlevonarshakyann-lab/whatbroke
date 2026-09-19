@@ -166,6 +166,29 @@ test("every parser's own result keeps to what a report is built from", () => {
   assert.deepEqual(wrong.slice(0, 8), [], `${wrong.length} problems`);
 });
 
+test("a name that names nothing is not reported either", () => {
+  // `subject` is what failed - a test, a method - and "" is not one. Playwright's JSON
+  // carries each test's title as a field, and a document whose titles are blank produced
+  // `subject: ""`, which the schema refuses and which history would have used as the
+  // discriminator between two failures that a weak signature could not separate.
+  const doc = JSON.parse(read("playwright_json_fail.txt"));
+  const blank = (suite) => {
+    if (suite.title !== undefined) suite.title = "";
+    for (const spec of suite.specs ?? []) spec.title = "";
+    for (const child of suite.suites ?? []) blank(child);
+  };
+  for (const suite of doc.suites ?? []) blank(suite);
+  const report = reportOf(JSON.stringify(doc));
+  assert.equal(report.tool, "playwright");
+  assert.ok(report.failures.length > 0);
+  for (const failure of report.failures) {
+    assert.equal("subject" in failure, false, "a blank name is absence, and absence has a spelling");
+    // What it does know is still reported.
+    assert.match(failure.file, /cart\.spec\.ts$/);
+  }
+  assert.deepEqual(problems(report), []);
+});
+
 test("a location that points at nothing is not reported", () => {
   // A damaged log can say `:0:0`, which no tool counting from 1 prints. A report says
   // where a failure is or says nothing; it does not pass on a place that is not one.
