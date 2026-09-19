@@ -1,0 +1,3 @@
+go: errors parsing go.mod:
+go.mod:7: unknown directive: bogus
+go.mod:8: unknown directive: also

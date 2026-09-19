@@ -1669,6 +1669,60 @@
       "generic": 4
     }
   },
+  "gomod_chain_fail.txt": {
+    "winner": "go mod",
+    "parser": "go mod",
+    "failures": 1,
+    "claimants": [
+      "go mod",
+      "generic"
+    ],
+    "shadow": {}
+  },
+  "gomod_download_fail.txt": {
+    "winner": "go mod",
+    "parser": "go mod",
+    "failures": 1,
+    "claimants": [
+      "go mod",
+      "generic"
+    ],
+    "shadow": {}
+  },
+  "gomod_parse_fail.txt": {
+    "winner": "go mod",
+    "parser": "go mod",
+    "failures": 1,
+    "claimants": [
+      "go mod",
+      "generic"
+    ],
+    "shadow": {
+      "generic": 2
+    }
+  },
+  "gomod_parse_multi_fail.txt": {
+    "winner": "go mod",
+    "parser": "go mod",
+    "failures": 2,
+    "claimants": [
+      "go mod",
+      "generic"
+    ],
+    "shadow": {
+      "generic": 3
+    }
+  },
+  "gomod_resolve_fail.txt": {
+    "winner": "go mod",
+    "parser": "go mod",
+    "failures": 1,
+    "claimants": [
+      "go mod",
+      "generic"
+    ],
+    "shadow": {}
+  },
   "gopanic_fail.txt": {
     "winner": "go",
     "parser": "go",

@@ -411,9 +411,13 @@ test("interleaved output never invents a failure", () => {
   // starts. deno's assertion block, ruff's fix hint and PHPUnit's testdox body each lose
   // one finding when a line lands inside them. oxlint's drawn report loses a finding with
   // no rule: nothing but an unbroken report down to oxlint's own closing lines says it
-  // is oxlint's, because swc draws the same box.
+  // is oxlint's, because swc draws the same box. go's import chain is adjacency and
+  // nothing else - "A imports" on one line and "B: reason" on the next is the only thing
+  // that says B is what A could not get - so a line landing between them leaves no chain
+  // to read, and refusing is the whole point of requiring them to be adjacent.
   assert.deepEqual(lost.map((l) => l.split(":")[0]).sort(),
-    ["deno_fail.txt", "oxlint_parse_default_fail.txt", "phpunit_testdox_fail.txt", "ruff_fail.txt"],
+    ["deno_fail.txt", "gomod_chain_fail.txt", "oxlint_parse_default_fail.txt",
+      "phpunit_testdox_fail.txt", "ruff_fail.txt"],
     `the set of fixtures that degrade under interleaving changed: ${lost.join("; ")}`);
 });
 

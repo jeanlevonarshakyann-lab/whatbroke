@@ -1,0 +1,2 @@
+go: errors parsing go.mod:
+go.mod:12: unknown directive: nonsense

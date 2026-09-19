@@ -233,6 +233,41 @@ const CASES = [
         ["invoice/invoice.go:17", "invoice/invoice.go:28"]);
       assert.equal(r.failures[1].stmt, "return days>30");
     } },
+  // Captured with go 1.27.1. The module loader is where a Go build fails before it ever
+  // compiles anything, and none of it was read - `go mod tidy` came back as no parser at
+  // all. It writes no failure word and, for the resolution failures, no location either.
+  { file: "gomod_parse_fail.txt", tool: "go mod", n: 1, check: (r) => {
+      assert.equal(r.summary, "1 error parsing go.mod");
+      assert.equal(r.failures[0].file, "go.mod");
+      assert.equal(r.failures[0].line, 12);
+      assert.equal(r.failures[0].message, "unknown directive: nonsense");
+      // Every rendered location line carries a label, or CI's problem matcher reads
+      // nothing from it - test/render.js holds the whole corpus to that.
+      assert.equal(r.failures[0].title, "go.mod");
+    } },
+  { file: "gomod_parse_multi_fail.txt", tool: "go mod", n: 2, check: (r) => {
+      assert.equal(r.summary, "2 errors parsing go.mod");
+      assert.deepEqual(r.failures.map((f) => f.line), [7, 8]);
+    } },
+  { file: "gomod_resolve_fail.txt", tool: "go mod", n: 1, check: (r) => {
+      assert.equal(r.summary, "1 module could not be resolved");
+      assert.equal(r.failures[0].subject, "github.com/nonexistent/gone");
+      assert.match(r.failures[0].message, /module lookup disabled by GOPROXY=off/);
+      // No file: go names a module here, not a line of anybody's source.
+      assert.equal("file" in r.failures[0], false);
+      assert.deepEqual(r.failures[0].trace, ["github.com/nonexistent/gone", "shop/internal/store"]);
+    } },
+  { file: "gomod_chain_fail.txt", tool: "go mod", n: 1, check: (r) => {
+      // Several levels, and the order is reversed: go prints outermost first, and the
+      // import a reader can do something about is the near one.
+      assert.deepEqual(r.failures[0].trace,
+        ["github.com/nonexistent/gone", "example.com/lib", "shop"]);
+    } },
+  { file: "gomod_download_fail.txt", tool: "go mod", n: 1, check: (r) => {
+      // `go mod download` names the version it wanted and prints no chain above it.
+      assert.equal(r.failures[0].subject, "github.com/nonexistent/gone@v1.2.3");
+      assert.equal(r.failures[0].trace, undefined);
+    } },
 ];
 
 let pass = 0, fail = 0;
@@ -367,6 +402,34 @@ try {
   console.log("  ok   gofmt reads its own diffs and nobody else's");
   pass++;
 } catch (e) { console.log(`  FAIL gofmt diff shape\n       ${e.message}`); fail++; }
+
+// `go: downloading \u2026` and `go: finding \u2026` are the same shape as a failure and are
+// progress. Nothing in such a line says which it is, so none of them is claimed: what is
+// read is the shapes that cannot be anything else - a parse banner, an import chain, and a
+// module with the version that was wanted attached to it by an "@".
+try {
+  const { EXTRACTORS } = await import("../../src/index.js");
+  const gomod = EXTRACTORS.find((e) => e.name === "go mod");
+  assert.equal(gomod.detect("go: downloading github.com/x/y v1.0.0\n"), false);
+  assert.equal(gomod.detect("go: finding module for package github.com/x/y\n"), false);
+  assert.equal(gomod.detect('go: invalid GOTOOLCHAIN "go9.99.0"\n'), false);
+  assert.equal(gomod.detect("go: github.com/x/y@v1.0.0: unknown revision\n"), true);
+  // The "@" is what makes that a module and a version rather than any two words with a
+  // colon between them. go writes plenty of those and means nothing by them.
+  assert.equal(gomod.detect('go: warning: "./..." matched no packages\n'), false);
+  assert.equal(gomod.detect("go: creating new go.mod: module shop\n"), false);
+  // And a chain is only a chain once it says what could not be got. "X imports" with
+  // nothing under it is go part way through a sentence, not a failure.
+  assert.equal(gomod.detect("go: shop imports\n"), false);
+  assert.equal(gomod.detect("go: shop imports\n\tshop/internal/store imports\n"), false);
+  assert.equal(gomod.detect("go: errors parsing go.mod:\ngo.mod:3: bad\n"), true);
+  const claimed = readdirSync(join(here, "fixtures")).sort()
+    .filter((n) => { try { return gomod.detect(fx(n)); } catch { return false; } });
+  assert.deepEqual(claimed, ["gomod_chain_fail.txt", "gomod_download_fail.txt",
+    "gomod_parse_fail.txt", "gomod_parse_multi_fail.txt", "gomod_resolve_fail.txt"]);
+  console.log("  ok   go mod reads what can only be a failure, and no progress line");
+  pass++;
+} catch (e) { console.log(`  FAIL go mod claims\n       ${e.message}`); fail++; }
 
 console.log(`\n  ${pass} passed, ${fail} failed`);
 process.exit(fail ? 1 : 0);
