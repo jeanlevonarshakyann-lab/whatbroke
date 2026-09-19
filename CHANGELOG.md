@@ -189,6 +189,19 @@
   ever shortened and every diagnostic showed its full absolute path.
 - The exhaustive phases of `npm run test:heavy` report where they are. They take minutes,
   and a suite that prints nothing for minutes cannot be told from one that has hung.
+- A command that cannot be executed is reported rather than thrown. node delivers some
+  spawn failures by raising from `spawn()` itself instead of emitting `error` on the
+  child, so the handler attached to the returned child never saw them: a file with no
+  shebang (ENOEXEC) and an empty command name both escaped as a node stack trace under
+  whatbroke's own exit code. Both now produce the same `spawn-error` report and exit 127
+  that a missing command already did, and the message names the command, which the
+  ENOEXEC one does not. `whatbroke -- pnpm test` found this against a stock pnpm, whose
+  installed placeholder binary has no shebang. What a shebang-less file does is node's
+  choice and not the same everywhere - posix_spawn reports ENOEXEC, execvp retries it
+  under `/bin/sh` and runs it - so what is promised is the part that is whatbroke's:
+  it never throws, stdout is always one valid report, and the report says which command
+  could not start. Not what node called the reason: the same errno is `ENOEXEC` on some
+  versions and `Unknown system error -8` on others.
 
 - Byte-identical CI retry blocks are collapsed before parsing. De-duplication already
   showed each diagnostic once, but 67 of 200 duplicated fixtures still changed their

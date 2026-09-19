@@ -232,7 +232,7 @@ These hold whatever the log says, and each is a test that fails the day it stops
 true.
 
 - **The exit code is the command's own**, in every output mode: the shell's code for a
-  signal, and 127 for a command that does not exist. *(test/guarantees.js)*
+  signal, and 127 for a command that could not be started. *(test/guarantees.js)*
 - **A failed command never reads as anything else.** A headline over real failures never
   sounds like success, and a guess says it is one. *(test/guarantees.js, test/tools/generic.js)*
 - **Output it cannot read is never swallowed.** The command's output streams as it runs
