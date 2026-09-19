@@ -1,6 +1,6 @@
 import assert from "node:assert/strict";
 import { spawn, spawnSync } from "node:child_process";
-import { mkdtempSync, readFileSync, rmSync } from "node:fs";
+import { mkdtempSync, readFileSync, rmSync, writeFileSync } from "node:fs";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
 import { fileURLToPath } from "node:url";
@@ -146,6 +146,57 @@ export async function runCliTests(cli = fileURLToPath(new URL("../bin/whatbroke.
     assert.equal(result.fallback.reason, "spawn-error");
     assert.match(result.error, /ENOENT/);
     assert.match(r.stderr, /whatbroke-missing-cli-test-command/);
+  });
+
+  await check("a command that cannot be executed is reported, not thrown", () => {
+    // Not every spawn failure arrives the same way. ENOENT is delivered as an "error"
+    // event on the child; ENOEXEC - the kernel refusing to exec a file, which is what a
+    // script with no shebang is - is raised by spawn() itself, before any handler can be
+    // attached to a child that was never created. Both mean the command never started,
+    // so both have to produce the same report rather than a node stack trace. pnpm ships
+    // a placeholder binary with no shebang, so `whatbroke -- pnpm test` reached this.
+    //
+    // A shebang is a POSIX idea: Windows decides how to run a file from its extension,
+    // so there is no ENOEXEC to provoke there. The synchronous path this covers is still
+    // exercised on every platform by the empty-name case below.
+    if (process.platform === "win32") return;
+    const dir = mkdtempSync(join(tmpdir(), "whatbroke-noexec-"));
+    const script = join(dir, "no-shebang-cli-test");
+    writeFileSync(script, "echo hello\n", { mode: 0o755 });
+    try {
+      const r = run(["--json", script]);
+      // What happens next is node's choice, not this tool's: posix_spawn reports
+      // ENOEXEC, while execvp retries the file under /bin/sh and runs it. Both are
+      // legitimate and both ship in supported node versions, so the assertion is the
+      // part that is whatbroke's to keep - it never throws, and stdout is always one
+      // valid report.
+      assert.doesNotMatch(r.stderr, /internal\/child_process/, "the failure escaped as a stack trace");
+      const result = JSON.parse(r.stdout);
+      if (result.fallback?.reason !== "spawn-error") return;   // node ran it under sh
+      assert.equal(r.status, 127);
+      assert.equal(result.exitCode, 127);
+      assert.equal(result.commandExitCode, null);
+      // Not the errno's name: node calls this one ENOEXEC on some versions and
+      // "Unknown system error -8" on others, which is the same number unmapped. What is
+      // asserted is what belongs to whatbroke - that the report says which command
+      // could not start, whatever node called the reason. On the versions that DO name
+      // it, node leaves the file out of the message, so this is not free either way.
+      assert.match(result.error, /no-shebang-cli-test/);
+      assert.match(r.stderr, /no-shebang-cli-test/);
+    } finally { rmSync(dir, { recursive: true, force: true }); }
+  });
+
+  await check("an empty command name is a spawn failure, not a crash", () => {
+    // `whatbroke -- $CMD` in a script where CMD is unset. node rejects the empty name
+    // from spawn() itself, the same synchronous path as ENOEXEC, and the report it used
+    // to produce was a stack trace and an exit code that belonged to whatbroke.
+    const r = run(["--json", ""]);
+    assert.equal(r.status, 127);
+    const result = JSON.parse(r.stdout);
+    assert.equal(result.exitCode, 127);
+    assert.equal(result.commandExitCode, null);
+    assert.equal(result.fallback.reason, "spawn-error");
+    assert.doesNotMatch(r.stderr, /internal\/child_process|node:child_process/);
   });
 
   await check("unknown and malformed options are rejected before launching commands", () => {

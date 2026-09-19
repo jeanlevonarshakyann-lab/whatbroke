@@ -187,27 +187,44 @@ if (argv.length === 0) {
     report(text, 0, truncated, null, lines);
   });
 } else {
-  const child = spawn(argv[0], argv.slice(1), { stdio: ["inherit", "pipe", "pipe"] });
-  // Both streams share one budget, so interleaved stdout/stderr keeps its ordering
-  // within each stream and the cap still means what --max-bytes says it means.
-  const capture = createCapture(maxBytes);
-  const tap = (stream, out, suppress) => {
-    stream.on("data", (d) => {
-      if (!suppress) out.write(d);
-      capture.push(d);
-    });
+  // A command that never starts is still a command that failed, and saying so is this
+  // tool's whole job - so the two ways node reports that have to end in the same place.
+  // A command that is not there arrives as an "error" event on the child. A file the
+  // kernel refuses to exec - no shebang, or built for another architecture - is thrown
+  // by spawn() itself, so there is no child to attach a handler to and the throw lands
+  // in the user's terminal as a node stack trace. pnpm installs a placeholder binary
+  // with no shebang, which is how `whatbroke -- pnpm test` found this.
+  const startFailed = (e) => {
+    // The ENOENT message names the file; the ENOEXEC one is the bare "spawn ENOEXEC",
+    // and a report that cannot say WHICH command failed to start is worth little in a
+    // log that ran ten of them.
+    const said = e.message.includes(argv[0]) ? e.message : `spawn ${argv[0]} ${e.code ?? e.message}`;
+    process.stderr.write(`whatbroke: ${said}\n`);
+    report("", 127, false, said);
   };
-  tap(child.stdout, process.stdout, quiet);
-  // Keep diagnostics visible on stderr while JSON remains clean on stdout.
-  tap(child.stderr, process.stderr, quiet && !json);
-  child.on("error", (e) => {
-    process.stderr.write(`whatbroke: ${e.message}\n`);
-    report("", 127, false, e.message);
-  });
-  child.on("close", (code, signal) => {
-    if (code === 0 && !json) { process.exitCode = 0; return; }
-    const signalCode = signal ? 128 + (osConstants.signals?.[signal] ?? 1) : null;
-    const { text, truncated, lines } = capture.finish();
-    report(text, code ?? signalCode ?? 1, truncated, null, lines);
-  });
+  let child = null;
+  try {
+    child = spawn(argv[0], argv.slice(1), { stdio: ["inherit", "pipe", "pipe"] });
+  } catch (e) { startFailed(e); }
+  if (child) {
+    // Both streams share one budget, so interleaved stdout/stderr keeps its ordering
+    // within each stream and the cap still means what --max-bytes says it means.
+    const capture = createCapture(maxBytes);
+    const tap = (stream, out, suppress) => {
+      stream.on("data", (d) => {
+        if (!suppress) out.write(d);
+        capture.push(d);
+      });
+    };
+    tap(child.stdout, process.stdout, quiet);
+    // Keep diagnostics visible on stderr while JSON remains clean on stdout.
+    tap(child.stderr, process.stderr, quiet && !json);
+    child.on("error", startFailed);
+    child.on("close", (code, signal) => {
+      if (code === 0 && !json) { process.exitCode = 0; return; }
+      const signalCode = signal ? 128 + (osConstants.signals?.[signal] ?? 1) : null;
+      const { text, truncated, lines } = capture.finish();
+      report(text, code ?? signalCode ?? 1, truncated, null, lines);
+    });
+  }
 }
