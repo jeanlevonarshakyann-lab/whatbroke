@@ -1,0 +1,1 @@
+go: github.com/nonexistent/gone@v1.2.3: module lookup disabled by GOPROXY=off
