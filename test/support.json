@@ -59,6 +59,7 @@
     "phpunit": ["PHPUnit", "PHPUnit `--log-junit` / `--testdox` / `--log-teamcity`"],
     "cargo --message-format=json": ["cargo `--message-format=json`"],
     "cargo": ["cargo test", "cargo build", "cargo clippy"],
+    "cargo fmt": ["cargo fmt `--check`"],
     "go vet json": ["go vet `-json`"],
     "go test -json": ["go test -json"],
     "go": ["go test", "go build", "go vet"],

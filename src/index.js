@@ -59,6 +59,7 @@ import govetjson from "./extractors/govetjson.js";
 import gotest from "./extractors/gotest.js";
 import cargo from "./extractors/cargo.js";
 import cargojson from "./extractors/cargojson.js";
+import rustfmt from "./extractors/rustfmt.js";
 import { esbuild, vite } from "./extractors/bundler.js";
 import git from "./extractors/git.js";
 import kubectl from "./extractors/kubectl.js";
@@ -75,7 +76,7 @@ import { stripRedrawnCiPrefix, wrapperCandidates } from "./normalize.js";
 import { joinSources, preserveSourceRange, rangesOverlap, setLines, setParser, sourceRange } from "./ownership.js";
 
 // order matters: most specific first, generic last
-export const EXTRACTORS = [pytest, nodetest, bun, bunRuntime, deno, denoRuntime, denoLint, denoFmt, playwright, jestjson, jest, mochajson, mochaxunit, mocha, ava, jasmine, rubocop, tap, taptext, vitest, unittest, traceback, eslintjson, eslint, ruff, pylint, flake8, golangci, markdownlint, stylelint, shellcheck, yamllint, biome, oxlint, black, prettier, sass, less, webpack, babel, swc, pyright, mypy, cmake, terraform, swift, clang, minitest, ruby, perl, php, rspec, junitjvm, jvm, dotnettest, dotnet, phpunit, cargojson, cargo, govetjson, gojson, gotest, esbuild, vite, node, tsc, git, kubectl, docker, make, npm, pnpm, yarn, pip, generic];
+export const EXTRACTORS = [pytest, nodetest, bun, bunRuntime, deno, denoRuntime, denoLint, denoFmt, playwright, jestjson, jest, mochajson, mochaxunit, mocha, ava, jasmine, rubocop, tap, taptext, vitest, unittest, traceback, eslintjson, eslint, ruff, pylint, flake8, golangci, markdownlint, stylelint, shellcheck, yamllint, biome, oxlint, black, prettier, sass, less, webpack, babel, swc, pyright, mypy, cmake, terraform, swift, clang, minitest, ruby, perl, php, rspec, junitjvm, jvm, dotnettest, dotnet, phpunit, cargojson, rustfmt, cargo, govetjson, gojson, gotest, esbuild, vite, node, tsc, git, kubectl, docker, make, npm, pnpm, yarn, pip, generic];
 
 /** Whether two readings each quote the offending source line, and quote different ones.
  *

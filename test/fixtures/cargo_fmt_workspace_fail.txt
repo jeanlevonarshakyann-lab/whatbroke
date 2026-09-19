@@ -1,0 +1,23 @@
+Diff in /home/dev/shop/crates/api/src/lib.rs:1:
+-pub fn route(path:&str)->bool{
+-    path.starts_with( "/api" )
++pub fn route(path: &str) -> bool {
++    path.starts_with("/api")
+ }
+ 
+Diff in /home/dev/shop/crates/core/src/lib.rs:1:
+-pub struct Money{ pub cents : i64 }
++pub struct Money {
++    pub cents: i64,
++}
+ 
+ impl Money {
+-    pub fn add(&self,other:&Money)->Money{
+-        Money{cents:self.cents+other.cents}
++    pub fn add(&self, other: &Money) -> Money {
++        Money {
++            cents: self.cents + other.cents,
++        }
+     }
+ }
+ 
