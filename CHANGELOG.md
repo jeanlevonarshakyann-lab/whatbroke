@@ -2,6 +2,16 @@
 
 ## Unreleased
 
+- A located warning is recognised as an aside even when it names the rule that fired.
+  The fallback already skipped `file:line: warning:` - gcc, clang, javac and go all
+  write it, and a javac run that compiled cleanly once came back as "3 errors" - but the
+  colon is not always the next character after the word. oxlint writes
+  `shop.js:1:7: warning eslint(no-unused-vars): ...`, so an oxlint run that exited 0 on
+  three warnings read as "3 errors (no parser for this tool - best guess)", while the
+  same run under eslint correctly read as nothing. What may sit between the severity and
+  its colon is a rule name, optionally qualified by the plugin that owns it; anything
+  longer is prose, and prose after a severity word means the word was not a severity.
+
 - Byte-identical CI retry blocks are collapsed before parsing. De-duplication already
   showed each diagnostic once, but 67 of 200 duplicated fixtures still changed their
   headline or another public field because parser-specific tallies counted both copies.

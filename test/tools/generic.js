@@ -75,5 +75,37 @@ try {
   pass++;
 } catch (e) { console.log(`  FAIL unix error shape\n       ${e.message}`); fail++; }
 
+// A tool that exits 0 having only warned did not fail, and the fallback saying it did
+// three times is the worst thing this parser can do. The severity word after a location
+// is what says so - but the colon behind it is not always the next character, because a
+// linter that reports which rule fired names the rule in between. These lines are real
+// output: oxlint 1.x, clang 17 and javac 21.
+try {
+  const aside = [
+    "shop.js:1:7: warning eslint(no-unused-vars): Variable 'unused' is declared but never used.",
+    "shop.js:4:3: warning eslint(no-debugger): `debugger` statement is not allowed",
+    "warn.c:4:14: warning: more '%' conversions than data arguments [-Wformat-insufficient-args]",
+    "warn.c:3:10: note: initialize the variable 'x' to silence this warning",
+    "Orders.java:8: warning: [rawtypes] found raw type: List",
+  ];
+  for (const l of aside) {
+    assert.ok(!analyse(`Starting\n${l}\n`), `a warning is not a failure: ${l}`);
+  }
+  // ...and the same shape at error severity still is, rule name and all. Widening the
+  // aside until it swallowed these would trade one silent lie for a louder one.
+  const real = [
+    "shop.js:1:7: error eslint(no-unused-vars): Variable 'unused' is declared but never used.",
+    "bad.c:3:13: error: incompatible pointer to integer conversion",
+    // The word alone does not make an aside: what follows a real severity is prose, and
+    // prose is how you tell it from a rule name.
+    "deploy.sh:2:1: warning handling failed catastrophically: the build is dead",
+  ];
+  for (const l of real) {
+    assert.ok(analyse(`Starting\n${l}\n`)?.failures.length, `should still be read: ${l}`);
+  }
+  console.log("  ok   a located warning is an aside, whether or not it names its rule");
+  pass++;
+} catch (e) { console.log(`  FAIL located aside\n       ${e.message}`); fail++; }
+
 console.log(`\n  ${pass} passed, ${fail} failed`);
 process.exit(fail ? 1 : 0);
