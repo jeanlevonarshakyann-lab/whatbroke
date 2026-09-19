@@ -1,4 +1,4 @@
-import { elements, firstElement, githubAnnotations, lineAt, xmlAttributes, xmlText } from "../util.js";
+import { elements, firstElement, githubAnnotations, isNoise, lineAt, xmlAttributes, xmlText } from "../util.js";
 import { joinSources, withSource } from "../ownership.js";
 const FAIL_RE = /^[^\S\n]*FAIL[^\S\n]+(.+?)[^\S\n]+>[^\S\n]+(.+?)[^\S\n]*$/;
 // A suite that throws before any test is declared cannot be named after a test, so
@@ -24,6 +24,39 @@ function suiteOf(line) {
   return inside && head.endsWith(inside) ? m : null;
 }
 const LOC_RE = /^[^\S\n]*[❯>][^\S\n]+(.+?):(\d+):(\d+)[^\S\n]*$/;
+// vitest writes a frame as `❯ file:line:col`, and puts the function in front of the file
+// when the frame has one: `❯ lookup cart.js:2:40`, `❯ Object.<anonymous> test/a.js:1:2`.
+// Reading everything before the position as the file reported a file called
+// "lookup cart.js" for every failure that threw inside a named function - which is how
+// a helper fails - and, for a file that would not load, a file called "error
+// node_modules/rolldown/…", from the first frame of vitest's own bundler.
+//
+// A function name never holds a path separator, and a path can hold a space - vitest
+// prints `❯ vitestdir/my tests/sum.test.js:2:36` for a directory named that way - so
+// the first word is the function when it holds no separator and something follows it.
+// A directory with a space in its name at the very root of the project, in a frame with
+// no function, would be read as a function called after it; a frame inside a named
+// function is the far commoner of the two. The frame in vitest's own bundler, or in a
+// dependency, is not where the failure is: the first frame in your code is.
+function frameOf(line) {
+  const m = line.match(LOC_RE);
+  if (!m) return null;
+  let file = m[1];
+  const space = file.indexOf(" ");
+  if (space > 0 && !/[\\/]/.test(file.slice(0, space)) && file.slice(space + 1).trim()) file = file.slice(space + 1).trim();
+  // vitest prints paths relative to the project, so a dependency's frame has no separator in
+  // front of its node_modules.
+  return { file, line: +m[2], col: +m[3], noise: isNoise(file) || /^node_modules[\\/]/.test(file) };
+}
+/** The first frame from `at` on that is in your code, before `until` - or null when every
+ *  frame there is a dependency's or vitest's own, which points at nothing of yours. */
+function ownFrame(lines, at, until) {
+  for (let k = at; k < until; k++) {
+    const f = frameOf(lines[k]);
+    if (f && !f.noise) return { ...f, at: k };
+  }
+  return null;
+}
 const SEP_RE = /^[⎯─-╿\s]*(?:\[\d+\/\d+\])?[⎯─-╿\s]*$/;
 // vitest prints a "- Expected / + Received" diff; keep the values, drop the header.
 // vitest labels its diff "- Expected:" / "+ Received:" - with a colon. Keeping those
@@ -143,10 +176,8 @@ function vitestJunit(s) {
     if (!outcome) continue;
     const body = xmlText(outcome[3] ?? "").split("\n");
     let file = a.classname, line, col;
-    for (const raw of body) {
-      const at = raw.match(VITEST_FRAME);
-      if (at) { file = at[1]; line = +at[2]; col = +at[3]; break; }
-    }
+    const frame = ownFrame(body, 0, body.length);
+    if (frame) ({ file, line, col } = frame);
     // The first line of the body is the message with its class in front of it, which is
     // what the pretty reporter prints; the attribute holds the same text without it.
     const message = saidIn(body) || xmlAttributes(outcome[2]).message || "";
@@ -172,10 +203,8 @@ function vitestAnnotations(s) {
     if (parts.length < 2 || base(parts[0]) !== base(a.props.file)) continue;
     const body = a.message.split("\n");
     let file = a.props.file, line = +a.props.line || undefined, col = +(a.props.column ?? a.props.col) || undefined;
-    for (const raw of body) {
-      const at = raw.match(VITEST_FRAME);
-      if (at) { file = at[1]; line = +at[2]; col = +at[3]; break; }
-    }
+    const frame = ownFrame(body, 0, body.length);
+    if (frame) ({ file, line, col } = frame);
     const name = parts.slice(1).join(" > ");
     out.push(withSource({
       file, line, col, title: name, subject: name, severity: "error", message: saidIn(body),
@@ -228,8 +257,8 @@ export default {
       for (; j < n; j++) {
         const l = lines[j];
         if (FAIL_RE.test(l) || j - i > MESSAGE_GAP) break;
-        const lm = l.match(LOC_RE);
-        if (lm) { loc = { file: lm[1], line: +lm[2], col: +lm[3] }; break; }
+        const lm = frameOf(l);
+        if (lm) { loc = lm.noise ? null : { file: lm.file, line: lm.line, col: lm.col }; break; }
         if (l.trim() && !SEP_RE.test(l)) { message = l.trim(); break; }
       }
       if (!message) continue;
@@ -238,9 +267,11 @@ export default {
       // line that closes it.
       let end = j + 1;
       if (stop < n && nextFail[j + 1] !== stop) {
-        const lm = lines[stop].match(LOC_RE);
-        loc = { file: lm[1], line: +lm[2], col: +lm[3] };
-        end = stop + 1;
+        // The first frame in your code, not the first frame: a file that would not load
+        // unwinds through vitest's own bundler first, and those frames are not yours.
+        const own = ownFrame(lines, stop, nextFail[j + 1]);
+        loc = own ? { file: own.file, line: own.line, col: own.col } : null;
+        end = (own?.at ?? stop) + 1;
       }
       const diff = [];
       for (let k = nextDiff[j + 1]; k < stop && diff.length < 4; k = nextDiff[k + 1]) { diff.push(lines[k].trim()); end = Math.max(end, k + 1); }

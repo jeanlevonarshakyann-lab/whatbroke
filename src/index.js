@@ -111,13 +111,18 @@ function located(failure) {
   return preserveSourceRange(failure, copy);
 }
 
-function dedupeFailures(failures) {
-  // Collapsing here rather than in each parser puts it on every failure that reaches the
-  // reader, from every parser, and it happens before the key is built - so two failures
-  // that differ only in how many times they repeated themselves also dedupe.
-  const normalized = failures.map((f) => (f.message
-    ? preserveSourceRange(f, { ...f, message: collapseRepeats(f.message) })
-    : f));
+// Put a parser's wording into the form used for identity checks. This must happen before
+// comparing a losing parser with the winner as well as before deduplicating one parser's
+// own list. Otherwise the winner can hold `Unexpected response. (x24)` while another
+// parser still holds the 24 repeated lines; they compare as different, then normalize to
+// the same diagnosis after the comparison and are both reported.
+function normalizeFailure(failure) {
+  return failure.message
+    ? preserveSourceRange(failure, { ...failure, message: collapseRepeats(failure.message) })
+    : failure;
+}
+
+function dedupeNormalizedFailures(normalized) {
   const seen = new Map();
   const unique = [];
   for (const failure of normalized) {
@@ -141,6 +146,13 @@ function dedupeFailures(failures) {
     }
   }
   return unique;
+}
+
+function dedupeFailures(failures) {
+  // Collapsing here rather than in each parser puts it on every failure that reaches the
+  // reader, from every parser, and it happens before the key is built - so two failures
+  // that differ only in how many times they repeated themselves also dedupe.
+  return dedupeNormalizedFailures(failures.map(normalizeFailure));
 }
 
 /** Whether two paths name one file: the same path, or a path and a longer one that ends
@@ -274,7 +286,7 @@ function otherTools(s, winner, mine, cluster, extractors) {
     if (!r?.failures?.length) continue;
     // A shared location does not prove a shared diagnostic, and missing locations
     // say nothing at all. Compare diagnostic content consistently for the winner and other tools.
-    const fresh = dedupeFailures(r.failures.map(located)
+    const fresh = dedupeNormalizedFailures(r.failures.map(located).map(normalizeFailure)
       .filter((f) => !isClaimed(f))
       .filter((f) => !sameSourceAsClaimed(f))
       .filter((f) => !f.file || !(locations.get(JSON.stringify([fileName(f.file), f.line ?? null])) ?? [])

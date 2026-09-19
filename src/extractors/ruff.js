@@ -28,13 +28,22 @@ const RUFF_SAYS_SO = /^\[\*\][^\S\n]+\d+[^\S\n]+fixable|title=ruff[^\S\n]*\(/m;
 // The lookahead has to refuse a digit as well as the colon. Refusing only the colon let
 // the code match a PREFIX of pylint's - "C011" out of "C0114:" - and the guard then
 // looked at the "4" and was satisfied.
-const CONCISE_RE = /^(.+?):(\d+):(\d+):[^\S\n]+([A-Z]+\d+|invalid-syntax)(?![\w:])[^\S\n]*(?:\[[*x]\][^\S\n]*)?(.*)$/;
+// A line that opens a workflow command is never a concise finding, however the text
+// after its `::` is shaped.
+const CONCISE_RE = /^(?!::)(.+?):(\d+):(\d+):[^\S\n]+([A-Z]+\d+|invalid-syntax)(?![\w:])[^\S\n]*(?:\[[*x]\][^\S\n]*)?(.*)$/;
 // --output-format=grouped puts the file on its own line and indents the rest.
 const GROUP_FILE_RE = /^(\S.*?):[^\S\n]*$/;
 const GROUP_ENTRY_RE = /^[^\S\n]+(\d+):(\d+)[^\S\n]+([A-Z]+\d+|invalid-syntax)(?![\w:])[^\S\n]*(?:\[[*x]\][^\S\n]*)?(.*)$/;
 // --output-format=github, the one a GitHub Actions job uses so the findings annotate the
 // diff. The message is percent-encoded because a workflow command may not span lines.
-const GITHUB_RE = /^::(?:error|warning)[^\S\n]+title=ruff[^\S\n]*\(([^)]+)\),file=(.+?),line=(\d+),col=(\d+)[^:]*::(.*)$/;
+// A workflow annotation may carry a column only when it stays on one line, so for a
+// finding that spans lines - an unsorted import block is one - ruff writes `line=1,
+// endLine=2` and no `col=` at all. Requiring the column meant that line matched nothing
+// here and fell through to the concise pattern below, which read everything up to the
+// message's own `shop.py:1:1:` as the file: a file named after the whole annotation, and
+// the percent-encoded advice left in the message. The column is still in the message
+// ruff repeats after the `::`, and is read from there.
+const GITHUB_RE = /^::(?:error|warning)[^\S\n]+title=ruff[^\S\n]*\(([^)]+)\),file=(.+?),line=(\d+)(?:,col=(\d+))?[^:]*::(.*)$/;
 
 // --output-format=json and json-lines write the same record, an array of them or one a
 // line.
@@ -166,8 +175,9 @@ function oneLinePerFinding(lines) {
       const text = gh[5].replace(/%0A/g, "\n").replace(/%25/g, "%").split("\n");
       const head = text[0].replace(/^.*?:\d+:\d+:[^\S\n]+[A-Z]+\d+[^\S\n]*/, "").trim();
       const help = text.slice(1).map((l) => l.replace(/^[^\S\n]*help:[^\S\n]*/, "").trim()).filter(Boolean);
+      const col = gh[4] ? +gh[4] : +(text[0].match(/^.*?:\d+:(\d+):/)?.[1] ?? 0) || undefined;
       failures.push(withSource({
-        file: gh[2], line: +gh[3], col: +gh[4],
+        file: gh[2], line: +gh[3], col,
         title: gh[1], code: gh[1], severity: "error",
         message: [head, ...help].filter(Boolean).join("\n"),
       }, i, i + 1));

@@ -251,6 +251,20 @@
       "generic": 1
     }
   },
+  "bun_throw_fail.txt": {
+    "winner": "bun test",
+    "parser": "bun test",
+    "failures": 3,
+    "claimants": [
+      "bun test",
+      "node",
+      "generic"
+    ],
+    "shadow": {
+      "node": 2,
+      "generic": 1
+    }
+  },
   "bunrun_crash_fail.txt": {
     "winner": "bun",
     "parser": "bun",
@@ -1271,6 +1285,19 @@
       "generic"
     ],
     "shadow": {}
+  },
+  "eslint_parse_fail.txt": {
+    "winner": "eslint",
+    "parser": "eslint",
+    "failures": 7,
+    "claimants": [
+      "eslint",
+      "stylelint",
+      "generic"
+    ],
+    "shadow": {
+      "generic": 1
+    }
   },
   "eslint_text_same_fail.txt": {
     "winner": "eslint",
@@ -3373,6 +3400,18 @@
     ],
     "shadow": {}
   },
+  "prettier_parse_fail.txt": {
+    "winner": "prettier",
+    "parser": "prettier",
+    "failures": 2,
+    "claimants": [
+      "prettier",
+      "generic"
+    ],
+    "shadow": {
+      "generic": 1
+    }
+  },
   "py_indent_fail.txt": {
     "winner": "python",
     "parser": "python",
@@ -3922,6 +3961,16 @@
     "winner": "ruff",
     "parser": "ruff",
     "failures": 3,
+    "claimants": [
+      "ruff",
+      "generic"
+    ],
+    "shadow": {}
+  },
+  "ruff_github_multiline_fail.txt": {
+    "winner": "ruff",
+    "parser": "ruff",
+    "failures": 4,
     "claimants": [
       "ruff",
       "generic"
@@ -4673,6 +4722,30 @@
     ],
     "shadow": {
       "generic": 2
+    }
+  },
+  "vitest_load_frames_fail.txt": {
+    "winner": "vitest",
+    "parser": "vitest",
+    "failures": 1,
+    "claimants": [
+      "vitest",
+      "generic"
+    ],
+    "shadow": {
+      "generic": 2
+    }
+  },
+  "vitest_named_frame_fail.txt": {
+    "winner": "vitest",
+    "parser": "vitest",
+    "failures": 2,
+    "claimants": [
+      "vitest",
+      "generic"
+    ],
+    "shadow": {
+      "generic": 4
     }
   },
   "vitest_projects_fail.txt": {

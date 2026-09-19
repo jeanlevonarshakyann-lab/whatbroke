@@ -1,0 +1,4 @@
+::error title=ruff (I001),file=/home/dev/app/shop.py,line=1,endLine=2::shop.py:1:1: I001 Import block is un-sorted or un-formatted%0A  help: Organize imports
+::error title=ruff (F401),file=/home/dev/app/shop.py,line=1,col=8,endLine=1,endColumn=10::shop.py:1:8: F401 `os` imported but unused%0A  help: Remove unused import: `os`
+::error title=ruff (UP035),file=/home/dev/app/shop.py,line=2,col=1,endLine=2,endColumn=24::shop.py:2:1: UP035 `typing.List` is deprecated, use `list` instead
+::error title=ruff (UP006),file=/home/dev/app/shop.py,line=3,col=18,endLine=3,endColumn=22::shop.py:3:18: UP006 Use `list` instead of `List` for type annotation%0A  help: Replace with `list`

@@ -43,6 +43,14 @@ const unfile = (p) => (p.startsWith("file://") ? decodeURIComponent(p.slice(7)) 
 const FAIL_RE = /^(?:\(fail\)[^\S\n]+(.+?)(?:[^\S\n]+\[[\d.]+m?s\])?|\u2717[^\S\n]+(.+?)[^\S\n]+\[[\d.]+m?s\])[^\S\n]*$/;
 const FAIL_ANY = /^(?:\(fail\)[^\S\n]+|\u2717[^\S\n]+.+?[^\S\n]+\[[\d.]+m?s\][^\S\n]*$)/m;
 const ERROR_RE = /^error:[^\S\n]*(.+)$/;
+// A thrown builtin is printed with its class, the way node prints one - "TypeError: null
+// is not an object (evaluating 'null.charge')", "RangeError: Array length must be ..." -
+// and only a thrown Error, or an assertion, is printed as "error:". Reading only the
+// latter meant a test that threw a TypeError - a null dereference, the commonest way a
+// test fails short of an assertion - had no block: it was reported as "its output is not
+// in this log" while its output sat right above the (fail) line, and node's parser then
+// read those same lines as a crash of its own, under node's name.
+const CLASS_ERROR_RE = /^\w*(?:Error|Exception):[^\S\n]/;
 const AT_RE = /^[^\S\n]*at[^\S\n]+.*?\((.+?):(\d+):(\d+)\)[^\S\n]*$/;
 const SOURCE_RE = /^[^\S\n]*\d+[^\S\n]*\|/;              // bun's echoed source context
 const CARET_RE = /^[^\S\n]*\^+[^\S\n]*$/;
@@ -144,7 +152,7 @@ export default {
           start = j + 1;
           break;
         }
-        if (ERROR_RE.test(t)) { sawError = true; start = j; continue; }
+        if (ERROR_RE.test(t) || CLASS_ERROR_RE.test(t)) { sawError = true; start = j; continue; }
         if (AT_RE.test(raw) || SOURCE_RE.test(raw) || CARET_RE.test(raw)) { start = j; continue; }
         // what bun prints under "error:" - the diff, and the pair it compared
         if (/^[-+]/.test(t) || /^(?:Expected|Received):/.test(t)) { start = j; continue; }

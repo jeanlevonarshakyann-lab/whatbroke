@@ -343,6 +343,10 @@ try {
     // Node's spec reporter prints a crashed test file's raw runtime exception before
     // its own roll-up. Both parsers see real output; node --test owns the shared source
     // range so the exception is presented once under the command that was run.
+    // bun prints a thrown builtin with its class and a node-shaped frame under it, so
+    // node's parser matches by design; bun test is listed first and reads the block as
+    // the test's, and node's reading of the same lines is dropped as a copy.
+    "bun_throw_fail.txt": ["bun test", "node"],
     "nodetest_reporter_spec_crash_fail.txt": ["node --test", "node"],
     "nodetest_reporter_spec_syntax_fail.txt": ["node --test", "node"],
     // swc ends a failed compile with "Error: Failed to compile 1 file with swc.", which

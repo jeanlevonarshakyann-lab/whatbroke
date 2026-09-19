@@ -367,6 +367,16 @@ const CASES = [
       assert.doesNotMatch(JSON.stringify(r.failures), /%0A|endLine=|::/);
       assert.match(r.failures[0].message, /Remove unused import/);
     } },
+  // Captured with ruff 0.15. A finding that spans lines is annotated with `line=1,
+  // endLine=2` and no column, since a workflow annotation may only carry one on a single
+  // line. Requiring the column sent that line to the concise pattern, which read the
+  // whole annotation up to the message's own `shop.py:1:1:` as the file.
+  { file: "ruff_github_multiline_fail.txt", tool: "ruff", n: 4, check: (r) => {
+      assert.ok(r.failures.every((f) => f.file === "/home/dev/app/shop.py"), JSON.stringify(r.failures.map((f) => f.file)));
+      assert.deepEqual(r.failures.map((f) => [f.code, f.line, f.col]), [["I001", 1, 1], ["F401", 1, 8], ["UP035", 2, 1], ["UP006", 3, 18]]);
+      assert.doesNotMatch(JSON.stringify(r.failures), /%0A|endLine=|::/);
+      assert.match(r.failures[0].message, /Organize imports/);
+    } },
   { file: "ruff_json_fail.txt", tool: "ruff", n: 3, check: (r) => {
       assert.deepEqual(r.failures.map((f) => [f.line, f.col, f.code]), [
         [1, 8, "F401"], [2, 8, "F401"], [6, 5, "F841"],
