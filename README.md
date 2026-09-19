@@ -153,6 +153,7 @@ out:
   "exitCode": 0,
   "inputMode": "pipe",
   "commandExitCode": null,
+  "status": null,
   "fallback": null,
   "truncated": false,
   "error": null,
@@ -188,6 +189,10 @@ has keeps its meaning. Spawn failures set `error` and use exit code `127`.
 - `commandExitCode` is the wrapped command's shell-compatible exit code, or `null`
   for piped input and commands that could not be started. `exitCode` is whatbroke's
   own process exit code, including `0` for processed pipes and `127` for spawn failures.
+- `status` is what the exit status says on its own, or `null` when it says nothing:
+  `signal` (the signal that killed the command, as the operating system names it, or
+  `null`), the `code` it was read from, and `says`, one sentence of what that means. See
+  [When nothing was printed](#when-nothing-was-printed).
 - `fallback` is `null` for recognized diagnostics, successful commands, and empty
   pipes. Otherwise it contains `reason` (`"unrecognized-output"`, `"no-output"`,
   or `"spawn-error"`), a human-readable `message`, and `rawOutput` containing the
@@ -704,6 +709,49 @@ variable.
 ## Why it isn't an LLM
 
 Because you already know what's wrong the instant you can see it. The problem was never comprehension, it was that the answer is on line 312 of 400. A parser that knows pytest's format is faster, free, offline, deterministic, and never invents a stack frame.
+
+## When nothing was printed
+
+A command that is killed writes nothing on the way out. `cargo build` stopped by the
+kernel's out-of-memory killer, a suite cancelled by a job timeout, a crash in a C
+extension — each ends with an empty log and a number, and there is no diagnostic for any
+parser to find. The number is not nothing:
+
+```
+$ whatbroke -- cargo build
+
+Command failed with exit code 137.
+Killed by SIGKILL, which no program can catch or shut down cleanly for. On a build
+machine that is usually the kernel running out of memory, or a runner enforcing a limit.
+No output was captured.
+```
+
+Two different kinds of thing are said there, and whatbroke keeps them apart. **A signal is
+a fact**: the operating system reports which one ended the process, and whatbroke names
+it. **What usually sends that signal is a guess**, written as one — it is the second
+sentence, and it says "usually".
+
+An **exit code** is a number a program chose, so almost none of them mean anything on
+their own: `1` and `2` are what every program in the world returns, and `grep` returns `1`
+for finding nothing. Three are read, as the conventions they are — `127` and `126`, which
+a shell returns for a command that does not exist and one it could not run, and `124`,
+which `timeout` returns when its deadline passed — and only for a command whatbroke ran
+itself, where the shell in question is the one it spawned. A piped log's upstream status
+never reached whatbroke and is never guessed at.
+
+A run that was killed part-way still printed whatever it got to print, and that is read as
+usual. The signal is reported beside the diagnosis rather than instead of it, because a
+diagnosis from a run that did not finish is not the whole story:
+
+```
+  ✗ 1 error in 1 file
+
+  bad.ts:3  TS2322
+    Type "x" is not assignable to type "number".
+
+  ! Killed by SIGKILL, which no program can catch or shut down cleanly for. On a build
+    machine that is usually the kernel running out of memory, or a runner enforcing a limit.
+```
 
 ## When whatbroke runs the command itself
 

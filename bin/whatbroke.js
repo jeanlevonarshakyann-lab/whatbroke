@@ -181,7 +181,7 @@ function track(r, truncated, executionError, code = null) {
 }
 
 let reported = false;
-function report(raw, code, truncated = false, executionError = null, lines = null) {
+function report(raw, code, truncated = false, executionError = null, lines = null, signal = null) {
   // Spawn errors are followed by a close event. Emit exactly one result while
   // allowing stdout to drain instead of cutting off a large JSON/raw fallback.
   if (reported) return;
@@ -189,7 +189,7 @@ function report(raw, code, truncated = false, executionError = null, lines = nul
   // argv is what the user actually ran; it is evidence for detection, not decoration.
   const analysis = analyse(raw, { cluster: !noCluster, command: inputMode === "command" ? argv : null });
   const since = sinceLast ? track(analysis, truncated, executionError, code) : null;
-  const result = createReport({ analysis, raw, exitCode: code, inputMode, truncated, error: executionError, since, lines });
+  const result = createReport({ analysis, raw, exitCode: code, inputMode, truncated, error: executionError, since, lines, signal });
   if (json) {
     process.stdout.write(JSON.stringify(result, null, 2) + "\n");
   } else if (githubActions) {
@@ -236,6 +236,6 @@ if (argv.length === 0) {
     }
     const signalCode = signal ? 128 + (osConstants.signals?.[signal] ?? 1) : null;
     const { text, truncated, lines } = capture.finish();
-    report(text, code ?? signalCode ?? 1, truncated, null, lines);
+    report(text, code ?? signalCode ?? 1, truncated, null, lines, signal);
   });
 }
