@@ -14,6 +14,15 @@
   repeated diagnosis before this and one after - and that one is the cargo pair, whose
   two readings quote two different real source lines and are genuinely two. The corpus
   itself is byte-identical.
+- `git merge <missing-branch>`, `git pull` on a branch with no upstream, and `git stash
+  pop` with an empty stash are read. All three came back as "could not identify a
+  diagnostic" with the log handed back: git says each of them plainly, with no `fatal:`
+  or `error:` in front, and detection is written around that word - which is what stops
+  a bare severity line in a multi-tool log being claimed as git's. Each of the three
+  phrases is git's alone, so each can stand where a bare `fatal:` cannot. The eight
+  lines of advice under the pull one explain how to set an upstream and are not eight
+  more failures. Measured over fourteen real git failures, exactly these three change;
+  the other eleven read as they did.
 
 - Byte-identical CI retry blocks are collapsed before parsing. De-duplication already
   showed each diagnostic once, but 67 of 200 duplicated fixtures still changed their
