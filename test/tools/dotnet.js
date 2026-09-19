@@ -200,6 +200,22 @@ const CASES = [
       assert.ok(r.failures.every((f) => f.title !== "InvoiceTests.Skipped"),
         "detailed verbosity's skipped reason became a failure");
     } },
+  // Captured with the .NET SDK's `dotnet format --verify-no-changes`, the format gate most
+  // .NET CI runs. It reports through MSBuild, in the same shape the compiler uses - so the
+  // same reader should always have read it, and did not: its rule names (WHITESPACE,
+  // IMPORTS, ANALYZERS) carry no digits, and the code pattern required one.
+  { file: "dotnet_format_fail.txt", tool: "dotnet", n: 16, check: (r) => {
+      assert.equal(r.failures[0].file, "/home/dev/shop/Program.cs");
+      assert.equal(r.failures[0].line, 5);
+      assert.equal(r.failures[0].col, 22);
+      assert.equal(r.failures[0].code, "WHITESPACE");
+      assert.match(r.failures[0].message, /Fix whitespace formatting\. Delete 1 characters\./);
+      for (const f of r.failures) assert.equal(f.code, "WHITESPACE");
+      // Grouped by the fix each one needs, rather than listed sixteen times.
+      const causes = (r.clusters ?? []).filter((c) => c.reported);
+      assert.equal(causes.length, 2, "insert and delete are two things to do");
+      assert.equal(causes.reduce((n, c) => n + c.size, 0), 16);
+    } },
 ];
 
 let pass = 0, fail = 0;
@@ -275,6 +291,25 @@ try {
   console.log("  ok   dotnet test verbosity changes no extracted facts");
   pass++;
 } catch (e) { console.log(`  FAIL dotnet test verbosity\n       ${e.message}`); fail++; }
+
+// A code with no digits in it is still a code. Widening that must not widen what counts as
+// a .NET diagnostic in the first place: the file extension is what separates these from
+// TypeScript's identical `file(line,col): error TS2322:`.
+try {
+  const { EXTRACTORS } = await import("../../src/index.js");
+  const net = EXTRACTORS.find((e) => e.name === "dotnet");
+  assert.equal(net.detect("/a/Program.cs(5,22): error WHITESPACE: Fix whitespace formatting."), true);
+  assert.equal(net.detect("/a/Program.cs(5,22): error IDE0055: Fix formatting"), true);
+  assert.equal(net.detect("/a/Program.cs(5,22): error CS0103: The name does not exist"), true);
+  assert.equal(net.detect("src/app.ts(5,22): error TS2322: Type is not assignable"), false,
+    "TypeScript writes the same shape and is not .NET's");
+  // A code is an uppercase identifier. Dropping the digit requirement must not drop that
+  // too, or any word at all in the slot where a code belongs makes a line .NET's.
+  assert.equal(net.detect("/a/Program.cs(5,22): error something: went wrong"), false);
+  assert.equal(net.detect("/a/Program.cs(5,22): error Whitespace: went wrong"), false);
+  console.log("  ok   a .NET rule name without digits is still a code");
+  pass++;
+} catch (e) { console.log(`  FAIL digitless dotnet codes\n       ${e.message}`); fail++; }
 
 console.log(`\n  ${pass} passed, ${fail} failed`);
 process.exit(fail ? 1 : 0);

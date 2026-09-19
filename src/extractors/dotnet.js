@@ -5,7 +5,7 @@
 // filename that genuinely contains spaces still keeps them.
 import { joinSources, withSource } from "../ownership.js";
 
-const DIAGNOSTIC_RE = /^[^\S\n]*(.+?\.(?:cs|fs|vb))\((\d+),(\d+)\):[^\S\n]+(error|warning)[^\S\n]+([A-Z]\w*\d+):[^\S\n]+(.+)$/m;
+const DIAGNOSTIC_RE = /^[^\S\n]*(.+?\.(?:cs|fs|vb))\((\d+),(\d+)\):[^\S\n]+(error|warning)[^\S\n]+([A-Z][A-Z0-9]*):[^\S\n]+(.+)$/m;
 // Not every .NET failure comes from the compiler. A missing project file and a package
 // that will not restore are both reported by MSBuild or NuGet with a code but no
 // position - "app.csproj : error NU1101: ..." , "MSBUILD : error MSB1003: ..." - and

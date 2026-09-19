@@ -56,7 +56,7 @@
     "junit jvm": ["JUnit XML from the JVM"],
     "jvm": ["javac / Maven / Gradle", "javac in other languages", "Gradle test failures"],
     "dotnet test": ["dotnet test", "dotnet test in other languages", "Microsoft.Testing.Platform in other languages", "dotnet test `--logger trx`"],
-    "dotnet": [".NET"],
+    "dotnet": [".NET", "dotnet format `--verify-no-changes`"],
     "phpunit": ["PHPUnit", "PHPUnit `--log-junit` / `--testdox` / `--log-teamcity`"],
     "cargo --message-format=json": ["cargo `--message-format=json`"],
     "cargo": ["cargo test", "cargo build", "cargo clippy"],
