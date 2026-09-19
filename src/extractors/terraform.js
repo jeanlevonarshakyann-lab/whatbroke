@@ -194,10 +194,15 @@ function flatValidateDiagnostics(text) {
   return { failures, warnings };
 }
 
+// terraform refusing a subcommand it does not have. One sentence, no box, no "Error:" -
+// and it is the whole log of a pipeline that stopped before it touched any state, usually
+// because a script names a subcommand this version of terraform does not ship.
+const NO_COMMAND_RE = /^(?:Terraform|OpenTofu|Tofu) has no command named "([^"\n]+)"\.?[^\S\n]*$/m;
+
 export default {
   name: "terraform",
   // Strings a log has to hold for this parser to read anything from it - see src/router.js.
-  signals: ["\"format_version\"", "\"terraform.ui\"", "Error:", "Warning:"],
+  signals: ["\"format_version\"", "\"terraform.ui\"", "Error:", "Warning:", "has no command named"],
   category: "build",
   commands: ["terraform", "tofu", "terragrunt"],
 
@@ -206,7 +211,8 @@ export default {
     (HEAD_RE.test(s.split("\n").find((l) => HEAD_RE.test(l)) ?? "") &&
       (/^[^\S\n]*╷[^\S\n]*$/m.test(s) || /[^\S\n]on[^\S\n]+\S+[^\S\n]+line[^\S\n]+\d+/.test(s))) ||
     flatValidateDiagnostics(s).failures.length > 0 ||
-    (INIT_BANNER_RE.test(s) && s.split("\n").some((l) => FLAT_HEAD_RE.test(l))),
+    (INIT_BANNER_RE.test(s) && s.split("\n").some((l) => FLAT_HEAD_RE.test(l))) ||
+    NO_COMMAND_RE.test(s),
 
   extract(s) {
     const lines = s.split("\n");
@@ -280,6 +286,17 @@ export default {
           message: prose.length ? prose.join(" ") : h[2].trim(),
         }, i, end));
       }
+    }
+    // A refused subcommand ran nothing, so it stands alone rather than beside a
+    // diagnostic there is none of.
+    const refused = lines.findIndex((line) => NO_COMMAND_RE.test(line));
+    if (refused >= 0 && !failures.length) {
+      const name = lines[refused].match(NO_COMMAND_RE)[1];
+      failures.push(withSource({
+        title: name, subject: name, severity: "error",
+        message: lines[refused].trim(),
+      }, refused, refused + 1));
+      return { tool: "terraform", summary: "the command was refused", failures };
     }
     if (!failures.length) return null;
     const n = failures.length;

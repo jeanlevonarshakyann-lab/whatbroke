@@ -1489,6 +1489,16 @@
       "generic": 1
     }
   },
+  "go_badflag_fail.txt": {
+    "winner": "go",
+    "parser": "go",
+    "failures": 1,
+    "claimants": [
+      "go",
+      "generic"
+    ],
+    "shadow": {}
+  },
   "go_windows_build_fail.txt": {
     "winner": "go build",
     "parser": "go",
@@ -3788,6 +3798,16 @@
       "generic": 4
     }
   },
+  "python_nomodule_fail.txt": {
+    "winner": "python",
+    "parser": "python",
+    "failures": 1,
+    "claimants": [
+      "python",
+      "generic"
+    ],
+    "shadow": {}
+  },
   "rspec_fail.txt": {
     "winner": "rspec",
     "parser": "rspec",
@@ -4695,6 +4715,16 @@
     "shadow": {
       "generic": 1
     }
+  },
+  "terraform_nocommand_fail.txt": {
+    "winner": "terraform",
+    "parser": "terraform",
+    "failures": 1,
+    "claimants": [
+      "terraform",
+      "generic"
+    ],
+    "shadow": {}
   },
   "terraform_plan_json_fail.txt": {
     "winner": "terraform",

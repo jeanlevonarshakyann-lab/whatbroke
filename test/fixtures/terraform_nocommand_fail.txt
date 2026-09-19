@@ -1,0 +1,5 @@
+Terraform has no command named "notasubcommand".
+
+To see all of Terraform's top-level commands, run:
+  terraform -help
+
