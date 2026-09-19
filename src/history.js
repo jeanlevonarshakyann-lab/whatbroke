@@ -62,9 +62,10 @@ export function runIdentity({ cwd, argv, tool = null, id = null }) {
   // A named PIPELINE keeps the tool in its key: a CI job that pipes eslint and then
   // pytest under one --id wants two records rather than one that each run wipes, and a
   // pipe has no green case to need a toolless key for - its exit status is never known.
-  // A named COMMAND is still a command, and must keep the key its own green run can
-  // write to, so the tool stays out of it there.
-  if (id) return fingerprint(JSON.stringify([IDENTITY_VERSION, resolve(cwd), "id", String(id), piped ? tool ?? "" : ""]));
+  // A named COMMAND still needs its argv in the key: --id "ci" may be reused for
+  // different test selections, which cannot claim each other's failures are gone.
+  // The tool stays out so that a green run writes to the same key as a failing one.
+  if (id) return fingerprint(JSON.stringify([IDENTITY_VERSION, resolve(cwd), "id", String(id), piped ? tool ?? "" : argv]));
   if (piped) return null;
   return fingerprint(JSON.stringify([IDENTITY_VERSION, resolve(cwd), argv]));
 }

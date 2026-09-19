@@ -262,6 +262,8 @@ test("naming a command does not put the tool back in its identity", () => {
   const named = { cwd: "/p", argv: ["pytest"], id: "nightly" };
   assert.equal(runIdentity({ ...named, tool: "pytest" }), runIdentity({ ...named, tool: null }),
     "a green run of it has no tool and must still land on the same record");
+  assert.notEqual(runIdentity(named), runIdentity({ ...named, argv: ["pytest", "tests/api"] }),
+    "two commands sharing a name must keep separate histories");
   // A named PIPE does keep the tool, so the same name over two tools is two records.
   const piped = { cwd: "/p", argv: [], id: "nightly" };
   assert.notEqual(runIdentity({ ...piped, tool: "pytest" }), runIdentity({ ...piped, tool: "eslint" }));
@@ -503,6 +505,20 @@ test("--id is what makes two pipelines two", () => {
   assert.equal(back.compared, true);
   assert.equal(back.fresh.length, 0, "its own last run, not the other pipeline's");
   assert.equal(back.gone, 0);
+  assert.equal(stored(store).length, 2);
+});
+
+test("one --id over two wrapped commands does not claim the first command's failures are gone", () => {
+  const store = cache();
+  const unit = wrapped(store, fx("pytest_fail.txt"), ["--json", "--id", "ci"]);
+  const api = wrapped(store, fx("pytest_tb_short_fail.txt"), ["--json", "--id", "ci"]);
+  assert.equal(unit.status, 1);
+  assert.equal(api.status, 1);
+  assert.equal(JSON.parse(unit.stdout).since.reason, "no-previous-run");
+  const second = JSON.parse(api.stdout).since;
+  assert.equal(second.compared, false);
+  assert.equal(second.reason, "no-previous-run");
+  assert.equal(second.gone, null, "another command's failures were not checked here");
   assert.equal(stored(store).length, 2);
 });
 
