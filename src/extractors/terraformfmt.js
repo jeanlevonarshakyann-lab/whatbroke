@@ -50,10 +50,10 @@ export default {
     const lines = s.split("\n");
     const failures = [];
     const files = new Set();
-    let file = null, header = 0;
+    let file = null, header = 0, lastLine = 0;
     for (let i = 0; i < lines.length; i++) {
       const head = named(lines, i);
-      if (head) { file = head; header = i; files.add(head); i++; continue; }
+      if (head) { lastLine = 0; file = head; header = i; files.add(head); i++; continue; }
       if (!file) continue;
       // Another diff beginning is what ends this one. minitest and PHPUnit draw `---` and
       // @@ hunks of their own between two values that differ, and a file that stayed
@@ -61,6 +61,13 @@ export default {
       if (lines[i].startsWith("---")) { file = null; continue; }
       const hunk = lines[i].match(HUNK_RE);
       if (!hunk) continue;
+      // A diff's hunks are ordered and disjoint: each starts after the last one ended, and
+      // no file has two regions beginning at the same line. A hunk that does not is not
+      // this file's - it is another diff's, woven into this one, carrying a line number
+      // that happens to collide. Refusing it is what keeps a shredded log from reporting
+      // one place twice, which is the one thing such a log still has to get right.
+      if (+hunk[1] <= lastLine) continue;
+      lastLine = +hunk[1];
       let end = i + 1;
       while (end < lines.length && BODY_RE.test(lines[end]) && !HUNK_RE.test(lines[end])) end++;
       const removed = lines.slice(i + 1, end).find((line) => line.startsWith("-"));

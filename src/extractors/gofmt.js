@@ -47,10 +47,10 @@ export default {
     const lines = s.split("\n");
     const failures = [];
     const files = new Set();
-    let file = null, header = 0;
+    let file = null, header = 0, lastLine = 0;
     for (let i = 0; i < lines.length; i++) {
       const head = named(lines[i]);
-      if (head) { file = head; header = i; files.add(head); continue; }
+      if (head) { lastLine = 0; file = head; header = i; files.add(head); continue; }
       if (!file) continue;
       // What ends this file's diff is another diff beginning. gofmt is not the only thing
       // that draws @@ hunks: minitest writes `--- expected` / `+++ actual` / `@@` between
@@ -69,6 +69,13 @@ export default {
       }
       const hunk = lines[i].match(HUNK_RE);
       if (!hunk) continue;
+      // A diff's hunks are ordered and disjoint: each starts after the last one ended, and
+      // no file has two regions beginning at the same line. A hunk that does not is not
+      // this file's - it is another diff's, woven into this one, carrying a line number
+      // that happens to collide. Refusing it is what keeps a shredded log from reporting
+      // one place twice, which is the one thing such a log still has to get right.
+      if (+hunk[1] <= lastLine) continue;
+      lastLine = +hunk[1];
       let end = i + 1;
       while (end < lines.length && BODY_RE.test(lines[end]) && !HUNK_RE.test(lines[end])) end++;
       // The first line it would remove is the source as it stands. The marker comes off by

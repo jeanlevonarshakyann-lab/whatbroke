@@ -2,6 +2,16 @@
 
 ## Unreleased
 
+- Two diffs in one pipe no longer report one place twice. `cargo fmt --check`, `gofmt -d`
+  and `terraform fmt -check -diff` all read a unified diff, and a `@@` is nothing but a
+  line number: read under another file's header it becomes a place in a file that has
+  nothing wrong there, and where that number collides with a real one the same place was
+  counted twice. A job that formats and then tests puts a format check beside minitest's
+  or PHPUnit's `--- expected` / `+++ actual` / `@@`, which is all it takes. A diff's hunks
+  are ordered and disjoint - each starts after the last one ended - so a hunk that does
+  not is not that file's, and is refused. Every ordered pair of the corpus's diff
+  captures, woven at twelve block sizes, is held to it.
+
 - Three tools that refuse to start now say so, instead of reading as nothing. `python -m
   pytest` with pytest not installed prints the interpreter's path and the module it could
   not find, and that is the whole log of a step that never ran a test. `go` handed a flag
