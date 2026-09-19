@@ -1,0 +1,45 @@
+[0/1] Planning build
+Building for debugging...
+[0/4] Write sources
+[1/4] Write swift-version--58304C5D6DBC2206.txt
+[3/6] Emitting module ShopTests
+[4/6] Compiling ShopTests CheckoutTests.swift
+[4/6] Write Objects.LinkFileList
+[5/6] Linking ShopPackageTests
+Build complete! (0.64s)
+Test Suite 'All tests' started at 2026-09-18 22:07:23.071.
+Test Suite 'ShopPackageTests.xctest' started at 2026-09-18 22:07:23.078.
+Test Suite 'InvoiceTests' started at 2026-09-18 22:07:23.078.
+Test Case '-[ShopTests.InvoiceTests testPasses]' started.
+Test Case '-[ShopTests.InvoiceTests testPasses]' passed (0.000 seconds).
+Test Case '-[ShopTests.InvoiceTests testRefusesAMissingLine]' started.
+/home/dev/shop/Tests/ShopTests/InvoiceTests.swift:21: error: -[ShopTests.InvoiceTests testRefusesAMissingLine] : XCTAssertEqual failed: threw error "noSuchLine(3)"
+Test Case '-[ShopTests.InvoiceTests testRefusesAMissingLine]' failed (0.040 seconds).
+Test Case '-[ShopTests.InvoiceTests testSaysWhyItGaveUp]' started.
+/home/dev/shop/Tests/ShopTests/InvoiceTests.swift:25: error: -[ShopTests.InvoiceTests testSaysWhyItGaveUp] : failed - rounding is not decided
+Test Case '-[ShopTests.InvoiceTests testSaysWhyItGaveUp]' failed (0.000 seconds).
+Test Case '-[ShopTests.InvoiceTests testTotalsAnInvoice]' started.
+/home/dev/shop/Tests/ShopTests/InvoiceTests.swift:16: error: -[ShopTests.InvoiceTests testTotalsAnInvoice] : XCTAssertEqual failed: ("1049") is not equal to ("1050")
+Test Case '-[ShopTests.InvoiceTests testTotalsAnInvoice]' failed (0.000 seconds).
+Test Suite 'InvoiceTests' failed at 2026-09-18 22:07:23.119.
+	 Executed 4 tests, with 3 failures (1 unexpected) in 0.041 (0.041) seconds
+Test Suite 'ShopPackageTests.xctest' failed at 2026-09-18 22:07:23.119.
+	 Executed 4 tests, with 3 failures (1 unexpected) in 0.041 (0.041) seconds
+Test Suite 'All tests' failed at 2026-09-18 22:07:23.119.
+	 Executed 4 tests, with 3 failures (1 unexpected) in 0.041 (0.048) seconds
+◇ Test run started.
+↳ Testing Library Version: 1501
+↳ Target Platform: arm64e-apple-macos14.0
+◇ Suite Rounding started.
+◇ Test totalsAnInvoice() started.
+◇ Test namesTheShop() started.
+◇ Test roundsUp() started.
+✘ Test roundsUp() recorded an issue at CheckoutTests.swift:16:9: Expectation failed: (Invoice(lines: [1], tax: 0).total() → 1) == 2
+↳ rounding is not decided
+✘ Test totalsAnInvoice() recorded an issue at CheckoutTests.swift:6:5: Expectation failed: (invoice.total() → 1049) == 1050
+✘ Test namesTheShop() recorded an issue at CheckoutTests.swift:11:5: Expectation failed: (name → "corner shop").hasPrefix("Corner")
+✘ Test roundsUp() failed after 0.001 seconds with 1 issue.
+✘ Test namesTheShop() failed after 0.001 seconds with 1 issue.
+✘ Test totalsAnInvoice() failed after 0.001 seconds with 1 issue.
+✘ Suite Rounding failed after 0.001 seconds with 1 issue.
+✘ Test run with 3 tests in 1 suite failed after 0.001 seconds with 3 issues.

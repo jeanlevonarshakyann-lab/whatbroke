@@ -1,0 +1,28 @@
+[0/1] Planning build
+Building for debugging...
+[0/4] Write sources
+[1/4] Write swift-version--58304C5D6DBC2206.txt
+[3/6] Emitting module ShopTests
+[4/6] Compiling ShopTests CheckoutTests.swift
+[4/6] Write Objects.LinkFileList
+[5/6] Linking ShopPackageTests
+Build complete! (0.52s)
+Test Suite 'All tests' started at 2026-09-18 22:08:29.751.
+Test Suite 'All tests' passed at 2026-09-18 22:08:29.758.
+	 Executed 0 tests, with 0 failures (0 unexpected) in 0.000 (0.007) seconds
+◇ Test run started.
+↳ Testing Library Version: 1501
+↳ Target Platform: arm64e-apple-macos14.0
+◇ Suite Rounding started.
+◇ Test namesTheShop() started.
+◇ Test totalsAnInvoice() started.
+◇ Test roundsUp() started.
+✘ Test totalsAnInvoice() recorded an issue at CheckoutTests.swift:6:5: Expectation failed: (invoice.total() → 1049) == 1050
+✘ Test roundsUp() recorded an issue at CheckoutTests.swift:16:9: Expectation failed: (Invoice(lines: [1], tax: 0).total() → 1) == 2
+↳ rounding is not decided
+✘ Test namesTheShop() recorded an issue at CheckoutTests.swift:11:5: Expectation failed: (name → "corner shop").hasPrefix("Corner")
+✘ Test roundsUp() failed after 0.001 seconds with 1 issue.
+✘ Test totalsAnInvoice() failed after 0.001 seconds with 1 issue.
+✘ Test namesTheShop() failed after 0.001 seconds with 1 issue.
+✘ Suite Rounding failed after 0.001 seconds with 1 issue.
+✘ Test run with 3 tests in 1 suite failed after 0.001 seconds with 3 issues.

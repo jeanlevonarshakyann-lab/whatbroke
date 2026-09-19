@@ -11,6 +11,49 @@ import { analyse } from "../../src/index.js";
 import { agreeAcrossFormats, cli, fx, here, runCases } from "./harness.js";
 
 const CASES = [
+  // Captured with Swift 6.2.3 on macOS. `swift test` runs XCTest and swift-testing, and a
+  // package may hold tests of both; each library writes its failures its own way, and a run
+  // of either read as a guess: the location survived, the test's name did not.
+  { file: "swifttest_fail.txt", tool: "swift test", n: 3, check: (r) => {
+      assert.equal(r.summary, "Executed 4 tests, with 3 failures (1 unexpected)");
+      assert.deepEqual(r.failures.map((f) => f.subject), [
+        "ShopTests.InvoiceTests.testRefusesAMissingLine",
+        "ShopTests.InvoiceTests.testSaysWhyItGaveUp",
+        "ShopTests.InvoiceTests.testTotalsAnInvoice"]);
+      assert.deepEqual(r.failures.map((f) => f.line), [21, 25, 16]);
+      assert.equal(r.failures[2].file, "/home/dev/shop/Tests/ShopTests/InvoiceTests.swift");
+      assert.equal(r.failures[2].message, 'XCTAssertEqual failed: ("1049") is not equal to ("1050")');
+      // XCTFail writes "failed - " in front of the message it was given
+      assert.equal(r.failures[1].message, "rounding is not decided");
+      // the test is named once, as the failure's subject, and not again inside its message
+      assert.doesNotMatch(JSON.stringify(r.failures.map((f) => f.message)), /-\[ShopTests/);
+    } },
+  // swift-testing writes each issue under the test it belongs to, with the comment the
+  // expectation was given on the line below. XCTest prints a tally of its own even where no
+  // test of its kind ran, and "Executed 0 tests, with 0 failures" is not this run's headline.
+  { file: "swifttest_testing_fail.txt", tool: "swift test", n: 3, check: (r) => {
+      assert.equal(r.summary, "3 tests in 1 suite failed with 3 issues");
+      assert.deepEqual(r.failures.map((f) => [f.subject, f.file, f.line, f.col]), [
+        ["totalsAnInvoice()", "CheckoutTests.swift", 6, 5],
+        ["roundsUp()", "CheckoutTests.swift", 16, 9],
+        ["namesTheShop()", "CheckoutTests.swift", 11, 5]]);
+      assert.equal(r.failures[1].message, "Expectation failed: (Invoice(lines: [1], tax: 0).total() → 1) == 2\nrounding is not decided");
+    } },
+  { file: "swifttest_both_fail.txt", tool: "swift test", n: 6, check: (r) => {
+      // one run of a package holding tests of both kinds: each library counts its own
+      assert.equal(r.summary, "Executed 4 tests, with 3 failures (1 unexpected) — 3 tests in 1 suite failed with 3 issues");
+      assert.equal(r.failures.filter((f) => f.subject.startsWith("ShopTests.")).length, 3);
+      assert.equal(r.failures.filter((f) => f.subject.endsWith("()")).length, 3);
+    } },
+  // A test that crashes ends the run: it never finishes, the runtime says what it hit, and
+  // swiftpm reports the signal. The test that died is the failure; the runtime's own frame,
+  // in Swift's standard library, is nobody's code.
+  { file: "swifttest_crash_fail.txt", tool: "swift test", n: 1, check: (r) => {
+      assert.equal(r.failures[0].subject, "ShopTests.InvoiceTests.testReadsALineThatIsNotThere");
+      assert.equal(r.failures[0].message, "Fatal error: Index out of range");
+      assert.equal(r.failures[0].file, undefined);
+      assert.doesNotMatch(JSON.stringify(r.failures), /ContiguousArrayBuffer/);
+    } },
   // Captured with CMake 4.4 and ninja 1.13. ninja gets no parser on purpose: what fails
   // under it is a compiler, which already has one, and its own "FAILED: [code=1]" line
   // restates the failure without adding to it - exactly as make's exit line does. make
@@ -363,6 +406,22 @@ try {
   console.log("  ok   Clang SARIF says what its text report says");
   pass++;
 } catch (e) { console.log(`  FAIL Clang SARIF vs text\n       ${e.message}`); fail++; }
+
+// A crashed Swift test says what the runtime said after it started, and "Fatal error:" is
+// what PHP writes too. In a log holding both - a CI job that runs two suites - the crash
+// took PHP's words for its own, which test/mixed.js found by pairing every two captures.
+try {
+  const together = `${fx("php_fatal_fail.txt")}\n${fx("swifttest_crash_fail.txt")}`;
+  const r = analyse(together);
+  assert.equal(r?.tool, "swift test");
+  assert.equal(r.failures.length, 1);
+  assert.equal(r.failures[0].message, "Fatal error: Index out of range");
+  const php = (r.others ?? []).find((o) => o.tool === "php");
+  assert.ok(php, "PHP's own fatal is still read, as the other tool's");
+  assert.match(php.failures[0].message, /Call to a member function method\(\) on null/);
+  console.log("  ok   a crashed Swift test does not take another tool's fatal error for its own");
+  pass++;
+} catch (e) { console.log(`  FAIL swift crash beside another fatal\n       ${e.message}`); fail++; }
 
 console.log(`\n  ${pass} passed, ${fail} failed`);
 process.exit(fail ? 1 : 0);

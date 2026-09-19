@@ -4463,6 +4463,52 @@
       "generic": 2
     }
   },
+  "swifttest_both_fail.txt": {
+    "winner": "swift test",
+    "parser": "swift test",
+    "failures": 6,
+    "claimants": [
+      "swift test",
+      "generic"
+    ],
+    "shadow": {
+      "generic": 3
+    }
+  },
+  "swifttest_crash_fail.txt": {
+    "winner": "swift test",
+    "parser": "swift test",
+    "failures": 1,
+    "claimants": [
+      "swift test",
+      "generic"
+    ],
+    "shadow": {
+      "generic": 2
+    }
+  },
+  "swifttest_fail.txt": {
+    "winner": "swift test",
+    "parser": "swift test",
+    "failures": 3,
+    "claimants": [
+      "swift test",
+      "generic"
+    ],
+    "shadow": {
+      "generic": 3
+    }
+  },
+  "swifttest_testing_fail.txt": {
+    "winner": "swift test",
+    "parser": "swift test",
+    "failures": 3,
+    "claimants": [
+      "swift test",
+      "generic"
+    ],
+    "shadow": {}
+  },
   "tap_fail.txt": {
     "winner": "tap",
     "parser": "tap",

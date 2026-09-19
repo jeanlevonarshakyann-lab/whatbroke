@@ -1,0 +1,26 @@
+Building for debugging...
+[0/7] Write sources
+[2/7] /home/dev/shop/.build/arm64-apple-macosx/debug/ShopPackageTests.derived/runner.swift
+[3/7] Write sources
+[4/7] Write swift-version--58304C5D6DBC2206.txt
+[6/9] Emitting module Shop
+[7/9] Compiling Shop Invoice.swift
+[8/11] Compiling ShopTests InvoiceTests.swift
+[9/11] Emitting module ShopTests
+[10/13] Emitting module ShopPackageTests
+[11/13] Compiling ShopPackageTests runner.swift
+[11/13] Write Objects.LinkFileList
+[12/13] Linking ShopPackageTests
+Build complete! (9.06s)
+error: Exited with unexpected signal code 5
+Test Suite 'All tests' started at 2026-09-18 22:06:13.184.
+Test Suite 'ShopPackageTests.xctest' started at 2026-09-18 22:06:13.191.
+Test Suite 'InvoiceTests' started at 2026-09-18 22:06:13.191.
+Test Case '-[ShopTests.InvoiceTests testPasses]' started.
+Test Case '-[ShopTests.InvoiceTests testPasses]' passed (0.001 seconds).
+Test Case '-[ShopTests.InvoiceTests testReadsALineThatIsNotThere]' started.
+Swift/ContiguousArrayBuffer.swift:692: Fatal error: Index out of range
+◇ Test run started.
+↳ Testing Library Version: 1501
+↳ Target Platform: arm64e-apple-macos14.0
+✔ Test run with 0 tests in 0 suites passed after 0.001 seconds.

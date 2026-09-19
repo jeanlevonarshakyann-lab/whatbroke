@@ -42,6 +42,7 @@ import mypy from "./extractors/mypy.js";
 import pyright from "./extractors/pyright.js";
 import clang from "./extractors/clang.js";
 import swift from "./extractors/swift.js";
+import swifttest from "./extractors/swifttest.js";
 import ruby from "./extractors/ruby.js";
 import minitest from "./extractors/minitest.js";
 import perl from "./extractors/perl.js";
@@ -75,7 +76,7 @@ import { stripRedrawnCiPrefix, wrapperCandidates } from "./normalize.js";
 import { joinSources, preserveSourceRange, rangesOverlap, setLines, setParser, sourceRange } from "./ownership.js";
 
 // order matters: most specific first, generic last
-export const EXTRACTORS = [pytest, nodetest, bun, bunRuntime, deno, denoRuntime, denoLint, denoFmt, playwright, jestjson, jest, mochajson, mochaxunit, mocha, ava, jasmine, rubocop, tap, taptext, vitest, unittest, traceback, eslintjson, eslint, ruff, pylint, flake8, golangci, markdownlint, stylelint, shellcheck, yamllint, biome, oxlint, black, prettier, sass, less, webpack, babel, swc, pyright, mypy, cmake, terraform, swift, clang, minitest, ruby, perl, php, rspec, junitjvm, jvm, dotnettest, dotnet, phpunit, cargojson, cargo, govetjson, gojson, gotest, esbuild, vite, node, tsc, git, kubectl, docker, make, npm, pnpm, yarn, pip, generic];
+export const EXTRACTORS = [pytest, nodetest, bun, bunRuntime, deno, denoRuntime, denoLint, denoFmt, playwright, jestjson, jest, mochajson, mochaxunit, mocha, ava, jasmine, rubocop, tap, taptext, vitest, unittest, traceback, eslintjson, eslint, ruff, pylint, flake8, golangci, markdownlint, stylelint, shellcheck, yamllint, biome, oxlint, black, prettier, sass, less, webpack, babel, swc, pyright, mypy, cmake, terraform, swifttest, swift, clang, minitest, ruby, perl, php, rspec, junitjvm, jvm, dotnettest, dotnet, phpunit, cargojson, cargo, govetjson, gojson, gotest, esbuild, vite, node, tsc, git, kubectl, docker, make, npm, pnpm, yarn, pip, generic];
 
 /** Whether two readings each quote the offending source line, and quote different ones.
  *
