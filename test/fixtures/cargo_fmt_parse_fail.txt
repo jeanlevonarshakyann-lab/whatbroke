@@ -1,0 +1,9 @@
+error: this file contains an unclosed delimiter
+ --> /home/dev/shop/src/main.rs:3:25
+  |
+1 | fn main() {
+  |           - unclosed delimiter
+2 |     let due = ;
+3 |     println!("{}", due)
+  |                        ^
+

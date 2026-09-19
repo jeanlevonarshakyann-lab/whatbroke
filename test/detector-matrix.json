@@ -290,6 +290,48 @@
       "generic": 1
     }
   },
+  "cargo_fmt_fail.txt": {
+    "winner": "cargo fmt",
+    "parser": "cargo fmt",
+    "failures": 3,
+    "claimants": [
+      "cargo fmt",
+      "generic"
+    ],
+    "shadow": {}
+  },
+  "cargo_fmt_one_fail.txt": {
+    "winner": "cargo fmt",
+    "parser": "cargo fmt",
+    "failures": 1,
+    "claimants": [
+      "cargo fmt",
+      "generic"
+    ],
+    "shadow": {}
+  },
+  "cargo_fmt_parse_fail.txt": {
+    "winner": "cargo",
+    "parser": "cargo",
+    "failures": 1,
+    "claimants": [
+      "cargo",
+      "generic"
+    ],
+    "shadow": {
+      "generic": 1
+    }
+  },
+  "cargo_fmt_workspace_fail.txt": {
+    "winner": "cargo fmt",
+    "parser": "cargo fmt",
+    "failures": 2,
+    "claimants": [
+      "cargo fmt",
+      "generic"
+    ],
+    "shadow": {}
+  },
   "cargo_human_same_fail.txt": {
     "winner": "cargo",
     "parser": "cargo",

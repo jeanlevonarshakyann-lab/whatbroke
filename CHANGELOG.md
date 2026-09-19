@@ -2,6 +2,15 @@
 
 ## Unreleased
 
+- Reads `cargo fmt --check`, the format gate almost every Rust CI job runs. It was read as
+  nothing at all: the job failed, and whatbroke said there was no parser for it and handed
+  the diff back whole. rustfmt numbers the line each region it would rewrite starts at, so
+  a file with three unformatted regions is three places - which is more than the other
+  format checks here can say, because prettier, black and deno fmt only ever name files.
+  The source line as it stands now is quoted with each one. `rustfmt --check` run directly
+  prints the same thing and reads the same way; a file rustfmt cannot parse is a rustc
+  diagnostic and stays cargo's, which is what the fourth capture is for.
+
 - pytest no longer loses a failure to a name another test already has. Two tests called
   `test_total`, in different files or different classes, folded into each other because
   the short test summary was matched on the bare name - so a run reported one failure
