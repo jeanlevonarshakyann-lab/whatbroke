@@ -2,6 +2,15 @@
 
 ## Unreleased
 
+- `whatbroke -- python -m pytest` reads as pytest rather than as python. Naming the
+  command that ran is evidence for breaking ties between parsers, ranked by where each
+  tool is mentioned - and that put `python3` ahead of the module it was launching. It only
+  showed where a second parser claimed the same log, which `--tb=native` does by printing
+  a real Python traceback instead of pytest's own: the run came back as python's with no
+  tally, worse than passing no command at all, because a piped copy of that log reads as
+  pytest. The module named after `-m` is the tool. Only for an interpreter and only as its
+  first argument: `pytest -m slow` selects a marker.
+
 - Reading one log is about six times faster. Deciding which parsers to ask scans the log
   for the strings they name, and the alternation of those strings was rebuilt every time
   one was found - shrunk to what was still missing and recompiled. For a long log that

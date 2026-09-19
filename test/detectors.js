@@ -304,6 +304,31 @@ test("a launcher command cannot outrank the failure produced by its child", () =
   }
 });
 
+// `python -m pytest` is a launcher too, and the commonest way pytest is run: the
+// interpreter puts the working directory on sys.path, which is why projects prefer it.
+// Ranking by first mention put `python3` ahead of pytest, so a run whose output the
+// traceback parser ALSO claims - `--tb=native`, which prints a real Python traceback
+// instead of pytest's own - came back as python's, with no tally. Worse than no hint at
+// all: a piped copy of the same log reads as pytest.
+test("an interpreter running a module does not outrank the module", () => {
+  const native = readFileSync(join(fixtures, "pytest_tb_native_fail.txt"), "utf8");
+  assert.equal(analyse(native, { command: ["python3", "-m", "pytest"] }).tool, "pytest");
+  assert.equal(analyse(native, { command: ["python", "-m", "pytest", "--tb=native"] }).tool, "pytest");
+  assert.equal(analyse(native, { command: ["/usr/bin/python3.12", "-m", "pytest"] }).tool, "pytest");
+  // Only for an interpreter, and only as its first argument. `-m` means a marker to
+  // pytest and something else again to half the tools that take it, so a tool's own -m
+  // must not hand the run to whatever word follows it.
+  assert.equal(analyse(native, { command: ["pytest", "-m", "slow"] }).tool, "pytest");
+  const both = readFileSync(join(fixtures, "jest_fail.txt"), "utf8") + "\n" +
+               readFileSync(join(fixtures, "vitest_fail.txt"), "utf8");
+  assert.equal(analyse(both, { command: ["vitest", "-m", "jest"] }).tool, "vitest",
+    "vitest's own -m does not promote the word after it");
+  // And an interpreter running a FILE is still the interpreter's: a traceback out of
+  // `python app.py` is python's, and there is no module named to prefer instead.
+  const traceback = readFileSync(join(fixtures, "py_traceback.txt"), "utf8");
+  assert.equal(analyse(traceback, { command: ["python3", "app.py"] }).tool, "python");
+});
+
 test("naming the wrong tool cannot damage a clear log", () => {
   for (const name of readdirSync(fixtures)) {
     const raw = readFileSync(join(fixtures, name), "utf8");
