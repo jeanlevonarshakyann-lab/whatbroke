@@ -21,6 +21,16 @@ const SUMMARY_ENTRY_RE = /^(?:FAILED|ERROR)[^\S\n]+(\S+?)(?:[^\S\n]+-[^\S\n]+(.*
 const SUMMARY_HEAD_RE = /^=+[^\S\n]+short test summary info[^\S\n]+=+$/;
 // --tb=line writes one line per failure: "path:11: KeyError: 'taxrate'".
 const ONE_LINE_RE = /^(.+?):(\d+):[^\S\n]+(\S.*?)[^\S\n]*$/;
+// "path:line:" followed by the exception, by nothing, or - in --tb=short - by
+// "in <function>", which names the frame rather than what was raised.
+const TRAILING_RE = /^(.+?):(\d+):[^\S\n]*(?:in[^\S\n]+\S+|(\w[\w.]*))?[^\S\n]*$/;
+// One path is another when the two name the same file at different depths: the summary
+// writes it relative to the root, a traceback sometimes absolutely.
+const sameFile = (a, b) => {
+  if (!a || !b) return false;
+  const x = String(a).replace(/\\/g, "/"), y = String(b).replace(/\\/g, "/");
+  return x === y || x.endsWith("/" + y) || y.endsWith("/" + x);
+};
 // a Python frame, for --tb=native
 const FRAME_RE = /^[^\S\n]*File[^\S\n]+"(.+?)",[^\S\n]+line[^\S\n]+(\d+)/;
 // "test_shop.py::TestClass::test_method" is titled "TestClass.test_method" in a block
@@ -59,10 +69,11 @@ export default {
       // trailing "path:line: ExceptionType"
       let file, line, kind;
       for (let i = blk.body.length - 1; i >= 0; i--) {
-        // "path:line:" followed by the exception, by nothing, or - in --tb=short - by
-        // "in <function>", which names the frame rather than what was raised.
-        const m = blk.body[i].match(/^(.+?):(\d+):[^\S\n]*(?:in[^\S\n]+\S+|(\w[\w.]*))?[^\S\n]*$/);
-        if (m && !isNoise(m[1])) { file = m[1]; line = +m[2]; kind = m[4]; break; }
+        const m = blk.body[i].match(TRAILING_RE);
+        // Group 3 is the exception - there is no group 4, so `kind` was always undefined
+        // and a block whose only words were its trailing "test_x.py:2: RuntimeError"
+        // reported an empty message.
+        if (m && !isNoise(m[1])) { file = m[1]; line = +m[2]; kind = m[3]; break; }
       }
       // the failing statement (pytest marks it with ">") and the "E" explanation
       const stmt = blk.body.filter((l) => /^>\s/.test(l)).map((l) => l.slice(1).trim());
@@ -112,11 +123,36 @@ export default {
       // --tb=line also prints "path:line: <message>" per failure. The message is the
       // same string the summary carries, so the two are matched on it rather than on
       // the order they happen to appear in.
+      //
+      // One entry per message was one too few. Two tests that raise the same exception -
+      // the same KeyError from two files, which is the ordinary shape of a shared fixture
+      // breaking - overwrote each other, and BOTH failures were then reported at the last
+      // one's file and line. Every candidate is kept, and the summary's own filename says
+      // which is which.
       const located = new Map();
       lines.forEach((l, i) => {
         const m = l.match(ONE_LINE_RE);
-        if (m && !isNoise(m[1])) located.set(m[3], { file: m[1], line: +m[2], i });
+        if (!m || isNoise(m[1])) return;
+        const at = { file: m[1], line: +m[2], i };
+        const seen = located.get(m[3]);
+        if (seen) seen.push(at); else located.set(m[3], [at]);
       });
+      /** Where --tb=line put this summary entry, or nothing.
+       *
+       *  A lone candidate needs no disambiguating and is used as it stands - it may well
+       *  name a helper rather than the test, which is where the exception actually came
+       *  from and is the more useful line. Where several share a message, only the one in
+       *  the summary's own file is this entry's; if that does not single one out, the
+       *  failure keeps the file the summary named and goes without a line. A line that
+       *  might belong to another test is worse than no line: it sends the reader to code
+       *  that is fine. */
+      const locate = (file, message) => {
+        const all = located.get(message);
+        if (!all) return null;
+        if (all.length === 1) return all[0];
+        const mine = all.filter((c) => sameFile(c.file, file));
+        return mine.length === 1 ? mine[0] : null;
+      };
       // Every summary section, not the first: two pytest runs in one log have one each,
       // and reading only the first dropped the second run's failures entirely.
       const entries = [];
@@ -127,6 +163,12 @@ export default {
       // A summary line naming a failure already read from its block is another place
       // that failure was read.
       const also = (index, entry) => { failures[index] = alsoFrom(failures[index], entry, entry + 1); };
+      // and it is one line about one failure. The name alone used to decide, so two tests
+      // called test_total - in different files, or different classes, which is what test
+      // suites are full of - folded into each other and the run reported one failure where
+      // its own tally said two. A failure already spoken for cannot be claimed again.
+      const claimed = new Set();
+      const claim = (index) => { claimed.add(index); return index; };
       for (const entry of entries) {
         const m = lines[entry].match(SUMMARY_ENTRY_RE);
         if (!m) continue;
@@ -134,20 +176,40 @@ export default {
         const message = (m[2] ?? "").trim();
         // A collection error is summarised as bare "ERROR test_broken.py" - no test id
         // and no message - so it says nothing the block above it has not already said.
-        const collected = message ? -1 : failures.findIndex((f) => f.file === file || String(f.title).includes(file));
-        if (collected >= 0) { also(collected, entry); continue; }
-        // The name alone decides. Comparing the messages too looked more careful and was
-        // less safe: a block whose text arrives damaged - two tools sharing a pipe - no
-        // longer matched its own summary line, and the failure was then counted twice.
-        const named = failures.findIndex((f) => f.title === title);
-        if (named >= 0) { also(named, entry); continue; }
-        const at = located.get(message);
+        const collected = message ? -1 : failures.findIndex((f, i) =>
+          !claimed.has(i) && (f.file === file || String(f.title).includes(file)));
+        if (collected >= 0) { also(claim(collected), entry); continue; }
+        // The whole node id first: a log can hold one run printed twice - as the default
+        // traceback and again with --tb=line - or two runs of the same suite, and the same
+        // test read from both is one failure. This is what tells that apart from two
+        // different tests that happen to share a name, which the bare name cannot.
+        const sameTest = failures.findIndex((f) => f.subject === m[1]);
+        if (sameTest >= 0) { also(sameTest, entry); continue; }
+        // Otherwise the name decides which block this line is about - a block's banner
+        // names the test but not its file, so there is nothing else to go on. Comparing
+        // the messages too looked more careful and was less safe: a block whose text
+        // arrives damaged - two tools sharing a pipe - no longer matched its own summary
+        // line, and the failure was then counted twice. What the name now has to be is
+        // unclaimed: two tests called test_total are two, not one read twice.
+        const named = failures.findIndex((f, i) => !claimed.has(i) && f.title === title);
+        if (named >= 0) {
+          // pytest's node id is the whole name of the test, and the only part of it the
+          // banner does not carry is the file. It is what tells two tests of one name
+          // apart, so it becomes the subject - the name --since-last remembers them by.
+          // Set, not copied onto a new object: the range a failure was read from is a
+          // non-enumerable property, and spreading one silently leaves it behind.
+          failures[named].subject = m[1];
+          also(claim(named), entry);
+          continue;
+        }
+        const at = locate(file, message);
         // The summary line, and the one-line location --tb=line printed for it.
         const failure = withSource({
           file: at?.file ?? file, line: at?.line,
-          title, subject: title, severity: "error",
+          title, subject: m[1], severity: "error",
           message: message || title,
         }, entry, entry + 1);
+        claim(failures.length);
         failures.push(at ? alsoFrom(failure, at.i, at.i + 1) : failure);
       }
     }

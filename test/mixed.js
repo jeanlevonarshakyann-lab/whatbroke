@@ -23,7 +23,31 @@ const cli = join(here, "..", "bin", "whatbroke.js");
 const fx = (n) => readFileSync(join(here, "fixtures", n), "utf8");
 
 let pass = 0, fail = 0;
+
+// The sweeps at the bottom of this file pair every capture with every other one, and take
+// minutes. A suite that prints nothing for minutes cannot be told from one that has hung,
+// and a green run that looks hung gets killed - so every long phase says where it is and
+// every test says how long it took.
+const secs = (ms) => `${(ms / 1000).toFixed(1)}s`;
+function phase(label, total) {
+  const started = Date.now();
+  let last = started;
+  return {
+    /** Called with how many of `total` are done. Prints at most once every 15 seconds. */
+    step(done) {
+      const now = Date.now();
+      if (now - last < 15000) return;
+      last = now;
+      const share = total ? Math.round((done / total) * 100) : 0;
+      const left = done ? secs(((now - started) / done) * (total - done)) : "?";
+      process.stdout.write(`       ${label}: ${share}% (${done}/${total}), ${secs(now - started)} in, ~${left} left\n`);
+    },
+    took: () => Date.now() - started,
+  };
+}
+
 const test = (name, fn) => {
+  const started = Date.now();
   try {
     const returned = fn();
     // This runner is synchronous. An async body returns a promise it would never await,
@@ -33,7 +57,8 @@ const test = (name, fn) => {
     if (returned && typeof returned.then === "function") {
       throw new Error("test body returned a promise; this runner does not await, so nothing in it would be checked");
     }
-    console.log(`  ok   ${name}`); pass++;
+    const took = Date.now() - started;
+    console.log(`  ok   ${name}${took > 1000 ? `   (${secs(took)})` : ""}`); pass++;
   } catch (e) { console.log(`  FAIL ${name}\n       ${e.message}`); fail++; }
 };
 
@@ -638,7 +663,9 @@ test("every ordered pair recovers exactly the failures in its parts", () => {
   const changed = [];
   const changedTools = new Map();
   let pairs = 0;
-  for (const a of names) {
+  const walk = phase("ordered pairs", names.length);
+  for (const [index, a] of names.entries()) {
+    walk.step(index);
     if (!solo.get(a)) continue;
     for (const b of names) {
       if (a === b || !solo.get(b) || parserOf(solo.get(a)) === parserOf(solo.get(b))) continue;
@@ -680,7 +707,7 @@ test("every ordered pair recovers exactly the failures in its parts", () => {
     `${changed.length} ordered pairs changed their failures ` +
     `(${[...changedTools].sort((a, b) => b[1] - a[1]).slice(0, 30).map(([k, n]) => `${k}: ${n}`).join(", ")}):\n       ` +
     changed.slice(0, 6).join("\n       "));
-  console.log(`       ${pairs} ordered cross-parser fixture pairs, exact recovery`);
+  console.log(`       ${pairs} ordered cross-parser fixture pairs, exact recovery, in ${secs(walk.took())}`);
 });
 
 // ------------------------------------------------- two tools writing at once
@@ -795,7 +822,9 @@ test("two tools writing into one pipe never crash it or double a diagnosis", () 
 
   const threw = [], doubled = [];
   let pairs = 0;
+  const walk = phase("interleavings", names.length);
   for (let x = 0; x < names.length; x++) {
+    walk.step(x);
     for (let y = x + 1; y < names.length; y++) {
       if (!solo.get(names[x]) || !solo.get(names[y])) continue;
       pairs++;
@@ -831,7 +860,7 @@ test("two tools writing into one pipe never crash it or double a diagnosis", () 
   assert.ok(pairs > 5000, `only ${pairs} interleavings exercised`);
   assert.deepEqual(threw.slice(0, 5), [], "a shredded log threw");
   assert.deepEqual(doubled.slice(0, 5), [], "a shredded log reported one diagnosis twice");
-  console.log(`       ${pairs} interleavings, seed ${20260910}`);
+  console.log(`       ${pairs} interleavings, seed ${20260910}, in ${secs(walk.took())}`);
 });
 
 test("a structured reader and its text reader agree after repeated lines collapse", () => {
@@ -875,7 +904,10 @@ test("one tool's log twice keeps both runs", () => {
   }
   const silent = [];
   let pairs = 0;
+  const walk = phase("same-tool pairs", byTool.size);
+  let group = 0;
   for (const list of byTool.values()) {
+    walk.step(group++);
     for (const a of list) for (const b of list) {
       if (a.name === b.name) continue;
       pairs++;
@@ -895,7 +927,7 @@ test("one tool's log twice keeps both runs", () => {
   }
   assert.ok(pairs > 300, `only ${pairs} same-tool pairs exercised`);
   assert.deepEqual(silent.slice(0, 6), [], "a run's failures went missing without a word");
-  console.log(`       ${pairs} same-tool ordered pairs`);
+  console.log(`       ${pairs} same-tool ordered pairs, in ${secs(walk.took())}`);
 });
 
 // A failure is mapped back to the line it came from by scoring every line on content.

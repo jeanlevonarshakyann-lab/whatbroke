@@ -306,5 +306,71 @@ try {
   pass++;
 } catch (e) { console.log(`  FAIL site list width\n       ${e.message}`); fail++; }
 
+// A missing module is not an incidental path in the message: it IS the message. Three
+// modules that cannot be found are three things to install, and grouping them into one
+// "likely cause" has the reader add one dependency, rerun, and watch two more fail - after
+// which they stop believing the likely-cause line anywhere.
+try {
+  const { clusterFailures, skeleton, causeId } = await import("../src/cluster.js");
+  const missing = (m) => ({ message: `Cannot find module '${m}'`, category: "run", title: "Error", subject: "run" });
+  const three = [missing("/a.js"), missing("/b.js"), missing("/c.js")];
+  assert.equal(clusterFailures(three).filter((c) => c.reported).length, 0,
+    "three different missing modules are three causes");
+  assert.equal(new Set(three.map((f) => skeleton(f.message))).size, 3);
+  assert.equal(new Set(three.map(causeId)).size, 3, "and three causes across runs too");
+
+  // Modules whose names do not look like paths were never eaten; they must still not be.
+  assert.notEqual(skeleton("Cannot find module 'lodash'"), skeleton("Cannot find module 'express'"));
+  // The same module missing in three places is one cause, and still groups.
+  const same = [missing("/a.js"), missing("/a.js"), missing("/a.js")];
+  const grouped = clusterFailures(same).filter((c) => c.reported);
+  assert.equal(grouped.length, 1, "one module missing three times is one cause");
+  assert.equal(grouped[0].size, 3);
+
+  // The other shapes the corpus actually contains.
+  const shapes = [
+    (m) => `Module not found: Error: Can't resolve '${m}' in '/home/dev/app'`,
+    (m) => `ModuleNotFoundError: No module named '${m}'`,
+    (m) => `Could not resolve '${m}' in src/clean.js`,
+    (m) => `Cannot find module '${m}' from '/home/dev/app/bimp.ts'`,
+    (m) => `Cannot find module '${m}' imported from /home/dev/m3/run.mjs`,
+  ];
+  for (const shape of shapes) {
+    assert.notEqual(skeleton(shape("./one.js")), skeleton(shape("./two.js")), shape("X"));
+    assert.equal(skeleton(shape("./one.js")), skeleton(shape("./one.js")), shape("X"));
+  }
+  console.log("  ok   different missing modules are different causes");
+  pass++;
+} catch (e) { console.log(`  FAIL missing modules cluster\n       ${e.message}`); fail++; }
+
+// Display and history ask different questions of the same failure. The display refuses to
+// group "assert <num> == <num>" - one word is a shape, not a bug - but history went on
+// keying on that shape alone, so every numeric assertion in a suite was one cause: a
+// second test failing reported "nothing new", and the first being fixed reported nothing
+// gone. Where the shape is too weak to group on, the subject is what tells them apart.
+try {
+  const { causeId, clusterFailures, tooWeakToGroup } = await import("../src/cluster.js");
+  const a = { file: "tests/test_a.py", line: 4, title: "test_a", subject: "test_a", message: "assert 1 == 2", category: "test" };
+  const b = { file: "tests/test_b.py", line: 9, title: "test_b", subject: "test_b", message: "assert 3 == 4", category: "test" };
+  assert.equal(tooWeakToGroup(a), true);
+  assert.notEqual(causeId(a), causeId(b), "two unrelated numeric assertions are two causes");
+  assert.equal(clusterFailures([a, b]).every((c) => !c.reported), true,
+    "and the display still refuses to group them");
+
+  // Identity has to survive the code moving: a test that keeps failing after a refactor
+  // is the same bug, and calling it new on every rename makes --since-last useless.
+  assert.equal(causeId(a), causeId({ ...a, file: "tests/moved/test_a.py", line: 99 }));
+
+  // A signature with real content in it still groups, and still shares one identity.
+  const strong = [1, 2, 3].map((i) => ({
+    title: `t${i}`, subject: `t${i}`, category: "test",
+    message: "KeyError: expiry_token missing from claims",
+  }));
+  assert.equal(new Set(strong.map(causeId)).size, 1, "one real cause, whatever it is called");
+  assert.equal(clusterFailures(strong).filter((c) => c.reported).length, 1);
+  console.log("  ok   a signature too weak to group on is still two causes in history");
+  pass++;
+} catch (e) { console.log(`  FAIL weak signature identity\n       ${e.message}`); fail++; }
+
 console.log(`\n  ${pass} passed, ${fail} failed`);
 process.exit(fail ? 1 : 0);

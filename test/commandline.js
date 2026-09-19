@@ -241,6 +241,88 @@ try {
   pass++;
 } catch (e) { console.log(`  FAIL version flag\n       ${e.message}`); fail++; }
 
+// ------------------------------------------------ streaming the command's own output
+
+// The copy kept for diagnosis is capped by --max-bytes. The copy streamed to the terminal
+// was capped by nothing: write() returns false when the destination cannot take more, and
+// ignoring it makes node queue every later chunk in this process's memory. A command that
+// prints faster than the terminal, the file or the pipe on the other side can read it then
+// grows whatbroke's heap without limit - the one thing --max-bytes exists to prevent.
+try {
+  const { PassThrough } = await import("node:stream");
+  const { relay } = await import("../src/stream.js");
+  const source = new PassThrough();
+  const seen = [];
+  let full = true, drained = null;
+  const out = {                                     // a destination that cannot take more
+    write: () => !full,
+    once: (event, fn) => { if (event === "drain") drained = fn; },
+  };
+  relay(source, out, { tee: (d) => seen.push(d.toString()) });
+  source.write("one");
+  assert.equal(source.isPaused(), true, "a full destination stops the stream being read");
+  source.write("two");                              // goes nowhere: paused streams emit nothing
+  full = false;
+  drained();
+  assert.equal(source.isPaused(), false, "and draining starts it again");
+  source.write("three");
+  await new Promise((r) => setImmediate(r));
+  assert.deepEqual(seen, ["one", "two", "three"], "everything is captured, paused or not");
+  console.log("  ok   a stream is paused when its destination is full and resumed when it drains");
+  pass++;
+} catch (e) { console.log(`  FAIL relay backpressure\n       ${e.message}`); fail++; }
+
+// And end to end: a reader that is not reading must slow the wrapped command down rather
+// than be queued up in whatbroke.
+try {
+  const { mkdtempSync, rmSync, writeFileSync: write } = await import("node:fs");
+  const { tmpdir } = await import("node:os");
+  const dir = mkdtempSync(join(tmpdir(), "wb-stream-"));
+  const helper = join(dir, "slow-consumer.mjs");
+  const MB = 8;
+  write(helper, `
+import { spawn } from "node:child_process";
+const [cli, code] = process.argv.slice(2);
+const child = spawn(process.execPath, [cli, "--", process.execPath, "-e", \`
+  const chunk = Buffer.alloc(64 * 1024, 0x61);
+  let left = ${MB} * 1024 * 1024;
+  const write = () => {
+    while (left > 0) {
+      left -= chunk.length;
+      if (!process.stdout.write(chunk)) return process.stdout.once("drain", write);
+    }
+    process.stderr.write("WROTE-ALL");
+    process.exit(\${code});
+  };
+  write();
+\`], { stdio: ["ignore", "pipe", "pipe"] });
+let err = "", bytes = 0;
+child.stderr.on("data", (d) => { err += d; });
+child.stdout.pause();                    // the slow consumer: nobody is reading yet
+setTimeout(() => {
+  const ranAhead = err.includes("WROTE-ALL");
+  child.stdout.on("data", (d) => { bytes += d.length; });
+  child.stdout.resume();
+  child.on("close", (status) => process.stdout.write(JSON.stringify({ ranAhead, bytes, status })));
+}, 500);
+`);
+  const green = JSON.parse(spawnSync(process.execPath, [helper, cli, "0"],
+    { encoding: "utf8", timeout: 60000 }).stdout);
+  assert.equal(green.ranAhead, false,
+    "the command was allowed to write 8MB while nothing was reading it");
+  assert.equal(green.bytes, MB * 1024 * 1024, "and every streamed byte still arrived");
+  assert.equal(green.status, 0);
+
+  const failed = JSON.parse(spawnSync(process.execPath, [helper, cli, "7"],
+    { encoding: "utf8", timeout: 60000 }).stdout);
+  assert.equal(failed.ranAhead, false);
+  assert.ok(failed.bytes >= MB * 1024 * 1024, "the report is printed after the output, not instead of it");
+  assert.equal(failed.status, 7, "and the wrapped command's exit code survives");
+  rmSync(dir, { recursive: true, force: true });
+  console.log("  ok   a slow reader slows the wrapped command instead of filling memory");
+  pass++;
+} catch (e) { console.log(`  FAIL live streaming backpressure\n       ${e.message}`); fail++; }
+
 const cliResults = await (await import("./cli.js")).runCliTests();
 pass += cliResults.pass;
 fail += cliResults.fail;

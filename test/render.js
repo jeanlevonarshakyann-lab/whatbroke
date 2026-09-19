@@ -300,5 +300,39 @@ try {
   pass++;
 } catch (e) { console.log(`  FAIL no-source read isolation\n       ${e.message}`); fail++; }
 
+// A path is shortened by taking the working directory off the front of it. The test for
+// that was cwd + "/", and on Windows the separator is "\\" - so nothing was ever shortened
+// there and every diagnostic showed its full absolute path. A log can also be written on
+// one platform and read on another, so both separators count wherever this runs.
+try {
+  const { relPath } = await import("../src/util.js");
+  const cwd = process.cwd, platform = Object.getOwnPropertyDescriptor(process, "platform");
+  const as = (plat, dir, fn) => {
+    Object.defineProperty(process, "platform", { value: plat, configurable: true });
+    process.cwd = () => dir;
+    try { fn(); } finally {
+      Object.defineProperty(process, "platform", platform);
+      process.cwd = cwd;
+    }
+  };
+  as("win32", "C:\\Users\\dev\\app", () => {
+    assert.equal(relPath("C:\\Users\\dev\\app\\src\\index.ts"), "src\\index.ts");
+    // Windows matches paths without regard to case; nothing else does.
+    assert.equal(relPath("c:\\users\\dev\\app\\src\\index.ts"), "src\\index.ts");
+    // A sibling directory that merely starts with the same letters is not inside it.
+    assert.equal(relPath("C:\\Users\\dev\\appendix\\x.ts"), "C:\\Users\\dev\\appendix\\x.ts");
+    assert.equal(relPath("D:\\other\\x.ts"), "D:\\other\\x.ts");
+  });
+  as("linux", "/home/dev/app", () => {
+    assert.equal(relPath("/home/dev/app/src/index.ts"), "src/index.ts");
+    assert.equal(relPath("/home/dev/appendix/x.ts"), "/home/dev/appendix/x.ts");
+    // Outside the directory it stays absolute: "../../other/x.ts" would be worse to read.
+    assert.equal(relPath("/other/x.ts"), "/other/x.ts");
+    assert.equal(relPath(undefined), undefined);
+  });
+  console.log("  ok   a path under the working directory is shortened on either platform");
+  pass++;
+} catch (e) { console.log(`  FAIL relative paths across platforms\n       ${e.message}`); fail++; }
+
 console.log(`\n  ${pass} passed, ${fail} failed`);
 process.exit(fail ? 1 : 0);

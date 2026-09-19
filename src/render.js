@@ -122,6 +122,9 @@ export function render(result, { max = 5, cwd = true, source = true, cluster = t
     }
   } else if (!secondary && since && !since.compared && since.reason === "no-previous-run") {
     out.push(`    ${C.dim}first tracked run — nothing to compare against yet${C.reset}`);
+  } else if (!secondary && since?.reason === "unidentified-pipe") {
+    // Saying nothing here would read as "nothing new", which is the claim being refused.
+    out.push(`    ${C.dim}not tracked: a piped log carries no command to tell it from another. Name it with --id NAME${C.reset}`);
   }
   if (result.others?.length) {
     const named = result.others.map((o) => `${o.tool} (${o.count})`).join(", ");
