@@ -2,6 +2,15 @@
 
 ## Unreleased
 
+- Reads `terraform fmt -check -diff`, which is in nearly every Terraform pipeline and was
+  read as nothing: the job exited 3 and the diff came back handed over whole. Each `@@` is
+  a place, so one file with two unformatted regions is two of them, and the source as it
+  stands is quoted with each. terraform spells its diff's halves `old/<path>` and
+  `new/<path>` with the same path in both, which is what tells it from git's `a/` and `b/`
+  and from a test runner's `--- expected` / `+++ actual`; a file's diff ends where another
+  one begins. Not a plain `terraform fmt -check`, which lists bare filenames and nothing
+  else - there is no shape in a list of paths to claim safely.
+
 - Reads `dotnet format --verify-no-changes`, the format gate most .NET CI runs. It reports
   through MSBuild in the same shape the compiler uses, so the same reader should always
   have read it - but its rule names are `WHITESPACE`, `IMPORTS` and `ANALYZERS`, and the

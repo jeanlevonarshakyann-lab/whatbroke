@@ -320,6 +320,7 @@ Where the interleaving matters, merge the streams in the command itself:
 | **mypy** | error code, `file:line`, the type-checking message; notes and warnings set aside |
 | **mypy `--output=json`** | the same errors as records, one per line, agreeing with the text form. This form always carries a column, which the default output prints only when asked, and a `hint` where the text form writes a note under the error |
 | **Terraform** | the file, the line, the block, and the sentence at the bottom of the box that says what to do |
+| **terraform fmt `-check -diff`** | every region it would rewrite, with the line each one starts at and the source as it stands now. terraform spells its diff's halves `old/<path>` and `new/<path>`, which is what tells it from every other diff a build prints. Not a plain `terraform fmt -check`, which lists bare filenames and nothing else |
 | **CMake** | the script line and the command that raised it — `add_executable`, `find_package` |
 | **ninja** | no parser of its own: what fails under it is a compiler, which already has one |
 | **kubectl** | the sentence a person wants, not five identical klog lines from inside client-go |

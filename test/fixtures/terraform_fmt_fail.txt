@@ -1,0 +1,23 @@
+main.tf
+--- old/main.tf
++++ new/main.tf
+@@ -1,12 +1,12 @@
+ resource "aws_s3_bucket" "invoices" {
+-    bucket = "shop-invoices"
+-  tags={
+-    Name="invoices"
+-      Env = "prod"
++  bucket = "shop-invoices"
++  tags = {
++    Name = "invoices"
++    Env  = "prod"
+   }
+ }
+ 
+-variable  "region"  {
+-  type = string
+-  default="eu-west-1"
++variable "region" {
++  type    = string
++  default = "eu-west-1"
+ }
