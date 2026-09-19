@@ -2,6 +2,14 @@
 
 ## Unreleased
 
+- Reads `dotnet format --verify-no-changes`, the format gate most .NET CI runs. It reports
+  through MSBuild in the same shape the compiler uses, so the same reader should always
+  have read it - but its rule names are `WHITESPACE`, `IMPORTS` and `ANALYZERS`, and the
+  code pattern required a digit, so a run that found sixteen places to fix came back as
+  unrecognised output. A code is now an uppercase identifier rather than one ending in a
+  digit; the file extension is still what separates these from TypeScript's identical
+  `file(line,col): error TS2322:`, and no fixture in the corpus changes hands.
+
 - Reads `gofmt -d`, the other half of Go's format gate, which was read as nothing at all.
   The file is named once in the header and each `@@` says where in it, so one file with two
   unformatted regions is two places rather than one entry - the same shape `cargo fmt

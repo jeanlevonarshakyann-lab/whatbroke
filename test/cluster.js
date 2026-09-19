@@ -125,6 +125,7 @@ try {
     "clippy_fail.txt",           // one lint in several places is one fix
     "flake8_fail.txt",           // the same whitespace rule in three places
     "swiftc_bulk_fail.txt",      // eight assignments of the same wrong type, one cause
+    "dotnet_format_fail.txt",    // sixteen places, and two things to do about them
   ];
   let checked = 0;
   for (const file of readdirSync(join(here, "fixtures"))) {
