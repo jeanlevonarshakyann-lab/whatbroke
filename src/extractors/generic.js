@@ -39,7 +39,15 @@ const CONTINUATION = /^[^\S\n]*(?:note|help|hint):/i;
 // `Orders.java:8: warning: [rawtypes] found raw type: List`, and the location shape above
 // claimed it. A javac run that compiled cleanly and warned four times came back as
 // "3 errors". A note or a hint after a location is the same aside, told the same way.
-const LOCATED_ASIDE = /^[^\s:]+:\d+(?::\d+)?:[^\S\n]*(?:warning|note|help|hint)(?:\[[^\]\n]*\])?:/i;
+//
+// The colon does not always come straight after the word. A linter that reports which
+// rule fired names it there instead - oxlint writes
+// `shop.js:1:7: warning eslint(no-unused-vars): Variable 'unused' is ...` - and an
+// oxlint run that exited 0 on three warnings came back as "3 errors" for exactly the
+// reason javac's did. What may sit between is a rule name, optionally qualified by the
+// plugin that owns it; anything longer is prose, and prose after a severity word means
+// the word was not a severity at all.
+const LOCATED_ASIDE = /^[^\s:]+:\d+(?::\d+)?:[^\S\n]*(?:warning|note|help|hint)\b(?:\[[^\]\n]*\]|[^\S\n]+[\w.-]+(?:\([^)\n]*\))?)?:/i;
 const NOISE = [/^[^\S\n]*at /, /^npm (notice|warn)/, /^[^\S\n]*$/, /^warning:/i, LOCATED_ASIDE, ANNOTATION, CONTINUATION];
 
 // Almost every runtime prints "something went wrong" and then says where, on the next
