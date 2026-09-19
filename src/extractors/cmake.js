@@ -17,6 +17,12 @@
 import { withSource } from "../ownership.js";
 
 const HEAD_RE = /^CMake (Error|Warning|Deprecation Warning)(?:[^\S\n]+at[^\S\n]+(.+?):(\d+)(?:[^\S\n]+\(([^)]+)\))?)?:[^\S\n]*$/;
+// cmake refusing before it reads any script: a source directory that is not there, one
+// with no CMakeLists.txt in it, a generator it does not have. The message sits on the
+// banner's own line and there is no location, because nothing has been read yet - so the
+// pattern above, which ends at the colon, matches none of it and the whole log, which is
+// usually that one line, went unread.
+const FLAT_RE = /^CMake (Error|Warning):[^\S\n]+(\S.*?)[^\S\n]*$/;
 // Everything from here down is the run reporting that it gave up.
 const TAIL_RE = /^(?:--[^\S\n]|CMake Generate step failed|Configuring incomplete)/;
 const MAX_MESSAGE = 4;
@@ -28,13 +34,21 @@ export default {
   category: "build",
   commands: ["cmake", "ctest"],
 
-  detect: (s) => HEAD_RE.test(s.split("\n").find((l) => HEAD_RE.test(l)) ?? ""),
+  detect: (s) => s.split("\n").some((l) => HEAD_RE.test(l) || FLAT_RE.test(l)),
 
   extract(s) {
     const lines = s.split("\n");
     const failures = [];
     let warnings = 0;
     for (let i = 0; i < lines.length; i++) {
+      const flat = lines[i].match(FLAT_RE);
+      if (flat) {
+        if (flat[1] !== "Error") { warnings++; continue; }
+        failures.push(withSource({
+          title: "cmake error", label: "cmake error", severity: "error", message: flat[2],
+        }, i, i + 1));
+        continue;
+      }
       const h = lines[i].match(HEAD_RE);
       if (!h) continue;
       const message = [];

@@ -39,8 +39,32 @@ const FRAME_RE = /^=== (?:RUN|PAUSE|CONT|NAME)[^\S\n]+(\S+)[^\S\n]*$/;
 // script passing a flag the installed toolchain is too old for stops exactly here.
 const BAD_FLAG_RE = /^flag provided but not defined:[^\S\n]+(-\S+)[^\S\n]*$/;
 const GO_USAGE_RE = /^(?:usage: go[^\S\n]|Run 'go help)/;
-const refusedFlag = (lines) => lines.findIndex((line, i) =>
-  BAD_FLAG_RE.test(line) && lines.slice(i + 1, i + 3).some((l) => GO_USAGE_RE.test(l)));
+// The other three ways the tool stops before running anything. Each names go or speaks
+// go's own vocabulary: a subcommand it does not have, a sentence it ends by pointing at
+// `go help`, and a package pattern that resolves to nothing because there is no module
+// here - the failure of running go in the wrong directory, which is a CI staple.
+const UNKNOWN_CMD_RE = /^go[^\S\n]+(\S+):[^\S\n]+unknown command[^\S\n]*$/;
+const SEE_HELP_RE = /^go:[^\S\n]+(\S.*?);[^\S\n]*see 'go help[^\S\n]+[^']+'[^\S\n]*$/;
+const NO_MODULE_RE = /^pattern[^\S\n]+(\S+):[^\S\n]+(\S.*?\bmain module\b.*?)[^\S\n]*$/;
+
+/** Where the tool said it would not run, and what it said, or null. */
+function refusal(lines) {
+  for (let i = 0; i < lines.length; i++) {
+    const flag = lines[i].match(BAD_FLAG_RE);
+    // Go's flag package writes that line for every program built with it, so it says
+    // nothing about whose flag it was; go's own usage underneath is what does.
+    if (flag && lines.slice(i + 1, i + 3).some((l) => GO_USAGE_RE.test(l))) {
+      return { at: i, subject: flag[1], message: lines[i].trim() };
+    }
+    const cmd = lines[i].match(UNKNOWN_CMD_RE);
+    if (cmd) return { at: i, subject: cmd[1], message: lines[i].trim() };
+    const help = lines[i].match(SEE_HELP_RE);
+    if (help) return { at: i, subject: "go.mod", message: help[1] };
+    const pattern = lines[i].match(NO_MODULE_RE);
+    if (pattern) return { at: i, subject: pattern[1], message: pattern[2] };
+  }
+  return null;
+}
 const RESULT_RE = /^[^\S\n]*--- (PASS|FAIL|SKIP): (\S+)/;
 // A package's closing lines end attribution, so a TestAdd in one package is never read
 // as the same test as a TestAdd in the next.
@@ -120,7 +144,7 @@ function standalonePanic(lines) {
 export default {
   name: "go",
   // Strings a log has to hold for this parser to read anything from it - see src/router.js.
-  signals: ["--- FAIL", "--- PASS", "--- SKIP", "--- BENCH", "ok ", "ok\t", "FAIL ", "FAIL\t", ".go:", "goroutine ", "flag provided but not defined"],
+  signals: ["--- FAIL", "--- PASS", "--- SKIP", "--- BENCH", "ok ", "ok\t", "FAIL ", "FAIL\t", ".go:", "goroutine ", "flag provided but not defined", "unknown command", "see 'go help", "main module"],
   category: "compile",
   commands: ["go"],
   // `--- ` alone is not go's. A unified diff heads its two halves `--- expected` and
@@ -133,7 +157,7 @@ export default {
     // --- FAIL line, nothing but the panic and its goroutine dump. `go run` produces
     // exactly that, and it is the commonest way a Go program fails.
     (PANIC_RE.test(s) && /^goroutine \d+ \[/m.test(s)) ||
-    refusedFlag(s.split("\n")) >= 0,
+    refusal(s.split("\n")) !== null,
 
   extract(s) {
     const lines = s.split("\n");
@@ -236,13 +260,12 @@ export default {
     }
     // The tool refusing a flag never ran anything, so it stands alone: there is no test
     // tally, no compile error and no panic to report it beside.
-    const refused = refusedFlag(lines);
-    if (refused >= 0 && !failures.length) {
-      const flag = lines[refused].match(BAD_FLAG_RE)[1];
+    const refused = refusal(lines);
+    if (refused && !failures.length) {
       failures.push(withSource({
-        title: flag, subject: flag, severity: "error",
-        message: `flag provided but not defined: ${flag}`,
-      }, refused, refused + 1));
+        title: refused.subject, subject: refused.subject, severity: "error",
+        message: refused.message,
+      }, refused.at, refused.at + 1));
       return { tool: "go", summary: "the command was refused", failures };
     }
     const bits = [];

@@ -277,6 +277,25 @@ const CASES = [
       assert.equal(r.failures[0].subject, "-not-a-flag");
       assert.match(r.failures[0].message, /flag provided but not defined: -not-a-flag/);
     } },
+  // The other three ways the tool stops before running anything. Each names go or speaks
+  // go's own vocabulary, and each was the whole log of a step that never started.
+  { file: "go_unknowncmd_fail.txt", tool: "go", n: 1, check: (r) => {
+      assert.equal(r.summary, "the command was refused");
+      assert.equal(r.failures[0].subject, "notacommand");
+    } },
+  { file: "go_nogomod_fail.txt", tool: "go", n: 1, check: (r) => {
+      // Running go outside a module, which is what a CI script does when its working
+      // directory is wrong. go ends the sentence by pointing at `go help`.
+      assert.equal(r.failures[0].subject, "go.mod");
+      assert.match(r.failures[0].message, /^go\.mod file not found/);
+      assert.equal(r.failures[0].message.includes("see 'go help"), false,
+        "the pointer to the manual is not part of what went wrong");
+    } },
+  { file: "go_nomodule_fail.txt", tool: "go", n: 1, check: (r) => {
+      // The same directory mistake said the other way round, about the pattern given.
+      assert.equal(r.failures[0].subject, "./...");
+      assert.match(r.failures[0].message, /does not contain main module/);
+    } },
 ];
 
 let pass = 0, fail = 0;
@@ -465,6 +484,15 @@ try {
   assert.equal(go.detect("flag provided but not defined: -x\nusage: myapp [flags]\n"), false,
     "somebody else's Go program is not the go tool");
   assert.equal(go.detect("flag provided but not defined: -x\n"), false, "and the line alone says nothing");
+  // The other three have to name go or speak its vocabulary, and nothing looser.
+  assert.equal(go.detect("go notacommand: unknown command\n"), true);
+  assert.equal(go.detect("docker notacommand: unknown command\n"), false);
+  assert.equal(go.detect("go: go.mod file not found here; see 'go help modules'\n"), true);
+  assert.equal(go.detect("go: downloading github.com/x/y v1.0.0\n"), false);
+  assert.equal(go.detect("go: something went wrong\n"), false, "a bare go: sentence is not a refusal");
+  assert.equal(go.detect("pattern ./...: directory prefix . does not contain main module\n"), true);
+  assert.equal(go.detect("pattern ./...: no matching files found\n"), false,
+    "a pattern that matched nothing is not the module mistake");
   console.log("  ok   go's own usage is what makes a refused flag go's");
   pass++;
 } catch (e) { console.log(`  FAIL go refused flag\n       ${e.message}`); fail++; }

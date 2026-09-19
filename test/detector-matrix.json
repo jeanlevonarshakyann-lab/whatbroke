@@ -602,6 +602,30 @@
     ],
     "shadow": {}
   },
+  "cmake_generator_fail.txt": {
+    "winner": "cmake",
+    "parser": "cmake",
+    "failures": 1,
+    "claimants": [
+      "cmake",
+      "generic"
+    ],
+    "shadow": {
+      "generic": 1
+    }
+  },
+  "cmake_nosource_fail.txt": {
+    "winner": "cmake",
+    "parser": "cmake",
+    "failures": 1,
+    "claimants": [
+      "cmake",
+      "generic"
+    ],
+    "shadow": {
+      "generic": 1
+    }
+  },
   "cmake_syntax_fail.txt": {
     "winner": "cmake",
     "parser": "cmake",
@@ -1490,6 +1514,38 @@
     }
   },
   "go_badflag_fail.txt": {
+    "winner": "go",
+    "parser": "go",
+    "failures": 1,
+    "claimants": [
+      "go",
+      "generic"
+    ],
+    "shadow": {}
+  },
+  "go_nogomod_fail.txt": {
+    "winner": "go",
+    "parser": "go",
+    "failures": 1,
+    "claimants": [
+      "go",
+      "generic"
+    ],
+    "shadow": {
+      "generic": 1
+    }
+  },
+  "go_nomodule_fail.txt": {
+    "winner": "go",
+    "parser": "go",
+    "failures": 1,
+    "claimants": [
+      "go",
+      "generic"
+    ],
+    "shadow": {}
+  },
+  "go_unknowncmd_fail.txt": {
     "winner": "go",
     "parser": "go",
     "failures": 1,
