@@ -268,6 +268,13 @@ const CASES = [
       assert.equal(r.failures[0].subject, "github.com/nonexistent/gone@v1.2.3");
       assert.equal(r.failures[0].trace, undefined);
     } },
+  // The go tool refusing a flag it does not have - a CI script passing one the installed
+  // toolchain is too old for stops exactly here, and it read as nothing.
+  { file: "go_badflag_fail.txt", tool: "go", n: 1, check: (r) => {
+      assert.equal(r.summary, "the command was refused");
+      assert.equal(r.failures[0].subject, "-not-a-flag");
+      assert.match(r.failures[0].message, /flag provided but not defined: -not-a-flag/);
+    } },
 ];
 
 let pass = 0, fail = 0;
@@ -430,6 +437,21 @@ try {
   console.log("  ok   go mod reads what can only be a failure, and no progress line");
   pass++;
 } catch (e) { console.log(`  FAIL go mod claims\n       ${e.message}`); fail++; }
+
+// "flag provided but not defined" comes from Go's flag package, which every Go program
+// built with it writes. The line alone says nothing about whose flag it was; go's own
+// usage underneath is the only thing that does.
+try {
+  const { EXTRACTORS } = await import("../../src/index.js");
+  const go = EXTRACTORS.find((e) => e.name === "go");
+  assert.equal(go.detect("flag provided but not defined: -x\nusage: go build [-o output]\n"), true);
+  assert.equal(go.detect("flag provided but not defined: -x\nRun 'go help build' for details.\n"), true);
+  assert.equal(go.detect("flag provided but not defined: -x\nusage: myapp [flags]\n"), false,
+    "somebody else's Go program is not the go tool");
+  assert.equal(go.detect("flag provided but not defined: -x\n"), false, "and the line alone says nothing");
+  console.log("  ok   go's own usage is what makes a refused flag go's");
+  pass++;
+} catch (e) { console.log(`  FAIL go refused flag\n       ${e.message}`); fail++; }
 
 console.log(`\n  ${pass} passed, ${fail} failed`);
 process.exit(fail ? 1 : 0);

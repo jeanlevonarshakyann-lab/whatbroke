@@ -2,6 +2,16 @@
 
 ## Unreleased
 
+- Three tools that refuse to start now say so, instead of reading as nothing. `python -m
+  pytest` with pytest not installed prints the interpreter's path and the module it could
+  not find, and that is the whole log of a step that never ran a test. `go` handed a flag
+  it does not have prints Go's flag-package line and its own usage. `terraform` handed a
+  subcommand it does not ship prints one sentence. Each is guarded by what makes it that
+  tool's: the interpreter at the start of the line, go's own `usage: go <verb>` underneath
+  - Go's flag package writes that first line for every program built with it - and
+  terraform naming itself. Each also joins the lines the capture keeps when a log is cut
+  short, because none of them carries a failure word.
+
 - Says what the exit status means when the output says nothing. A command that is killed
   writes nothing on the way out - `cargo build` stopped by the kernel's out-of-memory
   killer, a suite cancelled by a job timeout, a crash in a C extension - and every parser

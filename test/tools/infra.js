@@ -273,6 +273,11 @@ const CASES = [
       assert.equal(r.failures[0].stmt, "type=number");
       assert.equal(r.failures[1].line, 7, "a hunk in the middle of a file says where");
     } },
+  // terraform refusing a subcommand: one sentence, no box, no "Error:", and the whole log.
+  { file: "terraform_nocommand_fail.txt", tool: "terraform", n: 1, check: (r) => {
+      assert.equal(r.summary, "the command was refused");
+      assert.equal(r.failures[0].subject, "notasubcommand");
+    } },
 ];
 
 let pass = 0, fail = 0;
@@ -347,6 +352,17 @@ try {
   console.log("  ok   a terraform fmt diff stops where its own diff stops");
   pass++;
 } catch (e) { console.log(`  FAIL terraform fmt diff bound\n       ${e.message}`); fail++; }
+
+// terraform names itself in the sentence, which is what makes it claimable at all.
+try {
+  const { EXTRACTORS } = await import("../../src/index.js");
+  const tf = EXTRACTORS.find((e) => e.name === "terraform");
+  assert.equal(tf.detect('Terraform has no command named "wibble".\n'), true);
+  assert.equal(tf.detect('OpenTofu has no command named "wibble".\n'), true);
+  assert.equal(tf.detect('kubectl has no command named "wibble".\n'), false);
+  console.log("  ok   a refused subcommand is terraform's only when terraform says so");
+  pass++;
+} catch (e) { console.log(`  FAIL terraform refused command\n       ${e.message}`); fail++; }
 
 console.log(`\n  ${pass} passed, ${fail} failed`);
 process.exit(fail ? 1 : 0);

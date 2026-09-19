@@ -33,6 +33,14 @@ const LINTER_TAG = /[^\S\n]\([a-z][\w-]*\)[^\S\n]*$/;
 // TestTable/zero with TestParallelA's, a passing test's log included. This is how Go's
 // own test2json attributes a line - to the test named in the most recent frame.
 const FRAME_RE = /^=== (?:RUN|PAUSE|CONT|NAME)[^\S\n]+(\S+)[^\S\n]*$/;
+// The go tool refusing a flag it does not have. Go's flag package writes that first line
+// for every program built with it, so it says nothing about WHOSE flag it was - the usage
+// underneath is what does, and go is the only thing that writes "usage: go <verb>". A CI
+// script passing a flag the installed toolchain is too old for stops exactly here.
+const BAD_FLAG_RE = /^flag provided but not defined:[^\S\n]+(-\S+)[^\S\n]*$/;
+const GO_USAGE_RE = /^(?:usage: go[^\S\n]|Run 'go help)/;
+const refusedFlag = (lines) => lines.findIndex((line, i) =>
+  BAD_FLAG_RE.test(line) && lines.slice(i + 1, i + 3).some((l) => GO_USAGE_RE.test(l)));
 const RESULT_RE = /^[^\S\n]*--- (PASS|FAIL|SKIP): (\S+)/;
 // A package's closing lines end attribution, so a TestAdd in one package is never read
 // as the same test as a TestAdd in the next.
@@ -112,7 +120,7 @@ function standalonePanic(lines) {
 export default {
   name: "go",
   // Strings a log has to hold for this parser to read anything from it - see src/router.js.
-  signals: ["--- FAIL", "--- PASS", "--- SKIP", "--- BENCH", "ok ", "ok\t", "FAIL ", "FAIL\t", ".go:", "goroutine "],
+  signals: ["--- FAIL", "--- PASS", "--- SKIP", "--- BENCH", "ok ", "ok\t", "FAIL ", "FAIL\t", ".go:", "goroutine ", "flag provided but not defined"],
   category: "compile",
   commands: ["go"],
   // `--- ` alone is not go's. A unified diff heads its two halves `--- expected` and
@@ -124,7 +132,8 @@ export default {
     // A binary that panics outside a test run has none of the above: no test tally, no
     // --- FAIL line, nothing but the panic and its goroutine dump. `go run` produces
     // exactly that, and it is the commonest way a Go program fails.
-    (PANIC_RE.test(s) && /^goroutine \d+ \[/m.test(s)),
+    (PANIC_RE.test(s) && /^goroutine \d+ \[/m.test(s)) ||
+    refusedFlag(s.split("\n")) >= 0,
 
   extract(s) {
     const lines = s.split("\n");
@@ -224,6 +233,17 @@ export default {
       return vetted
         ? { tool: "go vet", summary: `${n} error${n > 1 ? "s" : ""}${andPanic}`, failures }
         : { tool: "go build", summary: `${n} compile error${n > 1 ? "s" : ""}${andPanic}`, failures };
+    }
+    // The tool refusing a flag never ran anything, so it stands alone: there is no test
+    // tally, no compile error and no panic to report it beside.
+    const refused = refusedFlag(lines);
+    if (refused >= 0 && !failures.length) {
+      const flag = lines[refused].match(BAD_FLAG_RE)[1];
+      failures.push(withSource({
+        title: flag, subject: flag, severity: "error",
+        message: `flag provided but not defined: ${flag}`,
+      }, refused, refused + 1));
+      return { tool: "go", summary: "the command was refused", failures };
     }
     const bits = [];
     if (builds) bits.push(`${builds} ${vetted ? "vet" : "compile"} error${builds > 1 ? "s" : ""}`);
