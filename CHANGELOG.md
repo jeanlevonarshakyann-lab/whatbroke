@@ -2,6 +2,19 @@
 
 ## Unreleased
 
+- Says what the exit status means when the output says nothing. A command that is killed
+  writes nothing on the way out - `cargo build` stopped by the kernel's out-of-memory
+  killer, a suite cancelled by a job timeout, a crash in a C extension - and every parser
+  here had nothing to read, so the answer was "whatbroke could not identify a diagnostic".
+  Node reports which signal ended the process, and a signal is a fact: `137` now reads as
+  SIGKILL, `139` as a segfault, and each says what usually sends it, written as the guess
+  it is. Exit codes are conventions and only three are read - `127` and `126`, which a
+  shell returns for a command that does not exist and one it could not run, and `124`,
+  which `timeout` returns - and only for a command whatbroke ran itself. A piped log's
+  upstream status never reached whatbroke and is not guessed at. A run killed part-way
+  still reports whatever it managed to print, with the signal beside the diagnosis rather
+  than instead of it. `--json` gains a `status` field.
+
 - Reads `go mod`. The module loader is where a Go build fails before it compiles anything,
   and none of it was read: `go mod tidy` came back with no parser at all. Two shapes, both
   captured - a go.mod it cannot parse, reported by file and line; and a module it cannot

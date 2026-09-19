@@ -4,7 +4,7 @@
   "title": "whatbroke report",
   "description": "What `whatbroke --json` prints: one report per run. Version 1 only ever gains fields, and a field it has keeps its meaning, so an object here may carry fields this schema does not list yet.",
   "type": "object",
-  "required": ["version", "tool", "summary", "guessed", "wrappers", "clusters", "others", "exitCode", "inputMode", "commandExitCode", "fallback", "truncated", "error", "since", "failures"],
+  "required": ["version", "tool", "summary", "guessed", "wrappers", "clusters", "others", "exitCode", "inputMode", "commandExitCode", "status", "fallback", "truncated", "error", "since", "failures"],
   "properties": {
     "version": {
       "description": "The format of this report.",
@@ -51,6 +51,10 @@
       "description": "The wrapped command's exit code. null for piped input, whose upstream status is unknown, and for a command that could not be started.",
       "type": ["integer", "null"],
       "minimum": 0
+    },
+    "status": {
+      "description": "What the exit status says by itself, when it says anything. A signal is a fact the operating system reported; an exit code means something only by a shell's convention, and only for a command whatbroke ran. null when the number says nothing.",
+      "anyOf": [{ "type": "null" }, { "$ref": "#/$defs/status" }]
     },
     "fallback": {
       "description": "Set when the command failed, or input was piped, and nothing in the output could be read.",
@@ -270,6 +274,25 @@
         "migrated": {
           "description": "The previous run was saved by an older version of whatbroke and compared through its identifiers.",
           "type": "boolean"
+        }
+      }
+    },
+    "status": {
+      "type": "object",
+      "required": ["signal", "code", "says"],
+      "properties": {
+        "signal": {
+          "description": "The signal that killed the command, as the operating system names it. null when it exited on its own.",
+          "type": ["string", "null"]
+        },
+        "code": {
+          "description": "The exit code this was read from - 128 plus the signal's number, where a signal ended it.",
+          "type": ["integer", "null"],
+          "minimum": 0
+        },
+        "says": {
+          "description": "What that means, in a sentence. Where a second sentence names a usual cause it is a guess, and says so.",
+          "type": "string"
         }
       }
     },

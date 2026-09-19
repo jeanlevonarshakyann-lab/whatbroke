@@ -233,6 +233,77 @@ try {
   pass++;
 } catch (e) { console.log(`  FAIL SIGKILL exit code\n       ${e.message}`); fail++; }
 
+// A command that is killed writes nothing on the way out, and the number it leaves is all
+// there is. Node knows which signal it was; before this, the report threw that away.
+try {
+  const r = spawnSync(process.execPath, [cli, "--json", process.execPath, "-e",
+    "process.kill(process.pid, 'SIGKILL')"], { encoding: "utf8" });
+  const { status } = JSON.parse(r.stdout);
+  if (process.platform === "win32") {
+    // Windows reports no signal, and a bare 1 is every program's way of failing.
+    assert.equal(status, null);
+  } else {
+    assert.equal(status.signal, "SIGKILL");
+    assert.equal(status.code, 137);
+    assert.match(status.says, /^Killed by SIGKILL\b/);
+    assert.match(status.says, /out of memory/);
+  }
+  console.log("  ok   a killed command reports the signal that killed it");
+  pass++;
+} catch (e) { console.log(`  FAIL killed command's signal\n       ${e.message}`); fail++; }
+
+try {
+  const r = spawnSync(process.execPath, [cli, process.execPath, "-e",
+    "process.kill(process.pid, 'SIGKILL')"], { encoding: "utf8" });
+  if (process.platform !== "win32") {
+    assert.match(r.stdout, /Command failed with exit code 137\./);
+    assert.match(r.stdout, /Killed by SIGKILL/);
+    // With nothing captured there was no diagnostic to miss, so it does not say there was.
+    assert.equal(r.stdout.includes("could not identify a diagnostic"), false);
+    assert.match(r.stdout, /No output was captured\./);
+  }
+  console.log("  ok   the terminal says what the signal was instead of nothing");
+  pass++;
+} catch (e) { console.log(`  FAIL killed command's terminal output\n       ${e.message}`); fail++; }
+
+// A run killed part-way still read what it got to print, and the reader has to be told
+// both: these failures, and that the run did not finish.
+try {
+  const r = spawnSync(process.execPath, [cli, "-q", process.execPath, "-e",
+    "console.log('bad.ts(3,9): error TS2322: Type X is not assignable to type number.'); process.kill(process.pid, 'SIGKILL')"],
+    { encoding: "utf8" });
+  assert.match(r.stdout, /TS2322/);
+  if (process.platform !== "win32") assert.match(r.stdout, /! Killed by SIGKILL/);
+  console.log("  ok   a diagnosis and the signal that cut the run short are both reported");
+  pass++;
+} catch (e) { console.log(`  FAIL diagnosis beside a signal\n       ${e.message}`); fail++; }
+
+// 127 and 126 are a shell's conventions, and the sentence says so rather than asserting
+// what happened. Every other number is left alone: 1 and 2 are what every program returns.
+try {
+  const r = spawnSync(process.execPath, [cli, "--json", process.execPath, "-e",
+    "process.exit(127)"], { encoding: "utf8" });
+  const { status } = JSON.parse(r.stdout);
+  assert.equal(status.signal, null);
+  assert.equal(status.code, 127);
+  assert.match(status.says, /shell's way of saying the command does not exist/);
+  const plain = spawnSync(process.execPath, [cli, "--json", process.execPath, "-e",
+    "process.exit(1)"], { encoding: "utf8" });
+  assert.equal(JSON.parse(plain.stdout).status, null);
+  console.log("  ok   a shell's exit conventions are read as conventions, and no others");
+  pass++;
+} catch (e) { console.log(`  FAIL exit code conventions\n       ${e.message}`); fail++; }
+
+// A piped log's number belongs to whoever produced it, and whatbroke never saw it.
+try {
+  const r = spawnSync(process.execPath, [cli, "--json"], { encoding: "utf8", input: "nothing here explains anything\n" });
+  const report = JSON.parse(r.stdout);
+  assert.equal(report.inputMode, "pipe");
+  assert.equal(report.status, null);
+  console.log("  ok   a piped log's upstream exit status is not invented");
+  pass++;
+} catch (e) { console.log(`  FAIL piped status\n       ${e.message}`); fail++; }
+
 try {
   const r = spawnSync(process.execPath, [cli, "--version"], { encoding: "utf8" });
   assert.equal(r.status, 0);
