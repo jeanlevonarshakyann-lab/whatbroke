@@ -1,0 +1,22 @@
+network.tf
+--- old/network.tf
++++ new/network.tf
+@@ -1,5 +1,5 @@
+ resource "aws_vpc" "core" {
+-  cidr_block="10.0.0.0/16"
++  cidr_block = "10.0.0.0/16"
+ 
+   tags = {
+     Name = "core"
+@@ -17,9 +17,9 @@
+   }
+ }
+ 
+-resource  "aws_route_table"  "private" {
++resource "aws_route_table" "private" {
+   vpc_id = aws_vpc.core.id
+-  tags={
++  tags = {
+     Name = "private"
+   }
+ }
