@@ -352,6 +352,20 @@ try {
   pass++;
 } catch (e) { console.log(`  FAIL gofmt diff bound\n       ${e.message}`); fail++; }
 
+// A second tool can insert indented output into a hunk. Those lines look like diff
+// context, but cannot move a removed line beyond the hunk's declared old range.
+try {
+  const clean = fx("gofmt_hunks_fail.txt");
+  const interleaved = clean.replace("@@ -17,8 +17,8 @@\n",
+    `@@ -17,8 +17,8 @@\n${'    "cell": null,\n'.repeat(11)}`);
+  const findings = analyse(interleaved).failures;
+  assert.deepEqual(findings.map((f) => [f.file, f.line, f.stmt]),
+    [["invoice/invoice.go", 31, "return days>30"]],
+    "interleaved context must not invent another finding at the next hunk's location");
+  console.log("  ok   interleaved gofmt context stays within its hunk");
+  pass++;
+} catch (e) { console.log(`  FAIL gofmt interleaving\n       ${e.message}`); fail++; }
+
 // The header has to be "diff <path>.orig <path>" with the SAME path twice. That is what
 // keeps gofmt off every other diff a build prints - git's, and a plain `diff a b`, either
 // of which it would otherwise read as somebody's unformatted Go.

@@ -24,7 +24,7 @@ import { withSource } from "../ownership.js";
 // "diff <path>.orig <path>", and the two have to be the same path - which is what keeps
 // this off `git diff`'s "diff --git a/x b/x" and off a plain `diff a b`.
 const HEAD_RE = /^diff[^\S\n]+(\S+)\.orig[^\S\n]+(\S+)[^\S\n]*$/;
-const HUNK_RE = /^@@[^\S\n]+-(\d+)(?:,\d+)?[^\S\n]+\+\d+(?:,\d+)?[^\S\n]+@@/;
+const HUNK_RE = /^@@[^\S\n]+-(\d+)(?:,(\d+))?[^\S\n]+\+\d+(?:,\d+)?[^\S\n]+@@/;
 // A hunk body is removed, added and context lines. "---" and "+++" belong to the file
 // header above the first hunk, never inside one.
 const BODY_RE = /^[-+ ]/;
@@ -91,6 +91,10 @@ export default {
         if (line.startsWith("+")) continue;
         at++;
       }
+      // Interleaved output can contain lines beginning with a space, just like diff
+      // context. If they push the first removed line beyond the hunk's declared old
+      // range, its location is no longer trustworthy. Later hunks may still be sound.
+      if (removed && at >= +hunk[1] + +(hunk[2] ?? 1)) continue;
       // From the header, not from the @@: the hunk says where in the file, and only the
       // header says which file. Two hunks of one file both name it, so both ranges start
       // there - each was read partly from that line, and a range has to hold what it is
