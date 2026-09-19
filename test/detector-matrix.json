@@ -1477,6 +1477,16 @@
     ],
     "shadow": {}
   },
+  "git_merge_missing_fail.txt": {
+    "winner": "git",
+    "parser": "git",
+    "failures": 1,
+    "claimants": [
+      "git",
+      "generic"
+    ],
+    "shadow": {}
+  },
   "git_norepo_fail.txt": {
     "winner": "git",
     "parser": "git",
@@ -1501,6 +1511,16 @@
       "generic": 1
     }
   },
+  "git_pull_no_upstream_fail.txt": {
+    "winner": "git",
+    "parser": "git",
+    "failures": 1,
+    "claimants": [
+      "git",
+      "generic"
+    ],
+    "shadow": {}
+  },
   "git_reject_fail.txt": {
     "winner": "git",
     "parser": "git",
@@ -1512,6 +1532,16 @@
     "shadow": {
       "generic": 1
     }
+  },
+  "git_stash_empty_fail.txt": {
+    "winner": "git",
+    "parser": "git",
+    "failures": 1,
+    "claimants": [
+      "git",
+      "generic"
+    ],
+    "shadow": {}
   },
   "go_badflag_fail.txt": {
     "winner": "go",
