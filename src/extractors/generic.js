@@ -18,6 +18,13 @@ const SIGNAL = [
   // unbound variable" - nothing else in that sentence says anything went wrong. sed and
   // awk say "unterminated address regex" and "unterminated string", and so do several
   // compilers. Both are rare enough outside a diagnostic to carry their own weight.
+  // The name may be followed by what the tool was doing when it failed. Go writes its
+  // errors that way and so does everything built on it: "open /app/compose.yaml: no such
+  // file or directory", "validating /app/compose.yaml: services.api.ports must be a
+  // array", "dial tcp 10.0.0.1:80: connect: connection refused". Anchoring on the name
+  // and its colon meant none of those were read, and `docker compose` says three of its
+  // four failures in exactly that form. A few words, not a sentence - the vocabulary
+  // below is still what says the line is about something going wrong.
   // The classic unix shape - "curl: (7) Failed to connect", "cp: cannot stat",
   // "ssh: ... Connection refused". A bare "prog: message" is far too broad to
   // treat as an error, so it must also say that something did not work.
@@ -26,7 +33,7 @@ const SIGNAL = [
   // archive format` and `awk: syntax error at source line 1` both name themselves and
   // then say plainly that something broke, and neither produced any diagnosis at all -
   // the word is not immediately before a colon, so the pattern above it never fired.
-  /^[a-z][\w.+-]*:\s.*\b(?:failed|failure|cannot|can't|not found|refused|denied|no such|unable to|invalid|missing|timed out|unreachable|does not exist|permission|errors?|fatal|panic|unrecogni[sz]ed|unsupported|corrupt(?:ed)?|malformed|illegal|unbalanced|truncated|unbound|unterminated)\b/i,
+  /^[a-z][\w.+-]*(?:[^\S\n]+[^\s:]+){0,3}:\s.*\b(?:failed|failure|cannot|can't|not found|refused|denied|no such|unable to|invalid|missing|timed out|unreachable|does not exist|permission|errors?|fatal|panic|unrecogni[sz]ed|unsupported|corrupt(?:ed)?|malformed|illegal|unbalanced|truncated|unbound|unterminated)\b/i,
 ];
 // A line whose first mark is "|" is the renderer drawing the source, not a diagnostic:
 // rustc, swift and ruff all echo the offending line and hang an annotation off it, and

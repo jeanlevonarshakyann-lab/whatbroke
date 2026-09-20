@@ -501,7 +501,7 @@
       "generic"
     ],
     "shadow": {
-      "generic": 1
+      "generic": 2
     }
   },
   "cargotest_snapshot_fail.txt": {
@@ -513,7 +513,7 @@
       "generic"
     ],
     "shadow": {
-      "generic": 3
+      "generic": 4
     }
   },
   "clang_bulk_fail.txt": {
@@ -772,7 +772,7 @@
       "generic"
     ],
     "shadow": {
-      "generic": 1
+      "generic": 2
     }
   },
   "denotest_junit_alongside_fail.txt": {
@@ -1160,7 +1160,7 @@
       "generic"
     ],
     "shadow": {
-      "generic": 3
+      "generic": 4
     }
   },
   "dotnettest_mtp_locale_es_fail.txt": {
@@ -2227,7 +2227,7 @@
       "generic"
     ],
     "shadow": {
-      "generic": 2
+      "generic": 3
     }
   },
   "jest_gh_text_same_fail.txt": {
@@ -2241,7 +2241,7 @@
       "generic"
     ],
     "shadow": {
-      "generic": 3
+      "generic": 4
     }
   },
   "jest_github_fail.txt": {
@@ -2300,7 +2300,7 @@
       "generic"
     ],
     "shadow": {
-      "generic": 2
+      "generic": 3
     }
   },
   "jest_suite_fail.txt": {
@@ -2314,7 +2314,7 @@
       "generic"
     ],
     "shadow": {
-      "generic": 1
+      "generic": 2
     }
   },
   "jest_text_statuses_fail.txt": {
@@ -2328,7 +2328,7 @@
       "generic"
     ],
     "shadow": {
-      "generic": 2
+      "generic": 3
     }
   },
   "jest_text_suite_same_fail.txt": {
@@ -2342,7 +2342,7 @@
       "generic"
     ],
     "shadow": {
-      "generic": 1
+      "generic": 2
     }
   },
   "jq_fail.txt": {
@@ -2567,7 +2567,7 @@
       "generic"
     ],
     "shadow": {
-      "generic": 1
+      "generic": 5
     }
   },
   "maven_surefire_xml_fail.txt": {
@@ -3313,7 +3313,9 @@
       "go",
       "generic"
     ],
-    "shadow": {}
+    "shadow": {
+      "generic": 1
+    }
   },
   "perl_syn_fail.txt": {
     "winner": "perl",
@@ -3389,7 +3391,7 @@
       "generic"
     ],
     "shadow": {
-      "generic": 1
+      "generic": 2
     }
   },
   "phpunit_error_fail.txt": {
@@ -3752,7 +3754,9 @@
       "pylint",
       "generic"
     ],
-    "shadow": {}
+    "shadow": {
+      "generic": 2
+    }
   },
   "pylint_parseable_fail.txt": {
     "winner": "pylint",

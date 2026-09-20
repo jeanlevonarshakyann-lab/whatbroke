@@ -61,9 +61,21 @@ try {
     // sed and awk say this, and so do several compilers
     "sed: -e expression #1, char 3: unterminated address regex",
     "awk: cmd. line:1: unterminated string",
+    // Go writes its errors as what it was doing, then why it could not, and everything
+    // built on Go writes them the same way - `docker compose` says most of its failures
+    // in this form. What it was doing is words, so a colon inside one of them ends the
+    // search: "dial tcp 10.0.0.1:80: connect: connection refused" is still not read.
+    "open /app/compose.yaml: no such file or directory",
+    "loading compose project: invalid compose file",
+    "creating network shop_default: permission denied",
   ];
   const shouldNot = [
     "Deploying to staging...",
+    // What it was doing is a few words, not a sentence. A whole clause before the colon
+    // is prose, and prose mentions these words without being a diagnostic - this line is
+    // a build system saying what it chose to skip, and it holds "not found".
+    "Running tests in /app: everything is fine",
+    "running every stage of the pipeline in order without any trouble: nothing failed",
     "note: this is fine",
     "info: everything is working",
     "warning: deprecated flag",
@@ -71,7 +83,7 @@ try {
   for (const l of shouldMatch) {
     const r = analyse(`Starting\n${l}\n`);
     assert.ok(r?.failures.length, `should have recognised: ${l}`);
-    assert.match(r.failures[0].message, /Failed|cannot|refused|not found|unbound|unterminated/i);
+    assert.match(r.failures[0].message, /Failed|cannot|refused|not found|unbound|unterminated|no such|invalid|permission/i);
   }
   for (const l of shouldNot) {
     // a bare "prog: message" must not be treated as a failure just for having a colon

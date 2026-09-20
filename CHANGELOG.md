@@ -2,6 +2,13 @@
 
 ## Unreleased
 
+- A tool may say what it was doing before it says why it could not. Go writes its errors
+  that way and everything built on Go writes them the same - "open /app/compose.yaml: no
+  such file or directory", "creating network shop_default: permission denied" - and the
+  fallback anchored on the program's name and its colon, so none of them were read.
+  `docker compose` says most of its failures in that form. A few words, not a clause:
+  what follows the colon still has to say that something went wrong.
+
 - Two more words the fallback reads as a failure: `unbound` and `unterminated`. `set -u`
   is how a careful CI script is written, and the shell reports it as "deploy.sh: line 4:
   FOO: unbound variable" - nothing else in that sentence says anything went wrong, so it
