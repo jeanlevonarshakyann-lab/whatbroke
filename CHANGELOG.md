@@ -2,6 +2,13 @@
 
 ## Unreleased
 
+- A markdownlint record that lost the fields naming it is no longer reported half-read.
+  What a document has to carry to be recognised as markdownlint's does not include the
+  sentence describing a rule, nor a non-empty list of its names, so a cut document could
+  produce a failure with no message - which the schema forbids - or one with no code.
+  markdownlint names every rule twice, "MD032" and "blanks-around-lists", so the second
+  name stands in when the sentence is gone, and a record with neither is dropped.
+
 - Byte-identical CI retry blocks are collapsed before parsing. De-duplication already
   showed each diagnostic once, but 67 of 200 duplicated fixtures still changed their
   headline or another public field because parser-specific tallies counted both copies.

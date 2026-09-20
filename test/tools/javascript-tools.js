@@ -8,6 +8,7 @@ import { join } from "node:path";
 import assert from "node:assert/strict";
 import { spawnSync } from "node:child_process";
 import { analyse } from "../../src/index.js";
+import markdownlint from "../../src/extractors/markdownlint.js";
 import { createReport } from "../../src/report.js";
 import { agreeAcrossFormats, cli, fx, here, runCases } from "./harness.js";
 
@@ -755,6 +756,29 @@ try {
   console.log("  ok   an eslint refusal is read from the line it matched on");
   pass++;
 } catch (e) { console.log(`  FAIL eslint refusal range\n       ${e.message}`); fail++; }
+
+// A cut markdownlint document hands back records with fields missing, and what a
+// document must carry to be recognised as markdownlint's at all does not include these.
+// The parser is asked directly: analyse() would drop a malformed failure of its own
+// accord and assert something true whatever this parser did.
+try {
+  const whole = fx("markdownlint_json_fail.txt");
+  const full = markdownlint.extract(whole).failures.length;
+
+  // a record that lost the sentence describing its rule: markdownlint names every rule
+  // twice, so the second name stands in rather than leaving a failure with no message
+  const undescribed = markdownlint.extract(whole.replace(/"ruleDescription":\s*"[^"]*",\s*/, ""));
+  assert.equal(undescribed.failures.length, full, "the record was dropped rather than described");
+  assert.ok(undescribed.failures.every((f) => f.message), "a failure reached the reader with no message");
+
+  // a record whose rule names survived as an empty array says nothing at all
+  const unnamed = markdownlint.extract(whole.replace(/"ruleNames":\s*\[[^\]]*\]/, '"ruleNames": []'));
+  assert.equal(unnamed.failures.length, full - 1, "the nameless record was reported anyway");
+  assert.ok(unnamed.failures.every((f) => f.code), "a failure reached the reader with no code");
+
+  console.log("  ok   a markdownlint record missing what names it is not reported half-read");
+  pass++;
+} catch (e) { console.log(`  FAIL markdownlint damaged record\n       ${e.message}`); fail++; }
 
 console.log(`\n  ${pass} passed, ${fail} failed`);
 process.exit(fail ? 1 : 0);
