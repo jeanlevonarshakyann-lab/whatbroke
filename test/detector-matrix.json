@@ -4018,6 +4018,16 @@
     ],
     "shadow": {}
   },
+  "rubocop_github_multiline_fail.txt": {
+    "winner": "rubocop",
+    "parser": "rubocop",
+    "failures": 2,
+    "claimants": [
+      "rubocop",
+      "generic"
+    ],
+    "shadow": {}
+  },
   "rubocop_json_fail.txt": {
     "winner": "rubocop",
     "parser": "rubocop",

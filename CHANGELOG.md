@@ -245,6 +245,14 @@
   compiler's package banner in the message. The embedded place is taken only when it
   names the file the record already names, because golangci-lint quotes a compiler that
   can name any file in the package.
+- A rubocop message that runs over more than one line no longer makes its whole GitHub
+  Actions log read as nothing. GitHub's command syntax cannot carry a newline, so rubocop
+  encodes one as `%0A` - and it writes one for every syntax offence, where the parser it
+  used is named on a second line. Decoded, `.` could not cross that newline and `$` sat
+  at the end of the string, so no annotation matched; a rubocop log is claimed by whether
+  any offence was read at all, so the entire run came back as "could not identify a
+  diagnostic". The rest of the message is now kept whole, which is what the JSON format
+  already gives for the same run.
 
 - Byte-identical CI retry blocks are collapsed before parsing. De-duplication already
   showed each diagnostic once, but 67 of 200 duplicated fixtures still changed their
