@@ -14,6 +14,7 @@ import { dirname, join } from "node:path";
 import { fileURLToPath } from "node:url";
 import { analyse, EXTRACTORS } from "../src/index.js";
 import { createReport } from "../src/report.js";
+import { exitStatus } from "../src/status.js";
 import { renderReport } from "../src/render.js";
 import { githubOutput } from "../src/github.js";
 import { REPORT_SCHEMA, inconsistencies, unknownKeywords, validate } from "./schema.js";
@@ -396,6 +397,51 @@ test("a control sequence cut off before its end does not take the lines after it
   assert.equal(report.tool, "flake8");
   assert.equal(report.failures.length, plain.failures.length);
   assert.deepEqual(evidenceOf(report), evidenceOf(plain).map((e) => JSON.stringify(JSON.parse(e).map(({ start, end }) => ({ start: start + 1, end: end + 1 })))));
+});
+
+// What the exit status says is part of the report, so it is schema-clean, it is the same
+// sentence in all three outputs, and it says nothing where the number says nothing.
+test("a signal's report is schema-clean and says the same thing in every output", () => {
+  const report = createReport({ analysis: null, raw: "", exitCode: 137, inputMode: "command", signal: "SIGKILL" });
+  assert.deepEqual(problems(report), []);
+  assert.equal(report.status.signal, "SIGKILL");
+  const terminal = renderReport(report, {});
+  const { stdout, summary } = githubOutput(report, {});
+  for (const where of [terminal, stdout, summary]) assert.ok(where.includes(report.status.says), where.slice(0, 200));
+});
+
+test("a status is claimed only where there is a status to claim", () => {
+  // Nothing ran wrong, nothing to say.
+  assert.equal(createReport({ analysis: null, raw: "", exitCode: 0, inputMode: "command" }).status, null);
+  // A number every program returns is not evidence of anything.
+  assert.equal(createReport({ analysis: null, raw: "x", exitCode: 1, inputMode: "command" }).status, null);
+  // A piped log's upstream number never reached whatbroke.
+  assert.equal(createReport({ analysis: null, raw: "x", exitCode: 127, inputMode: "pipe" }).status, null);
+  // A command that could not be started never ran, so `error` is the whole story.
+  assert.equal(createReport({ analysis: null, raw: "", exitCode: 127, inputMode: "command", error: "spawn x ENOENT" }).status, null);
+});
+
+test("output that went unread is still said to have gone unread beside a status", () => {
+  const killed = createReport({ analysis: null, raw: "a line nothing reads\n", exitCode: 137, inputMode: "command", signal: "SIGKILL" });
+  assert.deepEqual(problems(killed), []);
+  const terminal = renderReport(killed, { quiet: true });
+  assert.match(terminal, /Killed by SIGKILL/);
+  assert.match(terminal, /could not identify a diagnostic/);
+  // And with nothing captured there is no unread output to confess to.
+  const empty = renderReport(createReport({ analysis: null, raw: "", exitCode: 137, inputMode: "command", signal: "SIGKILL" }), {});
+  assert.equal(empty.includes("could not identify a diagnostic"), false);
+});
+
+test("every signal whatbroke names is named, and an unknown one is still reported", () => {
+  const named = ["SIGKILL", "SIGTERM", "SIGINT", "SIGQUIT", "SIGHUP", "SIGSEGV", "SIGBUS",
+    "SIGILL", "SIGFPE", "SIGABRT", "SIGPIPE", "SIGXCPU", "SIGXFSZ"];
+  for (const signal of named) {
+    const { says } = exitStatus({ signal, code: null });
+    assert.ok(says.includes(signal), signal);
+    // A sentence that only repeats the signal's name tells the reader nothing.
+    assert.ok(says.length > signal.length + 20, signal);
+  }
+  assert.equal(exitStatus({ signal: "SIGWINCH" }).says, "Stopped by SIGWINCH.");
 });
 
 rmSync(cache, { recursive: true, force: true });
