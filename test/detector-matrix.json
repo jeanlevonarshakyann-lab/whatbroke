@@ -3376,6 +3376,18 @@
     ],
     "shadow": {}
   },
+  "perl_prove_default_fail.txt": {
+    "winner": "tap",
+    "parser": "tap-text",
+    "failures": 2,
+    "claimants": [
+      "tap-text",
+      "generic"
+    ],
+    "shadow": {
+      "generic": 1
+    }
+  },
   "perl_prove_fail.txt": {
     "winner": "tap",
     "parser": "tap-text",
