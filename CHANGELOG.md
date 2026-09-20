@@ -2,6 +2,15 @@
 
 ## Unreleased
 
+- A program named by its path reports failures like any other. The fallback's unix shape
+  required a line to start with the program's name, so "/bin/sh: nosuchcommand: not
+  found" and "/usr/bin/env: node: No such file or directory" were read as nothing.
+  Docker BuildKit quotes the first of those for every `RUN` that fails, so a build whose
+  command is not in the image said only "ERROR: process ... did not complete
+  successfully: exit code: 127" - the consequence, with the cause sitting unread two
+  lines above it. The path must start at a root or at the directory, because a bare
+  relative one is the same shape as a source file.
+
 - One diagnosis read by two parsers from the same lines is reported once. Two readings
   that agree on file, line, column, title and message are one diagnosis unless the
   source line each one quotes says otherwise - which is how two cargo runs both
