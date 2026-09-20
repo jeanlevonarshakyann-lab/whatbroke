@@ -22,6 +22,15 @@
   repeated diagnosis before this and one after - and that one is the cargo pair, whose
   two readings quote two different real source lines and are genuinely two. The corpus
   itself is byte-identical.
+- uv and Poetry are read. Poetry's failures came back as nothing at all; uv's came back
+  as a labelled guess holding the half that says nothing - "error: No solution found
+  when resolving dependencies", with the `cause:` line under it, which names the package
+  and why it cannot be had, never reaching the reader. uv's explanation is rejoined
+  where uv wraps it at a deeper indent, except where what it wrapped is an echo of the
+  source drawn in a gutter. A headline with no cause under it is not read at all, since
+  `error:` at the start of a line belongs to half the tools in existence and uv's own
+  always carries its cause. Poetry's chain is read from its first `Because` to the
+  `version solving failed.` that closes it, and not at all without that line.
 
 - Byte-identical CI retry blocks are collapsed before parsing. De-duplication already
   showed each diagnostic once, but 67 of 200 duplicated fixtures still changed their
