@@ -2,6 +2,18 @@
 
 ## Unreleased
 
+- Reading one log is about six times faster. Deciding which parsers to ask scans the log
+  for the strings they name, and the alternation of those strings was rebuilt every time
+  one was found - shrunk to what was still missing and recompiled. For a long log that
+  makes the rest of the scan cheaper; for a short one the construction IS the cost, and it
+  was paid several times over. The set never changes while the process lives, so it is now
+  built once, and recognised by identity so that working out what to scan for is not
+  redone either. Reading each capture in the corpus went from 3.1ms to 0.5ms apiece, and
+  the scan alone from 1,144ms to 22ms. One 400KB log of mostly one tool's output is 7% slower,
+  which is what shrinking the alternation was buying. `npm run test:heavy`, which is
+  nothing but millions of short reads, goes from about seventeen minutes to three and a
+  three.
+
 - go and CMake name themselves when they refuse to run, and are read as themselves rather
   than falling to the generic reader or to nothing. go has four such sentences: a flag it
   does not have, a subcommand it does not have, one it ends by pointing at `go help`, and
