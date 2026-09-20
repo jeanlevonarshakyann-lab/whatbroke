@@ -21,6 +21,19 @@ import { githubOutput } from "../src/github.js";
 import { createReport } from "../src/report.js";
 const { version } = createRequire(import.meta.url)("../package.json");
 
+// A reader that goes away first — `whatbroke npm test | head`, or `| less` closed before
+// the end — closes the pipe under us. node ignores SIGPIPE and raises EPIPE on the stream
+// instead, and an unhandled 'error' event on stdout is a node stack trace printed by the
+// tool whose whole job is to keep those off the screen. There is nothing left to say to a
+// closed pipe, so say nothing; anything else that stops a write, a full disk say, cannot
+// be reported either and is left in the exit code.
+for (const stream of [process.stdout, process.stderr]) {
+  stream.on("error", (e) => {
+    if (e?.code === "EPIPE" || e?.code === "ERR_STREAM_DESTROYED") return;
+    process.exitCode ||= 1;
+  });
+}
+
 const argv = process.argv.slice(2);
 const HELP = `whatbroke — you ran a command, it printed 400 lines. these are the ones that matter.
 

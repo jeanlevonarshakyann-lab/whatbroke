@@ -199,6 +199,66 @@ export async function runCliTests(cli = fileURLToPath(new URL("../bin/whatbroke.
     assert.doesNotMatch(r.stderr, /internal\/child_process|node:child_process/);
   });
 
+  await check("a reader that stops reading ends the run quietly", async () => {
+    // `whatbroke npm test | head` - the reader has the lines it wanted and closes the
+    // pipe. node ignores SIGPIPE and raises EPIPE on the stream instead, and the
+    // unhandled 'error' event was a node stack trace from the tool that exists to keep
+    // those off the screen.
+    //
+    // Handling the error alone is not enough, and the crash was hiding the worse half:
+    // relay pauses the child when the destination is full and waits for a drain, and a
+    // destination nobody is reading never drains. The child blocks on its next write and
+    // the run never ends.
+    const child = spawn(process.execPath, [cli, "--", process.execPath, "-e",
+      "for (let i = 1; i <= 200000; i++) console.log(`a.py:${i}: error: thing ${i}`); process.exitCode = 3"],
+      { stdio: ["ignore", "pipe", "pipe"], env: { ...process.env, NO_COLOR: "1" } });
+    let stderr = "";
+    child.stderr.setEncoding("utf8");
+    child.stderr.on("data", (chunk) => { stderr += chunk; });
+    child.stdout.once("data", () => child.stdout.destroy());
+    const code = await new Promise((resolve, reject) => {
+      const timer = setTimeout(() => {
+        child.kill("SIGKILL");
+        reject(new Error("the run did not end after the reader went away"));
+      }, 30000);
+      child.once("close", (c) => { clearTimeout(timer); resolve(c); });
+      child.once("error", (e) => { clearTimeout(timer); reject(e); });
+    });
+    assert.doesNotMatch(stderr, /EPIPE|Unhandled .error.|internal\/stream|node:internal/,
+      `a write error reached the terminal: ${stderr}`);
+    // The command's exit code is whatbroke's promise to a Makefile. Who was reading its
+    // output is not the command's business and must not change what it reports.
+    assert.equal(code, 3, "the wrapped command's exit code survives the reader going away");
+  });
+
+  await check("a closed pipe on a piped log is quiet too", async () => {
+    // The other half of the same fault, and the half relay cannot cover: `cat build.log |
+    // whatbroke | head` never wraps a command, so nothing attaches a listener to stdout
+    // and the report write raises EPIPE on its own. The log has to be big enough that
+    // the report does not fit in the pipe buffer, or the write lands before the reader
+    // has gone and there is nothing to survive.
+    const log = Array.from({ length: 4000 },
+      (_, i) => `a${i}.py:${i + 1}: error: thing ${i} is wrong and this message is not short`).join("\n") + "\n";
+    const child = spawn(process.execPath, [cli, "--json", "-a"],
+      { stdio: ["pipe", "pipe", "pipe"], env: { ...process.env, NO_COLOR: "1" } });
+    let stderr = "";
+    child.stderr.setEncoding("utf8");
+    child.stderr.on("data", (chunk) => { stderr += chunk; });
+    child.stdout.once("data", () => child.stdout.destroy());
+    child.stdin.end(log);
+    const code = await new Promise((resolve, reject) => {
+      const timer = setTimeout(() => {
+        child.kill("SIGKILL");
+        reject(new Error("the run did not end after the reader went away"));
+      }, 30000);
+      child.once("close", (c) => { clearTimeout(timer); resolve(c); });
+      child.once("error", (e) => { clearTimeout(timer); reject(e); });
+    });
+    assert.doesNotMatch(stderr, /EPIPE|Unhandled .error.|internal\/stream|node:internal/,
+      `a write error reached the terminal: ${stderr}`);
+    assert.equal(code, 0, "piped input still exits 0, as the README says it does");
+  });
+
   await check("unknown and malformed options are rejected before launching commands", () => {
     const invalid = [
       ["--quuet"], ["-z"], ["-qz"], ["--quiet=true"], ["--json=false"],

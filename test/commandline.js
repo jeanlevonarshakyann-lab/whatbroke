@@ -324,10 +324,11 @@ try {
   const { relay } = await import("../src/stream.js");
   const source = new PassThrough();
   const seen = [];
-  let full = true, drained = null;
+  let full = true, drained = null, lost = null;
   const out = {                                     // a destination that cannot take more
     write: () => !full,
     once: (event, fn) => { if (event === "drain") drained = fn; },
+    on: (event, fn) => { if (event === "error") lost = fn; },
   };
   relay(source, out, { tee: (d) => seen.push(d.toString()) });
   source.write("one");
@@ -339,7 +340,23 @@ try {
   source.write("three");
   await new Promise((r) => setImmediate(r));
   assert.deepEqual(seen, ["one", "two", "three"], "everything is captured, paused or not");
-  console.log("  ok   a stream is paused when its destination is full and resumed when it drains");
+
+  // A destination that is full drains eventually. One that is gone - `whatbroke npm test
+  // | head`, the reader closing the pipe - never does, and waiting for it leaves the
+  // child blocked on its next write for good. Until the write error was handled at all,
+  // the crash reached this first and the wait was never observed.
+  full = true;
+  source.write("four");
+  assert.equal(source.isPaused(), true, "a full destination still stops the stream");
+  lost(Object.assign(new Error("write EPIPE"), { code: "EPIPE" }));
+  assert.equal(source.isPaused(), false, "a destination that is gone must not hold the stream");
+  let wrote = 0;
+  out.write = () => { wrote++; return true; };
+  source.write("five");
+  await new Promise((r) => setImmediate(r));
+  assert.equal(wrote, 0, "and nothing is written to it after it goes");
+  assert.deepEqual(seen, ["one", "two", "three", "four", "five"], "capture outlives the reader");
+  console.log("  ok   a stream is paused when its destination is full, and let go when it drains or dies");
   pass++;
 } catch (e) { console.log(`  FAIL relay backpressure\n       ${e.message}`); fail++; }
 
