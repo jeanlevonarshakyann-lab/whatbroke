@@ -55,9 +55,30 @@ try {
     "cp: cannot stat 'x': No such file or directory",
     "ssh: connect to host example.com port 22: Connection refused",
     "bash: line 5: deploy: command not found",
+    // `set -u` is how a careful CI script is written, and nothing else in what the shell
+    // says about it reads as a failure at all.
+    "deploy.sh: line 4: FOO: unbound variable",
+    // sed and awk say this, and so do several compilers
+    "sed: -e expression #1, char 3: unterminated address regex",
+    "awk: cmd. line:1: unterminated string",
+    // Go writes its errors as what it was doing, then why it could not, and everything
+    // built on Go writes them the same way - `docker compose` says most of its failures
+    // in this form. What it was doing is words, so a colon inside one of them ends the
+    // search: "dial tcp 10.0.0.1:80: connect: connection refused" is still not read.
+    "open /app/compose.yaml: no such file or directory",
+    "loading compose project: invalid compose file",
+    "creating network shop_default: permission denied",
   ];
   const shouldNot = [
     "Deploying to staging...",
+    // What it was doing is a few words, not a sentence. A whole clause before the colon
+    // is prose, and prose mentions these words without being a diagnostic - this line is
+    // a build system saying what it chose to skip, and it holds "not found".
+    "Running tests in /app: everything is fine",
+    // Past a few words it is prose, and prose carries this vocabulary while saying the
+    // opposite: both of these are a build reporting it found nothing wrong.
+    "restored 4 workspaces from the cache: nothing missing",
+    "checked 31 files in src and test: no errors",
     "note: this is fine",
     "info: everything is working",
     "warning: deprecated flag",
@@ -65,7 +86,7 @@ try {
   for (const l of shouldMatch) {
     const r = analyse(`Starting\n${l}\n`);
     assert.ok(r?.failures.length, `should have recognised: ${l}`);
-    assert.match(r.failures[0].message, /Failed|cannot|refused|not found/i);
+    assert.match(r.failures[0].message, /Failed|cannot|refused|not found|unbound|unterminated|no such|invalid|permission/i);
   }
   for (const l of shouldNot) {
     // a bare "prog: message" must not be treated as a failure just for having a colon
@@ -106,6 +127,57 @@ try {
   console.log("  ok   a located warning is an aside, whether or not it names its rule");
   pass++;
 } catch (e) { console.log(`  FAIL located aside\n       ${e.message}`); fail++; }
+
+// A tool refusing an argument is what a typo'd flag in a CI script produces, and every
+// one of these is what the tool really prints. Most name themselves; docker and python
+// name themselves nowhere, so for those the refusal has to open the line.
+try {
+  const refused = [
+    "curl: option --nosuchflag: is unknown",
+    "awk: unknown option --nosuchflag ignored",
+    "jq: Unknown option --nosuchflag",
+    "node: bad option: --nosuchflag",
+    "unknown flag: --nosuchflag",
+    "unknown option --nosuchflag",
+  ];
+  for (const l of refused) {
+    assert.ok(analyse(`Starting\n${l}\n`)?.failures.length, `should have recognised: ${l}`);
+  }
+  // The same words mid-sentence are prose. Across 1,498 lines of real --help output from
+  // twelve tools neither form matched once, which is why the bare one must open the line.
+  for (const l of ["the unknown option space is large and that is fine",
+    "documents every unknown flag we could find: none",
+    "Deploying with an unknown option count..."]) {
+    assert.ok(!analyse(`Starting\n${l}\n`), `should have ignored: ${l}`);
+  }
+  console.log("  ok   a tool refusing an argument says so, named or not");
+  pass++;
+} catch (e) { console.log(`  FAIL refused argument\n       ${e.message}`); fail++; }
+// A program is as often named by its path as by its name. A shell says
+// "/bin/sh: nosuchcommand: not found", env says "/usr/bin/env: node: No such file or
+// directory", and Docker BuildKit quotes the first of those for every RUN that fails -
+// which is the cause of the build failing, under BuildKit's own line saying it did.
+// Requiring the line to start with the program's name meant none of them were read.
+try {
+  const byPath = [
+    "/bin/sh: nosuchcommand: not found",
+    "/usr/bin/env: node: No such file or directory",
+    "/bin/bash: line 3: deploy: command not found",
+    "./scripts/deploy.sh: permission denied",
+  ];
+  for (const l of byPath) {
+    const r = analyse(`Starting\n${l}\n`);
+    assert.ok(r?.failures.length, `should have recognised: ${l}`);
+  }
+  // ...and the vocabulary is still what keeps an ordinary path with a colon after it out,
+  // which is the whole reason the line could not simply start with anything.
+  for (const l of ["/home/dev/app.py: all is well", "src/main.rs: nothing wrong here",
+    "/etc/hosts: 127.0.0.1 localhost"]) {
+    assert.ok(!analyse(`Starting\n${l}\n`), `should have ignored: ${l}`);
+  }
+  console.log("  ok   a program named by its path reports failures like any other");
+  pass++;
+} catch (e) { console.log(`  FAIL program named by path\n       ${e.message}`); fail++; }
 
 console.log(`\n  ${pass} passed, ${fail} failed`);
 process.exit(fail ? 1 : 0);

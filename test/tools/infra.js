@@ -266,6 +266,15 @@ const CASES = [
       // The fallback scraped the step's ERROR and the one restating it at the end.
       assert.equal(r.failures.length, 1, "one failure, not docker saying it twice");
     } },
+  // Captured with Docker 28 and BuildKit. A RUN whose command is not in the image says
+  // so itself - "/bin/sh: nosuchcommand: not found" - and BuildKit says underneath it
+  // that the process did not complete. The first is the cause and is what you act on;
+  // it is named by its path, which is why it went unread.
+  { file: "docker_buildkit_run_missing_fail.txt", tool: "output", n: 2, check: (r) => {
+      assert.match(r.failures[0].message, /nosuchcommand: not found/,
+        "the step's own diagnostic is what leads");
+      assert.deepEqual(r.wrappers, ["docker"]);
+    } },
   { file: "docker_copy_fail.txt", tool: "docker", n: 1, check: (r) => {
       assert.equal(r.failures[0].line, 2);
       assert.equal(r.failures[0].stmt, "COPY missing-file.txt /tmp/");

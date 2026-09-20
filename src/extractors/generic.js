@@ -13,6 +13,18 @@ const SIGNAL = [
   // after the line number: "bad.rb:2:in `f\': undefined method ...". Without this a
   // plain `ruby script.rb` crash produced no diagnosis at all.
   /^\S+:\d+:in [`'"]/,
+  // Two more words real tools use where none of the others appear. `set -u` is how a
+  // careful CI script is written, and the shell reports it as "deploy.sh: line 4: FOO:
+  // unbound variable" - nothing else in that sentence says anything went wrong. sed and
+  // awk say "unterminated address regex" and "unterminated string", and so do several
+  // compilers. Both are rare enough outside a diagnostic to carry their own weight.
+  // The name may be followed by what the tool was doing when it failed. Go writes its
+  // errors that way and so does everything built on it: "open /app/compose.yaml: no such
+  // file or directory", "validating /app/compose.yaml: services.api.ports must be a
+  // array", "dial tcp 10.0.0.1:80: connect: connection refused". Anchoring on the name
+  // and its colon meant none of those were read, and `docker compose` says three of its
+  // four failures in exactly that form. A few words, not a sentence - the vocabulary
+  // below is still what says the line is about something going wrong.
   // The classic unix shape - "curl: (7) Failed to connect", "cp: cannot stat",
   // "ssh: ... Connection refused". A bare "prog: message" is far too broad to
   // treat as an error, so it must also say that something did not work.
@@ -21,7 +33,24 @@ const SIGNAL = [
   // archive format` and `awk: syntax error at source line 1` both name themselves and
   // then say plainly that something broke, and neither produced any diagnosis at all -
   // the word is not immediately before a colon, so the pattern above it never fired.
-  /^[a-z][\w.+-]*:\s.*\b(?:failed|failure|cannot|can't|not found|refused|denied|no such|unable to|invalid|missing|timed out|unreachable|does not exist|permission|errors?|fatal|panic|unrecogni[sz]ed|unsupported|corrupt(?:ed)?|malformed|illegal|unbalanced|truncated)\b/i,
+  // ...and the same shape when the program is named by its path. A shell says
+  // "/bin/sh: nosuchcommand: not found", env says "/usr/bin/env: node: No such file or
+  // directory", and Docker BuildKit quotes the first of those for every RUN that fails -
+  // the cause of the build failing, under BuildKit's own line saying that it did.
+  // Requiring the line to start with the program's NAME meant none of them were read.
+  //
+  // The path has to start at a root or at the directory: "/bin/sh", "./scripts/deploy.sh".
+  // Allowing a bare relative one would take a source file with it, because that is the
+  // same shape - stylelint's compact format writes "src/shop.css: line 3, col 15, error -
+  // Disallowed unit", and with the vocabulary below being what it is, this claimed it.
+  /^(?:\.{0,2}\/(?:[\w.+-]+\/)*)?[a-z][\w.+-]*(?:[^\S\n]+[^\s:]+){0,3}:\s.*\b(?:failed|failure|cannot|can't|not found|refused|denied|no such|unable to|invalid|missing|timed out|unreachable|does not exist|permission|errors?|fatal|panic|unrecogni[sz]ed|unsupported|corrupt(?:ed)?|malformed|illegal|unbalanced|truncated|unbound|unterminated|unknown (?:option|flag|argument|primary|subcommand)|bad option|is unknown)\b/i,
+  // A tool refusing an argument, which is what a typo'd flag in a CI script produces.
+  // Most name themselves first and the shape above reads them once its vocabulary knows
+  // the words. Two name themselves nowhere at all - docker says "unknown flag: --x" and
+  // python says "unknown option --x" - so for those the refusal has to open the line.
+  // That is what keeps prose out, where the same words sit mid-sentence: across 1,498
+  // lines of real `--help` output from twelve tools, neither form matches one of them.
+  /^(?:unknown|bad|illegal|invalid|unrecogni[sz]ed)[^\S\n]+(?:option|flag|argument|command|primary)\b/i,
 ];
 // A line whose first mark is "|" is the renderer drawing the source, not a diagnostic:
 // rustc, swift and ruff all echo the offending line and hang an annotation off it, and
