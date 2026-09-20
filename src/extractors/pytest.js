@@ -67,13 +67,13 @@ export default {
 
     for (const blk of blocks) {
       // trailing "path:line: ExceptionType"
-      let file, line, kind;
+      let file, line, kind, trailingIndex = -1;
       for (let i = blk.body.length - 1; i >= 0; i--) {
         const m = blk.body[i].match(TRAILING_RE);
         // Group 3 is the exception - there is no group 4, so `kind` was always undefined
         // and a block whose only words were its trailing "test_x.py:2: RuntimeError"
         // reported an empty message.
-        if (m && !isNoise(m[1])) { file = m[1]; line = +m[2]; kind = m[3]; break; }
+        if (m && !isNoise(m[1])) { file = m[1]; line = +m[2]; kind = m[3]; trailingIndex = i; break; }
       }
       // The failing statement, which pytest marks with ">", and the "E" explanation under
       // it. The two belong together: pytest writes the marked line, then at most a caret
@@ -98,11 +98,18 @@ export default {
         while (i + 1 < blk.body.length && /^E\s/.test(blk.body[i + 1])) i++;   // one explanation, not one per line
       }
       const expl = blk.body.filter((l) => /^E\s/.test(l)).map((l) => l.slice(1).trim());
+      // Some pytest tracebacks end with a bare exception type instead of an E line.
+      // Its adjacent marked statement still belongs to this failure.
+      if (!expl.length && !stmt.length && trailingIndex >= 0) {
+        let j = trailingIndex - 1;
+        while (j >= 0 && between(j)) j--;
+        if (marked(j)) stmt.push(blk.body[j].slice(1).trim());
+      }
       // --tb=native prints a Python traceback, which has neither mark. The exception is
       // its last unindented line, and the frame that matters is the last one outside
       // pytest's own machinery.
       let native;
-      if (!expl.length && !stmt.length) {
+      if (!expl.length && !stmt.length && !kind) {
         for (let i = blk.body.length - 1; i >= 0; i--) {
           const t = blk.body[i];
           if (!t.trim() || /^[^\S\n]/.test(t)) continue;
@@ -117,7 +124,7 @@ export default {
           }
         }
       }
-      if (!expl.length && !stmt.length && !native) continue;
+      if (!expl.length && !stmt.length && !native && !kind) continue;
       failures.push(withSource({
         file, line,
         title: blk.title, subject: blk.title, severity: "error",
