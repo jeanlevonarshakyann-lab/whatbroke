@@ -2,6 +2,16 @@
 
 ## Unreleased
 
+- A monorepo or CI prefix is recognised as a wrapper when it survives inside a message,
+  not only when it changes the tool or the count. Every gate deciding whether a
+  discovered prefix is a wrapper or the tool's own data compared the reading before and
+  after it came off, and a message running over several lines defeats all of them: the
+  tool is the same, the count is the same, and the stamp is still sitting on every line
+  after the first. deno's JUnit reporter quotes the failing source under the message, so
+  under `api:test: ` that quote read as `api:test:   if (1 + 1 !== 3) ...`. Measured over
+  430 captures each wrapped in ten real CI shapes, a per-line prefix changed 25 readings
+  and now changes 16; nothing is lost either way, and the corpus is byte-identical.
+
 - Byte-identical CI retry blocks are collapsed before parsing. De-duplication already
   showed each diagnostic once, but 67 of 200 duplicated fixtures still changed their
   headline or another public field because parser-specific tallies counted both copies.

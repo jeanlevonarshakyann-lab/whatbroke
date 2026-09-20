@@ -454,8 +454,22 @@ function better(candidate, cand, current) {
   // text the parser reported. mypy's repeated source directory - the case this gate
   // exists for - is in the `file` of its failures, which is the parser reading a path
   // correctly; it never leads a message.
-  const swallowed = current.result.failures.some((f) =>
-    String(f.message ?? "").startsWith(candidate.wrapper) || String(f.stmt ?? "").startsWith(candidate.wrapper));
+  const opens = (v) => String(v ?? "").startsWith(candidate.wrapper);
+  // ...and the same prefix at the start of a line AFTER the first. A message that runs
+  // over several lines keeps the stamp on its continuation lines, and no gate above
+  // notices: deno's JUnit reporter quotes the failing source under the message, and
+  // under a monorepo prefix that quote came back as "api:test:   if (1 + 1 !== 3)"
+  // while the tool and the count stayed exactly as they were.
+  //
+  // Where it opens a message the prefix may still be the message's own first word -
+  // perl says "no price for item" and "Can't call method ...", and the prefix discovered
+  // across those lines is a word of the diagnosis. That is why this asks for a LATER
+  // line: a word that opens one sentence does not open the line under it too.
+  const repeats = (v) => String(v ?? "").split("\n").slice(1).some((l) => l.startsWith(candidate.wrapper));
+  if (current.result.failures.some((f) => repeats(f.message) || repeats(f.stmt))) {
+    return cand.result.failures.length <= current.result.failures.length;
+  }
+  const swallowed = current.result.failures.some((f) => opens(f.message) || opens(f.stmt));
   return swallowed && cand.result.failures.length < current.result.failures.length;
 }
 

@@ -127,6 +127,36 @@ test("a tool's own line prefix is not mistaken for a wrapper", () => {
   }
 });
 
+test("a prefix inside a message is a wrapper, even when the count does not move", () => {
+  // Every gate that decides whether a discovered prefix is a wrapper or the tool's own
+  // data compares the reading before and after: a different tool, or more failures. A
+  // message that runs over several lines defeats all of them - the tool is the same, the
+  // count is the same, and the only thing that moved is inside the message, where the
+  // stamp is still sitting on every line after the first.
+  const wrapped = (name) => fx(name).split("\n").map((l) => `api:test: ${l}`).join("\n");
+  for (const name of ["denotest_junit_alongside_fail.txt", "denotest_reporter_junit_fail.txt"]) {
+    const plain = analyse(fx(name)), stamped = analyse(wrapped(name));
+    assert.equal(stamped.tool, plain.tool, `${name}: the stamp changed which tool owns it`);
+    assert.equal(stamped.failures.length, plain.failures.length, `${name}: the stamp changed the count`);
+    assert.deepEqual(stamped.failures.map((f) => f.message), plain.failures.map((f) => f.message),
+      `${name}: the stamp is still inside the message`);
+  }
+});
+
+test("a word that opens a diagnostic is not a wrapper because it opens one", () => {
+  // The mirror, and why the rule above asks for a line AFTER the first: perl says
+  // "no price for item" and "Can't call method ... on an undefined value", and the
+  // prefix discovered across those lines is a word of the diagnosis itself. Reading a
+  // repeat on a later line is what tells the two apart - a word that opens one sentence
+  // does not open the line under it too.
+  for (const [name, holds] of [["perl_die_fail.txt", /^no price for item/],
+    ["perl_undef_fail.txt", /^Can't call method/]]) {
+    const r = analyse(fx(name));
+    assert.equal(r.wrappers, undefined, `${name}: stripped a word of its own diagnosis`);
+    assert.match(r.failures[0].message, holds, `${name}: the message lost its first word`);
+  }
+});
+
 test("a wrapper is never stripped when doing so parses nothing", () => {
   // Uniform prefix, but the text underneath is not any tool's output.
   const text = Array.from({ length: 40 }, (_, i) => `runner|  line ${i} of prose`).join("\n");
