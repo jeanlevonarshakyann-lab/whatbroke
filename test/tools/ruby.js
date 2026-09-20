@@ -98,6 +98,19 @@ const CASES = [
       assert.equal(r.summary, "6 problems");
     } })),
   // markdown prints no column, so the two offenses on line 3 are one line saying one thing.
+  // Captured with rubocop 1.91 on Ruby 4.0.7. A syntax offence carries the parser it
+  // used on a second line, and GitHub's command syntax cannot hold a newline - so rubocop
+  // encodes it as %0A. Decoded, the message spans two lines, the cop-name pattern could
+  // not reach past the first, and a rubocop log is claimed by whether any offence was
+  // read at all: one multi-line message made the whole run read as nothing.
+  { file: "rubocop_github_multiline_fail.txt", tool: "rubocop", n: 2, check: (r) => {
+      assert.deepEqual(r.failures.map((f) => [f.file, f.line, f.col]), [["shop.rb", 1, 7], ["shop.rb", 6, 1]]);
+      assert.equal(r.failures[0].code, "Lint/Syntax");
+      // the whole message, as the JSON format gives it for the same run
+      assert.equal(r.failures[0].message,
+        "class or module name must be a constant literal\n(Using Ruby 2.7 parser; configure using `TargetRubyVersion` parameter, under `AllCops`)");
+      assert.doesNotMatch(JSON.stringify(r.failures), /%0A|::error/);
+    } },
   { file: "rubocop_markdown_fail.txt", tool: "rubocop", n: 5, check: (r) => {
       assert.deepEqual(r.failures.map((f) => [f.line, f.col, f.code]), [
         [3, undefined, "Layout/SpaceInsideParens"], [4, undefined, "Style/SymbolProc"], [7, undefined, "Style/NilComparison"],
