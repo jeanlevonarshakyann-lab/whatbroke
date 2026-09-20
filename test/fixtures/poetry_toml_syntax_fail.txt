@@ -1,0 +1,2 @@
+
+Invalid TOML file /home/dev/shop/pyproject.toml: Unexpected character: '\n' at line 1 col 8
