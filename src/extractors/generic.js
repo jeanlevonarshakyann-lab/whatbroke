@@ -44,6 +44,13 @@ const SIGNAL = [
   // same shape - stylelint's compact format writes "src/shop.css: line 3, col 15, error -
   // Disallowed unit", and with the vocabulary below being what it is, this claimed it.
   /^(?:\.{0,2}\/(?:[\w.+-]+\/)*)?[a-z][\w.+-]*(?:[^\S\n]+[^\s:]+){0,3}:\s.*\b(?:failed|failure|cannot|can't|not found|refused|denied|no such|unable to|invalid|missing|timed out|unreachable|does not exist|permission|errors?|fatal|panic|unrecogni[sz]ed|unsupported|corrupt(?:ed)?|malformed|illegal|unbalanced|truncated|unbound|unterminated|unknown (?:option|flag|argument|primary|subcommand)|bad option|is unknown)\b/i,
+  // A tool refusing an argument, which is what a typo'd flag in a CI script produces.
+  // Most name themselves first and the shape above reads them once its vocabulary knows
+  // the words. Two name themselves nowhere at all - docker says "unknown flag: --x" and
+  // python says "unknown option --x" - so for those the refusal has to open the line.
+  // That is what keeps prose out, where the same words sit mid-sentence: across 1,498
+  // lines of real `--help` output from twelve tools, neither form matches one of them.
+  /^(?:unknown|bad|illegal|invalid|unrecogni[sz]ed)[^\S\n]+(?:option|flag|argument|command|primary)\b/i,
 ];
 // A line whose first mark is "|" is the renderer drawing the source, not a diagnostic:
 // rustc, swift and ruff all echo the offending line and hang an annotation off it, and
