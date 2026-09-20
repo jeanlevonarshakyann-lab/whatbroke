@@ -220,7 +220,15 @@ function otherTools(s, winner, mine, cluster, extractors) {
   const exact = (f) => JSON.stringify([f.file ?? null, f.line ?? null, f.col ?? null, f.title ?? "", f.message ?? ""]);
   const claimed = new Map();
   const claim = (f) => claimed.set(exact(f), [...(claimed.get(exact(f)) ?? []), f]);
-  const isClaimed = (f) => (claimed.get(exact(f)) ?? []).some((g) => !quoteDiffers(f, g));
+  // Two readings that agree on file, line, column, title and message are one diagnosis
+  // unless something says otherwise, and the quoted source line is that something: two
+  // cargo runs both report E0308 at src/main.rs:2:22, and only the line each one echoes
+  // says they are two. A quote is evidence, though, only when both readings could have
+  // read their own: in a log where two tools' lines are interleaved, each parser takes
+  // whichever echo it lands next to, and two wrong quotes of one diagnosis then read as
+  // two diagnoses. Ranges tell those apart - the two cargo runs are read from raw
+  // regions far apart, while a shredded pair is read from the same region twice.
+  const isClaimed = (f) => (claimed.get(exact(f)) ?? []).some((g) => !quoteDiffers(f, g) || rangesOverlap(f, g));
   mine.forEach(claim);
   const locations = new Map();
   const remember = (f) => {
