@@ -79,6 +79,8 @@
     "pnpm": ["pnpm", "pnpm's boxed errors"],
     "yarn": ["yarn"],
     "composer": ["composer"],
+    "uv": ["uv"],
+    "poetry": ["Poetry"],
     "pip": ["pip"],
     "generic": ["anything else"]
   },

@@ -65,6 +65,10 @@ const PROBABLE_DIAGNOSTIC = new RegExp([
   // ("can merge" is not "cannot"), "There is no tracking information for the current
   // branch." and "No stash entries found." ("entries found" is not "not found").
   "^(?:merge: .+ - not something we can merge|There is no tracking information|No stash entries found)\\b",
+  // Poetry says a file it cannot read in one sentence with no failure word in it at all:
+  // "Invalid TOML file /app/pyproject.toml: Unexpected character: ... at line 1 col 8".
+  // The path is in the middle, so the location shape above does not reach it either.
+  "^Invalid \\w+ file\\b",
   // make announces its own fatal errors with "***" and ends them "Stop.". Neither
   // half is failure vocabulary, the makefile is often named `Makefile` with no
   // extension so the location pattern above does not match it either, and the whole

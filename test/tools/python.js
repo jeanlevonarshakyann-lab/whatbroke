@@ -8,6 +8,7 @@ import { join } from "node:path";
 import assert from "node:assert/strict";
 import { spawnSync } from "node:child_process";
 import { analyse } from "../../src/index.js";
+import { poetry as poetryParser } from "../../src/extractors/pyresolve.js";
 import { agreeAcrossFormats, cli, fx, here, runCases } from "./harness.js";
 
 const CASES = [
@@ -390,6 +391,50 @@ const CASES = [
       // No location: the interpreter named a module, not a line of anybody's source.
       assert.equal("file" in r.failures[0], false);
     } },
+  // Captured with uv 0.12.17 and Poetry 2.5.0 - the two resolvers a Python project uses
+  // instead of pip. Poetry's failures read as nothing at all. uv's read as a guess that
+  // kept the headline and dropped the `cause:` line under it, which is the only part
+  // that says which package and why: "1 error (no parser for this tool - best guess) /
+  // error: No solution found when resolving dependencies", and nothing else.
+  { file: "uv_missing_package_fail.txt", tool: "uv", n: 1, check: (r) => {
+      assert.equal(r.failures[0].label, "No solution found when resolving dependencies");
+      assert.match(r.failures[0].message, /definitely-not-a-real-package-xyzzy was not found in the package registry/);
+      // uv opens with the interpreter it picked and a warning about requires-python.
+      assert.doesNotMatch(JSON.stringify(r.failures), /Using CPython|requires-python/);
+    } },
+  { file: "uv_conflict_fail.txt", tool: "uv", n: 1, check: (r) => {
+      // uv wraps the explanation at a deeper indent, and the second half is the half
+      // that names the requirement that cannot be met.
+      assert.match(r.failures[0].message, /And because your project depends on urllib3==1\.0/);
+    } },
+  { file: "uv_toml_syntax_fail.txt", tool: "uv", n: 1, check: (r) => {
+      // uv prints this parse error twice - once as a warning during settings discovery,
+      // once as the error that stopped it. Only one of them has a `cause:` under it.
+      assert.equal(r.failures.length, 1, "the warning's copy was read as a second failure");
+      assert.equal(r.failures[0].file, "pyproject.toml");
+      assert.equal(r.failures[0].line, 1);
+      assert.equal(r.failures[0].col, 9);
+      assert.match(r.failures[0].message, /unclosed table, expected/);
+      // the echoed source is drawn in a gutter, and it is not more of the sentence
+      assert.doesNotMatch(r.failures[0].message, /\| \[project/);
+    } },
+  { file: "poetry_missing_package_fail.txt", tool: "poetry", n: 1, check: (r) => {
+      assert.equal(r.failures[0].label, "version solving failed");
+      assert.match(r.failures[0].message, /definitely-not-a-real-package-xyzzy \(>=1\.0\) which doesn't match any versions/);
+      assert.doesNotMatch(JSON.stringify(r.failures), /Updating dependencies|Resolving dependencies/);
+    } },
+  { file: "poetry_conflict_fail.txt", tool: "poetry", n: 1, check: (r) => {
+      // The chain is one diagnosis, not one per clause: the first line states what is
+      // required and the second why it cannot be had.
+      assert.match(r.failures[0].message, /^Because shop depends on requests/);
+      assert.match(r.failures[0].message, /So, because shop depends on urllib3 \(1\.0\), version solving failed\.$/);
+    } },
+  { file: "poetry_toml_syntax_fail.txt", tool: "poetry", n: 1, check: (r) => {
+      assert.equal(r.failures[0].file, "/home/dev/shop/pyproject.toml");
+      assert.equal(r.failures[0].line, 1);
+      assert.equal(r.failures[0].col, 8);
+      assert.equal(r.failures[0].label, "invalid TOML file");
+    } },
 ];
 
 let pass = 0, fail = 0;
@@ -669,6 +714,42 @@ try {
   console.log("  ok   a pytest quote belongs to the explanation under it");
   pass++;
 } catch (e) { console.log(`  FAIL pytest borrowed quote\n       ${e.message}`); fail++; }
+// `error:` at the start of a line belongs to half the tools in existence. uv's own
+// always carries a `cause:` under it, and in a log where uv ran beside a tool that ends
+// with one of its own, reading every `error:` would report that tool's line as uv's.
+try {
+  const r = analyse(`${fx("uv_conflict_fail.txt")}\nerror: could not compile \`shop\` due to 2 previous errors\n`);
+  const uv = [r, ...(r.others ?? [])].find((x) => x.tool === "uv");
+  assert.ok(uv, "uv went unread");
+  assert.equal(uv.failures.length, 1, "a headline with no cause under it was read as uv's");
+  assert.doesNotMatch(JSON.stringify(uv.failures), /could not compile/);
+  console.log("  ok   a bare error: line beside uv's is not uv's");
+  pass++;
+} catch (e) { console.log(`  FAIL uv claims a bare error:\n       ${e.message}`); fail++; }
+
+// Poetry's chain is prose with no end marker but the sentence that closes it. Cut that
+// off - the log was truncated, or the job printed over it - and reading to the end of
+// the buffer instead would hand back whatever ran next as the resolver's explanation.
+try {
+  const lines = fx("poetry_conflict_fail.txt").split("\n");
+  const cut = lines.slice(0, lines.findIndex((l) => /version solving failed/.test(l))).join("\n");
+  const after = "src/app.py:3: error: Name \"x\" is not defined  [name-defined]\nFound 1 error in 1 file (checked 1 source file)\n";
+  const r = analyse(`${cut}\n${after}`);
+  assert.equal(r?.tool, "mypy", "the tool that finished is the one that owns the log");
+  assert.ok(![r, ...(r.others ?? [])].some((x) => x.tool === "poetry"), "an unclosed chain was read anyway");
+  assert.doesNotMatch(JSON.stringify(r.failures), /Because shop depends on/,
+    "the chain ran on into what the job printed next");
+  // ...and the same when poetry HAS spoken, so detection lets it read the log anyway: a
+  // broken pyproject.toml above a chain that never closes. The parser is asked directly
+  // here, not through analyse(): analyse drops a second location-less failure of its own
+  // accord, so asking it would assert something true whatever this parser did.
+  const owned = poetryParser.extract(`${fx("poetry_toml_syntax_fail.txt")}\n${cut}\n${after}`);
+  assert.equal(owned.failures.length, 1, "the unclosed chain was read as a second failure");
+  assert.equal(owned.failures[0].label, "invalid TOML file");
+  assert.doesNotMatch(JSON.stringify(owned.failures), /Because shop depends on|name-defined/);
+  console.log("  ok   a poetry chain with no closing line is not read to the end of the log");
+  pass++;
+} catch (e) { console.log(`  FAIL unclosed poetry chain\n       ${e.message}`); fail++; }
 
 console.log(`\n  ${pass} passed, ${fail} failed`);
 process.exit(fail ? 1 : 0);
