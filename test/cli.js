@@ -144,7 +144,10 @@ export async function runCliTests(cli = fileURLToPath(new URL("../bin/whatbroke.
     assert.equal(result.exitCode, 127);
     assert.equal(result.commandExitCode, null);
     assert.equal(result.fallback.reason, "spawn-error");
-    assert.match(result.error, /ENOENT/);
+    // What the shell would have said, with the errno kept for a bug report. A command
+    // that will not start is most often a typo, and "spawn x ENOENT" is node's wording
+    // for it where every shell says "command not found".
+    assert.equal(result.error, "whatbroke-missing-cli-test-command: command not found (ENOENT)");
     assert.match(r.stderr, /whatbroke-missing-cli-test-command/);
   });
 
@@ -196,6 +199,9 @@ export async function runCliTests(cli = fileURLToPath(new URL("../bin/whatbroke.
     assert.equal(result.exitCode, 127);
     assert.equal(result.commandExitCode, null);
     assert.equal(result.fallback.reason, "spawn-error");
+    // node's own wording here is "The argument 'file' cannot be empty. Received ''",
+    // which is about its API rather than about the run.
+    assert.equal(result.error, "no command given");
     assert.doesNotMatch(r.stderr, /internal\/child_process|node:child_process/);
   });
 
