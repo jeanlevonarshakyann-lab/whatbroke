@@ -9,6 +9,7 @@ import assert from "node:assert/strict";
 import { spawnSync } from "node:child_process";
 import { analyse } from "../../src/index.js";
 import { agreeAcrossFormats, cli, fx, here, runCases } from "./harness.js";
+import golangci from "../../src/extractors/golangci.js";
 
 const CASES = [
   // One real golangci-lint 2.13 run - five issues from four linters over two files - in
@@ -144,6 +145,25 @@ const CASES = [
       const others = (r.others ?? []).flatMap((o) => o.failures);
       assert.equal(others.length, 2, "the two untagged compile errors are still reported");
       assert.equal((r.others ?? [])[0].tool, "go build");
+    } },
+  // The same package-will-not-compile case in the two structured formats. golangci-lint
+  // gives that one a position at the head of the file and leaves the place the compiler
+  // named inside the text, so the line-per-finding format said shop.go:6 and these two
+  // said shop.go:1 - one run, read three ways, disagreeing about where it broke.
+  // Captured with golangci-lint 2.x on Go 1.21.
+  { file: "golangci_typecheck_json_fail.txt", tool: "golangci-lint", n: 1, check: (r) => {
+      assert.equal(r.failures[0].code, "typecheck");
+      assert.equal(r.failures[0].line, 6, "took the position golangci-lint gave, not the one go named");
+      assert.equal(r.failures[0].col, 2);
+      assert.equal(r.failures[0].message, "declared and not used: unused");
+      // what the compiler printed above its own diagnostic is not part of the message
+      assert.doesNotMatch(r.failures[0].message, /# sweep/);
+    } },
+  { file: "golangci_typecheck_checkstyle_fail.txt", tool: "golangci-lint", n: 1, check: (r) => {
+      assert.equal(r.failures[0].code, "typecheck");
+      assert.equal(r.failures[0].line, 6, "took the position golangci-lint gave, not the one go named");
+      assert.equal(r.failures[0].col, 2);
+      assert.equal(r.failures[0].message, "declared and not used: unused");
     } },
   // One run of a Go project, captured plainly and with -v. Verbose output puts a test's
   // lines ABOVE its "--- FAIL" line, frames parallel tests with PAUSE/CONT and switches
@@ -311,6 +331,22 @@ try {
   console.log("  ok   a diff's `--- expected` is not go's test tally");
   pass++;
 } catch (e) { console.log(`  FAIL a diff is not go's tally\n       ${e.message}`); fail++; }
+
+// Taking the place named inside the text is bounded to the file the record already
+// names. golangci-lint quotes a compiler that can name any file in the package - a build
+// constraint, a generated file, a dependency - and a message that merely mentions some
+// other file's line must not move the finding there.
+try {
+  const real = fx("golangci_typecheck_checkstyle_fail.txt");
+  const elsewhere = real.replace("./shop.go:6:2:", "./vendor/other.go:99:4:");
+  const r = golangci.extract(elsewhere);
+  assert.equal(r.failures.length, 1);
+  assert.equal(r.failures[0].file, "shop.go");
+  assert.equal(r.failures[0].line, 1, "a line named for another file was taken as this one's");
+  assert.match(r.failures[0].message, /vendor\/other\.go:99:4/, "the quoted line is still shown in the message");
+  console.log("  ok   a place named for another file does not move a golangci-lint finding");
+  pass++;
+} catch (e) { console.log(`  FAIL golangci embedded place bound\n       ${e.message}`); fail++; }
 
 console.log(`\n  ${pass} passed, ${fail} failed`);
 process.exit(fail ? 1 : 0);
