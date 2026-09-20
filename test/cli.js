@@ -1,6 +1,6 @@
 import assert from "node:assert/strict";
 import { spawn, spawnSync } from "node:child_process";
-import { mkdtempSync, readFileSync, rmSync, writeFileSync } from "node:fs";
+import { mkdirSync, mkdtempSync, readFileSync, rmSync, writeFileSync } from "node:fs";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
 import { fileURLToPath } from "node:url";
@@ -9,9 +9,9 @@ import { fileURLToPath } from "node:url";
 export async function runCliTests(cli = fileURLToPath(new URL("../bin/whatbroke.js", import.meta.url))) {
   let pass = 0, fail = 0;
   const raw = "The operation did not complete.\nSee the attached report.\n";
-  const run = (args = [], input = "", env = {}) => {
+  const run = (args = [], input = "", env = {}, cwd) => {
     const r = spawnSync(process.execPath, [cli, ...args], {
-      input, encoding: "utf8", timeout: 20000, maxBuffer: 16 * 1024 * 1024,
+      input, encoding: "utf8", timeout: 20000, maxBuffer: 16 * 1024 * 1024, cwd,
       env: { ...process.env, NO_COLOR: "1", GITHUB_STEP_SUMMARY: "", ...env },
     });
     assert.ifError(r.error);
@@ -203,6 +203,55 @@ export async function runCliTests(cli = fileURLToPath(new URL("../bin/whatbroke.
     // which is about its API rather than about the run.
     assert.equal(result.error, "no command given");
     assert.doesNotMatch(r.stderr, /internal\/child_process|node:child_process/);
+  });
+
+  await check("a saved log mistaken for a command is told how to be read", () => {
+    // `whatbroke build.log` is the first thing someone with a log already on disk tries.
+    // The working directory is not on $PATH, so it misses with ENOENT and the answer the
+    // tool gave was about $PATH - while the file it could have distilled sat right there.
+    const dir = mkdtempSync(join(tmpdir(), "whatbroke-savedlog-"));
+    const log = "src/app.py:3: error: boom\n";
+    writeFileSync(join(dir, "build.log"), log);
+    writeFileSync(join(dir, "runme.sh"), "echo hello\n", { mode: 0o755 });
+    try {
+      const r = run(["--json", "build.log"], "", {}, dir);
+      assert.equal(r.status, 127);
+      assert.match(r.stderr, /build\.log is a file, not a command/);
+      // The suggestion has to be a command that works, not a gesture at one.
+      const suggested = /to distil it: whatbroke < (.+)\n/.exec(r.stderr);
+      assert.ok(suggested, `no suggestion in stderr: ${r.stderr}`);
+      assert.equal(suggested[1], "build.log");
+      const piped = run(["--json"], log, {}, dir);
+      assert.equal(JSON.parse(piped.stdout).failures.length, 1);
+      // Advice belongs on stderr: --json stdout stays one machine-readable report, and
+      // the error field is the errno wording that the JSON contract pins.
+      const result = JSON.parse(r.stdout);
+      assert.equal(result.error, "build.log: command not found (ENOENT)");
+      assert.doesNotMatch(r.stdout, /to distil it/);
+    } finally { rmSync(dir, { recursive: true, force: true }); }
+  });
+
+  await check("only a file that cannot be run is offered as a log", () => {
+    // Guards on the suggestion above. A script whose shebang is missing, a directory, a
+    // name that is nothing at all, and a real command line with arguments must not be
+    // told to pipe themselves in - `< file` would drop the arguments, and the other
+    // three are not logs. Windows has no execute bit, so runnability is the extension
+    // there; a .sh is not runnable on Windows and is correctly offered as a log.
+    const dir = mkdtempSync(join(tmpdir(), "whatbroke-notalog-"));
+    writeFileSync(join(dir, "build.log"), "boom\n");
+    writeFileSync(join(dir, "runme.sh"), "echo hello\n", { mode: 0o755 });
+    mkdirSync(join(dir, "adir"));
+    // A directory usually carries its execute bit, which would mask a missing isFile()
+    // check. One without it is the case that tells the two apart.
+    mkdirSync(join(dir, "unsearchable"), { mode: 0o644 });
+    try {
+      const cases = [["adir"], ["unsearchable"], ["missing.log"], ["build.log", "--all"]];
+      if (process.platform !== "win32") cases.push(["runme.sh"]);
+      for (const args of cases) {
+        const r = run(args, "", {}, dir);
+        assert.doesNotMatch(r.stderr, /to distil it/, `offered ${args.join(" ")} as a log`);
+      }
+    } finally { rmSync(dir, { recursive: true, force: true }); }
   });
 
   await check("unknown and malformed options are rejected before launching commands", () => {
