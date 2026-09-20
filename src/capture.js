@@ -87,6 +87,11 @@ const PROBABLE_DIAGNOSTIC = new RegExp([
   // change under it; the one failure word is in the tally at the very end, so every file
   // but the last was cut from a large log.
   "^from [^\\s:][^\\n]*\\.\\w+:[^\\S\\n]*$",
+  // `cargo fmt --check` heads each place with "Diff in <file>:<line>:" and draws a diff
+  // under it. There is no failure word in any of it, and the location pattern above wants
+  // the path at the start of the line - so a format check buried in a build log lost every
+  // place it found, and a one-place run lost the only one it had.
+  "^Diff in [^\\s][^\\n]*:\\d+:[^\\S\\n]*$",
   // VSTest's console is translated into the SDK's thirteen UI languages, and every
   // failure word above is English. What survives translation is the shape: a result line
   // is an indented word or two, the test, and its timing in brackets; the run's tally

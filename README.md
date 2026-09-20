@@ -294,6 +294,7 @@ Where the interleaving matters, merge the streams in the command itself:
 | **cargo test** | test name, `file:line`, the assertion and its left/right values |
 | **cargo build** | error code and the inline annotation — not the 25 lines of trait impls — and `--message-format=short`, which puts the whole diagnostic on one line with no `-->` beneath it. The warnings it hid are counted as cargo counts them, a duplicate once, in every format |
 | **cargo clippy** | the lint name as the title, so you know what to fix or allow |
+| **cargo fmt `--check`** | every place it would rewrite, with the line each one starts at and the source as it stands now — `rustfmt --check` prints the same thing and reads the same way. A file with three unformatted regions is three places, not one file: unlike the other format checks here, rustfmt's diff says where. A file it cannot parse is a rustc diagnostic, and cargo's own parser reads it |
 | **cargo `--message-format=json`** | the same failures, read from the schema rather than the rendered text — `rustc --error-format=json` too. The primary span is the location, and the source line it carries is what gets quoted. cargo compiles a crate once per target that includes it and the stream carries every copy; each diagnostic counts once, as the text form prints it |
 | **less** | the class, message, `file:line:col` and the offending line — lessc puts all of it on one line, with the location as prose at the end |
 | **swc** | the message and location miette drew, not the `Failed to compile 1 file with swc.` tally underneath them |

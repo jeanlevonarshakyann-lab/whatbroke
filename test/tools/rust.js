@@ -155,6 +155,49 @@ const CASES = [
       assert.equal(records.filter((x) => x.message.level === "error").length, 4, "the fixture repeats each error");
       assert.equal(r.summary, "2 errors — 2 warnings hidden");
     } },
+  // Captured with rustfmt 1.9.0 under cargo 1.98.0. `cargo fmt --check` is the format gate
+  // almost every Rust CI job runs, and none of this was read: the job failed and whatbroke
+  // said there was no parser for it. rustfmt numbers the line each region starts at, so a
+  // file with two unformatted regions is two places - which is more than the other format
+  // checks in this repository can say, because they only ever name files.
+  { file: "cargo_fmt_fail.txt", tool: "cargo fmt", n: 3, check: (r) => {
+      assert.equal(r.summary, "2 files failed the format check");
+      assert.deepEqual(r.failures.map((f) => `${f.file}:${f.line}`), [
+        "/home/dev/shop/src/bin/invoice.rs:1",
+        "/home/dev/shop/src/main.rs:1",
+        "/home/dev/shop/src/main.rs:10",
+      ], "three regions in two files, each at the line rustfmt numbered");
+      // The first line it would remove is the source as it stands, which is the part
+      // worth quoting - the replacement is what `cargo fmt` will write for you anyway.
+      assert.equal(r.failures[0].stmt, 'fn main() { let due = 1049;println!("{}",due); }');
+      assert.equal(r.failures[2].stmt, "let items = vec![1,2,3];");
+      for (const f of r.failures) assert.equal(f.severity, "error");
+    } },
+  { file: "cargo_fmt_one_fail.txt", tool: "cargo fmt", n: 1, check: (r) => {
+      // `rustfmt --check <file>` run directly prints exactly what `cargo fmt` does.
+      assert.equal(r.summary, "1 file failed the format check");
+      assert.equal(r.failures[0].file, "/home/dev/shop/src/bin/invoice.rs");
+      assert.equal(r.failures[0].line, 1);
+    } },
+  { file: "cargo_fmt_workspace_fail.txt", tool: "cargo fmt", n: 2, check: (r) => {
+      // `cargo fmt --all` covers every crate, and each names its own path.
+      assert.equal(r.summary, "2 files failed the format check");
+      assert.deepEqual(r.failures.map((f) => f.file), [
+        "/home/dev/shop/crates/api/src/lib.rs",
+        "/home/dev/shop/crates/core/src/lib.rs",
+      ]);
+      assert.equal(r.failures[1].stmt, "pub struct Money{ pub cents : i64 }");
+    } },
+  { file: "cargo_fmt_parse_fail.txt", tool: "cargo", n: 1, check: (r) => {
+      // `cargo fmt --check` on a file rustfmt cannot parse prints no diff at all - it
+      // prints a rustc diagnostic, which is cargo's parser's business and not the format
+      // checker's. The boundary is worth a capture: a format reader that also claimed
+      // this would be one change away from diagnosing somebody else's failure.
+      assert.equal(r.failures[0].file, "/home/dev/shop/src/main.rs");
+      assert.equal(r.failures[0].line, 3);
+      assert.equal(r.failures[0].col, 25);
+      assert.match(r.failures[0].message, /this file contains an unclosed delimiter/);
+    } },
 ];
 
 let pass = 0, fail = 0;
@@ -209,6 +252,42 @@ try {
   console.log("  ok   cargo's hidden warnings are cargo's own count, in every format");
   pass++;
 } catch (e) { console.log(`  FAIL cargo hidden warnings\n       ${e.message}`); fail++; }
+
+// A diff body is only removed, added and context lines, and a context line for a blank
+// source line is a single space - never an empty line. That is what bounds a block: in a
+// log holding a format check and then something else, the block must not read on into it.
+try {
+  const { EXTRACTORS } = await import("../../src/index.js");
+  const fmt = EXTRACTORS.find((e) => e.name === "cargo fmt");
+  const after = `${fx("cargo_fmt_one_fail.txt")}
+error[E0308]: mismatched types
+ --> /home/dev/shop/src/main.rs:9:21
+`;
+  const read = fmt.extract(after);
+  assert.equal(read.failures.length, 1);
+  const range = Object.getOwnPropertySymbols(read.failures[0])
+    .map((sym) => read.failures[0][sym]).find((v) => v && typeof v.start === "number");
+  assert.ok(range.end <= 7, `the block ran to line ${range.end}, past its own diff`);
+  // And the log as a whole is still read by whoever the rustc diagnostic belongs to.
+  const r = analyse(after);
+  assert.ok(["cargo fmt", "cargo"].includes(r.tool));
+  assert.ok(r.failures.length + (r.others ?? []).reduce((n, o) => n + o.failures.length, 0) >= 2,
+    "both the unformatted place and the compiler error survive");
+  console.log("  ok   a rustfmt diff block stops where its diff stops");
+  pass++;
+} catch (e) { console.log(`  FAIL rustfmt block bound\n       ${e.message}`); fail++; }
+
+// cargo fmt claims its own captures and nothing else in the corpus.
+try {
+  const { EXTRACTORS } = await import("../../src/index.js");
+  const fmt = EXTRACTORS.find((e) => e.name === "cargo fmt");
+  const claimed = readdirSync(join(here, "fixtures")).sort()
+    .filter((n) => { try { return fmt.detect(fx(n)); } catch { return false; } });
+  assert.deepEqual(claimed,
+    ["cargo_fmt_fail.txt", "cargo_fmt_one_fail.txt", "cargo_fmt_workspace_fail.txt"]);
+  console.log("  ok   cargo fmt claims its own captures and no others");
+  pass++;
+} catch (e) { console.log(`  FAIL cargo fmt claims\n       ${e.message}`); fail++; }
 
 console.log(`\n  ${pass} passed, ${fail} failed`);
 process.exit(fail ? 1 : 0);
