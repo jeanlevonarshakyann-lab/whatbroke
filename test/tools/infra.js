@@ -348,5 +348,19 @@ try {
   pass++;
 } catch (e) { console.log(`  FAIL terraform fmt diff bound\n       ${e.message}`); fail++; }
 
+// Another tool can insert indented output inside a hunk. It resembles unchanged diff
+// context but cannot move a removed line outside the hunk's declared old-file range.
+try {
+  const clean = fx("terraform_fmt_hunks_fail.txt");
+  const interleaved = clean.replace("@@ -1,5 +1,5 @@\n",
+    `@@ -1,5 +1,5 @@\n${'    "tests": 2,\n'.repeat(18)}`);
+  const findings = analyse(interleaved).failures;
+  assert.deepEqual(findings.map((f) => [f.file, f.line, f.stmt]),
+    [["network.tf", 20, 'resource  "aws_route_table"  "private" {']],
+    "interleaved context must not invent another finding at the next hunk's location");
+  console.log("  ok   interleaved terraform fmt context stays within its hunk");
+  pass++;
+} catch (e) { console.log(`  FAIL terraform fmt interleaving\n       ${e.message}`); fail++; }
+
 console.log(`\n  ${pass} passed, ${fail} failed`);
 process.exit(fail ? 1 : 0);

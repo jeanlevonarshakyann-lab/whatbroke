@@ -24,7 +24,7 @@ import { withSource } from "../ownership.js";
 // so the pair is what identifies this and keeps it off every other diff a build prints.
 const OLD_RE = /^---[^\S\n]+old\/(\S.*?)[^\S\n]*$/;
 const NEW_RE = /^\+\+\+[^\S\n]+new\/(\S.*?)[^\S\n]*$/;
-const HUNK_RE = /^@@[^\S\n]+-(\d+)(?:,\d+)?[^\S\n]+\+\d+(?:,\d+)?[^\S\n]+@@/;
+const HUNK_RE = /^@@[^\S\n]+-(\d+)(?:,(\d+))?[^\S\n]+\+\d+(?:,\d+)?[^\S\n]+@@/;
 const BODY_RE = /^[-+ ]/;
 
 /** The file this pair of header lines is about, or null if they are not such a pair. */
@@ -82,6 +82,9 @@ export default {
         if (line.startsWith("+")) continue;
         at++;
       }
+      // Interleaved output can look like diff context. A removed line beyond the
+      // hunk's declared old-file range has no trustworthy location; later hunks may.
+      if (removed && at >= +hunk[1] + +(hunk[2] ?? 1)) continue;
       // From the header: only it says which file, and a range has to hold what it is
       // evidence for.
       failures.push(withSource({
