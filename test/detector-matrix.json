@@ -929,6 +929,16 @@
     ],
     "shadow": {}
   },
+  "dotnet_format_fail.txt": {
+    "winner": "dotnet",
+    "parser": "dotnet",
+    "failures": 16,
+    "claimants": [
+      "dotnet",
+      "generic"
+    ],
+    "shadow": {}
+  },
   "dotnet_noproject_fail.txt": {
     "winner": "dotnet",
     "parser": "dotnet",
