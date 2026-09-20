@@ -115,6 +115,11 @@ bounded.
 
 ## Safety and quality
 
+- `npm run coverage` runs the tools themselves: a small broken project per tool, the
+  command that fails on it, and what came back. It is not a test - it needs the tools
+  installed and reaches the network - but it is how a claim about what whatbroke reads
+  gets re-made on another machine instead of quoted from whenever it was last measured.
+  A tool that is not installed is skipped and said so.
 - Run `npm test` before submitting changes. `test/guarantees.js` runs first and pins the
   two promises everything else is subordinate to: the exit code is the command's own,
   and a command that failed is never presented as anything else. If a change makes those
