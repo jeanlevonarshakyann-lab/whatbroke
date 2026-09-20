@@ -270,9 +270,18 @@ const CASES = [
   // so itself - "/bin/sh: nosuchcommand: not found" - and BuildKit says underneath it
   // that the process did not complete. The first is the cause and is what you act on;
   // it is named by its path, which is why it went unread.
-  { file: "docker_buildkit_run_missing_fail.txt", tool: "output", n: 2, check: (r) => {
+  { file: "docker_buildkit_run_missing_fail.txt", tool: "output", n: 1, check: (r) => {
       assert.match(r.failures[0].message, /nosuchcommand: not found/,
         "the step's own diagnostic is what leads");
+      // And it is the only one. docker restates it as `process "..." did not complete
+      // successfully: exit code: 127`, once for the step and again at the end, which is
+      // the exit status the report already carries - the same consequence make's
+      // `*** [all] Error 1` is, and make's parser has never read those. The count above
+      // said 2 while the comment said "the first is the cause": for the same shape
+      // through make, whatbroke says one.
+      assert.equal(r.failures.length, 1, "one failure, not docker restating the cause");
+      assert.ok(!r.failures.some((f) => /did not complete successfully/.test(f.message ?? "")),
+        "the relayed exit status is not a failure of its own");
       assert.deepEqual(r.wrappers, ["docker"]);
     } },
   { file: "docker_copy_fail.txt", tool: "docker", n: 1, check: (r) => {

@@ -179,5 +179,27 @@ try {
   pass++;
 } catch (e) { console.log(`  FAIL program named by path\n       ${e.message}`); fail++; }
 
+// A launcher relaying the exit status of what it ran is a consequence, not a cause - the
+// same thing make's `*** [all] Error 1` is, which make's own parser has never read. It is
+// dropped only while there is a cause for it to be the consequence of.
+try {
+  const relayed = 'ERROR: failed to build: failed to solve: process "/bin/sh -c exit 3" did not complete successfully: exit code: 3';
+  const cause = "/bin/sh: nosuchcommand: not found";
+
+  const both = analyse(`Starting\n${cause}\n${relayed}\n`);
+  assert.equal(both?.failures.length, 1, "the restatement is not a second failure");
+  assert.match(both.failures[0].message, /nosuchcommand: not found/, "the cause is what leads");
+
+  // And when nothing else was found it is the only account of the failure there is -
+  // `RUN exit 3` prints nothing at all. docker's own parser takes that case, but a
+  // fragment of a log that reaches the fallback without it must not come back empty.
+  const alone = analyse(`Starting\n${relayed}\n`);
+  assert.equal(alone?.failures.length, 1, "the only account of a failure is still reported");
+  assert.match(alone.failures[0].message, /did not complete successfully/);
+
+  console.log("  ok   a relayed exit status is dropped as a consequence, kept as a last account");
+  pass++;
+} catch (e) { console.log(`  FAIL relayed exit status\n       ${e.message}`); fail++; }
+
 console.log(`\n  ${pass} passed, ${fail} failed`);
 process.exit(fail ? 1 : 0);
