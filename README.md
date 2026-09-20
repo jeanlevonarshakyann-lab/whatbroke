@@ -765,6 +765,12 @@ evidence when two parsers recognise the same log. Each parser declares the comma
 imply it, and a named leaf tool is tried first — including through a path or launcher, so
 `npx vitest run` and `./node_modules/.bin/vitest` both count.
 
+`python -m pytest` is the same shape and the commonest way pytest is run — the
+interpreter puts the working directory on `sys.path`, which is why projects prefer it. The
+module named after `-m` is the tool; the interpreter that carried it is not. That only
+applies to an interpreter, and only as its first argument: `pytest -m slow` selects a
+marker, and `-m` means something else again to plenty of tools.
+
 Script runners are deliberately different. `npm test`, `pnpm test`, and `yarn build`
 name a parent process whose child produced the useful Jest, Vitest, Vite, or other
 diagnostic. Their lifecycle error remains in the result, but cannot replace the child's

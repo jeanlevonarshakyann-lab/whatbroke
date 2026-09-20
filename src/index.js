@@ -375,9 +375,21 @@ function dropEchoes(mine, others) {
  *  Piped logs carry no command and are entirely unaffected. */
 function ordered(command, extractors) {
   if (!command?.length) return extractors;
+  // `python -m pytest` is a launcher too, and the commonest way pytest is run - the
+  // interpreter puts the working directory on sys.path, which is why projects prefer it.
+  // Ranking by first mention put `python3` at the front and pytest two words behind it,
+  // so the traceback parser led and the run came back as python's with no tally: worse
+  // than having no hint at all, because a piped copy of the same log reads as pytest.
+  // Everything before the module is what the interpreter needed to find it.
+  //
+  // Only for an interpreter, and only as its first argument: `pytest -m slow` selects a
+  // marker, and `-m` means that to plenty of tools that are not launching anything.
+  const argv = command.map(String);
+  const leaf = /^py(?:thon[\d.]*)?$/i.test((argv[0] ?? "").split(/[\\/]/).pop().replace(/\.(exe|cmd|bat)$/i, ""))
+    && argv[1] === "-m" && argv[2] ? argv.slice(2) : argv;
   // `npx jest`, `poetry run pytest`, `./node_modules/.bin/eslint` - the tool's name is
   // somewhere in the argv, not necessarily first, and not necessarily bare.
-  const words = command.flatMap((a) => String(a).split(/[\\/]/))
+  const words = leaf.flatMap((a) => String(a).split(/[\\/]/))
     .map((word) => word.replace(/\.(exe|cmd|bat)$/i, "").toLowerCase());
   const hints = (extractor) => extractor.commandHints ?? extractor.commands;
   const firstMention = (extractor) => Math.min(...hints(extractor)
