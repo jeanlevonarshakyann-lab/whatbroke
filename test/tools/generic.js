@@ -75,7 +75,10 @@ try {
     // is prose, and prose mentions these words without being a diagnostic - this line is
     // a build system saying what it chose to skip, and it holds "not found".
     "Running tests in /app: everything is fine",
-    "running every stage of the pipeline in order without any trouble: nothing failed",
+    // Past a few words it is prose, and prose carries this vocabulary while saying the
+    // opposite: both of these are a build reporting it found nothing wrong.
+    "restored 4 workspaces from the cache: nothing missing",
+    "checked 31 files in src and test: no errors",
     "note: this is fine",
     "info: everything is working",
     "warning: deprecated flag",
