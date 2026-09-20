@@ -55,6 +55,12 @@ try {
     "cp: cannot stat 'x': No such file or directory",
     "ssh: connect to host example.com port 22: Connection refused",
     "bash: line 5: deploy: command not found",
+    // `set -u` is how a careful CI script is written, and nothing else in what the shell
+    // says about it reads as a failure at all.
+    "deploy.sh: line 4: FOO: unbound variable",
+    // sed and awk say this, and so do several compilers
+    "sed: -e expression #1, char 3: unterminated address regex",
+    "awk: cmd. line:1: unterminated string",
   ];
   const shouldNot = [
     "Deploying to staging...",
@@ -65,7 +71,7 @@ try {
   for (const l of shouldMatch) {
     const r = analyse(`Starting\n${l}\n`);
     assert.ok(r?.failures.length, `should have recognised: ${l}`);
-    assert.match(r.failures[0].message, /Failed|cannot|refused|not found/i);
+    assert.match(r.failures[0].message, /Failed|cannot|refused|not found|unbound|unterminated/i);
   }
   for (const l of shouldNot) {
     // a bare "prog: message" must not be treated as a failure just for having a colon

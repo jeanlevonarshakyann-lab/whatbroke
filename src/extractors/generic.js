@@ -13,6 +13,11 @@ const SIGNAL = [
   // after the line number: "bad.rb:2:in `f\': undefined method ...". Without this a
   // plain `ruby script.rb` crash produced no diagnosis at all.
   /^\S+:\d+:in [`'"]/,
+  // Two more words real tools use where none of the others appear. `set -u` is how a
+  // careful CI script is written, and the shell reports it as "deploy.sh: line 4: FOO:
+  // unbound variable" - nothing else in that sentence says anything went wrong. sed and
+  // awk say "unterminated address regex" and "unterminated string", and so do several
+  // compilers. Both are rare enough outside a diagnostic to carry their own weight.
   // The classic unix shape - "curl: (7) Failed to connect", "cp: cannot stat",
   // "ssh: ... Connection refused". A bare "prog: message" is far too broad to
   // treat as an error, so it must also say that something did not work.
@@ -21,7 +26,7 @@ const SIGNAL = [
   // archive format` and `awk: syntax error at source line 1` both name themselves and
   // then say plainly that something broke, and neither produced any diagnosis at all -
   // the word is not immediately before a colon, so the pattern above it never fired.
-  /^[a-z][\w.+-]*:\s.*\b(?:failed|failure|cannot|can't|not found|refused|denied|no such|unable to|invalid|missing|timed out|unreachable|does not exist|permission|errors?|fatal|panic|unrecogni[sz]ed|unsupported|corrupt(?:ed)?|malformed|illegal|unbalanced|truncated)\b/i,
+  /^[a-z][\w.+-]*:\s.*\b(?:failed|failure|cannot|can't|not found|refused|denied|no such|unable to|invalid|missing|timed out|unreachable|does not exist|permission|errors?|fatal|panic|unrecogni[sz]ed|unsupported|corrupt(?:ed)?|malformed|illegal|unbalanced|truncated|unbound|unterminated)\b/i,
 ];
 // A line whose first mark is "|" is the renderer drawing the source, not a diagnostic:
 // rustc, swift and ruff all echo the offending line and hang an annotation off it, and

@@ -3145,7 +3145,7 @@
       "generic"
     ],
     "shadow": {
-      "generic": 5
+      "generic": 3
     }
   },
   "oxlint_checkstyle_fail.txt": {

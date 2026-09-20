@@ -2,6 +2,12 @@
 
 ## Unreleased
 
+- Two more words the fallback reads as a failure: `unbound` and `unterminated`. `set -u`
+  is how a careful CI script is written, and the shell reports it as "deploy.sh: line 4:
+  FOO: unbound variable" - nothing else in that sentence says anything went wrong, so it
+  read as nothing. sed and awk say "unterminated address regex" and "unterminated
+  string", and so do several compilers.
+
 - One diagnosis read by two parsers from the same lines is reported once. Two readings
   that agree on file, line, column, title and message are one diagnosis unless the
   source line each one quotes says otherwise - which is how two cargo runs both
