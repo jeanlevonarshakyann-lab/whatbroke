@@ -155,6 +155,37 @@ const CASES = [
       assert.deepEqual(r.failures[0].trace, ["<main> (ld.rb:1)"]);
       assert.equal(r.failures[0].hiddenFrames, 2);
     } },
+  // Captured with bundler 4.0.20 on Ruby 4.0.7. `bundle install` is the first thing a
+  // Ruby CI job runs and the first thing that fails, and all three of the ways it fails
+  // came back as "could not identify a diagnostic" with the log handed back. bundler
+  // writes prose rather than diagnostics: no severity word, no file:line, and a sentence
+  // that wraps mid-clause.
+  { file: "bundler_missing_gem_fail.txt", tool: "bundle", n: 1, check: (r) => {
+      assert.equal(r.failures[0].subject, "invoice-formatter", "which gem is the answer");
+      assert.equal(r.failures[0].label, undefined, "a subject and a label are alternatives");
+      assert.equal(r.failures[0].title, "gem not found");
+      // The sentence wraps after the repository URL, and the half on the second line is
+      // the one saying it is not installed locally either - not just absent from there.
+      assert.match(r.failures[0].message, /in rubygems repository https:\/\/rubygems\.org\/ or installed locally\./);
+      assert.equal(r.failures[0].file, undefined, "a missing gem is not at a place in your code");
+    } },
+  { file: "bundler_conflict_fail.txt", tool: "bundle", n: 1, check: (r) => {
+      assert.equal(r.failures[0].label, "version conflict");
+      // "version solving has failed" is the mechanism; the clauses above it name the two
+      // gems that cannot both be had, which is the part you act on.
+      assert.match(r.failures[0].message, /rspec >= 3\.13\.0.*depends on rspec-core/);
+      assert.match(r.failures[0].message, /version solving has failed\./);
+      assert.doesNotMatch(r.failures[0].message, /Fetching gem metadata|Resolving dependencies/);
+    } },
+  { file: "bundler_gemfile_syntax_fail.txt", tool: "bundle", n: 1, check: (r) => {
+      assert.equal(r.failures[0].file, "/home/dev/shop/Gemfile");
+      assert.equal(r.failures[0].line, 4);
+      assert.equal(r.failures[0].label, "parse error");
+      // What Ruby's parser objected to, rather than bundler's "syntax errors found".
+      assert.match(r.failures[0].message, /expected a predicate expression for the `if` statement/);
+      assert.equal(r.failures[0].stmt, 'gem "puma" if');
+      assert.doesNotMatch(JSON.stringify(r.failures), /Bundler cannot continue/);
+    } },
   // Captured with rubocop 1.91 and golangci-lint on Debian - the two linters a Ruby and
   // a Go CI job most often fail on. rubocop had no parser at all; golangci-lint was
   // being read by go's, which called its findings "compile errors" from `go build`.
@@ -287,6 +318,25 @@ try {
   console.log("  ok   a minitest block cut off from its tally stops where minitest ended it");
   pass++;
 } catch (e) { console.log(`  FAIL minitest block without its tally\n       ${e.message}`); fail++; }
+
+// A resolver conflict is prose with no end marker except the sentence that closes it,
+// and a CI log does not stop where the tool did. If "version solving has failed." is not
+// there - the log was cut, or the job printed over it - there is nothing to read, and
+// reading to the end of the buffer instead would hand back whatever ran next as bundler's
+// explanation.
+try {
+  const lines = fx("bundler_conflict_fail.txt").split("\n");
+  const cut = lines.slice(0, lines.findIndex((l) => /version solving has failed/.test(l))).join("\n");
+  const after = "src/app.py:3: error: Name \"x\" is not defined  [name-defined]\nFound 1 error in 1 file (checked 1 source file)\n";
+  const r = analyse(`${cut}\n${after}`);
+  assert.equal(r?.tool, "mypy", "the tool that finished is the one that owns the log");
+  const bundle = [r, ...(r.others ?? [])].find((x) => x.tool === "bundle");
+  assert.ok(!bundle, "an unclosed conflict was read anyway");
+  assert.doesNotMatch(JSON.stringify(r.failures), /Because rspec|version conflict/,
+    "the conflict prose ran on into what the job printed next");
+  console.log("  ok   a conflict with no closing line is not read to the end of the log");
+  pass++;
+} catch (e) { console.log(`  FAIL unclosed bundler conflict\n       ${e.message}`); fail++; }
 
 console.log(`\n  ${pass} passed, ${fail} failed`);
 process.exit(fail ? 1 : 0);

@@ -1,0 +1,9 @@
+Fetching gem metadata from https://rubygems.org/...
+Resolving dependencies...
+Could not find compatible versions
+
+Because rspec >= 3.13.0, < 4.0.0.beta1 depends on rspec-core ~> 3.13.0
+  and Gemfile depends on rspec = 3.13.0,
+  rspec-core ~> 3.13.0 is required.
+So, because Gemfile depends on rspec-core = 3.10.0,
+  version solving has failed.
