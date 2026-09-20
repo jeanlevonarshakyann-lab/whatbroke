@@ -2,6 +2,33 @@
 
 ## Unreleased
 
+- A tool refusing an argument says so, whether or not it names itself. A typo'd flag in a
+  CI script is one of the cheapest failures there is and none of these was read: "curl:
+  option --x: is unknown", "awk: unknown option --x ignored", "jq: Unknown option --x",
+  "node: bad option: --x", and - naming themselves nowhere at all - docker's "unknown
+  flag: --x" and python's "unknown option --x". The named forms are vocabulary; the two
+  bare ones have to open the line, which is what keeps the same words out of prose.
+
+- A tool may say what it was doing before it says why it could not. Go writes its errors
+  that way and everything built on Go writes them the same - "open /app/compose.yaml: no
+  such file or directory", "creating network shop_default: permission denied" - and the
+  fallback anchored on the program's name and its colon, so none of them were read.
+  `docker compose` says most of its failures in that form. A few words, not a clause:
+  what follows the colon still has to say that something went wrong.
+
+- Two more words the fallback reads as a failure: `unbound` and `unterminated`. `set -u`
+  is how a careful CI script is written, and the shell reports it as "deploy.sh: line 4:
+  FOO: unbound variable" - nothing else in that sentence says anything went wrong, so it
+  read as nothing. sed and awk say "unterminated address regex" and "unterminated
+  string", and so do several compilers.
+- A program named by its path reports failures like any other. The fallback's unix shape
+  required a line to start with the program's name, so "/bin/sh: nosuchcommand: not
+  found" and "/usr/bin/env: node: No such file or directory" were read as nothing.
+  Docker BuildKit quotes the first of those for every `RUN` that fails, so a build whose
+  command is not in the image said only "ERROR: process ... did not complete
+  successfully: exit code: 127" - the consequence, with the cause sitting unread two
+  lines above it. The path must start at a root or at the directory, because a bare
+  relative one is the same shape as a source file.
 - A pytest quote belongs to the explanation under it. A block runs from its own banner
   to the next one, so in a log where two printings of one run are interleaved it absorbs
   its neighbour's lines - including the `>` pytest puts in front of the failing
