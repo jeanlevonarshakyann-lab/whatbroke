@@ -237,6 +237,14 @@
   under `api:test: ` that quote read as `api:test:   if (1 + 1 !== 3) ...`. Measured over
   430 captures each wrapped in ten real CI shapes, a per-line prefix changed 25 readings
   and now changes 16; nothing is lost either way, and the corpus is byte-identical.
+- golangci-lint's structured formats give a package that will not compile the same place
+  its line-per-finding format does. When `typecheck` reports the compiler rather than a
+  finding of its own, golangci-lint positions it at the head of the file and leaves the
+  place the compiler named inside the text - so one run read three ways said shop.go:6,
+  shop.go:1 and shop.go:1, with the two structured readings wrong and carrying the
+  compiler's package banner in the message. The embedded place is taken only when it
+  names the file the record already names, because golangci-lint quotes a compiler that
+  can name any file in the package.
 
 - Byte-identical CI retry blocks are collapsed before parsing. De-duplication already
   showed each diagnostic once, but 67 of 200 duplicated fixtures still changed their

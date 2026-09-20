@@ -1751,6 +1751,16 @@
       "generic": 5
     }
   },
+  "golangci_typecheck_checkstyle_fail.txt": {
+    "winner": "golangci-lint",
+    "parser": "golangci-lint",
+    "failures": 1,
+    "claimants": [
+      "golangci-lint",
+      "generic"
+    ],
+    "shadow": {}
+  },
   "golangci_typecheck_fail.txt": {
     "winner": "golangci-lint",
     "parser": "golangci-lint",
@@ -1764,6 +1774,16 @@
       "go": 2,
       "generic": 4
     }
+  },
+  "golangci_typecheck_json_fail.txt": {
+    "winner": "golangci-lint",
+    "parser": "golangci-lint",
+    "failures": 1,
+    "claimants": [
+      "golangci-lint",
+      "generic"
+    ],
+    "shadow": {}
   },
   "gomod_chain_fail.txt": {
     "winner": "go mod",
