@@ -77,6 +77,11 @@ const CONTINUATION = /^[^\S\n]*(?:note|help|hint):/i;
 // plugin that owns it; anything longer is prose, and prose after a severity word means
 // the word was not a severity at all.
 const LOCATED_ASIDE = /^[^\s:]+:\d+(?::\d+)?:[^\S\n]*(?:warning|note|help|hint)\b(?:\[[^\]\n]*\]|[^\S\n]+[\w.-]+(?:\([^)\n]*\))?)?:/i;
+// `process "/bin/sh -c pytest -q" did not complete successfully: exit code: 1` - docker
+// saying that what it ran exited non-zero, which the exit code already said. Not in NOISE
+// above, because NOISE is unconditional and this line is only an echo while there is
+// something for it to echo.
+const RELAYED_EXIT = /\bprocess[^\S\n]+".*"[^\S\n]+did not complete successfully:[^\S\n]+exit code:[^\S\n]*\d+/;
 const NOISE = [/^[^\S\n]*at /, /^npm (notice|warn)/, /^[^\S\n]*$/, /^warning:/i, LOCATED_ASIDE, ANNOTATION, CONTINUATION];
 
 // Almost every runtime prints "something went wrong" and then says where, on the next
@@ -159,6 +164,19 @@ export default {
       failures.push(withSource({ ...at, title: "", severity: "error", message: h.text }, h.i, frame === undefined ? h.i + 1 : frame + 1));
       if (failures.length >= 8) break;
     }
-    return { tool: "output", failures, guessed: true };
+    // A launcher relaying the exit status of what it ran is a consequence, not a cause.
+    // It is the same thing make's `*** [all] Error 1` is, and make's own parser has never
+    // read those - but docker's phrasing reaches here instead of its parser, because when
+    // a failing RUN printed something of its own that line is the better account and
+    // docker declines the log to leave it alone. The fallback then picked up both, and
+    // reported `/bin/sh: nosuchcommand: not found` and docker's restatement of it as two
+    // separate failures. make, for the identical shape, reports one.
+    //
+    // Only when something else was found. `RUN exit 3` prints nothing at all, and then
+    // the relayed line is the only account of the failure there is. docker's own parser
+    // takes that case, but a fragment of a log that reaches here without it must not come
+    // back empty.
+    const caused = failures.filter((f) => !RELAYED_EXIT.test(f.message ?? ""));
+    return { tool: "output", failures: caused.length ? caused : failures, guessed: true };
   },
 };

@@ -959,7 +959,7 @@
   "docker_buildkit_run_missing_fail.txt": {
     "winner": "output",
     "parser": "generic",
-    "failures": 2,
+    "failures": 1,
     "claimants": [
       "generic"
     ],
