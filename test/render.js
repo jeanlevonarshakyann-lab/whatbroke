@@ -280,18 +280,79 @@ try {
   pass++;
 } catch (e) { console.log(`  FAIL stale source\n       ${e.message}`); fail++; }
 
+// a file too short to hold the line is proof on its own that it changed
+try {
+  const { render, setColor } = await import("../src/render.js");
+  const { resetSnippetCache } = await import("../src/snippet.js");
+  const { writeFileSync, mkdtempSync, rmSync } = await import("node:fs");
+  setColor(false);
+  const dir = mkdtempSync(join(process.cwd(), ".tmp-test-"));
+  const file = join(dir, "a.py");
+
+  // The check above needs the tool to have quoted the line it saw. mypy, and plenty of
+  // others, print only a location - and a log read after the fact (`whatbroke < build.log`,
+  // or a suite still running while the file is edited) can name a line the file no longer
+  // reaches. The window clamped to the end of the file and printed whatever was there
+  // under the heading of the line that failed, containing no hit line at all.
+  writeFileSync(file, "aa\nbb\ncc\ndd\nee EXPLODES\n");
+  const result = { tool: "mypy", failures: [{ file, line: 5, message: "division is unsupported" }] };
+  assert.match(render(result, {}), /5 . ee EXPLODES/, "a line the file does have is shown");
+
+  writeFileSync(file, "SHOULD NOT APPEAR\n");
+  resetSnippetCache();
+  const gone = render(result, {});
+  assert.match(gone, /has changed since this ran — it has no line 5/, "a short file must say so");
+  assert.ok(!/SHOULD NOT APPEAR/.test(gone), "must not print the new file's contents");
+
+  // When the tool did quote the line, that quote is still worth showing - exactly once.
+  const quoted = render({ tool: "pytest", failures: [{ file, line: 5,
+    message: "AssertionError: assert 2 == 3", stmt: "assert compute() == 3" }] }, {});
+  assert.match(quoted, /has changed since this ran — it has no line 5/);
+  assert.equal((quoted.match(/assert compute\(\) == 3/g) || []).length, 1,
+    "the quoted line is printed exactly once");
+
+  // A file that cannot be read at all is not evidence of anything. Unreadable and
+  // too-short are different answers and only one of them is a claim about the file.
+  rmSync(file);
+  resetSnippetCache();
+  assert.ok(!/has changed/.test(render(result, {})), "an unreadable file is not called changed");
+
+  // The same fact at the level below: snippet() promises a window *around* the line that
+  // failed. Out of range it clamped to the end of the file and returned one with no hit
+  // in it, and the block trimming then worked from a `hit` index of -1. Render no longer
+  // asks in that case, so only an assertion here holds the function to its own contract.
+  const { snippet } = await import("../src/snippet.js");
+  writeFileSync(file, "aa\nbb\ncc\ndd\nee\n");
+  resetSnippetCache();
+  for (const ctx of [0, 1, 2, 3, 4, 8]) {
+    assert.equal(snippet(file, 9, ctx), null, `ctx ${ctx}: a line the file lacks has no window`);
+    const window = snippet(file, 3, ctx);
+    assert.ok(window?.some((l) => l.hit), `ctx ${ctx}: a window must contain the line it is for`);
+  }
+
+  rmSync(dir, { recursive: true, force: true });
+  console.log("  ok   a line the file no longer has is reported, not filled in");
+  pass++;
+} catch (e) { console.log(`  FAIL vanished source line\n       ${e.message}`); fail++; }
+
 try {
   const { render } = await import("../src/render.js");
   const fs = (await import("node:fs")).default;
   const { syncBuiltinESMExports } = await import("node:module");
+  // snippet.js opens descriptors - openSync, not readFileSync - so counting
+  // readFileSync alone counted a call that is never made, and the assertion below held
+  // however many files were read. Both are hooked now.
   const originalRead = fs.readFileSync;
+  const originalOpen = fs.openSync;
   let reads = 0, out;
   try {
     fs.readFileSync = (...args) => { reads++; return originalRead(...args); };
+    fs.openSync = (...args) => { reads++; return originalOpen(...args); };
     syncBuiltinESMExports();
     out = render({ failures: [{ file: cli, line: 1, message: "bad", stmt: "total = value" }] }, { source: false });
   } finally {
     fs.readFileSync = originalRead;
+    fs.openSync = originalOpen;
     syncBuiltinESMExports();
   }
   assert.equal(reads, 0, "--no-source must not read files for snippets or stale-source checks");

@@ -89,11 +89,25 @@ export function contextFor(message) {
   return 4;                                            // bare — the source is the explanation
 }
 
+/** Whether the file still holds that line. false means it demonstrably changed since
+ *  the command ran; null means there is nothing readable to judge it by, which is not
+ *  the same answer and must not be reported as one. */
+export function hasLine(file, line) {
+  if (!file || !line) return null;
+  const all = readLines(file);
+  return all === null ? null : line <= all.length;
+}
+
 /** Return [{n,text,hit}] around `line`, or null if unreadable. */
 export function snippet(file, line, ctx = 2) {
   if (!file || !line) return null;
   const all = readLines(file);
   if (!all) return null;
+  // A line past the end of the file is not a line of it. Without this the window
+  // clamps to the end and returns source that does not contain the hit at all - the
+  // `hit` index below comes back -1 and the block trimming carries on with it, so the
+  // reader gets unrelated code under the heading of the line that failed.
+  if (line > all.length) return null;
   const start = Math.max(1, line - ctx);
   const end = Math.min(all.length, line + ctx);
   const out = [];
