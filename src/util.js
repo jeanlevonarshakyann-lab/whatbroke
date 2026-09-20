@@ -63,10 +63,28 @@ export const isNoise = (p) => !!p && NOISE.some((re) => re.test(p));
  *  count said "1 errors" wherever a parser had to make its own sentence. */
 export const counted = (n, noun) => `${n} ${noun}${n === 1 ? "" : "s"}`;
 
+/** A path shown relative to the working directory, where it is under it.
+ *
+ *  Deliberately not `path.relative`, which answers a different question: it walks out of
+ *  the directory with "../.." for anything outside, and a diagnostic about a file in
+ *  another checkout reads better as the absolute path it was printed as. What is wanted
+ *  is only the common prefix taken off.
+ *
+ *  The separator has to be both of them. Testing for cwd + "/" meant that on Windows -
+ *  where `process.cwd()` returns C:\Users\dev\app and every path under it is spelled with
+ *  a backslash - no path was ever shortened, and every diagnostic showed its full
+ *  absolute path. A log can also be written on one platform and read on another, so both
+ *  separators are accepted wherever this runs. */
 export function relPath(p) {
   if (!p) return p;
   const cwd = process.cwd();
-  return p.startsWith(cwd + "/") ? p.slice(cwd.length + 1) : p;
+  // Windows matches paths without regard to case; nothing else does.
+  const under = process.platform === "win32"
+    ? p.slice(0, cwd.length).toLowerCase() === cwd.toLowerCase()
+    : p.startsWith(cwd);
+  if (!under) return p;
+  const next = p[cwd.length];
+  return next === "/" || next === "\\" ? p.slice(cwd.length + 1) : p;
 }
 
 /** Collapse runs of blank lines, trim trailing space. */

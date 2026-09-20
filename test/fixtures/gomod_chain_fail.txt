@@ -1,0 +1,4 @@
+go: downloading github.com/nonexistent/gone v1.2.3
+go: shop imports
+	example.com/lib imports
+	github.com/nonexistent/gone: module lookup disabled by GOPROXY=off

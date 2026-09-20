@@ -290,6 +290,48 @@
       "generic": 1
     }
   },
+  "cargo_fmt_fail.txt": {
+    "winner": "cargo fmt",
+    "parser": "cargo fmt",
+    "failures": 3,
+    "claimants": [
+      "cargo fmt",
+      "generic"
+    ],
+    "shadow": {}
+  },
+  "cargo_fmt_one_fail.txt": {
+    "winner": "cargo fmt",
+    "parser": "cargo fmt",
+    "failures": 1,
+    "claimants": [
+      "cargo fmt",
+      "generic"
+    ],
+    "shadow": {}
+  },
+  "cargo_fmt_parse_fail.txt": {
+    "winner": "cargo",
+    "parser": "cargo",
+    "failures": 1,
+    "claimants": [
+      "cargo",
+      "generic"
+    ],
+    "shadow": {
+      "generic": 1
+    }
+  },
+  "cargo_fmt_workspace_fail.txt": {
+    "winner": "cargo fmt",
+    "parser": "cargo fmt",
+    "failures": 2,
+    "claimants": [
+      "cargo fmt",
+      "generic"
+    ],
+    "shadow": {}
+  },
   "cargo_human_same_fail.txt": {
     "winner": "cargo",
     "parser": "cargo",
@@ -559,6 +601,30 @@
       "generic"
     ],
     "shadow": {}
+  },
+  "cmake_generator_fail.txt": {
+    "winner": "cmake",
+    "parser": "cmake",
+    "failures": 1,
+    "claimants": [
+      "cmake",
+      "generic"
+    ],
+    "shadow": {
+      "generic": 1
+    }
+  },
+  "cmake_nosource_fail.txt": {
+    "winner": "cmake",
+    "parser": "cmake",
+    "failures": 1,
+    "claimants": [
+      "cmake",
+      "generic"
+    ],
+    "shadow": {
+      "generic": 1
+    }
   },
   "cmake_syntax_fail.txt": {
     "winner": "cmake",
@@ -881,6 +947,16 @@
     "winner": "dotnet",
     "parser": "dotnet",
     "failures": 2,
+    "claimants": [
+      "dotnet",
+      "generic"
+    ],
+    "shadow": {}
+  },
+  "dotnet_format_fail.txt": {
+    "winner": "dotnet",
+    "parser": "dotnet",
+    "failures": 16,
     "claimants": [
       "dotnet",
       "generic"
@@ -1437,6 +1513,48 @@
       "generic": 1
     }
   },
+  "go_badflag_fail.txt": {
+    "winner": "go",
+    "parser": "go",
+    "failures": 1,
+    "claimants": [
+      "go",
+      "generic"
+    ],
+    "shadow": {}
+  },
+  "go_nogomod_fail.txt": {
+    "winner": "go",
+    "parser": "go",
+    "failures": 1,
+    "claimants": [
+      "go",
+      "generic"
+    ],
+    "shadow": {
+      "generic": 1
+    }
+  },
+  "go_nomodule_fail.txt": {
+    "winner": "go",
+    "parser": "go",
+    "failures": 1,
+    "claimants": [
+      "go",
+      "generic"
+    ],
+    "shadow": {}
+  },
+  "go_unknowncmd_fail.txt": {
+    "winner": "go",
+    "parser": "go",
+    "failures": 1,
+    "claimants": [
+      "go",
+      "generic"
+    ],
+    "shadow": {}
+  },
   "go_windows_build_fail.txt": {
     "winner": "go build",
     "parser": "go",
@@ -1484,6 +1602,26 @@
     "shadow": {
       "generic": 3
     }
+  },
+  "gofmt_fail.txt": {
+    "winner": "gofmt",
+    "parser": "gofmt",
+    "failures": 2,
+    "claimants": [
+      "gofmt",
+      "generic"
+    ],
+    "shadow": {}
+  },
+  "gofmt_hunks_fail.txt": {
+    "winner": "gofmt",
+    "parser": "gofmt",
+    "failures": 2,
+    "claimants": [
+      "gofmt",
+      "generic"
+    ],
+    "shadow": {}
   },
   "golangci_checkstyle_fail.txt": {
     "winner": "golangci-lint",
@@ -1596,6 +1734,60 @@
       "go": 2,
       "generic": 4
     }
+  },
+  "gomod_chain_fail.txt": {
+    "winner": "go mod",
+    "parser": "go mod",
+    "failures": 1,
+    "claimants": [
+      "go mod",
+      "generic"
+    ],
+    "shadow": {}
+  },
+  "gomod_download_fail.txt": {
+    "winner": "go mod",
+    "parser": "go mod",
+    "failures": 1,
+    "claimants": [
+      "go mod",
+      "generic"
+    ],
+    "shadow": {}
+  },
+  "gomod_parse_fail.txt": {
+    "winner": "go mod",
+    "parser": "go mod",
+    "failures": 1,
+    "claimants": [
+      "go mod",
+      "generic"
+    ],
+    "shadow": {
+      "generic": 2
+    }
+  },
+  "gomod_parse_multi_fail.txt": {
+    "winner": "go mod",
+    "parser": "go mod",
+    "failures": 2,
+    "claimants": [
+      "go mod",
+      "generic"
+    ],
+    "shadow": {
+      "generic": 3
+    }
+  },
+  "gomod_resolve_fail.txt": {
+    "winner": "go mod",
+    "parser": "go mod",
+    "failures": 1,
+    "claimants": [
+      "go mod",
+      "generic"
+    ],
+    "shadow": {}
   },
   "gopanic_fail.txt": {
     "winner": "go",
@@ -3662,6 +3854,16 @@
       "generic": 4
     }
   },
+  "python_nomodule_fail.txt": {
+    "winner": "python",
+    "parser": "python",
+    "failures": 1,
+    "claimants": [
+      "python",
+      "generic"
+    ],
+    "shadow": {}
+  },
   "rspec_fail.txt": {
     "winner": "rspec",
     "parser": "rspec",
@@ -4528,6 +4730,36 @@
     ],
     "shadow": {}
   },
+  "terraform_fmt_fail.txt": {
+    "winner": "terraform fmt",
+    "parser": "terraform fmt",
+    "failures": 1,
+    "claimants": [
+      "terraform fmt",
+      "generic"
+    ],
+    "shadow": {}
+  },
+  "terraform_fmt_hunks_fail.txt": {
+    "winner": "terraform fmt",
+    "parser": "terraform fmt",
+    "failures": 2,
+    "claimants": [
+      "terraform fmt",
+      "generic"
+    ],
+    "shadow": {}
+  },
+  "terraform_fmt_recursive_fail.txt": {
+    "winner": "terraform fmt",
+    "parser": "terraform fmt",
+    "failures": 2,
+    "claimants": [
+      "terraform fmt",
+      "generic"
+    ],
+    "shadow": {}
+  },
   "terraform_init_fail.txt": {
     "winner": "terraform",
     "parser": "terraform",
@@ -4539,6 +4771,16 @@
     "shadow": {
       "generic": 1
     }
+  },
+  "terraform_nocommand_fail.txt": {
+    "winner": "terraform",
+    "parser": "terraform",
+    "failures": 1,
+    "claimants": [
+      "terraform",
+      "generic"
+    ],
+    "shadow": {}
   },
   "terraform_plan_json_fail.txt": {
     "winner": "terraform",

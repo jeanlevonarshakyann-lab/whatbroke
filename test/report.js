@@ -14,6 +14,7 @@ import { dirname, join } from "node:path";
 import { fileURLToPath } from "node:url";
 import { analyse, EXTRACTORS } from "../src/index.js";
 import { createReport } from "../src/report.js";
+import { exitStatus } from "../src/status.js";
 import { renderReport } from "../src/render.js";
 import { githubOutput } from "../src/github.js";
 import { REPORT_SCHEMA, inconsistencies, unknownKeywords, validate } from "./schema.js";
@@ -166,6 +167,29 @@ test("every parser's own result keeps to what a report is built from", () => {
   assert.deepEqual(wrong.slice(0, 8), [], `${wrong.length} problems`);
 });
 
+test("a name that names nothing is not reported either", () => {
+  // `subject` is what failed - a test, a method - and "" is not one. Playwright's JSON
+  // carries each test's title as a field, and a document whose titles are blank produced
+  // `subject: ""`, which the schema refuses and which history would have used as the
+  // discriminator between two failures that a weak signature could not separate.
+  const doc = JSON.parse(read("playwright_json_fail.txt"));
+  const blank = (suite) => {
+    if (suite.title !== undefined) suite.title = "";
+    for (const spec of suite.specs ?? []) spec.title = "";
+    for (const child of suite.suites ?? []) blank(child);
+  };
+  for (const suite of doc.suites ?? []) blank(suite);
+  const report = reportOf(JSON.stringify(doc));
+  assert.equal(report.tool, "playwright");
+  assert.ok(report.failures.length > 0);
+  for (const failure of report.failures) {
+    assert.equal("subject" in failure, false, "a blank name is absence, and absence has a spelling");
+    // What it does know is still reported.
+    assert.match(failure.file, /cart\.spec\.ts$/);
+  }
+  assert.deepEqual(problems(report), []);
+});
+
 test("a location that points at nothing is not reported", () => {
   // A damaged log can say `:0:0`, which no tool counting from 1 prints. A report says
   // where a failure is or says nothing; it does not pass on a place that is not one.
@@ -194,8 +218,9 @@ test("everything the command line prints as JSON keeps to the schema", () => {
     ["a command that could not start", ["--json", "definitely-not-a-command-whatbroke"], ""],
     ["a truncated capture", ["--json", "--max-bytes", "1024"], "chatter\n".repeat(400) + pytest],
     ["unclustered", ["--json", "--no-cluster"], pytest],
-    ["the first tracked run", ["--json", "--since-last"], pytest],
-    ["the second tracked run", ["--json", "--since-last"], pytest],
+    ["a piped log nobody named", ["--json", "--since-last"], pytest],
+    ["the first tracked run", ["--json", "--since-last", "--id", "schema-case"], pytest],
+    ["the second tracked run", ["--json", "--since-last", "--id", "schema-case"], pytest],
     ["a wrapped log", ["--json"], read("docker_buildkit_npm_fail.txt")],
     ["two tools in one log", ["--json"], read("golangci_typecheck_fail.txt")],
   ];
@@ -207,8 +232,12 @@ test("everything the command line prints as JSON keeps to the schema", () => {
     for (const problem of problems(report)) wrong.push(`${label}: ${problem}`);
   }
   assert.deepEqual(wrong, []);
-  const tracked = JSON.parse(run(["--json", "--since-last"], pytest).stdout);
+  // Named, like the two cases above it: an unnamed pipe is deliberately never compared.
+  const tracked = JSON.parse(run(["--json", "--since-last", "--id", "schema-case"], pytest).stdout);
   assert.equal(tracked.since.compared, true, "the tracked runs never compared, so since was only checked empty");
+  const unnamed = JSON.parse(run(["--json", "--since-last"], pytest).stdout);
+  assert.equal(unnamed.since.compared, false);
+  assert.equal(unnamed.since.reason, "unidentified-pipe");
   // and what it prints is the report, not a copy assembled beside it
   assert.deepEqual(JSON.parse(run(["--json"], pytest).stdout), asJson(reportOf(pytest)));
 });
@@ -368,6 +397,51 @@ test("a control sequence cut off before its end does not take the lines after it
   assert.equal(report.tool, "flake8");
   assert.equal(report.failures.length, plain.failures.length);
   assert.deepEqual(evidenceOf(report), evidenceOf(plain).map((e) => JSON.stringify(JSON.parse(e).map(({ start, end }) => ({ start: start + 1, end: end + 1 })))));
+});
+
+// What the exit status says is part of the report, so it is schema-clean, it is the same
+// sentence in all three outputs, and it says nothing where the number says nothing.
+test("a signal's report is schema-clean and says the same thing in every output", () => {
+  const report = createReport({ analysis: null, raw: "", exitCode: 137, inputMode: "command", signal: "SIGKILL" });
+  assert.deepEqual(problems(report), []);
+  assert.equal(report.status.signal, "SIGKILL");
+  const terminal = renderReport(report, {});
+  const { stdout, summary } = githubOutput(report, {});
+  for (const where of [terminal, stdout, summary]) assert.ok(where.includes(report.status.says), where.slice(0, 200));
+});
+
+test("a status is claimed only where there is a status to claim", () => {
+  // Nothing ran wrong, nothing to say.
+  assert.equal(createReport({ analysis: null, raw: "", exitCode: 0, inputMode: "command" }).status, null);
+  // A number every program returns is not evidence of anything.
+  assert.equal(createReport({ analysis: null, raw: "x", exitCode: 1, inputMode: "command" }).status, null);
+  // A piped log's upstream number never reached whatbroke.
+  assert.equal(createReport({ analysis: null, raw: "x", exitCode: 127, inputMode: "pipe" }).status, null);
+  // A command that could not be started never ran, so `error` is the whole story.
+  assert.equal(createReport({ analysis: null, raw: "", exitCode: 127, inputMode: "command", error: "spawn x ENOENT" }).status, null);
+});
+
+test("output that went unread is still said to have gone unread beside a status", () => {
+  const killed = createReport({ analysis: null, raw: "a line nothing reads\n", exitCode: 137, inputMode: "command", signal: "SIGKILL" });
+  assert.deepEqual(problems(killed), []);
+  const terminal = renderReport(killed, { quiet: true });
+  assert.match(terminal, /Killed by SIGKILL/);
+  assert.match(terminal, /could not identify a diagnostic/);
+  // And with nothing captured there is no unread output to confess to.
+  const empty = renderReport(createReport({ analysis: null, raw: "", exitCode: 137, inputMode: "command", signal: "SIGKILL" }), {});
+  assert.equal(empty.includes("could not identify a diagnostic"), false);
+});
+
+test("every signal whatbroke names is named, and an unknown one is still reported", () => {
+  const named = ["SIGKILL", "SIGTERM", "SIGINT", "SIGQUIT", "SIGHUP", "SIGSEGV", "SIGBUS",
+    "SIGILL", "SIGFPE", "SIGABRT", "SIGPIPE", "SIGXCPU", "SIGXFSZ"];
+  for (const signal of named) {
+    const { says } = exitStatus({ signal, code: null });
+    assert.ok(says.includes(signal), signal);
+    // A sentence that only repeats the signal's name tells the reader nothing.
+    assert.ok(says.length > signal.length + 20, signal);
+  }
+  assert.equal(exitStatus({ signal: "SIGWINCH" }).says, "Stopped by SIGWINCH.");
 });
 
 rmSync(cache, { recursive: true, force: true });

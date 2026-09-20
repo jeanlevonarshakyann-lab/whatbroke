@@ -1,0 +1,2 @@
+go notacommand: unknown command
+Run 'go help' for usage.

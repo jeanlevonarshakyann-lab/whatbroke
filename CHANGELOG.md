@@ -2,6 +2,181 @@
 
 ## Unreleased
 
+- `whatbroke -- python -m pytest` reads as pytest rather than as python. Naming the
+  command that ran is evidence for breaking ties between parsers, ranked by where each
+  tool is mentioned - and that put `python3` ahead of the module it was launching. It only
+  showed where a second parser claimed the same log, which `--tb=native` does by printing
+  a real Python traceback instead of pytest's own: the run came back as python's with no
+  tally, worse than passing no command at all, because a piped copy of that log reads as
+  pytest. The module named after `-m` is the tool. Only for an interpreter and only as its
+  first argument: `pytest -m slow` selects a marker.
+
+- Reading one log is about six times faster. Deciding which parsers to ask scans the log
+  for the strings they name, and the alternation of those strings was rebuilt every time
+  one was found - shrunk to what was still missing and recompiled. For a long log that
+  makes the rest of the scan cheaper; for a short one the construction IS the cost, and it
+  was paid several times over. The set never changes while the process lives, so it is now
+  built once, and recognised by identity so that working out what to scan for is not
+  redone either. Reading each capture in the corpus went from 3.1ms to 0.5ms apiece, and
+  the scan alone from 1,144ms to 22ms. One 400KB log of mostly one tool's output is 7% slower,
+  which is what shrinking the alternation was buying. `npm run test:heavy`, which is
+  nothing but millions of short reads, goes from about seventeen minutes to three and a
+  three.
+
+- go and CMake name themselves when they refuse to run, and are read as themselves rather
+  than falling to the generic reader or to nothing. go has four such sentences: a flag it
+  does not have, a subcommand it does not have, one it ends by pointing at `go help`, and
+  a package pattern that resolves to nothing because there is no module here - running go
+  in the wrong directory, which is a CI staple. CMake has one shape: a source directory
+  that is not there, one with no `CMakeLists.txt`, a generator it does not have. Its
+  message sits on the banner's own line with no location, because nothing has been read
+  yet, and the pattern that ends at the colon matched none of it.
+
+- Three tools that refuse to start now say so, instead of reading as nothing. `python -m
+  pytest` with pytest not installed prints the interpreter's path and the module it could
+  not find, and that is the whole log of a step that never ran a test. `go` handed a flag
+  it does not have prints Go's flag-package line and its own usage. `terraform` handed a
+  subcommand it does not ship prints one sentence. Each is guarded by what makes it that
+  tool's: the interpreter at the start of the line, go's own `usage: go <verb>` underneath
+  - Go's flag package writes that first line for every program built with it - and
+  terraform naming itself. Each also joins the lines the capture keeps when a log is cut
+  short, because none of them carries a failure word.
+
+- Says what the exit status means when the output says nothing. A command that is killed
+  writes nothing on the way out - `cargo build` stopped by the kernel's out-of-memory
+  killer, a suite cancelled by a job timeout, a crash in a C extension - and every parser
+  here had nothing to read, so the answer was "whatbroke could not identify a diagnostic".
+  Node reports which signal ended the process, and a signal is a fact: `137` now reads as
+  SIGKILL, `139` as a segfault, and each says what usually sends it, written as the guess
+  it is. Exit codes are conventions and only three are read - `127` and `126`, which a
+  shell returns for a command that does not exist and one it could not run, and `124`,
+  which `timeout` returns - and only for a command whatbroke ran itself. A piped log's
+  upstream status never reached whatbroke and is not guessed at. A run killed part-way
+  still reports whatever it managed to print, with the signal beside the diagnosis rather
+  than instead of it. `--json` gains a `status` field.
+
+- Reads `go mod`. The module loader is where a Go build fails before it compiles anything,
+  and none of it was read: `go mod tidy` came back with no parser at all. Two shapes, both
+  captured - a go.mod it cannot parse, reported by file and line; and a module it cannot
+  get, with the reason and the chain of imports that pulled it in, nearest first, because
+  the import a reader can do something about is theirs. Not a bare `go: <sentence>`:
+  `go: downloading ...` and `go: warning: ...` are the same shape and are not failures,
+  and nothing in such a line says which it is.
+
+- Reads `terraform fmt -check -diff`, which is in nearly every Terraform pipeline and was
+  read as nothing: the job exited 3 and the diff came back handed over whole. Each `@@` is
+  a place, so one file with two unformatted regions is two of them, each at the line its
+  change starts on rather than the number the hunk carries, and the source as it
+  stands is quoted with each. terraform spells its diff's halves `old/<path>` and
+  `new/<path>` with the same path in both, which is what tells it from git's `a/` and `b/`
+  and from a test runner's `--- expected` / `+++ actual`; a file's diff ends where another
+  one begins. Not a plain `terraform fmt -check`, which lists bare filenames and nothing
+  else - there is no shape in a list of paths to claim safely.
+- Two diffs in one pipe no longer report one place twice. `cargo fmt --check`, `gofmt -d`
+  and `terraform fmt -check -diff` all read a unified diff, and a `@@` is nothing but a
+  line number: read under another file's header it becomes a place in a file that has
+  nothing wrong there, and where that number collides with a real one the same place was
+  counted twice. A job that formats and then tests puts a format check beside minitest's
+  or PHPUnit's `--- expected` / `+++ actual` / `@@`, which is all it takes. A diff's hunks
+  are ordered and disjoint - each starts after the last one ended - so a hunk that does
+  not is not that file's, and is refused. Every ordered pair of the corpus's diff
+  captures, woven at twelve block sizes, is held to it.
+
+- Reads `dotnet format --verify-no-changes`, the format gate most .NET CI runs. It reports
+  through MSBuild in the same shape the compiler uses, so the same reader should always
+  have read it - but its rule names are `WHITESPACE`, `IMPORTS` and `ANALYZERS`, and the
+  code pattern required a digit, so a run that found sixteen places to fix came back as
+  unrecognised output. A code is now an uppercase identifier rather than one ending in a
+  digit; the file extension is still what separates these from TypeScript's identical
+  `file(line,col): error TS2322:`, and no fixture in the corpus changes hands.
+
+- Reads `gofmt -d`, the other half of Go's format gate, which was read as nothing at all.
+  The file is named once in the header and each `@@` says where in it, so one file with two
+  unformatted regions is two places rather than one entry, each at the line its change
+  actually starts on rather than the number the hunk carries - a hunk opens with up to
+  three unchanged lines of context - the same shape `cargo fmt
+  --check` is read as. The source line as it stands now is quoted with each. Not `gofmt
+  -l`, which is how most CI jobs run it: that prints bare filenames and nothing else, and
+  nothing in a list of paths says gofmt wrote it rather than some other step. The header
+  has to name one file twice - `diff x.go.orig x.go` - which is what keeps it off `git
+  diff` and off a plain `diff a b`, and a file's diff ends where another one begins, so a
+  job running gofmt and then a test suite does not have minitest's or PHPUnit's value diff
+  read as more unformatted Go.
+- A failure whose name is blank is reported without one rather than with `subject: ""`,
+  which the report schema refuses. Playwright's JSON carries each test's title as a field
+  and a document whose titles are empty produced exactly that; the guard is in one place
+  for every parser, beside the ones that already drop a file, a line or a column that
+  points at nothing.
+
+- Reads `cargo fmt --check`, the format gate almost every Rust CI job runs. It was read as
+  nothing at all: the job failed, and whatbroke said there was no parser for it and handed
+  the diff back whole. rustfmt numbers the line each region it would rewrite starts at, so
+  a file with three unformatted regions is three places - which is more than the other
+  format checks here can say, because prettier, black and deno fmt only ever name files.
+  The source line as it stands now is quoted with each one. `rustfmt --check` run directly
+  prints the same thing and reads the same way; a file rustfmt cannot parse is a rustc
+  diagnostic and stays cargo's, which is what the fourth capture is for.
+
+- pytest no longer loses a failure to a name another test already has. Two tests called
+  `test_total`, in different files or different classes, folded into each other because
+  the short test summary was matched on the bare name - so a run reported one failure
+  while its own tally said two. Each summary line now claims one failure and only one,
+  and the node id it names becomes the failure's subject, which is what tells two tests
+  of one name apart for `--since-last`.
+- pytest no longer gives two failures the same location. `--tb=line` prints one
+  `path:line: message` per failure, and these were indexed by message alone: two tests
+  raising the same exception - a shared fixture breaking, which is the ordinary way this
+  happens - overwrote each other and BOTH failures were reported at the last one's file
+  and line, sending the reader to code that is fine. Every candidate is kept and the
+  summary's own filename decides; where that cannot single one out, the failure keeps the
+  file the summary named and goes without a line rather than borrowing another test's.
+- A pytest block whose only words were a trailing `test_x.py:2: RuntimeError` reported an
+  empty message. The pattern has three capture groups and the code read a fourth.
+- A command that succeeds now writes the empty `--since-last` baseline instead of nothing
+  at all. Before, a green run left yesterday's failure in the record, so when that failure
+  came back it was compared against the run that first found it and called nothing new -
+  the one moment a reader most wants to be told. Nothing is printed for a command that
+  worked. The run identity no longer includes the tool, because a run that succeeds prints
+  nothing to name a tool with; what the command was is already in its argv. Success is the
+  exit code's statement and not the output's: a runner that exits zero having printed
+  something readable - a suite told to tolerate a known failure, a wrapper echoing the last
+  run's summary - still records that nothing is failing, in every output format, and still
+  reports in full everything it read.
+- Two failures whose signatures are too thin to group on are two causes in history, not
+  one. `assert 1 == 2` and `assert 3 == 4` reduce to the same shape, and the display
+  already refused to group them - but history keyed on that shape alone, so a second test
+  failing reported "nothing new" and the first being fixed reported nothing gone. The test
+  or symbol is part of the identity when the shape is that thin, and identity still
+  survives the code moving to another file or line.
+- A piped log is tracked only when it is named. `pytest tests/unit | whatbroke
+  --since-last` and `pytest tests/api | whatbroke --since-last` carry no command at all,
+  so in one directory they shared a record: each overwrote the other and each reported the
+  other's failures as GONE - a claim that something was fixed, about a suite that had not
+  run. An unnamed pipe is now neither compared nor recorded and says so in the terminal,
+  in JSON and in the GitHub notice; `--id NAME` names a pipeline. A named pipeline also
+  starts its own baseline rather than migrating a record from the previous identity
+  scheme: that scheme had no `--id`, so the record sitting under a pipeline's directory
+  and tool was written by some unnamed pipe, and adopting it would hand a brand-new
+  pipeline another one's history and call the two compared.
+- Different missing modules are different causes. `Cannot find module './a.js'` and
+  `'./b.js'` were reduced to the same shape, because the path rules ate the one part of
+  the message that identifies it - so three things to install became one "likely cause",
+  and the reader adds one dependency, reruns, and watches two more fail. What a resolver
+  says it could not find is now kept whatever it looks like.
+- The wrapped command's live output honours the terminal's backpressure. `write()`
+  returning false was ignored, so a command printing faster than its destination could
+  read queued every later chunk in whatbroke's memory - unbounded, while `--max-bytes`
+  carefully bounds the copy kept for diagnosis. The child's stream is paused until the
+  destination drains.
+- Comparing two runs is linear. `--since-last` scanned the whole current list once per
+  remembered cause, so 40,000 causes each way took 1.3 seconds of string comparison for
+  one number; it now takes 8 milliseconds.
+- Paths under the working directory are shortened on Windows. The test was for the
+  working directory followed by `/`, so on a platform whose separator is `\` nothing was
+  ever shortened and every diagnostic showed its full absolute path.
+- The exhaustive phases of `npm run test:heavy` report where they are. They take minutes,
+  and a suite that prints nothing for minutes cannot be told from one that has hung.
+
 - Byte-identical CI retry blocks are collapsed before parsing. De-duplication already
   showed each diagnostic once, but 67 of 200 duplicated fixtures still changed their
   headline or another public field because parser-specific tallies counted both copies.

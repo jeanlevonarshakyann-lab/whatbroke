@@ -80,6 +80,13 @@ const PROBABLE_DIAGNOSTIC = new RegExp([
   "^Invalid option '",
   "^The \\S+ formatter is no longer part of core\\b",
   "^No files matching the pattern\\b",
+  // ...and three more of the same kind, each the whole log of a command that never ran.
+  // None of them carries a failure word: the interpreter could not find a module, the go
+  // tool was handed a flag it does not have, terraform a subcommand it does not ship.
+  "^\\S*python[\\d.]*(?:\\.exe)?: No module named ",
+  "^flag provided but not defined: -",
+  "^go \\S+: unknown command[^\\S\\n]*$",
+  "^(?:Terraform|OpenTofu|Tofu) has no command named \"",
   // ...and a reporter told to write to a file says so and prints nothing else, so that
   // one line is the entire log of a failed run.
   "^[A-Z][A-Z-]* report written to ",
@@ -87,6 +94,24 @@ const PROBABLE_DIAGNOSTIC = new RegExp([
   // change under it; the one failure word is in the tally at the very end, so every file
   // but the last was cut from a large log.
   "^from [^\\s:][^\\n]*\\.\\w+:[^\\S\\n]*$",
+  // `cargo fmt --check` heads each place with "Diff in <file>:<line>:" and draws a diff
+  // under it. There is no failure word in any of it, and the location pattern above wants
+  // the path at the start of the line - so a format check buried in a build log lost every
+  // place it found, and a one-place run lost the only one it had.
+  "^Diff in [^\\s][^\\n]*:\\d+:[^\\S\\n]*$",
+  // `gofmt -d` has the same problem and a different shape: it names the file once, in a
+  // header with no failure word in it either, and every place it found is an @@ line
+  // underneath. Losing the header loses every place in that file, because nothing else
+  // in the diff says which file it is about.
+  "^diff [^\\s]+\\.orig [^\\s]+[^\\S\\n]*$",
+  // `terraform fmt -check -diff` is the same problem a third time. Its header is the pair
+  // `--- old/<path>` / `+++ new/<path>`, and the file is named nowhere else in the diff.
+  "^--- old/[^\\s][^\\n]*$",
+  // go's module loader writes no failure word at all. "go: <module>@<version>: <reason>"
+  // and the "go: <package> imports" chain are the whole log of a failed `go mod tidy`,
+  // and the chain's own lines are indented, so nothing in it anchors either.
+  "^go: \\S+@\\S+:",
+  "^go: \\S+ imports[^\\S\\n]*$",
   // VSTest's console is translated into the SDK's thirteen UI languages, and every
   // failure word above is English. What survives translation is the shape: a result line
   // is an indented word or two, the test, and its timing in brackets; the run's tally

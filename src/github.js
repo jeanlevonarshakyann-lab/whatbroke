@@ -136,7 +136,9 @@ export function githubOutput(report, { quiet = false } = {}) {
     const sites = causes.reduce((n, c) => n + c.size, 0);
     const lead = [report.summary, causes.length &&
       `${causes.length} likely cause${causes.length > 1 ? "s" : ""}, ${sites} site${sites > 1 ? "s" : ""}`,
-      report.since?.compared && `${report.since.fresh.length} new since the last tracked run`]
+      report.since?.compared && `${report.since.fresh.length} new since the last tracked run`,
+      report.since?.reason === "unidentified-pipe"
+        && "not tracked: a piped log carries no command to tell it from another (name it with --id NAME)"]
       .filter(Boolean).join(" — ");
     if (lead) stdout += `::notice title=whatbroke::${escapeData(lead)}\n`;
     return { stdout, summary: summaryOf(report) };
@@ -144,8 +146,10 @@ export function githubOutput(report, { quiet = false } = {}) {
   const { fallback, truncated, error } = report;
   if (!fallback) return { stdout: "", summary: null };
   const piped = report.inputMode === "pipe";
-  const explanation = error ?? "whatbroke could not identify a diagnostic.";
   const raw = fallback.rawOutput;
+  const status = report.status;
+  const explanation = [error ?? status?.says ?? "whatbroke could not identify a diagnostic.",
+    ...(status && !error && raw ? ["whatbroke could not identify a diagnostic."] : [])].join("\n");
   // Unknown upstream status is a notice, not an invented failed command.
   const level = piped ? "notice" : "error";
   let stdout = `::${level} title=whatbroke::${escapeData(fallback.message + "\n" + explanation)}\n`;
@@ -163,7 +167,9 @@ export function githubOutput(report, { quiet = false } = {}) {
   let fenceLength = 3;
   for (const match of context.matchAll(/`+/g)) fenceLength = Math.max(fenceLength, match[0].length + 1);
   const fence = "`".repeat(fenceLength);
-  const summary = ["## whatbroke", "", fallback.message, "",
+  // The annotation says what the status was; a job summary that left it out would be the
+  // one place a reader looks and does not find it.
+  const summary = ["## whatbroke", "", fallback.message, ...(status && !error ? ["", status.says] : []), "",
     error ? "Launch error:" : "Captured output:", "", fence, context, fence, "",
     ...(truncated ? [`> ${TRUNCATION_NOTICE}`, ""] : []),
   ].join("\n");

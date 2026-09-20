@@ -122,6 +122,9 @@ export function render(result, { max = 5, cwd = true, source = true, cluster = t
     }
   } else if (!secondary && since && !since.compared && since.reason === "no-previous-run") {
     out.push(`    ${C.dim}first tracked run — nothing to compare against yet${C.reset}`);
+  } else if (!secondary && since?.reason === "unidentified-pipe") {
+    // Saying nothing here would read as "nothing new", which is the claim being refused.
+    out.push(`    ${C.dim}not tracked: a piped log carries no command to tell it from another. Name it with --id NAME${C.reset}`);
   }
   if (result.others?.length) {
     const named = result.others.map((o) => `${o.tool} (${o.count})`).join(", ");
@@ -289,6 +292,9 @@ export function render(result, { max = 5, cwd = true, source = true, cluster = t
 export function renderReport(report, { quiet = false, ...options } = {}) {
   if (report.tool !== null) {
     let out = "\n" + render(report, { ...options, since: report.since });
+    // A run that was killed did not finish, so what was read is what it got to say before
+    // the signal arrived - which the reader has to be told, whatever the parser found.
+    if (report.status?.signal) out += `\n${C.yellow}  ! ${report.status.says}${C.reset}\n`;
     if (report.truncated) {
       out += `\n${C.yellow}  ! output capture limit reached; increase --max-bytes for complete diagnostics${C.reset}\n`;
     }
@@ -297,7 +303,12 @@ export function renderReport(report, { quiet = false, ...options } = {}) {
   const { fallback, truncated, error } = report;
   if (!fallback) return "";
   const raw = fallback.rawOutput;
-  let out = `\n${fallback.message}\n${error ?? "whatbroke could not identify a diagnostic."}\n`;
+  // The status says more than "could not identify a diagnostic" does, and where a command
+  // was killed with nothing written it is the only thing there is to say. It does not
+  // replace that sentence where output was captured: something was there and went unread.
+  const status = report.status;
+  let out = `\n${fallback.message}\n${error ?? status?.says ?? "whatbroke could not identify a diagnostic."}\n`;
+  if (status && !error && raw) out += "whatbroke could not identify a diagnostic.\n";
   if (!raw) out += "No output was captured.\n";
   else if (report.inputMode === "pipe" || quiet) out += `\nCaptured output:\n${raw}${raw.endsWith("\n") ? "" : "\n"}`;
   else out += "Raw command output was streamed above.\n";

@@ -5,6 +5,12 @@ const CHAIN = /^(?:During handling of the above exception|The above exception wa
 const HEADER = /^Traceback \(most recent call last\):$/;
 
 const FRAME_RE = /^[^\S\n]*File "(.+?)", line (\d+), in (.+)$/;
+// `python -m pytest` with pytest not installed prints one line and stops: the
+// interpreter's own path, then what it could not find. No traceback, no "Error", no
+// location - and it is the entire log of a CI step that never ran a test at all. The
+// interpreter at the start is what tells it from a traceback's "ModuleNotFoundError: No
+// module named 'x'", which is quoted, already read, and has a stack above it.
+const NO_MODULE_RE = /^(\S*python[\d.]*(?:\.exe)?):[^\S\n]+No module named[^\S\n]+(\S+)[^\S\n]*$/m;
 const errorLine = (line) => {
   const l = line.trim();
   return !!l && !/^File "/.test(l) && !/^\^+$/.test(l) && !/^~*\^+~*$/.test(l) &&
@@ -151,11 +157,11 @@ function compileError(lines) {
 export const traceback = {
   name: "python",
   // Strings a log has to hold for this parser to read anything from it - see src/router.js.
-  signals: ["Traceback (most recent call last):", "SyntaxError", "IndentationError", "TabError"],
+  signals: ["Traceback (most recent call last):", "SyntaxError", "IndentationError", "TabError", "No module named"],
   category: "runtime",
   commands: ["python", "python3"],
   detect: (s) => /^Traceback \(most recent call last\):$/m.test(s) ||
-    !!compileError(s.split("\n")),
+    NO_MODULE_RE.test(s) || !!compileError(s.split("\n")),
   extract(s) {
     const lines = s.split("\n");
     const failures = [];
@@ -186,6 +192,16 @@ export const traceback = {
     if (compiled && !failures.some((f) => f.file === compiled.file && f.line === compiled.line)) {
       failures.push(compiled);
     }
+    // The interpreter refusing to start is a failure with no location at all, and stands
+    // beside anything else in the log rather than instead of it.
+    lines.forEach((line, i) => {
+      const missing = line.match(NO_MODULE_RE);
+      if (!missing) return;
+      failures.push(withSource({
+        title: missing[2], subject: missing[2], severity: "error",
+        message: `No module named ${missing[2]}`,
+      }, i, i + 1));
+    });
     if (!failures.length) return null;
     return { tool: "python", failures };
   },

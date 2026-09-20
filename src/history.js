@@ -17,7 +17,14 @@ import { fingerprint, legacyFingerprint, causeId, keyOf } from "./cluster.js";
 // record can still be compared once using its legacy IDs, then the current run is saved
 // under the new identity. Claims that causes disappeared are withheld during that one
 // transition because a legacy collision cannot be disproved from the saved hashes.
-const IDENTITY_VERSION = 5;
+// 6: the tool leaves the key and a weak signature gains a discriminator. The tool had to
+// go because a command that SUCCEEDS prints no output to name a tool with, so a green run
+// could not write the empty baseline that says "nothing is failing here now" - and the
+// next time the same failure came back, whatbroke called it nothing new. What the command
+// was is already in its argv. A v5 record is not migrated: its causes were fingerprinted
+// before `historyKeyOf` existed, so half of them would be read as different bugs. It is
+// ignored instead, and the run after an upgrade says it is the first tracked one.
+const IDENTITY_VERSION = 6;
 const LEGACY_IDENTITY_VERSION = 4;
 
 /** Identical words from different tools are separate causes in a mixed run. */
@@ -40,12 +47,39 @@ export function cacheDir(env = process.env) {
   return join(env.XDG_CACHE_HOME || join(homedir(), ".cache"), "whatbroke");
 }
 
-/** A stable name for "this command, in this directory, reporting this tool". */
-export function runIdentity({ cwd, tool, argv }) {
-  return fingerprint(JSON.stringify([IDENTITY_VERSION, resolve(cwd), tool ?? "", argv ?? []]));
+/** A stable name for "this command, in this directory" - or for a pipeline the user
+ *  named with --id.
+ *
+ *  null where there is nothing honest to key on. A piped log carries no argv: every
+ *  `... | whatbroke --since-last` run from one directory used to share a single record,
+ *  so `pytest tests/unit` and `pytest tests/api` overwrote each other's history and each
+ *  reported the other's failures as newly gone - a claim that something was FIXED, made
+ *  about a suite that had not run. Guessing the upstream command from its output is not
+ *  available either: the log is what is in question. So an unnamed pipe is not compared
+ *  and not recorded, and --id is how a pipeline says which one it is. */
+export function runIdentity({ cwd, argv, tool = null, id = null }) {
+  const piped = !argv?.length;
+  // A named PIPELINE keeps the tool in its key: a CI job that pipes eslint and then
+  // pytest under one --id wants two records rather than one that each run wipes, and a
+  // pipe has no green case to need a toolless key for - its exit status is never known.
+  // A named COMMAND still needs its argv in the key: --id "ci" may be reused for
+  // different test selections, which cannot claim each other's failures are gone.
+  // The tool stays out so that a green run writes to the same key as a failing one.
+  if (id) return fingerprint(JSON.stringify([IDENTITY_VERSION, resolve(cwd), "id", String(id), piped ? tool ?? "" : argv]));
+  if (piped) return null;
+  return fingerprint(JSON.stringify([IDENTITY_VERSION, resolve(cwd), argv]));
 }
 
-export function legacyRunIdentity({ cwd, tool, argv }) {
+/** The same run under the scheme before this one, or null where there cannot be one.
+ *
+ *  That scheme had no --id: every record it wrote was keyed on the directory, the tool and
+ *  the argv alone, so a piped run's record was keyed on the directory and tool alone. A
+ *  named pipeline therefore has no legacy record of its OWN - and the one sitting under
+ *  its directory and tool was written by some unnamed pipe, which is the sharing --id
+ *  exists to end. Migrating it would hand a brand-new pipeline another one's history and
+ *  call it compared. There is nothing to migrate. */
+export function legacyRunIdentity({ cwd, tool, argv, id = null }) {
+  if (id) return null;
   return legacyFingerprint(JSON.stringify([
     LEGACY_IDENTITY_VERSION,
     resolve(cwd),
@@ -57,6 +91,7 @@ export function legacyRunIdentity({ cwd, tool, argv }) {
 const fileFor = (identity) => join(cacheDir(), `${identity}.json`);
 
 function readRun(identity, version) {
+  if (!identity) return null;
   try {
     const saved = JSON.parse(readFileSync(fileFor(identity), "utf8"));
     if (saved?.version !== version || !Array.isArray(saved.causes)) return null;
@@ -91,19 +126,28 @@ export function saveRun(identity, record) {
  *  command that never started, or a run whose parser found nothing all produce an
  *  empty-ish list for reasons that have nothing to do with anything being fixed - so
  *  in those cases the count is withheld rather than guessed at. */
-export function compare(previous, currentIds, { truncated = false, trustworthy = true } = {}) {
+export function compare(previous, currentIds, { truncated = false, trustworthy = true, tool = null } = {}) {
   if (!previous) return { compared: false, reason: "no-previous-run", fresh: [], gone: null };
   const before = new Set(previous.causes);
   const fresh = currentIds.filter((id) => !before.has(id));
-  const gone = truncated ? null
-    : !trustworthy ? null
-    : previous.causes.filter((id) => !currentIds.includes(id)).length;
+  // Both directions are set membership. Scanning the current list once per remembered
+  // cause made a run with a thousand of each do a million comparisons for an answer that
+  // is one number, and a suite big enough to want --since-last is exactly the one that
+  // has them.
+  const now = new Set(currentIds);
+  // The same argv can run a different tool than it did last week - `npm test` moved from
+  // jest to vitest - and then every cause is missing for a reason that is not a fix.
+  const switched = Boolean(tool && previous.tool && previous.tool !== tool);
+  const gone = truncated || !trustworthy || switched ? null
+    : previous.causes.filter((id) => !now.has(id)).length;
   return {
     compared: true,
     reason: null,
     fresh,
     gone,
     ranAt: previous.ranAt ?? null,
-    goneWithheld: gone === null ? (truncated ? "truncated" : "run-not-comparable") : null,
+    goneWithheld: gone === null
+      ? (truncated ? "truncated" : switched ? "tool-changed" : "run-not-comparable")
+      : null,
   };
 }

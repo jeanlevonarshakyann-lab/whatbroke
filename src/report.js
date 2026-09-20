@@ -12,6 +12,7 @@
 // test/report.js holds every report the corpus produces to that description.
 
 import { linesOf, sourceRange } from "./ownership.js";
+import { exitStatus } from "./status.js";
 
 export const REPORT_VERSION = 1;
 
@@ -43,8 +44,11 @@ function evidenceOf(failure, lines, captured) {
  *  `analysis` is what analyse() read from the output, or null when nothing could be read;
  *  `raw` is the captured output; `error` is why a command could not be started; `lines` is
  *  the capture's map of its lines onto the output's, when it was cut short. */
-export function createReport({ analysis = null, raw = "", exitCode, inputMode, truncated = false, error = null, since = null, lines = null }) {
+export function createReport({ analysis = null, raw = "", exitCode, inputMode, truncated = false, error = null, since = null, lines = null, signal = null }) {
   const parsed = linesOf(analysis);
+  // What the number and the signal say by themselves. A command that could not be started
+  // never ran, so its 127 is node's, not a shell's, and `error` already says why.
+  const status = error ? null : exitStatus({ code: exitCode, signal, inputMode });
   const withEvidence = (failures) => failures.map((f) => ({ ...f, evidence: evidenceOf(f, parsed, lines) }));
   // Unreadable output that something should have explained. A command that succeeded, or
   // an empty pipe, has nothing to fall back to.
@@ -66,6 +70,7 @@ export function createReport({ analysis = null, raw = "", exitCode, inputMode, t
     exitCode,
     inputMode,
     commandExitCode: inputMode === "command" && !error ? exitCode : null,
+    status,
     fallback,
     truncated,
     error,

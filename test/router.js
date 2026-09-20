@@ -133,5 +133,34 @@ test("every signal a log holds is found, however they overlap", () => {
   assert.deepEqual([...presentSignals("a\nat b", signals)], ["at "]);
 });
 
+// What the scan costs, counted rather than timed.
+//
+// The signal set is every parser's and does not change while the process lives, so the
+// alternation built from it should be built once however many logs are read. It used to be
+// rebuilt every time a signal was found - shrunk to what was still missing and recompiled
+// - and for a short log that construction is the whole cost. Reading each capture in the
+// corpus once took 1,144ms of scanning; it now takes 22ms, and a whole `analyse` of each
+// went from 3.1ms to 0.5ms.
+//
+// Counting constructions rather than milliseconds because a clock says different things on
+// different machines, and what is being held here is exactly "once, not once per signal".
+test("the signal alternation is built once, not once per log", () => {
+  const signals = EXTRACTORS.flatMap((e) => e.signals ?? []);
+  const logs = readdirSync(fixtures).sort().slice(0, 40).map((n) => fx(n));
+  presentSignals("warm the machinery", signals);        // whatever it builds, it has built
+  const RealRegExp = globalThis.RegExp;
+  let built = 0;
+  class Counting extends RealRegExp {
+    constructor(...args) { built++; super(...args); }
+  }
+  globalThis.RegExp = Counting;
+  try {
+    for (const text of logs) presentSignals(text, signals);
+  } finally {
+    globalThis.RegExp = RealRegExp;
+  }
+  assert.equal(built, 0, `${logs.length} logs built ${built} alternations; the set never changed`);
+});
+
 console.log(`\n  ${pass} passed, ${fail} failed`);
 if (fail) process.exitCode = 1;

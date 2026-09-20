@@ -304,6 +304,31 @@ test("a launcher command cannot outrank the failure produced by its child", () =
   }
 });
 
+// `python -m pytest` is a launcher too, and the commonest way pytest is run: the
+// interpreter puts the working directory on sys.path, which is why projects prefer it.
+// Ranking by first mention put `python3` ahead of pytest, so a run whose output the
+// traceback parser ALSO claims - `--tb=native`, which prints a real Python traceback
+// instead of pytest's own - came back as python's, with no tally. Worse than no hint at
+// all: a piped copy of the same log reads as pytest.
+test("an interpreter running a module does not outrank the module", () => {
+  const native = readFileSync(join(fixtures, "pytest_tb_native_fail.txt"), "utf8");
+  assert.equal(analyse(native, { command: ["python3", "-m", "pytest"] }).tool, "pytest");
+  assert.equal(analyse(native, { command: ["python", "-m", "pytest", "--tb=native"] }).tool, "pytest");
+  assert.equal(analyse(native, { command: ["/usr/bin/python3.12", "-m", "pytest"] }).tool, "pytest");
+  // Only for an interpreter, and only as its first argument. `-m` means a marker to
+  // pytest and something else again to half the tools that take it, so a tool's own -m
+  // must not hand the run to whatever word follows it.
+  assert.equal(analyse(native, { command: ["pytest", "-m", "slow"] }).tool, "pytest");
+  const both = readFileSync(join(fixtures, "jest_fail.txt"), "utf8") + "\n" +
+               readFileSync(join(fixtures, "vitest_fail.txt"), "utf8");
+  assert.equal(analyse(both, { command: ["vitest", "-m", "jest"] }).tool, "vitest",
+    "vitest's own -m does not promote the word after it");
+  // And an interpreter running a FILE is still the interpreter's: a traceback out of
+  // `python app.py` is python's, and there is no module named to prefer instead.
+  const traceback = readFileSync(join(fixtures, "py_traceback.txt"), "utf8");
+  assert.equal(analyse(traceback, { command: ["python3", "app.py"] }).tool, "python");
+});
+
 test("naming the wrong tool cannot damage a clear log", () => {
   for (const name of readdirSync(fixtures)) {
     const raw = readFileSync(join(fixtures, name), "utf8");
@@ -328,6 +353,47 @@ test("naming the wrong tool cannot damage a clear log", () => {
 // or changing bytes behind Swift's declared byte count, corrupts the serialization
 // rather than re-indenting a diagnostic. Their decoded human output is exercised by
 // the same mutation through the paired text fixtures.
+// Three parsers here read a unified diff - `cargo fmt --check`, `gofmt -d` and
+// `terraform fmt -check -diff` - and a diff is the one shape where a foreign line can be
+// mistaken for one of your own. A `@@` is nothing but a line number: read under another
+// file's header it becomes a place in a file that has nothing wrong there, and if that
+// number collides with one of yours, the same place is reported twice. A count a reader
+// cannot trust is the one thing a shredded log still has to get right.
+//
+// Two rules keep it: a diff ends at the first line that is not part of one, and a diff's
+// hunks are ordered and disjoint, so a hunk that does not start after the last one ended
+// is not this file's. Every ordered pair of diff captures, woven at twelve block sizes.
+test("two diffs in one pipe never report one place twice", () => {
+  const weave = (a, b, size) => {
+    const A = a.split("\n"), B = b.split("\n"), out = [];
+    for (let i = 0; i < Math.max(A.length, B.length); i += size) {
+      out.push(...A.slice(i, i + size), ...B.slice(i, i + size));
+    }
+    return out.join("\n");
+  };
+  const diffs = readdirSync(fixtures).filter((name) => {
+    const r = safely(() => analyse(readFileSync(join(fixtures, name), "utf8")), null);
+    return r && ["cargo fmt", "gofmt", "terraform fmt"].includes(r.tool);
+  }).sort();
+  assert.ok(diffs.length >= 6, `only ${diffs.length} diff captures to pair`);
+  const twice = [];
+  for (const x of diffs) for (const y of diffs) {
+    if (x === y) continue;
+    for (let size = 1; size <= 12; size++) {
+      const r = safely(() => analyse(weave(readFileSync(join(fixtures, x), "utf8"),
+        readFileSync(join(fixtures, y), "utf8"), size)), null);
+      const seen = new Map();
+      for (const f of r?.failures ?? []) {
+        const key = `${f.file}:${f.line}`;
+        seen.set(key, (seen.get(key) ?? 0) + 1);
+      }
+      for (const [key, n] of seen) if (n > 1) twice.push(`${x} + ${y} at ${size}: ${key}`);
+    }
+  }
+  assert.deepEqual(twice.slice(0, 6), []);
+  console.log(`  ok   ${diffs.length} diff captures, every ordered pair woven twelve ways, no place twice`);
+});
+
 const SERIALIZED_FIXTURES = new Set([
   "swiftc_parseable_fail.txt", "terraform_validate_json_fail.txt",
   // A pretty-printed JSON report is a document, not a stream of lines: splicing another
@@ -411,9 +477,13 @@ test("interleaved output never invents a failure", () => {
   // starts. deno's assertion block, ruff's fix hint and PHPUnit's testdox body each lose
   // one finding when a line lands inside them. oxlint's drawn report loses a finding with
   // no rule: nothing but an unbroken report down to oxlint's own closing lines says it
-  // is oxlint's, because swc draws the same box.
+  // is oxlint's, because swc draws the same box. go's import chain is adjacency and
+  // nothing else - "A imports" on one line and "B: reason" on the next is the only thing
+  // that says B is what A could not get - so a line landing between them leaves no chain
+  // to read, and refusing is the whole point of requiring them to be adjacent.
   assert.deepEqual(lost.map((l) => l.split(":")[0]).sort(),
-    ["deno_fail.txt", "oxlint_parse_default_fail.txt", "phpunit_testdox_fail.txt", "ruff_fail.txt"],
+    ["deno_fail.txt", "gomod_chain_fail.txt", "oxlint_parse_default_fail.txt",
+      "phpunit_testdox_fail.txt", "ruff_fail.txt"],
     `the set of fixtures that degrade under interleaving changed: ${lost.join("; ")}`);
 });
 

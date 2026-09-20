@@ -5,6 +5,7 @@ import { createRequire } from "node:module";
 import { constants as osConstants } from "node:os";
 import { analyse } from "../src/index.js";
 import { createCapture } from "../src/capture.js";
+import { relay } from "../src/stream.js";
 import {
   runIdentity,
   legacyRunIdentity,
@@ -32,6 +33,7 @@ const HELP = `whatbroke — you ran a command, it printed 400 lines. these are t
       --no-source  don't read source files for context
       --no-cluster don't group failures that share a likely cause
       --since-last mark causes that are new since the last tracked run
+      --id NAME    name this pipeline, so a piped log can use --since-last
       --max-bytes N  cap captured command output (default: 10485760)
   -j, --json    machine-readable output (same as --format json)
   -g, --github-actions  clickable GitHub Actions annotations (same as --format github)
@@ -46,12 +48,18 @@ const allowedFlags = new Set([
   "-v", "--version", "-h", "--help", "--no-source", "--no-cluster", "--since-last",
 ]);
 let format;
+let runId;
 let maxBytes = 10 * 1024 * 1024;
 let parseError;
 while (argv.length && /^-/.test(argv[0])) {
   const a = argv.shift();
   if (a === "--") break;
   if (a === "-") continue; // Preserve the conventional explicit stdin marker.
+  if (a === "--id" || a.startsWith("--id=")) {
+    runId = a === "--id" ? argv.shift() : a.slice("--id=".length);
+    if (!runId || runId.startsWith("-")) { parseError = "--id requires a name"; break; }
+    continue;
+  }
   if (a === "--max-bytes" || a.startsWith("--max-bytes=")) {
     const value = a === "--max-bytes" ? argv.shift() : a.slice("--max-bytes=".length);
     maxBytes = Number(value);
@@ -112,21 +120,39 @@ function appendGithubSummary(text) {
 
 /** Compare this run's causes with the last recorded one, then record this one.
  *
- *  Only a run that finished and parsed is recorded. A truncated capture or a command
- *  that never started holds an incomplete list of causes, and storing it would make
- *  the NEXT run announce everything it lost as newly appeared. */
-function track(r, truncated, executionError) {
-  if (!r) return { compared: false, reason: "nothing-parsed", fresh: [], gone: null };
+ *  Only a run that finished is recorded. A truncated capture or a command that never
+ *  started holds an incomplete list of causes, and storing it would make the NEXT run
+ *  announce everything it lost as newly appeared.
+ *
+ *  A command that EXITED ZERO is the one run that can be recorded without having parsed
+ *  anything: nothing is failing, and that is the whole list. Before, a green run wrote
+ *  nothing at all, so the record still held yesterday's failure - and when that failure
+ *  came back the next day, whatbroke compared it against itself and said nothing was new.
+ *  A passing run in between is exactly when a reader most wants the next break called new. */
+function track(r, truncated, executionError, code = null) {
+  const succeeded = code === 0 && !executionError && inputMode === "command";
+  if (!r && !succeeded) return { compared: false, reason: "nothing-parsed", fresh: [], gone: null };
+  // What this run says is failing. A command that exited ZERO says nothing is, whatever
+  // its output looked like - a runner echoing the previous run's summary, a suite printing
+  // failures it was configured to tolerate, a linter reporting warnings. The terminal path
+  // never reaches here with a reading, so it recorded the empty baseline correctly; JSON
+  // does reach here, and recorded the reading instead - so the same command succeeding
+  // left a record saying those causes were still live, and the two modes disagreed.
+  // The report itself still carries everything that was read; only the baseline is empty.
+  const read = succeeded ? null : r;
   const pairs = new Map();
-  for (const tool of [r, ...(r.others ?? [])]) {
+  for (const tool of read ? [read, ...(read.others ?? [])] : []) {
     for (const failure of tool.failures) {
       const current = trackedCauseId(failure, tool.tool);
       if (!pairs.has(current)) pairs.set(current, legacyTrackedCauseId(failure, tool.tool));
     }
   }
   const ids = [...pairs.keys()];
-  const identityParts = { cwd: process.cwd(), tool: r.tool, argv };
+  const identityParts = { cwd: process.cwd(), tool: read?.tool ?? null, argv, id: runId };
   const identity = runIdentity(identityParts);
+  // A piped log nobody named cannot be told from any other piped log in the same
+  // directory. Comparing them claims one pipeline's failures were fixed by another's run.
+  if (!identity) return { compared: false, reason: "unidentified-pipe", fresh: [], gone: null, recorded: false };
   const trustworthy = !truncated && !executionError;
   let previous = loadRun(identity);
   let comparisonIds = ids;
@@ -138,7 +164,7 @@ function track(r, truncated, executionError) {
       migrated = true;
     }
   }
-  const result = compare(previous, comparisonIds, { truncated, trustworthy });
+  const result = compare(previous, comparisonIds, { truncated, trustworthy, tool: read?.tool ?? null });
   if (migrated) {
     const freshLegacy = new Set(result.fresh);
     result.fresh = [...pairs].filter(([, legacy]) => freshLegacy.has(legacy)).map(([current]) => current);
@@ -147,7 +173,7 @@ function track(r, truncated, executionError) {
     result.migrated = true;
   }
   if (trustworthy) {
-    result.recorded = saveRun(identity, { ranAt: new Date().toISOString(), tool: r.tool, causes: ids });
+    result.recorded = saveRun(identity, { ranAt: new Date().toISOString(), tool: read?.tool ?? null, causes: ids });
   } else {
     result.recorded = false;
   }
@@ -155,15 +181,15 @@ function track(r, truncated, executionError) {
 }
 
 let reported = false;
-function report(raw, code, truncated = false, executionError = null, lines = null) {
+function report(raw, code, truncated = false, executionError = null, lines = null, signal = null) {
   // Spawn errors are followed by a close event. Emit exactly one result while
   // allowing stdout to drain instead of cutting off a large JSON/raw fallback.
   if (reported) return;
   reported = true;
   // argv is what the user actually ran; it is evidence for detection, not decoration.
   const analysis = analyse(raw, { cluster: !noCluster, command: inputMode === "command" ? argv : null });
-  const since = sinceLast ? track(analysis, truncated, executionError) : null;
-  const result = createReport({ analysis, raw, exitCode: code, inputMode, truncated, error: executionError, since, lines });
+  const since = sinceLast ? track(analysis, truncated, executionError, code) : null;
+  const result = createReport({ analysis, raw, exitCode: code, inputMode, truncated, error: executionError, since, lines, signal });
   if (json) {
     process.stdout.write(JSON.stringify(result, null, 2) + "\n");
   } else if (githubActions) {
@@ -191,23 +217,25 @@ if (argv.length === 0) {
   // Both streams share one budget, so interleaved stdout/stderr keeps its ordering
   // within each stream and the cap still means what --max-bytes says it means.
   const capture = createCapture(maxBytes);
-  const tap = (stream, out, suppress) => {
-    stream.on("data", (d) => {
-      if (!suppress) out.write(d);
-      capture.push(d);
-    });
-  };
-  tap(child.stdout, process.stdout, quiet);
+  const tee = (d) => capture.push(d);
+  relay(child.stdout, process.stdout, { suppress: quiet, tee });
   // Keep diagnostics visible on stderr while JSON remains clean on stdout.
-  tap(child.stderr, process.stderr, quiet && !json);
+  relay(child.stderr, process.stderr, { suppress: quiet && !json, tee });
   child.on("error", (e) => {
     process.stderr.write(`whatbroke: ${e.message}\n`);
     report("", 127, false, e.message);
   });
   child.on("close", (code, signal) => {
-    if (code === 0 && !json) { process.exitCode = 0; return; }
+    if (code === 0 && !json) {
+      // Nothing to print about a command that worked - and one thing to remember: that
+      // nothing is failing here now. Without that baseline the next run to break is
+      // compared against the run that first broke, and called nothing new.
+      if (sinceLast) track(null, capture.finish().truncated, null, 0);
+      process.exitCode = 0;
+      return;
+    }
     const signalCode = signal ? 128 + (osConstants.signals?.[signal] ?? 1) : null;
     const { text, truncated, lines } = capture.finish();
-    report(text, code ?? signalCode ?? 1, truncated, null, lines);
+    report(text, code ?? signalCode ?? 1, truncated, null, lines, signal);
   });
 }

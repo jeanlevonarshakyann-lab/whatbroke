@@ -215,6 +215,87 @@ const CASES = [
       const test = r.failures.find((f) => f.title === "TestRace");
       assert.ok(test && test.line === 17, "the assertion failure is still there");
     } },
+  // Captured with go 1.27.1. `gofmt -d` is the other half of Go's format gate, and it was
+  // read as nothing: the job failed and whatbroke said there was no parser for it. The
+  // file is named once in the header and each @@ hunk says where in it.
+  { file: "gofmt_fail.txt", tool: "gofmt", n: 2, check: (r) => {
+      assert.equal(r.summary, "2 files failed the format check");
+      // The line the change starts at, not the hunk's: a hunk opens with up to three
+      // unchanged lines of context, and cart.go's first changed line is its third.
+      assert.deepEqual(r.failures.map((f) => `${f.file}:${f.line}`),
+        ["cart/cart.go:3", "main.go:5"]);
+      // The first line it would remove is the source as it stands.
+      assert.equal(r.failures[0].stmt, "type Cart struct{");
+      assert.equal(r.failures[1].stmt, "func total( items []int ) int {");
+    } },
+  { file: "gofmt_hunks_fail.txt", tool: "gofmt", n: 2, check: (r) => {
+      // One file, two regions: a hunk is a place, which is what the @@ line is for.
+      assert.equal(r.summary, "1 file failed the format check");
+      assert.deepEqual(r.failures.map((f) => `${f.file}:${f.line}`),
+        ["invoice/invoice.go:20", "invoice/invoice.go:31"]);
+      assert.equal(r.failures[1].stmt, "return days>30");
+    } },
+  // Captured with go 1.27.1. The module loader is where a Go build fails before it ever
+  // compiles anything, and none of it was read - `go mod tidy` came back as no parser at
+  // all. It writes no failure word and, for the resolution failures, no location either.
+  { file: "gomod_parse_fail.txt", tool: "go mod", n: 1, check: (r) => {
+      assert.equal(r.summary, "1 error parsing go.mod");
+      assert.equal(r.failures[0].file, "go.mod");
+      assert.equal(r.failures[0].line, 12);
+      assert.equal(r.failures[0].message, "unknown directive: nonsense");
+      // Every rendered location line carries a label, or CI's problem matcher reads
+      // nothing from it - test/render.js holds the whole corpus to that.
+      assert.equal(r.failures[0].title, "go.mod");
+    } },
+  { file: "gomod_parse_multi_fail.txt", tool: "go mod", n: 2, check: (r) => {
+      assert.equal(r.summary, "2 errors parsing go.mod");
+      assert.deepEqual(r.failures.map((f) => f.line), [7, 8]);
+    } },
+  { file: "gomod_resolve_fail.txt", tool: "go mod", n: 1, check: (r) => {
+      assert.equal(r.summary, "1 module could not be resolved");
+      assert.equal(r.failures[0].subject, "github.com/nonexistent/gone");
+      assert.match(r.failures[0].message, /module lookup disabled by GOPROXY=off/);
+      // No file: go names a module here, not a line of anybody's source.
+      assert.equal("file" in r.failures[0], false);
+      assert.deepEqual(r.failures[0].trace, ["github.com/nonexistent/gone", "shop/internal/store"]);
+    } },
+  { file: "gomod_chain_fail.txt", tool: "go mod", n: 1, check: (r) => {
+      // Several levels, and the order is reversed: go prints outermost first, and the
+      // import a reader can do something about is the near one.
+      assert.deepEqual(r.failures[0].trace,
+        ["github.com/nonexistent/gone", "example.com/lib", "shop"]);
+    } },
+  { file: "gomod_download_fail.txt", tool: "go mod", n: 1, check: (r) => {
+      // `go mod download` names the version it wanted and prints no chain above it.
+      assert.equal(r.failures[0].subject, "github.com/nonexistent/gone@v1.2.3");
+      assert.equal(r.failures[0].trace, undefined);
+    } },
+  // The go tool refusing a flag it does not have - a CI script passing one the installed
+  // toolchain is too old for stops exactly here, and it read as nothing.
+  { file: "go_badflag_fail.txt", tool: "go", n: 1, check: (r) => {
+      assert.equal(r.summary, "the command was refused");
+      assert.equal(r.failures[0].subject, "-not-a-flag");
+      assert.match(r.failures[0].message, /flag provided but not defined: -not-a-flag/);
+    } },
+  // The other three ways the tool stops before running anything. Each names go or speaks
+  // go's own vocabulary, and each was the whole log of a step that never started.
+  { file: "go_unknowncmd_fail.txt", tool: "go", n: 1, check: (r) => {
+      assert.equal(r.summary, "the command was refused");
+      assert.equal(r.failures[0].subject, "notacommand");
+    } },
+  { file: "go_nogomod_fail.txt", tool: "go", n: 1, check: (r) => {
+      // Running go outside a module, which is what a CI script does when its working
+      // directory is wrong. go ends the sentence by pointing at `go help`.
+      assert.equal(r.failures[0].subject, "go.mod");
+      assert.match(r.failures[0].message, /^go\.mod file not found/);
+      assert.equal(r.failures[0].message.includes("see 'go help"), false,
+        "the pointer to the manual is not part of what went wrong");
+    } },
+  { file: "go_nomodule_fail.txt", tool: "go", n: 1, check: (r) => {
+      // The same directory mistake said the other way round, about the pattern given.
+      assert.equal(r.failures[0].subject, "./...");
+      assert.match(r.failures[0].message, /does not contain main module/);
+    } },
 ];
 
 let pass = 0, fail = 0;
@@ -311,6 +392,110 @@ try {
   console.log("  ok   a diff's `--- expected` is not go's test tally");
   pass++;
 } catch (e) { console.log(`  FAIL a diff is not go's tally\n       ${e.message}`); fail++; }
+
+// A gofmt diff ends where its own diff ends. It is not the only thing that draws @@ hunks:
+// minitest writes `--- expected` / `+++ actual` / `@@` between two values that differ, and
+// so does PHPUnit - so a CI job running gofmt and then a test suite put both in one log.
+// Keeping the header's file current for the rest of the log read that suite's diff as more
+// unformatted Go, and the pair gained a failure neither half had. test/mixed.js found it
+// by pairing every two captures in the corpus.
+try {
+  const gofmt = fx("gofmt_fail.txt"), minitest = fx("minitest_invoice_fail.txt");
+  const count = (r) => (r?.failures.length ?? 0) + (r?.others ?? []).reduce((n, o) => n + o.failures.length, 0);
+  const apart = count(analyse(gofmt)) + count(analyse(minitest));
+  assert.equal(count(analyse(`${gofmt}\n${minitest}`)), apart,
+    "a gofmt diff must not read on into another tool's diff");
+  // And the failures are still each tool's own.
+  const both = analyse(`${gofmt}\n${minitest}`);
+  const tools = new Set([both.tool, ...(both.others ?? []).map((o) => o.tool)]);
+  assert.deepEqual([...tools].sort(), ["gofmt", "minitest"]);
+  console.log("  ok   a gofmt diff stops where its own diff stops");
+  pass++;
+} catch (e) { console.log(`  FAIL gofmt diff bound\n       ${e.message}`); fail++; }
+
+// A second tool can insert indented output into a hunk. Those lines look like diff
+// context, but cannot move a removed line beyond the hunk's declared old range.
+try {
+  const clean = fx("gofmt_hunks_fail.txt");
+  const interleaved = clean.replace("@@ -17,8 +17,8 @@\n",
+    `@@ -17,8 +17,8 @@\n${'    "cell": null,\n'.repeat(11)}`);
+  const findings = analyse(interleaved).failures;
+  assert.deepEqual(findings.map((f) => [f.file, f.line, f.stmt]),
+    [["invoice/invoice.go", 31, "return days>30"]],
+    "interleaved context must not invent another finding at the next hunk's location");
+  console.log("  ok   interleaved gofmt context stays within its hunk");
+  pass++;
+} catch (e) { console.log(`  FAIL gofmt interleaving\n       ${e.message}`); fail++; }
+
+// The header has to be "diff <path>.orig <path>" with the SAME path twice. That is what
+// keeps gofmt off every other diff a build prints - git's, and a plain `diff a b`, either
+// of which it would otherwise read as somebody's unformatted Go.
+try {
+  const { EXTRACTORS } = await import("../../src/index.js");
+  const gofmt = EXTRACTORS.find((e) => e.name === "gofmt");
+  const hunk = "@@ -1,4 +1,4 @@\n-old\n+new\n";
+  assert.equal(gofmt.detect(`diff --git a/src/main.go b/src/main.go\nindex 1234567..89abcde 100644\n--- a/src/main.go\n+++ b/src/main.go\n${hunk}`), false, "a git diff is not gofmt's");
+  assert.equal(gofmt.detect(`diff a.txt b.txt\n${hunk}`), false, "a plain diff is not gofmt's");
+  assert.equal(gofmt.detect(`diff x.go.orig y.go\n${hunk}`), false, "two different files are not one file's backup");
+  assert.equal(gofmt.detect(`diff x.go.orig x.go\n${hunk}`), true);
+  const claimed = readdirSync(join(here, "fixtures")).sort()
+    .filter((n) => { try { return gofmt.detect(fx(n)); } catch { return false; } });
+  assert.deepEqual(claimed, ["gofmt_fail.txt", "gofmt_hunks_fail.txt"]);
+  console.log("  ok   gofmt reads its own diffs and nobody else's");
+  pass++;
+} catch (e) { console.log(`  FAIL gofmt diff shape\n       ${e.message}`); fail++; }
+
+// `go: downloading \u2026` and `go: finding \u2026` are the same shape as a failure and are
+// progress. Nothing in such a line says which it is, so none of them is claimed: what is
+// read is the shapes that cannot be anything else - a parse banner, an import chain, and a
+// module with the version that was wanted attached to it by an "@".
+try {
+  const { EXTRACTORS } = await import("../../src/index.js");
+  const gomod = EXTRACTORS.find((e) => e.name === "go mod");
+  assert.equal(gomod.detect("go: downloading github.com/x/y v1.0.0\n"), false);
+  assert.equal(gomod.detect("go: finding module for package github.com/x/y\n"), false);
+  assert.equal(gomod.detect('go: invalid GOTOOLCHAIN "go9.99.0"\n'), false);
+  assert.equal(gomod.detect("go: github.com/x/y@v1.0.0: unknown revision\n"), true);
+  // The "@" is what makes that a module and a version rather than any two words with a
+  // colon between them. go writes plenty of those and means nothing by them.
+  assert.equal(gomod.detect('go: warning: "./..." matched no packages\n'), false);
+  assert.equal(gomod.detect("go: creating new go.mod: module shop\n"), false);
+  // And a chain is only a chain once it says what could not be got. "X imports" with
+  // nothing under it is go part way through a sentence, not a failure.
+  assert.equal(gomod.detect("go: shop imports\n"), false);
+  assert.equal(gomod.detect("go: shop imports\n\tshop/internal/store imports\n"), false);
+  assert.equal(gomod.detect("go: errors parsing go.mod:\ngo.mod:3: bad\n"), true);
+  const claimed = readdirSync(join(here, "fixtures")).sort()
+    .filter((n) => { try { return gomod.detect(fx(n)); } catch { return false; } });
+  assert.deepEqual(claimed, ["gomod_chain_fail.txt", "gomod_download_fail.txt",
+    "gomod_parse_fail.txt", "gomod_parse_multi_fail.txt", "gomod_resolve_fail.txt"]);
+  console.log("  ok   go mod reads what can only be a failure, and no progress line");
+  pass++;
+} catch (e) { console.log(`  FAIL go mod claims\n       ${e.message}`); fail++; }
+
+// "flag provided but not defined" comes from Go's flag package, which every Go program
+// built with it writes. The line alone says nothing about whose flag it was; go's own
+// usage underneath is the only thing that does.
+try {
+  const { EXTRACTORS } = await import("../../src/index.js");
+  const go = EXTRACTORS.find((e) => e.name === "go");
+  assert.equal(go.detect("flag provided but not defined: -x\nusage: go build [-o output]\n"), true);
+  assert.equal(go.detect("flag provided but not defined: -x\nRun 'go help build' for details.\n"), true);
+  assert.equal(go.detect("flag provided but not defined: -x\nusage: myapp [flags]\n"), false,
+    "somebody else's Go program is not the go tool");
+  assert.equal(go.detect("flag provided but not defined: -x\n"), false, "and the line alone says nothing");
+  // The other three have to name go or speak its vocabulary, and nothing looser.
+  assert.equal(go.detect("go notacommand: unknown command\n"), true);
+  assert.equal(go.detect("docker notacommand: unknown command\n"), false);
+  assert.equal(go.detect("go: go.mod file not found here; see 'go help modules'\n"), true);
+  assert.equal(go.detect("go: downloading github.com/x/y v1.0.0\n"), false);
+  assert.equal(go.detect("go: something went wrong\n"), false, "a bare go: sentence is not a refusal");
+  assert.equal(go.detect("pattern ./...: directory prefix . does not contain main module\n"), true);
+  assert.equal(go.detect("pattern ./...: no matching files found\n"), false,
+    "a pattern that matched nothing is not the module mistake");
+  console.log("  ok   go's own usage is what makes a refused flag go's");
+  pass++;
+} catch (e) { console.log(`  FAIL go refused flag\n       ${e.message}`); fail++; }
 
 console.log(`\n  ${pass} passed, ${fail} failed`);
 process.exit(fail ? 1 : 0);

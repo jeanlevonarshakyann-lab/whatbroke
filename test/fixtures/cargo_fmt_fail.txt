@@ -1,0 +1,33 @@
+Diff in /home/dev/shop/src/bin/invoice.rs:1:
+-fn main() { let due = 1049;println!("{}",due); }
++fn main() {
++    let due = 1049;
++    println!("{}", due);
++}
+ 
+Diff in /home/dev/shop/src/main.rs:1:
+ use std::collections::HashMap;
+ 
+-fn total( items : &Vec<u32> ) -> u32 {
+-    let mut sum=0;
+-    for i in items { sum += i; }
+-        sum
++fn total(items: &Vec<u32>) -> u32 {
++    let mut sum = 0;
++    for i in items {
++        sum += i;
++    }
++    sum
+ }
+ 
+ fn main() {
+Diff in /home/dev/shop/src/main.rs:10:
+-    let items = vec![1,2,3];
++    let items = vec![1, 2, 3];
+     println!("{}", total(&items));
+-    let mut rates : HashMap<String,u32> = HashMap::new();
+-      rates.insert("vat".into(),20);
++    let mut rates: HashMap<String, u32> = HashMap::new();
++    rates.insert("vat".into(), 20);
+ }
+ 

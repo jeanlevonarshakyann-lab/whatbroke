@@ -60,6 +60,10 @@ import govetjson from "./extractors/govetjson.js";
 import gotest from "./extractors/gotest.js";
 import cargo from "./extractors/cargo.js";
 import cargojson from "./extractors/cargojson.js";
+import rustfmt from "./extractors/rustfmt.js";
+import gofmt from "./extractors/gofmt.js";
+import gomod from "./extractors/gomod.js";
+import terraformfmt from "./extractors/terraformfmt.js";
 import { esbuild, vite } from "./extractors/bundler.js";
 import git from "./extractors/git.js";
 import kubectl from "./extractors/kubectl.js";
@@ -76,7 +80,7 @@ import { stripRedrawnCiPrefix, wrapperCandidates } from "./normalize.js";
 import { joinSources, preserveSourceRange, rangesOverlap, setLines, setParser, sourceRange } from "./ownership.js";
 
 // order matters: most specific first, generic last
-export const EXTRACTORS = [pytest, nodetest, bun, bunRuntime, deno, denoRuntime, denoLint, denoFmt, playwright, jestjson, jest, mochajson, mochaxunit, mocha, ava, jasmine, rubocop, tap, taptext, vitest, unittest, traceback, eslintjson, eslint, ruff, pylint, flake8, golangci, markdownlint, stylelint, shellcheck, yamllint, biome, oxlint, black, prettier, sass, less, webpack, babel, swc, pyright, mypy, cmake, terraform, swifttest, swift, clang, minitest, ruby, perl, php, rspec, junitjvm, jvm, dotnettest, dotnet, phpunit, cargojson, cargo, govetjson, gojson, gotest, esbuild, vite, node, tsc, git, kubectl, docker, make, npm, pnpm, yarn, pip, generic];
+export const EXTRACTORS = [pytest, nodetest, bun, bunRuntime, deno, denoRuntime, denoLint, denoFmt, playwright, jestjson, jest, mochajson, mochaxunit, mocha, ava, jasmine, rubocop, tap, taptext, vitest, unittest, traceback, eslintjson, eslint, ruff, pylint, flake8, golangci, markdownlint, stylelint, shellcheck, yamllint, biome, oxlint, black, prettier, sass, less, webpack, babel, swc, pyright, mypy, cmake, terraformfmt, terraform, swifttest, swift, clang, minitest, ruby, perl, php, rspec, junitjvm, jvm, dotnettest, dotnet, phpunit, cargojson, rustfmt, cargo, gofmt, gomod, govetjson, gojson, gotest, esbuild, vite, node, tsc, git, kubectl, docker, make, npm, pnpm, yarn, pip, generic];
 
 /** Whether two readings each quote the offending source line, and quote different ones.
  *
@@ -99,15 +103,23 @@ function quoteDiffers(a, b) {
  *  The corpus holds every parser to the same promise before this is reached; see
  *  test/report.js. */
 function located(failure) {
-  const { file, line, col } = failure;
+  const { file, line, col, subject } = failure;
   const fileOk = file === undefined || (typeof file === "string" && file.length > 0);
   const lineOk = line === undefined || (Number.isInteger(line) && line >= 1);
   const colOk = col === undefined || (Number.isInteger(col) && col >= 1 && lineOk && line !== undefined);
-  if (fileOk && lineOk && colOk) return failure;
+  // `subject` is the name of the thing that failed, and an empty one names nothing. A
+  // parser reaches this whenever the output it read had the name blank - Playwright's JSON
+  // carries the test's title as a field, and a document whose titles are empty produced
+  // `subject: ""` - and a field whose only value is "there is no value" is the absence the
+  // report already has a spelling for. It is also what history falls back to when a
+  // signature is too weak to group on, and "" tells two failures apart from nothing.
+  const subjectOk = subject === undefined || (typeof subject === "string" && subject.length > 0);
+  if (fileOk && lineOk && colOk && subjectOk) return failure;
   const copy = { ...failure };
   if (!fileOk) delete copy.file;
   if (!lineOk) delete copy.line;
   if (!lineOk || !colOk) delete copy.col;
+  if (!subjectOk) delete copy.subject;
   return preserveSourceRange(failure, copy);
 }
 
@@ -363,9 +375,21 @@ function dropEchoes(mine, others) {
  *  Piped logs carry no command and are entirely unaffected. */
 function ordered(command, extractors) {
   if (!command?.length) return extractors;
+  // `python -m pytest` is a launcher too, and the commonest way pytest is run - the
+  // interpreter puts the working directory on sys.path, which is why projects prefer it.
+  // Ranking by first mention put `python3` at the front and pytest two words behind it,
+  // so the traceback parser led and the run came back as python's with no tally: worse
+  // than having no hint at all, because a piped copy of the same log reads as pytest.
+  // Everything before the module is what the interpreter needed to find it.
+  //
+  // Only for an interpreter, and only as its first argument: `pytest -m slow` selects a
+  // marker, and `-m` means that to plenty of tools that are not launching anything.
+  const argv = command.map(String);
+  const leaf = /^py(?:thon[\d.]*)?$/i.test((argv[0] ?? "").split(/[\\/]/).pop().replace(/\.(exe|cmd|bat)$/i, ""))
+    && argv[1] === "-m" && argv[2] ? argv.slice(2) : argv;
   // `npx jest`, `poetry run pytest`, `./node_modules/.bin/eslint` - the tool's name is
   // somewhere in the argv, not necessarily first, and not necessarily bare.
-  const words = command.flatMap((a) => String(a).split(/[\\/]/))
+  const words = leaf.flatMap((a) => String(a).split(/[\\/]/))
     .map((word) => word.replace(/\.(exe|cmd|bat)$/i, "").toLowerCase());
   const hints = (extractor) => extractor.commandHints ?? extractor.commands;
   const firstMention = (extractor) => Math.min(...hints(extractor)

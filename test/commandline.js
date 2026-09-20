@@ -233,6 +233,77 @@ try {
   pass++;
 } catch (e) { console.log(`  FAIL SIGKILL exit code\n       ${e.message}`); fail++; }
 
+// A command that is killed writes nothing on the way out, and the number it leaves is all
+// there is. Node knows which signal it was; before this, the report threw that away.
+try {
+  const r = spawnSync(process.execPath, [cli, "--json", process.execPath, "-e",
+    "process.kill(process.pid, 'SIGKILL')"], { encoding: "utf8" });
+  const { status } = JSON.parse(r.stdout);
+  if (process.platform === "win32") {
+    // Windows reports no signal, and a bare 1 is every program's way of failing.
+    assert.equal(status, null);
+  } else {
+    assert.equal(status.signal, "SIGKILL");
+    assert.equal(status.code, 137);
+    assert.match(status.says, /^Killed by SIGKILL\b/);
+    assert.match(status.says, /out of memory/);
+  }
+  console.log("  ok   a killed command reports the signal that killed it");
+  pass++;
+} catch (e) { console.log(`  FAIL killed command's signal\n       ${e.message}`); fail++; }
+
+try {
+  const r = spawnSync(process.execPath, [cli, process.execPath, "-e",
+    "process.kill(process.pid, 'SIGKILL')"], { encoding: "utf8" });
+  if (process.platform !== "win32") {
+    assert.match(r.stdout, /Command failed with exit code 137\./);
+    assert.match(r.stdout, /Killed by SIGKILL/);
+    // With nothing captured there was no diagnostic to miss, so it does not say there was.
+    assert.equal(r.stdout.includes("could not identify a diagnostic"), false);
+    assert.match(r.stdout, /No output was captured\./);
+  }
+  console.log("  ok   the terminal says what the signal was instead of nothing");
+  pass++;
+} catch (e) { console.log(`  FAIL killed command's terminal output\n       ${e.message}`); fail++; }
+
+// A run killed part-way still read what it got to print, and the reader has to be told
+// both: these failures, and that the run did not finish.
+try {
+  const r = spawnSync(process.execPath, [cli, "-q", process.execPath, "-e",
+    "console.log('bad.ts(3,9): error TS2322: Type X is not assignable to type number.'); process.kill(process.pid, 'SIGKILL')"],
+    { encoding: "utf8" });
+  assert.match(r.stdout, /TS2322/);
+  if (process.platform !== "win32") assert.match(r.stdout, /! Killed by SIGKILL/);
+  console.log("  ok   a diagnosis and the signal that cut the run short are both reported");
+  pass++;
+} catch (e) { console.log(`  FAIL diagnosis beside a signal\n       ${e.message}`); fail++; }
+
+// 127 and 126 are a shell's conventions, and the sentence says so rather than asserting
+// what happened. Every other number is left alone: 1 and 2 are what every program returns.
+try {
+  const r = spawnSync(process.execPath, [cli, "--json", process.execPath, "-e",
+    "process.exit(127)"], { encoding: "utf8" });
+  const { status } = JSON.parse(r.stdout);
+  assert.equal(status.signal, null);
+  assert.equal(status.code, 127);
+  assert.match(status.says, /shell's way of saying the command does not exist/);
+  const plain = spawnSync(process.execPath, [cli, "--json", process.execPath, "-e",
+    "process.exit(1)"], { encoding: "utf8" });
+  assert.equal(JSON.parse(plain.stdout).status, null);
+  console.log("  ok   a shell's exit conventions are read as conventions, and no others");
+  pass++;
+} catch (e) { console.log(`  FAIL exit code conventions\n       ${e.message}`); fail++; }
+
+// A piped log's number belongs to whoever produced it, and whatbroke never saw it.
+try {
+  const r = spawnSync(process.execPath, [cli, "--json"], { encoding: "utf8", input: "nothing here explains anything\n" });
+  const report = JSON.parse(r.stdout);
+  assert.equal(report.inputMode, "pipe");
+  assert.equal(report.status, null);
+  console.log("  ok   a piped log's upstream exit status is not invented");
+  pass++;
+} catch (e) { console.log(`  FAIL piped status\n       ${e.message}`); fail++; }
+
 try {
   const r = spawnSync(process.execPath, [cli, "--version"], { encoding: "utf8" });
   assert.equal(r.status, 0);
@@ -240,6 +311,88 @@ try {
   console.log("  ok   version flag reports the package version");
   pass++;
 } catch (e) { console.log(`  FAIL version flag\n       ${e.message}`); fail++; }
+
+// ------------------------------------------------ streaming the command's own output
+
+// The copy kept for diagnosis is capped by --max-bytes. The copy streamed to the terminal
+// was capped by nothing: write() returns false when the destination cannot take more, and
+// ignoring it makes node queue every later chunk in this process's memory. A command that
+// prints faster than the terminal, the file or the pipe on the other side can read it then
+// grows whatbroke's heap without limit - the one thing --max-bytes exists to prevent.
+try {
+  const { PassThrough } = await import("node:stream");
+  const { relay } = await import("../src/stream.js");
+  const source = new PassThrough();
+  const seen = [];
+  let full = true, drained = null;
+  const out = {                                     // a destination that cannot take more
+    write: () => !full,
+    once: (event, fn) => { if (event === "drain") drained = fn; },
+  };
+  relay(source, out, { tee: (d) => seen.push(d.toString()) });
+  source.write("one");
+  assert.equal(source.isPaused(), true, "a full destination stops the stream being read");
+  source.write("two");                              // goes nowhere: paused streams emit nothing
+  full = false;
+  drained();
+  assert.equal(source.isPaused(), false, "and draining starts it again");
+  source.write("three");
+  await new Promise((r) => setImmediate(r));
+  assert.deepEqual(seen, ["one", "two", "three"], "everything is captured, paused or not");
+  console.log("  ok   a stream is paused when its destination is full and resumed when it drains");
+  pass++;
+} catch (e) { console.log(`  FAIL relay backpressure\n       ${e.message}`); fail++; }
+
+// And end to end: a reader that is not reading must slow the wrapped command down rather
+// than be queued up in whatbroke.
+try {
+  const { mkdtempSync, rmSync, writeFileSync: write } = await import("node:fs");
+  const { tmpdir } = await import("node:os");
+  const dir = mkdtempSync(join(tmpdir(), "wb-stream-"));
+  const helper = join(dir, "slow-consumer.mjs");
+  const MB = 8;
+  write(helper, `
+import { spawn } from "node:child_process";
+const [cli, code] = process.argv.slice(2);
+const child = spawn(process.execPath, [cli, "--", process.execPath, "-e", \`
+  const chunk = Buffer.alloc(64 * 1024, 0x61);
+  let left = ${MB} * 1024 * 1024;
+  const write = () => {
+    while (left > 0) {
+      left -= chunk.length;
+      if (!process.stdout.write(chunk)) return process.stdout.once("drain", write);
+    }
+    process.stderr.write("WROTE-ALL");
+    process.exit(\${code});
+  };
+  write();
+\`], { stdio: ["ignore", "pipe", "pipe"] });
+let err = "", bytes = 0;
+child.stderr.on("data", (d) => { err += d; });
+child.stdout.pause();                    // the slow consumer: nobody is reading yet
+setTimeout(() => {
+  const ranAhead = err.includes("WROTE-ALL");
+  child.stdout.on("data", (d) => { bytes += d.length; });
+  child.stdout.resume();
+  child.on("close", (status) => process.stdout.write(JSON.stringify({ ranAhead, bytes, status })));
+}, 500);
+`);
+  const green = JSON.parse(spawnSync(process.execPath, [helper, cli, "0"],
+    { encoding: "utf8", timeout: 60000 }).stdout);
+  assert.equal(green.ranAhead, false,
+    "the command was allowed to write 8MB while nothing was reading it");
+  assert.equal(green.bytes, MB * 1024 * 1024, "and every streamed byte still arrived");
+  assert.equal(green.status, 0);
+
+  const failed = JSON.parse(spawnSync(process.execPath, [helper, cli, "7"],
+    { encoding: "utf8", timeout: 60000 }).stdout);
+  assert.equal(failed.ranAhead, false);
+  assert.ok(failed.bytes >= MB * 1024 * 1024, "the report is printed after the output, not instead of it");
+  assert.equal(failed.status, 7, "and the wrapped command's exit code survives");
+  rmSync(dir, { recursive: true, force: true });
+  console.log("  ok   a slow reader slows the wrapped command instead of filling memory");
+  pass++;
+} catch (e) { console.log(`  FAIL live streaming backpressure\n       ${e.message}`); fail++; }
 
 const cliResults = await (await import("./cli.js")).runCliTests();
 pass += cliResults.pass;

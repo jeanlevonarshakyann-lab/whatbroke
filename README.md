@@ -153,6 +153,7 @@ out:
   "exitCode": 0,
   "inputMode": "pipe",
   "commandExitCode": null,
+  "status": null,
   "fallback": null,
   "truncated": false,
   "error": null,
@@ -188,6 +189,10 @@ has keeps its meaning. Spawn failures set `error` and use exit code `127`.
 - `commandExitCode` is the wrapped command's shell-compatible exit code, or `null`
   for piped input and commands that could not be started. `exitCode` is whatbroke's
   own process exit code, including `0` for processed pipes and `127` for spawn failures.
+- `status` is what the exit status says on its own, or `null` when it says nothing:
+  `signal` (the signal that killed the command, as the operating system names it, or
+  `null`), the `code` it was read from, and `says`, one sentence of what that means. See
+  [When nothing was printed](#when-nothing-was-printed).
 - `fallback` is `null` for recognized diagnostics, successful commands, and empty
   pipes. Otherwise it contains `reason` (`"unrecognized-output"`, `"no-output"`,
   or `"spawn-error"`), a human-readable `message`, and `rawOutput` containing the
@@ -257,6 +262,7 @@ Where the interleaving matters, merge the streams in the command itself:
 | **pytest** | test name, `file:line`, the assertion, the `E` explanation |
 | **pytest `--tb=...`** | every traceback style, not just the default: `short` puts the location at the top of the block as `file:line: in name`, `line` and `no` print no block at all, and `native` prints a Python traceback. The short test summary is the backbone — it names each failed test and what it raised in every style — and the traceback is asked only where. With `--tb=line` the two are matched by the message they share rather than by the order they appear in |
 | **unittest** | same, with the deepest *your-code* frame — not the harness |
+| **`python -m` with nothing to run** | `python -m pytest` when pytest is not installed prints one line and stops — the interpreter's path and the module it could not find. No traceback, no location, and it is the whole log of a step that never ran a test |
 | **Python tracebacks** | the frame in your code, not the 9 in site-packages |
 | **deno test** | test name and `file:line` from the header, without the assert-library frames |
 | **deno lint / deno fmt --check** | deno's linter in all three of its formats — the default, `--compact` and `--json` — and its formatter's check. The default is laid out exactly as rustc lays out a compile error, so each finding has to show it is deno's: a lowercase kebab-case rule, not `E` and four digits, on a JavaScript or TypeScript file. The rule's hint stays with the finding. `--json` counts columns from zero where the other two count from one, and is read so that all three agree. `deno fmt --check` names the files it would rewrite |
@@ -290,10 +296,14 @@ Where the interleaving matters, merge the streams in the command itself:
 | **go test -json** | the same failures as `go test -v`, from the test2json stream gotestsum and most Go CI keep. Each output event is a line of the verbose log, so the log is rebuilt line for line and read by go's own parser — subtests, parallel tests and panics included |
 | **go build** | compile errors with source context |
 | **go vet** | the location, which sits inside the message when vet reports a package that will not compile |
+| **go mod** | what the module loader could not do, which nothing read before: a go.mod it cannot parse, by file and line; and a module it cannot get, with the reason and the chain of imports that pulled it in — nearest first, because the import you can do something about is yours. Not a bare `go: <sentence>`: `go: downloading …` is the same shape and is progress, and nothing in the line says which it is |
+| **gofmt `-d`** | every region it would rewrite, with the line each one starts at and the source as it stands now. The file is named once and each `@@` says where in it, so one file with two unformatted regions is two places. Not `gofmt -l`, which is how most CI runs it: that prints bare filenames and nothing else, and nothing in a list of paths says gofmt wrote it |
+| **go refusing to run** | the four ways the tool stops before running anything: a flag it does not have, a subcommand it does not have, a sentence it ends by pointing at `go help`, and a package pattern that resolves to nothing because there is no module here — running go in the wrong directory, which is a CI staple. `flag provided but not defined: -x` comes from Go's flag package, which every Go program uses, so that line alone says nothing about whose flag it was; go's own `usage: go <verb>` underneath is what does |
 | **go vet `-json`** | the one form that says which analyzer spoke: plain `go vet` writes `file:line:col: message`, which is a compile error's shape exactly, and nothing in the line says an analyzer produced it. Here `printf` or `copylocks` is the code. It is one document per package, concatenated with nothing between them, so every document is read rather than the first |
 | **cargo test** | test name, `file:line`, the assertion and its left/right values |
 | **cargo build** | error code and the inline annotation — not the 25 lines of trait impls — and `--message-format=short`, which puts the whole diagnostic on one line with no `-->` beneath it. The warnings it hid are counted as cargo counts them, a duplicate once, in every format |
 | **cargo clippy** | the lint name as the title, so you know what to fix or allow |
+| **cargo fmt `--check`** | every place it would rewrite, with the line each one starts at and the source as it stands now — `rustfmt --check` prints the same thing and reads the same way. A file with three unformatted regions is three places, not one file: unlike the other format checks here, rustfmt's diff says where. A file it cannot parse is a rustc diagnostic, and cargo's own parser reads it |
 | **cargo `--message-format=json`** | the same failures, read from the schema rather than the rendered text — `rustc --error-format=json` too. The primary span is the location, and the source line it carries is what gets quoted. cargo compiles a crate once per target that includes it and the stream carries every copy; each diagnostic counts once, as the text form prints it |
 | **less** | the class, message, `file:line:col` and the offending line — lessc puts all of it on one line, with the location as prose at the end |
 | **swc** | the message and location miette drew, not the `Failed to compile 1 file with swc.` tally underneath them |
@@ -318,7 +328,10 @@ Where the interleaving matters, merge the streams in the command itself:
 | **mypy** | error code, `file:line`, the type-checking message; notes and warnings set aside |
 | **mypy `--output=json`** | the same errors as records, one per line, agreeing with the text form. This form always carries a column, which the default output prints only when asked, and a `hint` where the text form writes a note under the error |
 | **Terraform** | the file, the line, the block, and the sentence at the bottom of the box that says what to do |
+| **terraform refusing a command** | `Terraform has no command named "x".` — one sentence, no box, and the whole log of a pipeline that stopped before touching any state |
+| **terraform fmt `-check -diff`** | every region it would rewrite, with the line each one starts at and the source as it stands now. terraform spells its diff's halves `old/<path>` and `new/<path>`, which is what tells it from every other diff a build prints. Not a plain `terraform fmt -check`, which lists bare filenames and nothing else |
 | **CMake** | the script line and the command that raised it — `add_executable`, `find_package` |
+| **CMake refusing to start** | a source directory that is not there, one with no `CMakeLists.txt`, a generator it does not have. The message sits on the banner's own line with no location, because nothing has been read yet, and that one line is usually the whole log |
 | **ninja** | no parser of its own: what fails under it is a compiler, which already has one |
 | **kubectl** | the sentence a person wants, not five identical klog lines from inside client-go |
 | **GCC/Clang** | compiler errors with `file:line:column`, or `file:line` where gcc printed no column — read only for C-family sources there, since without the column that shape is also javac's and mypy's; driver errors that never got as far as a file; warnings and notes set aside. clang counts its own errors, and when the log has been damaged — `make -j` interleaving two compilers mid-line — the headline says how many were read of how many it reported, rather than confidently reporting the smaller number |
@@ -343,6 +356,7 @@ Where the interleaving matters, merge the streams in the command itself:
 | **Gradle test failures** | each failed test Gradle names — `CartTest > totalsAnInvoice() FAILED` — at the line in the test that broke, in every console Gradle has: plain, rich, and the full exception format, whose first frames are JUnit's own and are passed over for the frame in the test's class. Before, all of them came back as `Execution failed for task ':test'` labelled a build script error. Under `-q` Gradle prints no test names at all, and that is now a test failure whose tests are not in the log rather than a build script that failed |
 | **JUnit XML from the JVM** | Maven Surefire's `TEST-*.xml` and its `.txt` summary, and Gradle's `build/test-results`. JUnit's XML is a shape every runner writes; what makes a case a JVM test is a Java stack frame naming the case's own class, and that frame is also the location — not the line inside JUnit's assertion builder the generic reader used to report. Surefire's reports are named Maven; Gradle's XML says nothing about which build tool wrote it, so it is named for what it is |
 | **.NET** | compiler error codes with `file:line:column`; warnings set aside |
+| **dotnet format `--verify-no-changes`** | the same shape MSBuild uses, so the same reader: every place it would rewrite, with its line, its column and the rule (`WHITESPACE`, `IMPORTS`, `ANALYZERS`). Those names carry no digits, which is the only reason none of it was read before |
 | **dotnet test** | test name, `file:line`, the assertion; reflection frames dropped |
 | **dotnet test in other languages** | the .NET SDK translates VSTest's console into its UI languages — `Failed` is `Fehler`, `失敗`, `Не пройден`, `Com falha`, and the labels over the message and the stack go with it. Nothing but English was read. No dictionary is needed: the run's tally opens with its failure word in the run's own language, so that word is read from the tally and the labels are read by where they stand. The counts come in the same order in every language. Checked against German, Japanese, French, Simplified Chinese, Korean, Russian and Brazilian Portuguese |
 | **Microsoft.Testing.Platform in other languages** | translates more than VSTest: the outcome (`fehlerhaft`, `operazione non riuscita`, `已失敗`), the assembly line under it, the summary, and the stack frames themselves — `um … in`, `場所: … 場所:`. What no language changes is the assembly line with its framework and architecture, `ShopTests.dll (net10.0\|arm64)`, and only a failure has a stack under it; a heading with both is a failure, and its words read every other heading. `--output detailed` puts the same assembly line under passing tests, which is why the stack is required too. Frames are read by shape and the counts by position. Checked against all fourteen languages the SDK ships |
@@ -483,6 +497,9 @@ What keeps it honest:
   and is abstracted away.
 - A path must prove itself with separators or a known extension, so `cart.total` is
   never mistaken for a filename.
+- What a resolver says it could not find is the **operand**, not an incidental path, and
+  is kept whatever it looks like. `Cannot find module './a.js'` and `'./b.js'` are two
+  things to install, not one cause with two sites.
 - A signature carrying fewer than two real words is refused outright — forty
   unrelated `assert 1 == 2` failures do not become "one likely cause".
 - Three sites minimum. Two failures sharing a shape is usually coincidence.
@@ -516,20 +533,54 @@ $ whatbroke --since-last pytest
     KeyError: 'aud'
 ```
 
-A cause is identified by the same fingerprint the grouping uses, so it survives moving
-to another file, another line, or another position in the output — and two different
-bugs never collapse into one.
+A cause is identified by the fingerprint the grouping uses, so it survives moving to
+another file, another line, or another position in the output — and two different bugs
+never collapse into one. Where that fingerprint is too thin to group on, the test or
+symbol it happened to is part of the identity as well: `assert 1 == 2` and `assert 3 == 4`
+reduce to the same shape, and without that a second test failing would report nothing new
+and the first being fixed would report nothing gone.
 
-Runs only ever compare against runs of **the same command, for the same tool, in the
-same directory**. `pytest tests/unit` and `pytest tests/api` do not cover the same
-code, so a cause missing from one is not a cause that got fixed; they keep separate
-histories and never meet.
+Runs only ever compare against runs of **the same command, in the same directory**.
+`pytest tests/unit` and `pytest tests/api` do not cover the same code, so a cause missing
+from one is not a cause that got fixed; they keep separate histories and never meet. If the
+same command reports a different tool than it did last time — `npm test` moving from jest
+to vitest — the run still compares, but "no longer reported" is withheld, because every
+cause being missing is then a change of tool and not a change of code.
+
+**A run that succeeds is part of the history.** It writes the empty baseline: nothing is
+failing here now — decided by the exit code, not by the output, so a runner that exits
+zero having printed something readable still records that nothing is failing. What it
+printed is still reported in full; only the baseline is empty. Without it, a failure that came back after a green run was compared
+against the run that first found it and called nothing new — which is exactly the moment a
+reader wants to be told. Nothing is printed for a command that worked.
+
+**A piped log has to be named.** `pytest tests/unit | whatbroke --since-last` carries no
+command at all, so nothing tells it from `pytest tests/api | whatbroke --since-last` in the
+same directory: they shared one record, overwrote each other, and each reported the other's
+failures as fixed. Guessing the upstream command from its output is not available either —
+the log is the thing in question. So an unnamed pipe is not compared and not recorded, and
+says so; `--id NAME` is how a pipeline says which one it is.
+
+```console
+$ pytest tests/unit | whatbroke --since-last
+    not tracked: a piped log carries no command to tell it from another. Name it with --id NAME
+
+$ pytest tests/unit | whatbroke --since-last --id unit
+    1 new since your last run
+```
+
+A name is scoped to the directory it is used in, and to the tool the log turned out to be
+from, so one `--id ci` covering a job that pipes eslint and then pytest still keeps two
+records rather than having each run wipe the other.
 
 For mixed logs, the primary tool identifies the run, and comparison includes every
 reported tool's causes. New failures are marked in their own tool's section; identical
 messages from different tools keep separate identities. The last history format that
 used 32-bit identifiers is compared once during migration, then the completed run is
-saved under the current 96-bit identity. Unchanged causes are not called new; the "no
+saved under the current 96-bit identity — for a wrapped command, which names itself in
+its argv. A record that scheme wrote for a *piped* run was keyed on the directory and the
+tool alone, so it belongs to whichever unnamed pipe wrote it; a `--id` pipeline does not
+adopt one, and starts its own baseline instead. Unchanged causes are not called new; the "no
 longer reported" count is withheld for that transition because a collision in an old
 saved hash cannot be ruled out. Older incompatible records start a fresh baseline.
 
@@ -664,12 +715,61 @@ variable.
 
 Because you already know what's wrong the instant you can see it. The problem was never comprehension, it was that the answer is on line 312 of 400. A parser that knows pytest's format is faster, free, offline, deterministic, and never invents a stack frame.
 
+## When nothing was printed
+
+A command that is killed writes nothing on the way out. `cargo build` stopped by the
+kernel's out-of-memory killer, a suite cancelled by a job timeout, a crash in a C
+extension — each ends with an empty log and a number, and there is no diagnostic for any
+parser to find. The number is not nothing:
+
+```
+$ whatbroke -- cargo build
+
+Command failed with exit code 137.
+Killed by SIGKILL, which no program can catch or shut down cleanly for. On a build
+machine that is usually the kernel running out of memory, or a runner enforcing a limit.
+No output was captured.
+```
+
+Two different kinds of thing are said there, and whatbroke keeps them apart. **A signal is
+a fact**: the operating system reports which one ended the process, and whatbroke names
+it. **What usually sends that signal is a guess**, written as one — it is the second
+sentence, and it says "usually".
+
+An **exit code** is a number a program chose, so almost none of them mean anything on
+their own: `1` and `2` are what every program in the world returns, and `grep` returns `1`
+for finding nothing. Three are read, as the conventions they are — `127` and `126`, which
+a shell returns for a command that does not exist and one it could not run, and `124`,
+which `timeout` returns when its deadline passed — and only for a command whatbroke ran
+itself, where the shell in question is the one it spawned. A piped log's upstream status
+never reached whatbroke and is never guessed at.
+
+A run that was killed part-way still printed whatever it got to print, and that is read as
+usual. The signal is reported beside the diagnosis rather than instead of it, because a
+diagnosis from a run that did not finish is not the whole story:
+
+```
+  ✗ 1 error in 1 file
+
+  bad.ts:3  TS2322
+    Type "x" is not assignable to type "number".
+
+  ! Killed by SIGKILL, which no program can catch or shut down cleanly for. On a build
+    machine that is usually the kernel running out of memory, or a runner enforcing a limit.
+```
+
 ## When whatbroke runs the command itself
 
 `whatbroke vitest` tells whatbroke which leaf tool is about to fail, and that is strong
 evidence when two parsers recognise the same log. Each parser declares the commands that
 imply it, and a named leaf tool is tried first — including through a path or launcher, so
 `npx vitest run` and `./node_modules/.bin/vitest` both count.
+
+`python -m pytest` is the same shape and the commonest way pytest is run — the
+interpreter puts the working directory on `sys.path`, which is why projects prefer it. The
+module named after `-m` is the tool; the interpreter that carried it is not. That only
+applies to an interpreter, and only as its first argument: `pytest -m slow` selects a
+marker, and `-m` means something else again to plenty of tools.
 
 Script runners are deliberately different. `npm test`, `pnpm test`, and `yarn build`
 name a parent process whose child produced the useful Jest, Vitest, Vite, or other

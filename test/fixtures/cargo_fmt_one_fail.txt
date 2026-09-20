@@ -1,0 +1,7 @@
+Diff in /home/dev/shop/src/bin/invoice.rs:1:
+-fn main() { let due = 1049;println!("{}",due); }
++fn main() {
++    let due = 1049;
++    println!("{}", due);
++}
+ 
