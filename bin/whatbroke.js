@@ -215,8 +215,29 @@ if (argv.length === 0) {
 } else {
   // A failed spawn can throw before it returns a child, or emit an error afterward.
   // Both paths must report the command that failed and preserve exit code 127.
+  // What the shell would have said. A command that will not start is most often a typo,
+  // and "spawn pyest ENOENT" is node's wording for it - the reader gets an internal error
+  // string where every shell they have ever used says "command not found". The errno is
+  // kept on the end, because it is what a bug report needs and what the schema's `error`
+  // has always carried.
+  const PLAINLY = {
+    ENOENT: "command not found",
+    EACCES: "permission denied",
+    EPERM: "permission denied",
+    ENOEXEC: "not executable — no shebang, or built for another architecture",
+    EISDIR: "is a directory",
+    ENOTDIR: "is not a directory",
+    E2BIG: "argument list too long",
+    ENAMETOOLONG: "name too long",
+  };
   const startFailed = (e) => {
-    const said = e.message.includes(argv[0]) ? e.message : `spawn ${argv[0]} ${e.code ?? e.message}`;
+    const plain = PLAINLY[e.code];
+    // node rejects an empty name before it ever reaches the kernel, so there is no errno
+    // for it and nothing to name either.
+    const said = !argv[0] ? "no command given"
+      : plain ? `${argv[0]}: ${plain} (${e.code})`
+      : e.message.includes(argv[0]) ? e.message
+      : `spawn ${argv[0]} ${e.code ?? e.message}`;
     process.stderr.write(`whatbroke: ${said}\n`);
     report("", 127, false, said);
   };
