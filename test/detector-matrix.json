@@ -636,6 +636,37 @@
     ],
     "shadow": {}
   },
+  "composer_json_syntax_fail.txt": {
+    "winner": "composer",
+    "parser": "composer",
+    "failures": 1,
+    "claimants": [
+      "shellcheck",
+      "composer",
+      "generic"
+    ],
+    "shadow": {}
+  },
+  "composer_missing_package_fail.txt": {
+    "winner": "composer",
+    "parser": "composer",
+    "failures": 1,
+    "claimants": [
+      "composer",
+      "generic"
+    ],
+    "shadow": {}
+  },
+  "composer_platform_fail.txt": {
+    "winner": "composer",
+    "parser": "composer",
+    "failures": 1,
+    "claimants": [
+      "composer",
+      "generic"
+    ],
+    "shadow": {}
+  },
   "deno_check_fail.txt": {
     "winner": "deno check",
     "parser": "deno",
