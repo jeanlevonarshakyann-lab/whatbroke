@@ -9,6 +9,8 @@ demo/__pycache__/
 *.tmp-test-*/
 .tmp-test-*/
 .launch/
-.tmp-ctx-*/
-.tmp-dbg-*/
+# Tests that need a directory under the working directory - source is only ever read
+# from inside it - make one per case and name it for the case. Covering the prefix
+# rather than each name is what keeps a new test's leftovers out of a commit.
+.tmp-*/
 OVERNIGHT.md

@@ -208,6 +208,55 @@ try {
   pass++;
 } catch (e) { console.log(`  FAIL caret under a tab\n       ${e.message}`); fail++; }
 
+// a caret under characters the terminal draws wider, or narrower, than one column
+try {
+  const { render, setColor } = await import("../src/render.js");
+  const { resetSnippetCache } = await import("../src/snippet.js");
+  const { mkdtempSync, writeFileSync, rmSync } = await import("node:fs");
+  setColor(false);
+  const dir = mkdtempSync(join(process.cwd(), ".tmp-wide-"));
+  let n = 0;
+  // Every case is the same line with a different run inside the string, and the caret
+  // always belongs under the final `g`. Its column in UTF-16 units - which is what a tool
+  // reports and what the caret is counted from - is 33 plus the length of that run.
+  const caretFor = (filler) => {
+    const file = join(dir, `w${n++}.ts`);
+    writeFileSync(file, `const g = "${filler}"; const n: number = g;\n`);
+    resetSnippetCache();
+    const out = render({ tool: "tsc", failures: [{ file, line: 1, col: filler.length + 33,
+      title: "TS2322", message: "no" }] }, {});
+    const lines = out.split("\n");
+    const source = lines.findIndex((l) => /^\s+1 \u2502 const g/.test(l));
+    assert.ok(source >= 0, `no source line in:\n${out}`);
+    assert.equal(lines[source].at(-2), "g", "the column under test is the final g");
+    return lines[source + 1];
+  };
+
+  // The test does not carry its own width table - that would pass whenever both copies
+  // were wrong together. Instead each run is paired with ASCII that the terminal draws
+  // exactly as wide, and the two must put the caret in the same column. Everything that
+  // differs between the pair is how many UTF-16 units the caret is counted from, which
+  // is precisely what conflating units with columns got wrong.
+  for (const [what, filler, sameWidthInAscii] of [
+    ["japanese", "こんにちは", "AAAAAAAAAA"],
+    ["hangul", "안녕하세요", "AAAAAAAAAA"],
+    ["fullwidth latin", "ＡＢＣ", "AAAAAA"],
+    ["cjk with a narrow neighbour", "日本語です。x", "AAAAAAAAAAAAx"],
+    // Already correct, and easy to break while fixing the rest: an emoji is two UTF-16
+    // units and is drawn two columns wide, so counting either way lands in the sameplace.
+    ["emoji", "🎉🎉", "AAAA"],
+    // The other direction. A combining acute is a unit of its own and is drawn over the
+    // letter before it, taking no column at all, so counting units moved the caret right.
+    ["combining marks", "cafe\u0301 e\u0301te\u0301", "cafe ete"],
+  ]) {
+    assert.equal(caretFor(filler), caretFor(sameWidthInAscii),
+      `${what}: the caret is not where the same width in ASCII puts it`);
+  }
+  rmSync(dir, { recursive: true, force: true });
+  console.log("  ok   a caret under wide and zero-width characters lands under its character");
+  pass++;
+} catch (e) { console.log(`  FAIL caret under wide characters\n       ${e.message}`); fail++; }
+
 // a headline that is the whole diagnosis
 try {
   const { render, setColor } = await import("../src/render.js");
