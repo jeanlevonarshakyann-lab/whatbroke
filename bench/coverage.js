@@ -42,6 +42,18 @@ const CASES = [
   ["test", "node --test", { "t.test.js": "const { test } = require(\"node:test\");\nconst a = require(\"node:assert\");\ntest(\"adds\", () => { a.strictEqual(1 + 1, 3); });\n" }, ["node", "--test"]],
   ["test", "pytest", { "test_shop.py": "def test_one():\n    assert 1 == 2\n" }, ["python3", "-m", "pytest", "-q"]],
   ["test", "unittest", { "test_u.py": "import unittest\n\nclass T(unittest.TestCase):\n    def test_a(self):\n        self.assertEqual(1, 2)\n" }, ["python3", "-m", "unittest"]],
+  // The nine parsers below were the ones no case here ran: without them the share was a
+  // claim about the tools that happened to be listed, not about what whatbroke reads.
+  ["test", "jest", { "package.json": "{\"name\":\"j\",\"version\":\"1.0.0\"}\n", "a.test.js": "test(\"adds\", () => { expect(1 + 1).toBe(3); });\n" }, ["jest"]],
+  ["test", "jasmine", { "package.json": "{\"name\":\"j\",\"version\":\"1.0.0\"}\n", "spec/support/jasmine.json": "{\"spec_dir\":\"spec\",\"spec_files\":[\"*.spec.js\"]}\n", "spec/a.spec.js": "describe(\"math\", function () { it(\"adds\", function () { expect(1 + 1).toBe(3); }); });\n" }, ["jasmine"]],
+  // TAP as a stream. node's own parser wins this one, which is the right answer and the
+  // point of having it: the format changes, the reading does not.
+  ["test", "node --test tap", { "t.test.js": "const { test } = require(\"node:test\");\nconst a = require(\"node:assert\");\ntest(\"adds\", () => { a.strictEqual(1 + 1, 3); });\n" }, ["node", "--test", "--test-reporter=tap"]],
+  // And TAP as prove leaves it: no plan and no results, only Test::More's diagnostics.
+  ["test", "prove", { "shop.t": "use strict;\nuse warnings;\nuse Test::More tests => 1;\n\nis(total(), 1050, 'invoice total');\n\nsub total { 1049 }\n" }, ["prove", "shop.t"]],
+  // Maven fetches its dependencies on a cold ~/.m2, which is why the read timeout is
+  // generous. gradle reaches the same parser by the same surefire-shaped report.
+  ["test", "mvn", { "pom.xml": "<project xmlns=\"http://maven.apache.org/POM/4.0.0\">\n  <modelVersion>4.0.0</modelVersion>\n  <groupId>shop</groupId><artifactId>shop</artifactId><version>1.0</version>\n  <properties><maven.compiler.source>17</maven.compiler.source><maven.compiler.target>17</maven.compiler.target></properties>\n  <dependencies><dependency>\n    <groupId>org.junit.jupiter</groupId><artifactId>junit-jupiter</artifactId>\n    <version>5.10.2</version><scope>test</scope>\n  </dependency></dependencies>\n</project>\n", "src/test/java/ShopTest.java": "import org.junit.jupiter.api.Test;\nimport static org.junit.jupiter.api.Assertions.*;\n\nclass ShopTest {\n  @Test void invoiceTotal() { assertEquals(1050, 1049); }\n}\n" }, ["mvn", "-q", "-B", "test"], ["mvn", "-v"]],
   ["runtime", "python", { "boom.py": "raise KeyError(\"missing config key\")\n" }, ["python3", "boom.py"]],
   ["runtime", "ruby", { "r.rb": "def f\n  x = \nend\n" }, ["ruby", "r.rb"]],
   ["runtime", "perl", { "p.pl": "use strict;\nmy $x = ;\n" }, ["perl", "p.pl"]],
@@ -65,6 +77,7 @@ const CASES = [
   ["lint", "biome", { "b.js": "const unused = 1;\nif (unused == null) { debugger; }\n" }, ["biome", "check", "b.js"]],
   ["format", "prettier", { "p.js": "const x = {a:1,\n" }, ["prettier", "--check", "p.js"]],
   ["format", "black", { "f.py": "def  bad( ):\n    return  1\n" }, ["black", "--check", "f.py"]],
+  ["format", "rustfmt", { "Cargo.toml": "[package]\nname = \"rf\"\nversion = \"0.1.0\"\nedition = \"2021\"\n", "src/main.rs": "fn main(){let x=1;println!(\"{}\",x);}\n" }, ["cargo", "fmt", "--check"]],
   ["format", "sass", { "shop.scss": ".a {\n  color: $missing-var;\n}\n" }, ["sass", "shop.scss"]],
   ["compile", "dotnet", { "Shop.csproj": "<Project Sdk=\"Microsoft.NET.Sdk\">\n  <PropertyGroup>\n    <OutputType>Exe</OutputType>\n    <TargetFramework>net9.0</TargetFramework>\n  </PropertyGroup>\n</Project>\n", "Program.cs": "class Shop { static void Main() { int x = \"hello\"; } }\n" }, ["dotnet", "build"]],
   ["build", "swc", { "e.js": "const x = {a:1,\n" }, ["swc", "e.js"]],
@@ -115,7 +128,7 @@ const grouped = order.flatMap((g) => CASES.filter(([c]) => c === g));
 let group = "";
 for (const [g, name, files, argv, probe] of grouped) {
   if (g !== group) { group = g; console.log(`\n  ${group}`); }
-  if (!have(argv, probe)) { console.log(`    skip  ${name.padEnd(15)} not installed`); tally.skip++; continue; }
+  if (!have(argv, probe)) { console.log(`    skip  ${name.padEnd(17)} not installed`); tally.skip++; continue; }
   const dir = mkdtempSync(join(tmpdir(), "whatbroke-coverage-"));
   try {
     for (const [path, body] of Object.entries(files)) {
@@ -125,7 +138,7 @@ for (const [g, name, files, argv, probe] of grouped) {
     if (name === "git") spawnSync("git", ["init", "-q", "."], { cwd: dir });
     const got = read(dir, argv);
     const mark = got.state === "read" ? "ok  " : got.state === "guess" ? "GUESS" : "NONE";
-    console.log(`    ${mark.padEnd(6)}${name.padEnd(15)}${got.tool ? `${got.tool}, ${got.n} failure(s)` : "nothing read"}`);
+    console.log(`    ${mark.padEnd(6)}${name.padEnd(17)}${got.tool ? `${got.tool}, ${got.n} failure(s)` : "nothing read"}`);
     tally[got.state]++;
   } finally { rmSync(dir, { recursive: true, force: true }); }
 }
