@@ -1,0 +1,9 @@
+Composer could not detect the root package (shop/api) version, defaulting to '1.0.0'. See https://getcomposer.org/root-version
+No composer.lock file present. Updating dependencies to latest instead of installing from lock file. See https://getcomposer.org/install for more information.
+Loading composer repositories with package information
+Updating dependencies
+Your requirements could not be resolved to an installable set of packages.
+
+  Problem 1
+    - Root composer.json requires php ^5.3 but your php version (8.5.10) does not satisfy that requirement.
+

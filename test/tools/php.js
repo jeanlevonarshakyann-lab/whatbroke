@@ -119,6 +119,40 @@ const CASES = [
       assert.ok(!r.failures.some((f) => /FAILURES!|Assertions:/.test(f.message)),
         "the run summary must not be absorbed into the last failure");
     } },
+  // Captured with Composer 2.10.3 on PHP 8.5. `composer install` is to a PHP CI job what
+  // `bundle install` is to a Ruby one, and none of the ways it fails was read. composer
+  // says almost everything twice: a resolution failure is a headline, the numbered
+  // problems, then "Potential causes:" with four guesses and a link to a manual. Only
+  // the numbered problems say what happened.
+  { file: "composer_missing_package_fail.txt", tool: "composer", n: 1, check: (r) => {
+      assert.equal(r.failures[0].subject, "vendor/definitely-not-a-real-package-xyzzy",
+        "the package that cannot be had is the answer");
+      assert.match(r.failures[0].message, /it could not be found in any version/);
+      // composer opens with two lines about the root version and the missing lock file.
+      // Neither is the failure, and the first of them contains "could not".
+      assert.doesNotMatch(JSON.stringify(r.failures),
+        /could not detect the root package|No composer.lock file present|Loading composer repositories/);
+      // ...and closes with four guesses and a link to the troubleshooting guide.
+      assert.doesNotMatch(JSON.stringify(r.failures), /Potential causes|troubleshooting/);
+    } },
+  { file: "composer_platform_fail.txt", tool: "composer", n: 1, check: (r) => {
+      // php is a package to composer like any other, and it is what was required - not
+      // the version it went on to name as the one you have.
+      assert.equal(r.failures[0].subject, "php");
+      assert.match(r.failures[0].message, /requires php \^5\.3 but your php version/);
+    } },
+  { file: "composer_json_syntax_fail.txt", tool: "composer", n: 1, check: (r) => {
+      // The box is headed "In JsonFile.php line 398:" - composer's own source, which is
+      // nobody's business. The file to open is the one named inside the message.
+      assert.equal(r.failures[0].file, "./composer.json");
+      assert.equal(r.failures[0].line, 4);
+      assert.equal(r.failures[0].label, "composer error");
+      assert.match(r.failures[0].message, /extra trailing comma/);
+      assert.doesNotMatch(JSON.stringify(r.failures), /JsonFile\.php/);
+      // composer follows a boxed error with the command's own usage line, which is one
+      // line long enough to bury the failure under it.
+      assert.doesNotMatch(JSON.stringify(r.failures), /prefer-source|classmap-authoritative/);
+    } },
 ];
 
 let pass = 0, fail = 0;

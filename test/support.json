@@ -74,6 +74,7 @@
     "npm": ["npm", "npm `--json`"],
     "pnpm": ["pnpm", "pnpm's boxed errors"],
     "yarn": ["yarn"],
+    "composer": ["composer"],
     "pip": ["pip"],
     "generic": ["anything else"]
   },

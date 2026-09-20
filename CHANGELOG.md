@@ -14,6 +14,15 @@
   repeated diagnosis before this and one after - and that one is the cargo pair, whose
   two readings quote two different real source lines and are genuinely two. The corpus
   itself is byte-identical.
+- `composer install` is read. It is to a PHP CI job what `bundle install` is to a Ruby
+  one, and none of the ways it fails was read at all. composer says almost everything
+  twice: a resolution failure is a headline, then the numbered problems, then "Potential
+  causes:" with four guesses and a link to a manual, and it opens with two lines about
+  the root version and the missing lock file - one of which contains "could not". Only
+  the numbered problems say what happened, so only those are read, and the package that
+  cannot be had is the subject, platform packages like `php` and `ext-mbstring`
+  included. A boxed fatal gives the file named inside the message rather than the
+  composer source file the box is headed with.
 
 - Byte-identical CI retry blocks are collapsed before parsing. De-duplication already
   showed each diagnostic once, but 67 of 200 duplicated fixtures still changed their
