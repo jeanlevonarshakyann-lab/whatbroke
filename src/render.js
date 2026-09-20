@@ -1,5 +1,5 @@
 import { relPath } from "./util.js";
-import { snippet, contextFor } from "./snippet.js";
+import { snippet, contextFor, hasLine } from "./snippet.js";
 import { normTitle } from "./cluster.js";
 import { trackedCauseId } from "./history.js";
 import { TRUNCATION_NOTICE, wrapperName } from "./report.js";
@@ -187,12 +187,18 @@ export function render(result, { max = 5, cwd = true, source = true, cluster = t
 
     const ctx = contextFor(f.message);
     const drifted = source && stale(f.file, f.line, f.stmt);
+    // The check above needs the tool to have quoted the line it saw, and plenty print
+    // only a location. A file too short to hold that location needs no quote to be
+    // caught: it cannot be where this came from.
+    const vanished = source && !drifted && hasLine(f.file, f.line) === false;
     // "same region" is however far the last snippet actually reached, not a fixed 2
-    const near = !drifted && lastSnip && lastSnip.file === f.file && Math.abs(lastSnip.line - f.line) <= lastSnip.ctx;
-    const snip = !source || near || drifted ? null : snippet(f.file, f.line, ctx);
-    if (drifted) {
-      out.push(`      ${C.dim}│${C.reset} ${clip(f.stmt)}`);
-      out.push(`      ${C.yellow}! ${relPath(f.file)} has changed since this ran — source not shown${C.reset}`);
+    const near = !drifted && !vanished && lastSnip && lastSnip.file === f.file && Math.abs(lastSnip.line - f.line) <= lastSnip.ctx;
+    const snip = !source || near || drifted || vanished ? null : snippet(f.file, f.line, ctx);
+    if (drifted || vanished) {
+      if (f.stmt) out.push(`      ${C.dim}│${C.reset} ${clip(f.stmt)}`);
+      out.push(vanished
+        ? `      ${C.yellow}! ${relPath(f.file)} has changed since this ran — it has no line ${f.line}${C.reset}`
+        : `      ${C.yellow}! ${relPath(f.file)} has changed since this ran — source not shown${C.reset}`);
       lastSnip = null;
     }
     if (near) {
@@ -218,7 +224,7 @@ export function render(result, { max = 5, cwd = true, source = true, cluster = t
         out.push(`      ${num} ${bar} ${txt}`);
         if (s.hit && f.col) out.push(`      ${" ".repeat(w)} ${C.dim}│${C.reset} ${underneath(s.text, f.col, start)}${C.red}^${C.reset}`);
       }
-    } else if (f.stmt && !drifted && !near) {
+    } else if (f.stmt && !drifted && !vanished && !near) {
       // `stmt` stands in for source that could not be shown. When the failure sits in
       // the region the last one already printed, `near` above has just shown that exact
       // line with a caret under it, and printing stmt as well says it twice - once
