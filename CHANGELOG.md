@@ -2,6 +2,14 @@
 
 ## Unreleased
 
+- Reads `go mod`. The module loader is where a Go build fails before it compiles anything,
+  and none of it was read: `go mod tidy` came back with no parser at all. Two shapes, both
+  captured - a go.mod it cannot parse, reported by file and line; and a module it cannot
+  get, with the reason and the chain of imports that pulled it in, nearest first, because
+  the import a reader can do something about is theirs. Not a bare `go: <sentence>`:
+  `go: downloading ...` and `go: warning: ...` are the same shape and are not failures,
+  and nothing in such a line says which it is.
+
 - Reads `terraform fmt -check -diff`, which is in nearly every Terraform pipeline and was
   read as nothing: the job exited 3 and the diff came back handed over whole. Each `@@` is
   a place, so one file with two unformatted regions is two of them, each at the line its

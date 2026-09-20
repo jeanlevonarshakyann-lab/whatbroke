@@ -66,6 +66,7 @@
     "go test -json": ["go test -json"],
     "go": ["go test", "go build", "go vet"],
     "gofmt": ["gofmt `-d`"],
+    "go mod": ["go mod"],
     "esbuild": ["esbuild"],
     "vite": ["vite / rollup"],
     "node": ["Node stack traces"],

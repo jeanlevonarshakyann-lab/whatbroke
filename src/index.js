@@ -62,6 +62,7 @@ import cargo from "./extractors/cargo.js";
 import cargojson from "./extractors/cargojson.js";
 import rustfmt from "./extractors/rustfmt.js";
 import gofmt from "./extractors/gofmt.js";
+import gomod from "./extractors/gomod.js";
 import terraformfmt from "./extractors/terraformfmt.js";
 import { esbuild, vite } from "./extractors/bundler.js";
 import git from "./extractors/git.js";
@@ -79,7 +80,7 @@ import { stripRedrawnCiPrefix, wrapperCandidates } from "./normalize.js";
 import { joinSources, preserveSourceRange, rangesOverlap, setLines, setParser, sourceRange } from "./ownership.js";
 
 // order matters: most specific first, generic last
-export const EXTRACTORS = [pytest, nodetest, bun, bunRuntime, deno, denoRuntime, denoLint, denoFmt, playwright, jestjson, jest, mochajson, mochaxunit, mocha, ava, jasmine, rubocop, tap, taptext, vitest, unittest, traceback, eslintjson, eslint, ruff, pylint, flake8, golangci, markdownlint, stylelint, shellcheck, yamllint, biome, oxlint, black, prettier, sass, less, webpack, babel, swc, pyright, mypy, cmake, terraformfmt, terraform, swifttest, swift, clang, minitest, ruby, perl, php, rspec, junitjvm, jvm, dotnettest, dotnet, phpunit, cargojson, rustfmt, cargo, gofmt, govetjson, gojson, gotest, esbuild, vite, node, tsc, git, kubectl, docker, make, npm, pnpm, yarn, pip, generic];
+export const EXTRACTORS = [pytest, nodetest, bun, bunRuntime, deno, denoRuntime, denoLint, denoFmt, playwright, jestjson, jest, mochajson, mochaxunit, mocha, ava, jasmine, rubocop, tap, taptext, vitest, unittest, traceback, eslintjson, eslint, ruff, pylint, flake8, golangci, markdownlint, stylelint, shellcheck, yamllint, biome, oxlint, black, prettier, sass, less, webpack, babel, swc, pyright, mypy, cmake, terraformfmt, terraform, swifttest, swift, clang, minitest, ruby, perl, php, rspec, junitjvm, jvm, dotnettest, dotnet, phpunit, cargojson, rustfmt, cargo, gofmt, gomod, govetjson, gojson, gotest, esbuild, vite, node, tsc, git, kubectl, docker, make, npm, pnpm, yarn, pip, generic];
 
 /** Whether two readings each quote the offending source line, and quote different ones.
  *
