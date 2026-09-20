@@ -460,5 +460,43 @@ try {
   pass++;
 } catch (e) { console.log(`  FAIL ruff output formats\n       ${e.message}`); fail++; }
 
+// A pytest block runs from its own banner to the next one, so in a log where two
+// printings of one run are interleaved it absorbs lines from its neighbour - including
+// the ">" pytest puts in front of the failing statement. The quote belongs to the
+// explanation it sits under: pytest writes the marked line, at most a caret row under
+// the part it evaluated, then the "E" lines. A marked line further away than that is
+// one the block picked up, and quoting it attaches another test's source to this
+// failure - and, where the two readings otherwise agree, makes one failure read as two.
+try {
+  const block = [
+    "=================================== FAILURES ===================================",
+    "_________________________________ test_missing_key _________________________________",
+    "test_shop.py:11: in test_missing_key",
+    ">       assert invoice_total([500, 550]) == 1050",   // the neighbour's, absorbed
+    "    assert rates[\"taxrate\"] == 0.2",
+    "           ^^^^^^^^^^^^^^^^",
+    "E   KeyError: 'taxrate'",
+    "=========================== short test summary info ============================",
+    "FAILED test_shop.py::test_missing_key - KeyError: 'taxrate'",
+  ].join("\n");
+  const r = analyse(block);
+  assert.equal(r?.tool, "pytest");
+  assert.equal(r.failures.length, 1);
+  assert.notEqual(r.failures[0].stmt, "assert invoice_total([500, 550]) == 1050",
+    "quoted a marked line belonging to another test");
+
+  // ...and the shape pytest really writes is still quoted, caret row and all. Both real
+  // captures of this run keep every statement they quoted before.
+  for (const name of ["pytest_tb_long_same_fail.txt", "pytest_fail.txt"]) {
+    const quoted = analyse(fx(name)).failures.map((f) => f.stmt).filter(Boolean);
+    assert.ok(quoted.length > 0, `${name}: stopped quoting the line the failure is on`);
+    for (const q of quoted) assert.doesNotMatch(q, /^>/, `${name}: kept pytest's own marker in the quote`);
+  }
+  assert.equal(analyse(fx("pytest_tb_long_same_fail.txt")).failures[1].stmt,
+    'assert rates["taxrate"] == 0.2', "the statement under the explanation is the one quoted");
+  console.log("  ok   a pytest quote belongs to the explanation under it");
+  pass++;
+} catch (e) { console.log(`  FAIL pytest borrowed quote\n       ${e.message}`); fail++; }
+
 console.log(`\n  ${pass} passed, ${fail} failed`);
 process.exit(fail ? 1 : 0);

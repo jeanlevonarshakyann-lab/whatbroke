@@ -2,6 +2,14 @@
 
 ## Unreleased
 
+- A pytest quote belongs to the explanation under it. A block runs from its own banner
+  to the next one, so in a log where two printings of one run are interleaved it absorbs
+  its neighbour's lines - including the `>` pytest puts in front of the failing
+  statement - and quoted whichever it found first. pytest writes the marked line, at
+  most a caret row under the part it evaluated, then the `E` lines, so a marked line
+  further away than that is one the block picked up. Every capture quotes exactly what
+  it quoted before.
+
 - One diagnosis read by two parsers from the same lines is reported once. Two readings
   that agree on file, line, column, title and message are one diagnosis unless the
   source line each one quotes says otherwise - which is how two cargo runs both
