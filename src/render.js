@@ -63,15 +63,58 @@ function windowed(text, start) {
 const windowedCol = (col, start) =>
   Math.max(1, Math.min(col - start + (start > 0 ? 1 : 0), SOURCE_WIDTH + 1));
 
-/** What goes under a line before its caret: a blank for each character, and a tab where
- *  the line has a tab. A terminal draws a tab as wide as the next tab stop, which depends
- *  on where the tab starts - so one blank under it put the caret under the tab and not the
- *  character after it, on every line of Go. The gutter in front of both lines is the same
- *  width, so a tab under a tab is drawn exactly as wide. */
+/** How many terminal columns one character takes.
+ *
+ *  A caret is placed by counting, and a blank per character only counts correctly while
+ *  every character is one column wide. The ranges below are the ones where it is not and
+ *  where the difference is visible in source: CJK, kana, Hangul and fullwidth forms are
+ *  drawn two columns wide but are a single UTF-16 unit, so a line of Japanese moved the
+ *  caret one column left per character; combining marks are drawn over the character
+ *  before them and take none, so they moved it right.
+ *
+ *  Emoji and CJK above the BMP need no entry to come out right - two units, two columns -
+ *  but they are listed anyway, because the loop below counts code points and would
+ *  otherwise call them one.
+ *
+ *  This is the common ground of wcwidth, not an implementation of Unicode's width
+ *  property: the aim is a caret under the right character in real source, and the
+ *  alternative on the table was a dependency. */
+const WIDE = [
+  [0x1100, 0x115f], [0x2e80, 0x303e], [0x3041, 0x33ff], [0x3400, 0x4dbf],
+  [0x4e00, 0x9fff], [0xa000, 0xa4cf], [0xa960, 0xa97f], [0xac00, 0xd7a3],
+  [0xf900, 0xfaff], [0xfe10, 0xfe19], [0xfe30, 0xfe6f], [0xff00, 0xff60],
+  [0xffe0, 0xffe6], [0x1f300, 0x1faff], [0x20000, 0x3fffd],
+];
+const ZERO = [
+  [0x0300, 0x036f], [0x0483, 0x0489], [0x1ab0, 0x1aff], [0x1dc0, 0x1dff],
+  [0x200b, 0x200f], [0x20d0, 0x20ff], [0xfe00, 0xfe0f], [0xfe20, 0xfe2f],
+];
+const within = (ranges, c) => ranges.some(([lo, hi]) => c >= lo && c <= hi);
+const columns = (ch) => {
+  const c = ch.codePointAt(0);
+  if (within(ZERO, c)) return 0;
+  return within(WIDE, c) ? 2 : 1;
+};
+
+/** What goes under a line before its caret: as many blanks as that part of the line is
+ *  drawn wide, and a tab where the line has a tab. A terminal draws a tab as wide as the
+ *  next tab stop, which depends on where the tab starts - so one blank under it put the
+ *  caret under the tab and not the character after it, on every line of Go. The gutter in
+ *  front of both lines is the same width, so a tab under a tab is drawn exactly as wide.
+ *
+ *  `col` counts UTF-16 units, which is what the prefix is measured in; what is emitted is
+ *  measured in columns. Conflating the two is what put the caret under the wrong token. */
 const underneath = (text, col, start) => {
   const shown = windowed(text, start);
   const width = windowedCol(col, start) - 1;
-  return shown.slice(0, width).replace(/[^\t]/g, " ").padEnd(width, " ");
+  let units = 0, bar = "";
+  for (const ch of shown) {
+    if (units >= width) break;
+    units += ch.length;
+    bar += ch === "\t" ? "\t" : " ".repeat(columns(ch));
+  }
+  // A column past the end of the line keeps its distance from it.
+  return bar + " ".repeat(Math.max(0, width - units));
 };
 
 const SITES_SHOWN = 3;   // how many extra sites to name before "+ N more"
