@@ -225,8 +225,14 @@ export async function runCliTests(cli = fileURLToPath(new URL("../bin/whatbroke.
       assert.equal(JSON.parse(piped.stdout).failures.length, 1);
       // Advice belongs on stderr: --json stdout stays one machine-readable report, and
       // the error field is the errno wording that the JSON contract pins.
+      //
+      // Which errno arrives is the platform's call, not this tool's: a name that is not
+      // on $PATH is ENOENT, while Windows runs a file by its extension and libuv calls
+      // one it cannot run EFTYPE. Both are in the plain-wording table, so what is
+      // asserted is the shape whatbroke owns - the file named, a plain phrase, the errno
+      // kept - rather than which of the two the kernel chose.
       const result = JSON.parse(r.stdout);
-      assert.equal(result.error, "build.log: command not found (ENOENT)");
+      assert.match(result.error, /^build\.log: (?:command not found \(ENOENT\)|not an executable file \(EFTYPE\))$/);
       assert.doesNotMatch(r.stdout, /to distil it/);
     } finally { rmSync(dir, { recursive: true, force: true }); }
   });

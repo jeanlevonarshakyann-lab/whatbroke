@@ -242,6 +242,9 @@ if (argv.length === 0) {
     EACCES: "permission denied",
     EPERM: "permission denied",
     ENOEXEC: "not executable — no shebang, or built for another architecture",
+    // Windows decides how to run a file from its extension rather than a shebang, and
+    // libuv reports a file it cannot run as EFTYPE where POSIX would say ENOEXEC.
+    EFTYPE: "not an executable file",
     EISDIR: "is a directory",
     ENOTDIR: "is not a directory",
     E2BIG: "argument list too long",
