@@ -2,6 +2,13 @@
 
 ## Unreleased
 
+- A tool refusing an argument says so, whether or not it names itself. A typo'd flag in a
+  CI script is one of the cheapest failures there is and none of these was read: "curl:
+  option --x: is unknown", "awk: unknown option --x ignored", "jq: Unknown option --x",
+  "node: bad option: --x", and - naming themselves nowhere at all - docker's "unknown
+  flag: --x" and python's "unknown option --x". The named forms are vocabulary; the two
+  bare ones have to open the line, which is what keeps the same words out of prose.
+
 - A tool may say what it was doing before it says why it could not. Go writes its errors
   that way and everything built on Go writes them the same - "open /app/compose.yaml: no
   such file or directory", "creating network shop_default: permission denied" - and the

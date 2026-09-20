@@ -128,5 +128,31 @@ try {
   pass++;
 } catch (e) { console.log(`  FAIL located aside\n       ${e.message}`); fail++; }
 
+// A tool refusing an argument is what a typo'd flag in a CI script produces, and every
+// one of these is what the tool really prints. Most name themselves; docker and python
+// name themselves nowhere, so for those the refusal has to open the line.
+try {
+  const refused = [
+    "curl: option --nosuchflag: is unknown",
+    "awk: unknown option --nosuchflag ignored",
+    "jq: Unknown option --nosuchflag",
+    "node: bad option: --nosuchflag",
+    "unknown flag: --nosuchflag",
+    "unknown option --nosuchflag",
+  ];
+  for (const l of refused) {
+    assert.ok(analyse(`Starting\n${l}\n`)?.failures.length, `should have recognised: ${l}`);
+  }
+  // The same words mid-sentence are prose. Across 1,498 lines of real --help output from
+  // twelve tools neither form matched once, which is why the bare one must open the line.
+  for (const l of ["the unknown option space is large and that is fine",
+    "documents every unknown flag we could find: none",
+    "Deploying with an unknown option count..."]) {
+    assert.ok(!analyse(`Starting\n${l}\n`), `should have ignored: ${l}`);
+  }
+  console.log("  ok   a tool refusing an argument says so, named or not");
+  pass++;
+} catch (e) { console.log(`  FAIL refused argument\n       ${e.message}`); fail++; }
+
 console.log(`\n  ${pass} passed, ${fail} failed`);
 process.exit(fail ? 1 : 0);

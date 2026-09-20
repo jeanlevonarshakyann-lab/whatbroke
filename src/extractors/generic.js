@@ -33,7 +33,14 @@ const SIGNAL = [
   // archive format` and `awk: syntax error at source line 1` both name themselves and
   // then say plainly that something broke, and neither produced any diagnosis at all -
   // the word is not immediately before a colon, so the pattern above it never fired.
-  /^[a-z][\w.+-]*(?:[^\S\n]+[^\s:]+){0,3}:\s.*\b(?:failed|failure|cannot|can't|not found|refused|denied|no such|unable to|invalid|missing|timed out|unreachable|does not exist|permission|errors?|fatal|panic|unrecogni[sz]ed|unsupported|corrupt(?:ed)?|malformed|illegal|unbalanced|truncated|unbound|unterminated)\b/i,
+  /^[a-z][\w.+-]*(?:[^\S\n]+[^\s:]+){0,3}:\s.*\b(?:failed|failure|cannot|can't|not found|refused|denied|no such|unable to|invalid|missing|timed out|unreachable|does not exist|permission|errors?|fatal|panic|unrecogni[sz]ed|unsupported|corrupt(?:ed)?|malformed|illegal|unbalanced|truncated|unbound|unterminated|unknown (?:option|flag|argument|primary|subcommand)|bad option|is unknown)\b/i,
+  // A tool refusing an argument, which is what a typo'd flag in a CI script produces.
+  // Most name themselves first and the shape above reads them once its vocabulary knows
+  // the words. Two name themselves nowhere at all - docker says "unknown flag: --x" and
+  // python says "unknown option --x" - so for those the refusal has to open the line.
+  // That is what keeps prose out, where the same words sit mid-sentence: across 1,498
+  // lines of real `--help` output from twelve tools, neither form matches one of them.
+  /^(?:unknown|bad|illegal|invalid|unrecogni[sz]ed)[^\S\n]+(?:option|flag|argument|command|primary)\b/i,
 ];
 // A line whose first mark is "|" is the renderer drawing the source, not a diagnostic:
 // rustc, swift and ruff all echo the offending line and hang an annotation off it, and

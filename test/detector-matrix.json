@@ -1293,7 +1293,9 @@
       "eslint",
       "generic"
     ],
-    "shadow": {}
+    "shadow": {
+      "generic": 1
+    }
   },
   "eslint_bulk_fail.txt": {
     "winner": "eslint",
