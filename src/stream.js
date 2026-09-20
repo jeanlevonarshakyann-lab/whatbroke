@@ -18,9 +18,21 @@
  *  not it is written on, so what is captured never depends on what the terminal did. */
 export function relay(stream, out, { suppress = false, tee } = {}) {
   let waiting = false;
+  let gone = false;
+  // A destination that goes away cannot be written to and will never drain. `whatbroke
+  // npm test | head` closes the pipe as soon as head has its lines, and without this the
+  // pause below waits for a drain that never comes: the child's pipe stays full, the
+  // child blocks on its next write, and the run hangs for good. Until now the unhandled
+  // write error killed the process first, so the hang was never reached.
+  //
+  // `tee` still sees every chunk, so what is captured and diagnosed does not depend on
+  // whether anyone was still reading. Only the live copy stops.
+  const lost = () => { gone = true; if (waiting) { waiting = false; stream.resume(); } };
+  out.on("error", lost);
+  out.on("close", lost);
   stream.on("data", (chunk) => {
     tee?.(chunk);
-    if (suppress) return;
+    if (suppress || gone) return;
     if (out.write(chunk) !== false || waiting) return;
     // One pending resume at a time: a paused stream emits no further data, so there is
     // never a second chunk to queue a second listener for.
