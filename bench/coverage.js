@@ -35,7 +35,8 @@ const CASES = [
   ["type", "tsc", { "bad.ts": "const n: number = \"hello\";\n" }, ["tsc", "--noEmit", "bad.ts"]],
   ["compile", "clang", { "bad.c": "int main(void) { return undefined_symbol; }\n" }, ["clang", "-c", "bad.c", "-o", "/dev/null"]],
   ["compile", "swiftc", { "bad.swift": "let x: Int = \"hello\"\n" }, ["swiftc", "bad.swift", "-o", "/dev/null"]],
-  ["compile", "javac", { "Bad.java": "public class Bad { public static void main(String[] a) { int x = \"s\"; } }\n" }, ["javac", "Bad.java"]],
+  // The probe: /usr/bin/javac exists on every Mac, and is a stub without a JDK behind it.
+  ["compile", "javac", { "Bad.java": "public class Bad { public static void main(String[] a) { int x = \"s\"; } }\n" }, ["javac", "Bad.java"], ["javac", "-version"]],
   ["compile", "cargo", { "Cargo.toml": "[package]\nname = \"c\"\nversion = \"0.1.0\"\nedition = \"2021\"\n", "src/main.rs": "fn main() { let x: i32 = \"hello\"; }\n" }, ["cargo", "build"]],
   ["test", "go test", { "go.mod": "module g\n\ngo 1.21\n", "s_test.go": "package g\n\nimport \"testing\"\n\nfunc TestA(t *testing.T) { t.Errorf(\"got %d, want 3\", 2) }\n" }, ["go", "test", "./..."]],
   ["test", "node --test", { "t.test.js": "const { test } = require(\"node:test\");\nconst a = require(\"node:assert\");\ntest(\"adds\", () => { a.strictEqual(1 + 1, 3); });\n" }, ["node", "--test"]],
@@ -78,7 +79,22 @@ const CASES = [
   ["infra", "docker", { "Dockerfile": "FROM alpine:3.19\nRUN nosuchcommand --help\n" }, ["docker", "build", "."]],
 ];
 
-const have = (argv) => spawnSync(process.platform === "win32" ? "where" : "which", [argv[0]], { encoding: "utf8" }).status === 0;
+/** `which` proves a name resolves. It does not prove the tool runs, and this machine is
+ *  the case in point: macOS ships /usr/bin/javac whether or not a JDK is installed, and
+ *  without one it prints where to download Java and exits 1. The bench ran it, read
+ *  nothing out of that, and reported javac as a tool whatbroke cannot read - a gap in the
+ *  headline number that was not whatbroke's and pointed at a parser nobody needs.
+ *
+ *  So a case may name a probe that has to succeed too. Only the ones where `which` is
+ *  known to lie carry one; a probe on every tool would be 47 more guesses about exit
+ *  codes, and a wrong one would hide a real tool instead of a missing one. */
+const have = (argv, probe) => {
+  const which = process.platform === "win32" ? "where" : "which";
+  if (spawnSync(which, [argv[0]], { encoding: "utf8" }).status !== 0) return false;
+  if (!probe) return true;
+  const r = spawnSync(probe[0], probe.slice(1), { encoding: "utf8", timeout: 60000 });
+  return !r.error && r.status === 0;
+};
 
 function read(dir, argv) {
   const r = spawnSync(process.execPath, [cli, "--json", "--", ...argv],
@@ -97,9 +113,9 @@ const tally = { read: 0, guess: 0, none: 0, skip: 0 };
 const order = [...new Set(CASES.map(([g]) => g))];
 const grouped = order.flatMap((g) => CASES.filter(([c]) => c === g));
 let group = "";
-for (const [g, name, files, argv] of grouped) {
+for (const [g, name, files, argv, probe] of grouped) {
   if (g !== group) { group = g; console.log(`\n  ${group}`); }
-  if (!have(argv)) { console.log(`    skip  ${name.padEnd(15)} not installed`); tally.skip++; continue; }
+  if (!have(argv, probe)) { console.log(`    skip  ${name.padEnd(15)} not installed`); tally.skip++; continue; }
   const dir = mkdtempSync(join(tmpdir(), "whatbroke-coverage-"));
   try {
     for (const [path, body] of Object.entries(files)) {
