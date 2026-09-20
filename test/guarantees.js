@@ -42,6 +42,10 @@ test("the exit code is the command's own, in every output mode", () => {
     [["node", "-e", "process.exit(3)"], 3, "exit 3"],
     [["node", "-e", "process.exit(42)"], 42, "an unusual code"],
     [["definitely-not-a-binary-xyz"], 127, "command not found"],
+    // Not every way of failing to start arrives as an "error" event on the child. node
+    // rejects an empty name from spawn() itself, and a throw there used to escape as a
+    // stack trace under whatbroke's own exit code - the one thing this promise forbids.
+    [[""], 127, "an empty command name"],
   ];
   const wrong = [];
   for (const [command, want, label] of cases) {

@@ -1,0 +1,9 @@
+<?xml version="1.0" encoding="UTF-8"?>
+
+<checkstyle version="5.0">
+  <file name="shop.go">
+    <error column="0" line="1" message=": # sweep&#xA;./shop.go:6:2: declared and not used: unused" severity="error" source="typecheck"></error>
+  </file>
+</checkstyle>
+1 issues:
+* typecheck: 1

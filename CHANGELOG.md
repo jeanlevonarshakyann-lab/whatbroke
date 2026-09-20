@@ -189,6 +189,70 @@
   ever shortened and every diagnostic showed its full absolute path.
 - The exhaustive phases of `npm run test:heavy` report where they are. They take minutes,
   and a suite that prints nothing for minutes cannot be told from one that has hung.
+- A command that cannot be executed is reported rather than thrown. node delivers some
+  spawn failures by raising from `spawn()` itself instead of emitting `error` on the
+  child, so the handler attached to the returned child never saw them: a file with no
+  shebang (ENOEXEC) and an empty command name both escaped as a node stack trace under
+  whatbroke's own exit code. Both now produce the same `spawn-error` report and exit 127
+  that a missing command already did, and the message names the command, which the
+  ENOEXEC one does not. `whatbroke -- pnpm test` found this against a stock pnpm, whose
+  installed placeholder binary has no shebang. What a shebang-less file does is node's
+  choice and not the same everywhere - posix_spawn reports ENOEXEC, execvp retries it
+  under `/bin/sh` and runs it - so what is promised is the part that is whatbroke's:
+  it never throws, stdout is always one valid report, and the report says which command
+  could not start. Not what node called the reason: the same errno is `ENOEXEC` on some
+  versions and `Unknown system error -8` on others.
+- A located warning is recognised as an aside even when it names the rule that fired.
+  The fallback already skipped `file:line: warning:` - gcc, clang, javac and go all
+  write it, and a javac run that compiled cleanly once came back as "3 errors" - but the
+  colon is not always the next character after the word. oxlint writes
+  `shop.js:1:7: warning eslint(no-unused-vars): ...`, so an oxlint run that exited 0 on
+  three warnings read as "3 errors (no parser for this tool - best guess)", while the
+  same run under eslint correctly read as nothing. What may sit between the severity and
+  its colon is a rule name, optionally qualified by the plugin that owns it; anything
+  longer is prose, and prose after a severity word means the word was not a severity.
+- `bundle install` is read. It is the first thing a Ruby CI job runs and the first thing
+  that fails, and all three of the ways it fails came back as "could not identify a
+  diagnostic" with the log handed back: a gem that is not there, two gems whose versions
+  cannot both be had, and a `Gemfile` that will not parse. bundler writes prose rather
+  than diagnostics - no severity word, no `file:line`, and a sentence that wraps
+  mid-clause - so each shape is matched whole and read from a bounded region. The
+  missing gem's sentence is rejoined, because the half on the second line is the one
+  saying it is not installed locally either. A conflict gives the resolver's own
+  explanation, which names the two gems, rather than the "version solving has failed"
+  that only restates it; with no closing line the explanation is not read at all, since
+  prose read to the end of a buffer is how a CI log's next tool becomes bundler's.
+- A markdownlint record that lost the fields naming it is no longer reported half-read.
+  What a document has to carry to be recognised as markdownlint's does not include the
+  sentence describing a rule, nor a non-empty list of its names, so a cut document could
+  produce a failure with no message - which the schema forbids - or one with no code.
+  markdownlint names every rule twice, "MD032" and "blanks-around-lists", so the second
+  name stands in when the sentence is gone, and a record with neither is dropped.
+- A monorepo or CI prefix is recognised as a wrapper when it survives inside a message,
+  not only when it changes the tool or the count. Every gate deciding whether a
+  discovered prefix is a wrapper or the tool's own data compared the reading before and
+  after it came off, and a message running over several lines defeats all of them: the
+  tool is the same, the count is the same, and the stamp is still sitting on every line
+  after the first. deno's JUnit reporter quotes the failing source under the message, so
+  under `api:test: ` that quote read as `api:test:   if (1 + 1 !== 3) ...`. Measured over
+  430 captures each wrapped in ten real CI shapes, a per-line prefix changed 25 readings
+  and now changes 16; nothing is lost either way, and the corpus is byte-identical.
+- golangci-lint's structured formats give a package that will not compile the same place
+  its line-per-finding format does. When `typecheck` reports the compiler rather than a
+  finding of its own, golangci-lint positions it at the head of the file and leaves the
+  place the compiler named inside the text - so one run read three ways said shop.go:6,
+  shop.go:1 and shop.go:1, with the two structured readings wrong and carrying the
+  compiler's package banner in the message. The embedded place is taken only when it
+  names the file the record already names, because golangci-lint quotes a compiler that
+  can name any file in the package.
+- A rubocop message that runs over more than one line no longer makes its whole GitHub
+  Actions log read as nothing. GitHub's command syntax cannot carry a newline, so rubocop
+  encodes one as `%0A` - and it writes one for every syntax offence, where the parser it
+  used is named on a second line. Decoded, `.` could not cross that newline and `$` sat
+  at the end of the string, so no annotation matched; a rubocop log is claimed by whether
+  any offence was read at all, so the entire run came back as "could not identify a
+  diagnostic". The rest of the message is now kept whole, which is what the JSON format
+  already gives for the same run.
 
 - Byte-identical CI retry blocks are collapsed before parsing. De-duplication already
   showed each diagnostic once, but 67 of 200 duplicated fixtures still changed their

@@ -265,6 +265,36 @@
       "generic": 1
     }
   },
+  "bundler_conflict_fail.txt": {
+    "winner": "bundle",
+    "parser": "bundler",
+    "failures": 1,
+    "claimants": [
+      "bundler",
+      "generic"
+    ],
+    "shadow": {}
+  },
+  "bundler_gemfile_syntax_fail.txt": {
+    "winner": "bundle",
+    "parser": "bundler",
+    "failures": 1,
+    "claimants": [
+      "bundler",
+      "generic"
+    ],
+    "shadow": {}
+  },
+  "bundler_missing_gem_fail.txt": {
+    "winner": "bundle",
+    "parser": "bundler",
+    "failures": 1,
+    "claimants": [
+      "bundler",
+      "generic"
+    ],
+    "shadow": {}
+  },
   "bunrun_crash_fail.txt": {
     "winner": "bun",
     "parser": "bun",
@@ -1721,6 +1751,16 @@
       "generic": 5
     }
   },
+  "golangci_typecheck_checkstyle_fail.txt": {
+    "winner": "golangci-lint",
+    "parser": "golangci-lint",
+    "failures": 1,
+    "claimants": [
+      "golangci-lint",
+      "generic"
+    ],
+    "shadow": {}
+  },
   "golangci_typecheck_fail.txt": {
     "winner": "golangci-lint",
     "parser": "golangci-lint",
@@ -1734,6 +1774,16 @@
       "go": 2,
       "generic": 4
     }
+  },
+  "golangci_typecheck_json_fail.txt": {
+    "winner": "golangci-lint",
+    "parser": "golangci-lint",
+    "failures": 1,
+    "claimants": [
+      "golangci-lint",
+      "generic"
+    ],
+    "shadow": {}
   },
   "gomod_chain_fail.txt": {
     "winner": "go mod",
@@ -3962,6 +4012,16 @@
     "winner": "rubocop",
     "parser": "rubocop",
     "failures": 6,
+    "claimants": [
+      "rubocop",
+      "generic"
+    ],
+    "shadow": {}
+  },
+  "rubocop_github_multiline_fail.txt": {
+    "winner": "rubocop",
+    "parser": "rubocop",
+    "failures": 2,
     "claimants": [
       "rubocop",
       "generic"

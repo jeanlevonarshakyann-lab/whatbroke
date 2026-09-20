@@ -213,29 +213,36 @@ if (argv.length === 0) {
     report(text, 0, truncated, null, lines);
   });
 } else {
-  const child = spawn(argv[0], argv.slice(1), { stdio: ["inherit", "pipe", "pipe"] });
-  // Both streams share one budget, so interleaved stdout/stderr keeps its ordering
-  // within each stream and the cap still means what --max-bytes says it means.
-  const capture = createCapture(maxBytes);
-  const tee = (d) => capture.push(d);
-  relay(child.stdout, process.stdout, { suppress: quiet, tee });
-  // Keep diagnostics visible on stderr while JSON remains clean on stdout.
-  relay(child.stderr, process.stderr, { suppress: quiet && !json, tee });
-  child.on("error", (e) => {
-    process.stderr.write(`whatbroke: ${e.message}\n`);
-    report("", 127, false, e.message);
-  });
-  child.on("close", (code, signal) => {
-    if (code === 0 && !json) {
-      // Nothing to print about a command that worked - and one thing to remember: that
-      // nothing is failing here now. Without that baseline the next run to break is
-      // compared against the run that first broke, and called nothing new.
-      if (sinceLast) track(null, capture.finish().truncated, null, 0);
-      process.exitCode = 0;
-      return;
-    }
-    const signalCode = signal ? 128 + (osConstants.signals?.[signal] ?? 1) : null;
-    const { text, truncated, lines } = capture.finish();
-    report(text, code ?? signalCode ?? 1, truncated, null, lines, signal);
-  });
+  // A failed spawn can throw before it returns a child, or emit an error afterward.
+  // Both paths must report the command that failed and preserve exit code 127.
+  const startFailed = (e) => {
+    const said = e.message.includes(argv[0]) ? e.message : `spawn ${argv[0]} ${e.code ?? e.message}`;
+    process.stderr.write(`whatbroke: ${said}\n`);
+    report("", 127, false, said);
+  };
+  let child = null;
+  try {
+    child = spawn(argv[0], argv.slice(1), { stdio: ["inherit", "pipe", "pipe"] });
+  } catch (e) { startFailed(e); }
+  if (child) {
+    // Both streams share one budget, so interleaved stdout/stderr keeps its ordering
+    // within each stream and the cap still means what --max-bytes says it means.
+    const capture = createCapture(maxBytes);
+    const tee = (d) => capture.push(d);
+    relay(child.stdout, process.stdout, { suppress: quiet, tee });
+    // Keep diagnostics visible on stderr while JSON remains clean on stdout.
+    relay(child.stderr, process.stderr, { suppress: quiet && !json, tee });
+    child.on("error", startFailed);
+    child.on("close", (code, signal) => {
+      if (code === 0 && !json) {
+        // A successful command clears the previous failure baseline.
+        if (sinceLast) track(null, capture.finish().truncated, null, 0);
+        process.exitCode = 0;
+        return;
+      }
+      const signalCode = signal ? 128 + (osConstants.signals?.[signal] ?? 1) : null;
+      const { text, truncated, lines } = capture.finish();
+      report(text, code ?? signalCode ?? 1, truncated, null, lines, signal);
+    });
+  }
 }

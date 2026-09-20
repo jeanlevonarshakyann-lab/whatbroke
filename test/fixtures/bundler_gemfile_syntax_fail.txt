@@ -1,0 +1,13 @@
+
+[!] There was an error parsing `Gemfile`: syntax errors found -   2 | 
+  3 | gem "rake"
+> 4 | gem "puma" if
+    |            ^~ expected a predicate expression for the `if` statement
+    |              ^ unexpected end-of-input, assuming it is closing the parent top level context
+. Bundler cannot continue.
+
+ #  from /home/dev/shop/Gemfile:4
+ #  -------------------------------------------
+ #  gem "rake"
+ >  gem "puma" if
+ #  -------------------------------------------
