@@ -2,6 +2,19 @@
 
 ## Unreleased
 
+- One diagnosis read by two parsers from the same lines is reported once. Two readings
+  that agree on file, line, column, title and message are one diagnosis unless the
+  source line each one quotes says otherwise - which is how two cargo runs both
+  reporting E0308 at `src/main.rs:2:22` stay two failures. In a log where two tools'
+  lines are interleaved, though, each parser quotes whichever echo it landed next to,
+  so both quotes are wrong and one diagnosis read as two. A quote now counts as
+  evidence only when the two readings came from raw regions that do not overlap: the
+  cargo runs are read from regions far apart, a shredded pair from the same region
+  twice. Measured over ~279,000 woven fixture pairs, two pairs could be woven into a
+  repeated diagnosis before this and one after - and that one is the cargo pair, whose
+  two readings quote two different real source lines and are genuinely two. The corpus
+  itself is byte-identical.
+
 - `whatbroke -- python -m pytest` reads as pytest rather than as python. Naming the
   command that ran is evidence for breaking ties between parsers, ranked by where each
   tool is mentioned - and that put `python3` ahead of the module it was launching. It only

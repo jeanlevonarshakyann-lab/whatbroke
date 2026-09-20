@@ -796,6 +796,28 @@ test("a rubocop offense quotes the source its carets start under", () => {
   assert.equal(both.length, 1, "one offense, read from two captures, was reported twice");
 });
 
+test("two parsers reading one shredded diagnosis report it once", () => {
+  // A crash from a second bun process shredded into a bun test report. Both the bun
+  // runtime reader and the node reader find the TypeError, agree on its file, line,
+  // column, title and message, and quote a DIFFERENT source line - because in a log
+  // where two tools' lines are interleaved each one takes whichever echo it landed
+  // next to, and neither quote is the right one.
+  //
+  // A differing quote is what says two runs reported the same thing at the same place
+  // (the cargo pair below), so it cannot simply be ignored. What separates the two is
+  // where each reading came from: the cargo runs are read from raw regions far apart,
+  // and these two are read from the same region twice.
+  const T = fx("bun_throw_fail.txt").split("\n"), S = fx("bun_syntax_fail.txt").split("\n");
+  const woven = [...T.slice(0, 9), ...S.slice(0, 4), ...T.slice(9, 15), ...S.slice(4), ...T.slice(15)].join("\n");
+  const seen = new Map();
+  for (const f of allFailures(analyse(woven))) {
+    const k = JSON.stringify([f.file ?? null, f.line ?? null, f.col ?? null, f.title ?? "", f.message ?? ""]);
+    seen.set(k, (seen.get(k) ?? 0) + 1);
+  }
+  assert.deepEqual([...seen].filter(([, n]) => n > 1), [],
+    "one diagnosis, read by two parsers from the same lines, was reported twice");
+});
+
 test("two tools writing into one pipe never crash it or double a diagnosis", () => {
   let seed = 20260910;
   const rnd = () => (seed = (seed * 1103515245 + 12345) & 0x7fffffff) / 0x7fffffff;
