@@ -2,6 +2,24 @@
 
 ## Unreleased
 
+- Reads `gofmt -d`, the other half of Go's format gate, which was read as nothing at all.
+  The file is named once in the header and each `@@` says where in it, so one file with two
+  unformatted regions is two places rather than one entry, each at the line its change
+  actually starts on rather than the number the hunk carries - a hunk opens with up to
+  three unchanged lines of context - the same shape `cargo fmt
+  --check` is read as. The source line as it stands now is quoted with each. Not `gofmt
+  -l`, which is how most CI jobs run it: that prints bare filenames and nothing else, and
+  nothing in a list of paths says gofmt wrote it rather than some other step. The header
+  has to name one file twice - `diff x.go.orig x.go` - which is what keeps it off `git
+  diff` and off a plain `diff a b`, and a file's diff ends where another one begins, so a
+  job running gofmt and then a test suite does not have minitest's or PHPUnit's value diff
+  read as more unformatted Go.
+- A failure whose name is blank is reported without one rather than with `subject: ""`,
+  which the report schema refuses. Playwright's JSON carries each test's title as a field
+  and a document whose titles are empty produced exactly that; the guard is in one place
+  for every parser, beside the ones that already drop a file, a line or a column that
+  points at nothing.
+
 - Reads `cargo fmt --check`, the format gate almost every Rust CI job runs. It was read as
   nothing at all: the job failed, and whatbroke said there was no parser for it and handed
   the diff back whole. rustfmt numbers the line each region it would rewrite starts at, so
