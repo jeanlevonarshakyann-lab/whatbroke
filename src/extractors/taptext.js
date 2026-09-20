@@ -30,6 +30,10 @@ const GOT_RE = /^[^\S\n]*#[^\S\n]*got:[^\S\n]*(.*?)[^\S\n]*$/;
 const WANTED_RE = /^[^\S\n]*#[^\S\n]*expected:[^\S\n]*(.*?)[^\S\n]*$/;
 // "# Looks like you failed 2 tests of 3." and mocha's "# tests 2" are the epilogue.
 const EPILOGUE_RE = /^[^\S\n]*#[^\S\n]*(?:Looks like|tests?[^\S\n]+\d|pass[^\S\n]+\d|fail[^\S\n]+\d|skip)/i;
+// Without a plan there is no count TAP guarantees - but Test::More prints its own on the
+// way out: "# Looks like you failed 2 tests of 3." Counting only what said `ok` reports
+// "0 passed" for a run where one test passed, which is a claim, and a false one.
+const LOOKS_LIKE_RE = /^[^\S\n]*#[^\S\n]*Looks like you failed[^\S\n]+(\d+)[^\S\n]+tests?[^\S\n]+of[^\S\n]+(\d+)/im;
 const FAILED_TEST_RE = /^[^\S\n]*#[^\S\n]*Failed test\b/i;
 // `prove` prints the diagnostics BEFORE the TAP stream rather than under each result, so
 // the block below them is empty and the comments are orphaned. They are not anonymous,
@@ -54,26 +58,43 @@ const MAX_MESSAGE_LINES = 2;
 export default {
   name: "tap-text",
   // Strings a log has to hold for this parser to read anything from it - see src/router.js.
-  signals: ["not ok"],
+  // "Failed test" is Test::More's, and is how a `prove` run with no -v is recognised at
+  // all: prove consumes the TAP stream itself and passes only these diagnostics through.
+  signals: ["not ok", "Failed test"],
   category: "test",
   commands: ["tap", "prove", "mocha", "tape"],
 
   detect(text) {
-    if (!PLAN_RE.test(text)) return false;
     const lines = text.split("\n");
-    return lines.some((line, i) =>
-      NOT_OK_RE.test(line) && !structured(lines, i) && !GROUP_RE.test(line));
+    if (PLAN_RE.test(text) && lines.some((line, i) =>
+      NOT_OK_RE.test(line) && !structured(lines, i) && !GROUP_RE.test(line))) return true;
+    // Failing that: `prove` without -v, which is how it is nearly always run.
+    // It consumes the TAP stream itself and prints only Test::More's diagnostics, so the
+    // document TAP's plan bounds is not there to bound. What bounds it instead is the
+    // diagnostics being complete - a named test that says where it failed, or what it
+    // wanted - which is already what namedDiagnostics requires before it keeps one.
+    //
+    // A separate question from the one above, not an alternative to it: a log can hold a
+    // structured TAP stream, which this parser leaves to the dialect parsers, and a prove
+    // run whose diagnostics nothing else will read. Asking only one of the two dropped
+    // the prove half of every such pair.
+    //
+    // What prove prints in the stream's place, `t.t (Wstat: 512 Tests: 2 Failed: 2)`,
+    // names no test, no line and no expectation. That is what the fallback was reading.
+    return namedDiagnostics(lines).length > 0;
   },
 
   extract(text) {
     const lines = text.split("\n");
-    const failures = [];
     let planned = 0, passed = 0;
     for (const line of lines) if (OK_RE.test(line) && !NOT_OK_RE.test(line)) passed++;
     const plan = text.match(PLAN_RE);
     if (plan) planned = +plan[1];
 
     const named = namedDiagnostics(lines);
+    // Each failure with the line it was read from, so leftovers below can be put back in
+    // the order the log tells it rather than after everything else.
+    const found = [];
     for (let i = 0; i < lines.length; i++) {
       const head = lines[i].match(NOT_OK_RE);
       if (!head || structured(lines, i) || GROUP_RE.test(lines[i])) continue;
@@ -107,7 +128,13 @@ export default {
       }
       // Nothing under the result line - so if this test was named in a diagnostic
       // elsewhere in the log, that is where it said what went wrong.
-      const orphan = (!file && !body.length && got.wanted === undefined) ? named.get(name) : undefined;
+      // Whatever this result's block covered has been read as part of it. Raw Test::More
+      // prints the diagnostic directly under the `not ok` it belongs to, and without this
+      // the leftover pass below would report every one of them a second time.
+      for (const d of named) if (d.from >= i && d.from < end) d.used = true;
+      const orphan = (!file && !body.length && got.wanted === undefined)
+        ? named.find((d) => d.name === name && !d.used) : undefined;
+      if (orphan) orphan.used = true;
       if (orphan) { file = orphan.file; at = orphan.line; got.found = orphan.found; got.wanted = orphan.wanted; }
       const failure = withSource({
         file, line: at, col,
@@ -117,12 +144,34 @@ export default {
           : (body.join("\n") || name),
       }, i, end);
       // An orphan's facts were read where its harness printed them, too.
-      failures.push(orphan ? alsoFrom(failure, orphan.from, orphan.to) : failure);
+      found.push({ at: i, failure: orphan ? alsoFrom(failure, orphan.from, orphan.to) : failure });
     }
+    // A diagnostic no result line took is a failure in its own right. `prove` with no -v
+    // has nothing but these - it consumes the TAP stream itself - and Test::More has
+    // already said everything needed: which test, which file and line, and what it
+    // wanted. Asking whether each one was consumed, rather than whether any result was
+    // found at all, is what keeps this working in a log that holds two runs: a mocha
+    // stream woven with a prove run has results, and prove's diagnostics still belong to
+    // nothing in it.
+    for (const d of named) {
+      if (d.used) continue;
+      found.push({ at: d.from, failure: withSource({
+        file: d.file, line: d.line,
+        title: d.name, subject: d.name, severity: "error",
+        message: d.wanted !== undefined && d.found !== undefined
+          ? `expected ${d.wanted}, got ${d.found}`
+          : d.name,
+      }, d.from, d.to) });
+    }
+    // In the order the log tells it. prove prints its diagnostics before the stream, so
+    // a leftover can belong ahead of results that were read after it.
+    found.sort((a, b) => a.at - b.at);
+    const failures = found.map((f) => f.failure);
     if (!failures.length) return null;
     // TAP's plan is the only count it guarantees, so what passed is what it says minus
     // what failed - not a tally line, which bare TAP does not have to print.
-    const ran = planned || passed + failures.length;
+    const tally = text.match(LOOKS_LIKE_RE);
+    const ran = planned || (tally ? +tally[2] : passed + failures.length);
     return {
       tool: "tap",
       summary: `${failures.length} failed, ${Math.max(0, ran - failures.length)} passed`,
@@ -131,13 +180,15 @@ export default {
   },
 };
 
-/** Test::More's diagnostics, keyed by the test name they are about. */
+/** Test::More's diagnostics, in the order it printed them, each naming the test it is
+ *  about. A list and not a map keyed by that name: one log can hold the same suite twice,
+ *  and two runs of a test called "invoice total" are two failures, not one. */
 function namedDiagnostics(lines) {
-  const named = new Map();
+  const named = [];
   for (let i = 0; i < lines.length; i++) {
     const head = lines[i].match(FAILED_NAMED_RE);
-    if (!head || named.has(head[1])) continue;
-    const found = { from: i, to: i + 1 };
+    if (!head) continue;
+    const found = { name: head[1], from: i, to: i + 1 };
     for (let j = i + 1; j < lines.length && j <= i + 6; j++) {
       if (FAILED_NAMED_RE.test(lines[j])) break;
       const where = lines[j].match(AT_RE);
@@ -147,7 +198,7 @@ function namedDiagnostics(lines) {
       const w = lines[j].match(WANTED_RE);
       if (w) { found.wanted ??= w[1]; found.to = j + 1; }
     }
-    if (found.file || found.wanted !== undefined) named.set(head[1], found);
+    if (found.file || found.wanted !== undefined) named.push(found);
   }
   return named;
 }
