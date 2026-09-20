@@ -52,6 +52,30 @@ const CASES = [
   ["package", "npm", { "package.json": "{\"name\":\"x\",\"private\":true,\"scripts\":{\"build\":\"true\"}}\n" }, ["npm", "run", "nosuchscript"]],
   ["package", "pip", {}, ["pip", "install", "nonexistent-package-xyzzy-12345==9.9.9"]],
   ["vcs", "git", {}, ["git", "pull"]],
+
+  // Tools that read a project rather than a single file. Each still writes only what it
+  // needs; anything wanting an install step is left out, because a measurement that has
+  // to fetch a dependency tree first is measuring the network.
+  ["lint", "eslint", { "eslint.config.js": "export default [{ rules: { eqeqeq: \"error\" } }];\n", "package.json": "{\"name\":\"c\",\"type\":\"module\",\"private\":true}\n", "shop.js": "if (1 == 2) {}\n" }, ["eslint", "shop.js"]],
+  ["lint", "oxlint", { "shop.js": "const unused = 1;\nif (unused == null) { debugger; }\n" }, ["oxlint", "-D", "correctness", "-D", "suspicious", "shop.js"]],
+  ["lint", "stylelint", { ".stylelintrc.json": "{ \"rules\": { \"length-zero-no-unit\": true } }\n", "shop.css": ".c { margin: 0px; }\n" }, ["stylelint", "shop.css"]],
+  ["lint", "rubocop", { ".rubocop.yml": "AllCops:\n  NewCops: disable\n", "shop.rb": "class shop\nend\n" }, ["rubocop", "shop.rb"]],
+  ["lint", "golangci-lint", { "go.mod": "module g\n\ngo 1.21\n", "shop.go": "package g\n\nfunc T() int {\n\tunused := 1\n\treturn 0\n}\n" }, ["golangci-lint", "run", "./..."]],
+  ["lint", "biome", { "b.js": "const unused = 1;\nif (unused == null) { debugger; }\n" }, ["biome", "check", "b.js"]],
+  ["format", "prettier", { "p.js": "const x = {a:1,\n" }, ["prettier", "--check", "p.js"]],
+  ["format", "black", { "f.py": "def  bad( ):\n    return  1\n" }, ["black", "--check", "f.py"]],
+  ["format", "sass", { "shop.scss": ".a {\n  color: $missing-var;\n}\n" }, ["sass", "shop.scss"]],
+  ["compile", "dotnet", { "Shop.csproj": "<Project Sdk=\"Microsoft.NET.Sdk\">\n  <PropertyGroup>\n    <OutputType>Exe</OutputType>\n    <TargetFramework>net9.0</TargetFramework>\n  </PropertyGroup>\n</Project>\n", "Program.cs": "class Shop { static void Main() { int x = \"hello\"; } }\n" }, ["dotnet", "build"]],
+  ["build", "swc", { "e.js": "const x = {a:1,\n" }, ["swc", "e.js"]],
+  ["build", "webpack", { "e.js": "const x = {a:1,\n" }, ["webpack", "--entry", "./e.js", "--mode", "production"]],
+  ["build", "make", { "Makefile": "all: bad.o\n\nbad.o: bad.c\n\tclang -c bad.c -o bad.o\n", "bad.c": "int main(void) { return undefined_symbol; }\n" }, ["make"]],
+  ["package", "bundle", { "Gemfile": "source \"https://rubygems.org\"\n\ngem \"invoice-formatter-xyzzy\"\n" }, ["bundle", "install"]],
+  ["package", "composer", { "composer.json": "{\n  \"name\": \"shop/api\",\n  \"require\": { \"vendor/definitely-not-real-xyzzy\": \"^1.0\" }\n}\n" }, ["composer", "install", "--no-interaction"]],
+  ["package", "uv", { "pyproject.toml": "[project]\nname = \"shop\"\nversion = \"0.1.0\"\ndependencies = [\"definitely-not-real-xyzzy>=1.0\"]\n" }, ["uv", "lock"]],
+  ["package", "poetry", { "pyproject.toml": "[project]\nname = \"shop\"\nversion = \"0.1.0\"\ndependencies = [\"definitely-not-real-xyzzy>=1.0\"]\n" }, ["poetry", "lock"]],
+  ["infra", "terraform", { "main.tf": "output \"o\" {\n  value = var.undefined_one\n}\n" }, ["terraform", "validate"]],
+  ["infra", "kubectl", { "bad.yaml": "apiVersion: v1\nkind: Pod\nmetadata:\n  name: shop\nspec:\n  containers:\n  - name: api\n    image: nginx\n    ports:\n    - containerPort: \"80\"\n" }, ["kubectl", "apply", "--dry-run=client", "-f", "bad.yaml"]],
+  ["infra", "docker", { "Dockerfile": "FROM alpine:3.19\nRUN nosuchcommand --help\n" }, ["docker", "build", "."]],
 ];
 
 const have = (argv) => spawnSync(process.platform === "win32" ? "where" : "which", [argv[0]], { encoding: "utf8" }).status === 0;
@@ -68,10 +92,14 @@ function read(dir, argv) {
 }
 
 const tally = { read: 0, guess: 0, none: 0, skip: 0 };
+// Cases are written where they were found rather than sorted, so gather them by group
+// before printing: a heading that appears twice reads as two different things.
+const order = [...new Set(CASES.map(([g]) => g))];
+const grouped = order.flatMap((g) => CASES.filter(([c]) => c === g));
 let group = "";
-for (const [g, name, files, argv] of CASES) {
+for (const [g, name, files, argv] of grouped) {
   if (g !== group) { group = g; console.log(`\n  ${group}`); }
-  if (!have(argv)) { console.log(`    skip  ${name.padEnd(13)} not installed`); tally.skip++; continue; }
+  if (!have(argv)) { console.log(`    skip  ${name.padEnd(15)} not installed`); tally.skip++; continue; }
   const dir = mkdtempSync(join(tmpdir(), "whatbroke-coverage-"));
   try {
     for (const [path, body] of Object.entries(files)) {
@@ -81,7 +109,7 @@ for (const [g, name, files, argv] of CASES) {
     if (name === "git") spawnSync("git", ["init", "-q", "."], { cwd: dir });
     const got = read(dir, argv);
     const mark = got.state === "read" ? "ok  " : got.state === "guess" ? "GUESS" : "NONE";
-    console.log(`    ${mark.padEnd(6)}${name.padEnd(13)}${got.tool ? `${got.tool}, ${got.n} failure(s)` : "nothing read"}`);
+    console.log(`    ${mark.padEnd(6)}${name.padEnd(15)}${got.tool ? `${got.tool}, ${got.n} failure(s)` : "nothing read"}`);
     tally[got.state]++;
   } finally { rmSync(dir, { recursive: true, force: true }); }
 }
