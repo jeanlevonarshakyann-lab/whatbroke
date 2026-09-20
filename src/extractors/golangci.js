@@ -25,6 +25,30 @@ import { withSource } from "../ownership.js";
 // matched without reading a long line again from every colon in it. The `./` in front
 // is optional and greedy: the pattern tries the file without it only once it has failed
 // with it.
+// A package that will not compile is reported by the `typecheck` linter, and what it
+// reports is the compiler's own output rather than a finding of its own. The position
+// it gives for that is the head of the file, and the place the compiler named is left
+// inside the text:
+//
+//   Pos  {"Filename": "shop.go", "Line": 1, "Column": 0}
+//   Text ": # sweep\n./shop.go:6:2: declared and not used: unused"
+//
+// The line-per-finding format carries the same thing with the linter's name on the
+// end, so `issueLine` reads it and gives shop.go:6 - and the two formats of one run
+// disagreed about where the failure was, with the structured one wrong. This is the
+// same shape the README already describes for `go vet`. The embedded place is taken
+// only when it names the file the record already names, so a message that merely
+// quotes some other file's line cannot move a finding to it.
+const EMBEDDED = /^(?:\.[\\/])?(\S+\.go):(\d+):(\d+):[^\S\n]+(\S.*?)[^\S\n]*$/m;
+const sameFile = (a, b) => {
+  const x = String(a ?? "").replace(/\\/g, "/"), y = String(b ?? "").replace(/\\/g, "/");
+  return !!x && !!y && (x === y || x.endsWith("/" + y) || y.endsWith("/" + x));
+};
+const embedded = (text, file) => {
+  const m = String(text ?? "").match(EMBEDDED);
+  return m && sameFile(m[1], file) ? { line: +m[2], col: +m[3], message: m[4] } : null;
+};
+
 export const issueLine = (line) => tailFirst(line, {
   tail: /\(([\w-]+)\)[^\S\n]*$/, spaceBefore: 1, emptyMessage: false,
   heads: function* (l, c, clear) {
@@ -99,7 +123,9 @@ function reported(s, lines, placed = false) {
       for (const e of elements(f[2], CHECKSTYLE_ERROR, CHECKSTYLE_ERROR_ELEMENT)) {
         const a = xmlAttributes(e[1]);
         if (!a.source) continue;
-        out.push({ file, line: positive(a.line), col: positive(a.column), code: a.source, message: String(a.message ?? "").trim(),
+        const inner = embedded(a.message, file);
+        out.push({ file, line: inner ? inner.line : positive(a.line), col: inner ? inner.col : positive(a.column),
+          code: a.source, message: inner ? inner.message : String(a.message ?? "").trim(),
           ...inText(f.indices[2][0] + e.index, e[0].length) });
       }
     }
@@ -136,8 +162,11 @@ function reported(s, lines, placed = false) {
   for (const { value: doc, where } of s.includes('"Issues"') ? documents(JSON_MARK) : []) {
     for (const i of doc.Issues) {
       const stmt = typeof i.SourceLines?.[0] === "string" ? i.SourceLines[0].trim() : undefined;
-      out.push({ file: i.Pos.Filename, line: positive(i.Pos.Line), col: positive(i.Pos.Column), code: i.FromLinter,
-        message: String(i.Text ?? "").trim(), ...(stmt ? { stmt } : {}), ...record(where, i) });
+      const inner = embedded(i.Text, i.Pos.Filename);
+      out.push({ file: i.Pos.Filename,
+        line: inner ? inner.line : positive(i.Pos.Line), col: inner ? inner.col : positive(i.Pos.Column),
+        code: i.FromLinter, message: inner ? inner.message : String(i.Text ?? "").trim(),
+        ...(stmt && !inner ? { stmt } : {}), ...record(where, i) });
     }
   }
   for (const { value: doc, where } of s.includes('"check_name"') ? documents(CLIMATE_MARK) : []) {

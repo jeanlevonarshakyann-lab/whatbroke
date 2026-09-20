@@ -154,7 +154,15 @@ function offenses(s) {
 
   // --format github writes no title, and puts the cop in front of the message instead.
   if (/^[^\S\n]*::(?:error|warning)[^\S\n]/m.test(s)) {
-    const named = new RegExp(String.raw`^(${COP}):[^\S\n]+(.+)$`);
+    // The message may run over more than one line. GitHub's command syntax cannot carry
+    // a newline, so a tool encodes one as %0A and the reader above decodes it - and
+    // rubocop writes one for every syntax offence, which is where the parser it used is
+    // named: "Lint/Syntax: unexpected token kEND\n(Using Ruby 2.7 parser; ...)". With
+    // `.` unable to cross it and `$` at the end of the string, none of those annotations
+    // matched, and since a rubocop log is claimed by whether any offence was read, one
+    // multi-line message made the whole run read as nothing at all. The rest of the
+    // message is kept whole, which is what the JSON format already gives for it.
+    const named = new RegExp(String.raw`^(${COP}):[^\S\n]+([\s\S]+)$`);
     for (const a of githubAnnotations(s)) {
       const m = a.props.title ? null : a.message.match(named);
       if (!m || !a.props.file || !(+a.props.line > 0)) continue;

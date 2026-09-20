@@ -60,7 +60,18 @@ export default {
     // the place it was reported in as well.
     for (const { value: records, where } of jsonDocumentsAt(s, JSON_MARK)) {
       for (const r of records) {
-        const code = r.ruleNames[0];
+        // A cut document hands back records with fields missing, and what the document
+        // has to carry to be recognised as markdownlint's at all - see JSON_MARK - does
+        // not include either of these. A record whose ruleNames array survived but is
+        // empty produced a failure with no code; one that lost its ruleDescription
+        // produced a failure with no message, which is a report the schema forbids and
+        // test/fuzz.js caught. markdownlint names every rule twice - "MD032" and
+        // "blanks-around-lists" - so the second name stands in when the sentence is
+        // gone, and a record that has neither says nothing and is dropped.
+        const code = Array.isArray(r?.ruleNames) ? r.ruleNames[0] : undefined;
+        const described = r?.errorDetail ? `${r.ruleDescription ?? r.ruleNames?.[1] ?? code} [${r.errorDetail}]`
+          : r?.ruleDescription ?? r?.ruleNames?.[1];
+        if (!code || !described) continue;
         const key = `${r.fileName}:${r.lineNumber}::${code}`;
         const place = where(r);
         const failure = withSource({
@@ -69,7 +80,7 @@ export default {
           title: code, code, severity: "error",
           // Worded exactly as the text form words it, so one run printed both ways is one
           // failure rather than two that differ in punctuation.
-          message: r.errorDetail ? `${r.ruleDescription} [${r.errorDetail}]` : r.ruleDescription,
+          message: described,
         }, place.start, place.end);
         const earlier = seen.has(key) ? seen.get(key)
           : failures.findIndex((f) => f.file === r.fileName && f.line === r.lineNumber && f.code === code);
