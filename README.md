@@ -57,6 +57,7 @@ Either way the command is `whatbroke` (or `wb`).
 whatbroke npm test        # run it, print the distillation after
 whatbroke -q cargo build  # hide the command's own output entirely
 npm test 2>&1 | whatbroke # or pipe into it
+whatbroke < build.log     # or distil a log file you already saved
 whatbroke --json npm test # emit a stable result for CI and editor integrations
 whatbroke --github-actions npm test # add clickable errors to GitHub Actions logs
 whatbroke --format github npm test # equivalent long-form format selector

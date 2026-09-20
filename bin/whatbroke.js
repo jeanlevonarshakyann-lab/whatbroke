@@ -1,6 +1,6 @@
 #!/usr/bin/env node
 import { spawn } from "node:child_process";
-import { appendFileSync } from "node:fs";
+import { appendFileSync, statSync } from "node:fs";
 import { createRequire } from "node:module";
 import { constants as osConstants } from "node:os";
 import { analyse } from "../src/index.js";
@@ -27,6 +27,7 @@ const HELP = `whatbroke — you ran a command, it printed 400 lines. these are t
   whatbroke <command...>     run it, then distil the failure
   whatbroke -q <command...>  hide the command's own output; show only the distillation
   <command> |& whatbroke     distil output piped in (optional trailing -)
+  whatbroke < build.log      distil a log file you already have
 
   -q, --quiet   suppress the wrapped command's output
   -a, --all     don't cap the number of failures shown
@@ -220,6 +221,22 @@ if (argv.length === 0) {
   // string where every shell they have ever used says "command not found". The errno is
   // kept on the end, because it is what a bug report needs and what the schema's `error`
   // has always carried.
+  // A log already on disk is not on $PATH, so `whatbroke build.log` misses with ENOENT
+  // and `whatbroke ./build.log` with EACCES. Either way the file is sitting right there.
+  // Reading it unasked would make a mistyped command name silently distil whatever file
+  // happens to share it, so say how instead of guessing. Only a file that cannot be run
+  // qualifies: a script that failed on its shebang is one the user meant to execute.
+  const runnable = (st) => (process.platform === "win32"
+    ? /\.(?:exe|bat|cmd|com|ps1)$/i.test(argv[0])
+    : (st.mode & 0o111) !== 0);
+  const savedLog = () => {
+    if (argv.length !== 1) return false;   // `< file` would drop the command's other arguments
+    try {
+      const st = statSync(argv[0]);
+      return st.isFile() && !runnable(st);
+    } catch { return false; }
+  };
+  const shellArg = (s) => (/^[\w./-]+$/.test(s) ? s : `'${s.replace(/'/g, `'\\''`)}'`);
   const PLAINLY = {
     ENOENT: "command not found",
     EACCES: "permission denied",
@@ -239,6 +256,9 @@ if (argv.length === 0) {
       : e.message.includes(argv[0]) ? e.message
       : `spawn ${argv[0]} ${e.code ?? e.message}`;
     process.stderr.write(`whatbroke: ${said}\n`);
+    if (savedLog()) {
+      process.stderr.write(`whatbroke: ${argv[0]} is a file, not a command — to distil it: whatbroke < ${shellArg(argv[0])}\n`);
+    }
     report("", 127, false, said);
   };
   let child = null;
