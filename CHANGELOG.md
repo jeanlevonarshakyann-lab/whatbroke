@@ -211,6 +211,17 @@
   same run under eslint correctly read as nothing. What may sit between the severity and
   its colon is a rule name, optionally qualified by the plugin that owns it; anything
   longer is prose, and prose after a severity word means the word was not a severity.
+- `bundle install` is read. It is the first thing a Ruby CI job runs and the first thing
+  that fails, and all three of the ways it fails came back as "could not identify a
+  diagnostic" with the log handed back: a gem that is not there, two gems whose versions
+  cannot both be had, and a `Gemfile` that will not parse. bundler writes prose rather
+  than diagnostics - no severity word, no `file:line`, and a sentence that wraps
+  mid-clause - so each shape is matched whole and read from a bounded region. The
+  missing gem's sentence is rejoined, because the half on the second line is the one
+  saying it is not installed locally either. A conflict gives the resolver's own
+  explanation, which names the two gems, rather than the "version solving has failed"
+  that only restates it; with no closing line the explanation is not read at all, since
+  prose read to the end of a buffer is how a CI log's next tool becomes bundler's.
 
 - Byte-identical CI retry blocks are collapsed before parsing. De-duplication already
   showed each diagnostic once, but 67 of 200 duplicated fixtures still changed their

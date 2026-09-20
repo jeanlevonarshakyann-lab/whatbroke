@@ -265,6 +265,36 @@
       "generic": 1
     }
   },
+  "bundler_conflict_fail.txt": {
+    "winner": "bundle",
+    "parser": "bundler",
+    "failures": 1,
+    "claimants": [
+      "bundler",
+      "generic"
+    ],
+    "shadow": {}
+  },
+  "bundler_gemfile_syntax_fail.txt": {
+    "winner": "bundle",
+    "parser": "bundler",
+    "failures": 1,
+    "claimants": [
+      "bundler",
+      "generic"
+    ],
+    "shadow": {}
+  },
+  "bundler_missing_gem_fail.txt": {
+    "winner": "bundle",
+    "parser": "bundler",
+    "failures": 1,
+    "claimants": [
+      "bundler",
+      "generic"
+    ],
+    "shadow": {}
+  },
   "bunrun_crash_fail.txt": {
     "winner": "bun",
     "parser": "bun",
