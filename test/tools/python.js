@@ -382,6 +382,14 @@ const CASES = [
         [1, 8, "F401"], [2, 8, "F401"], [6, 5, "F841"],
       ]);
     } },
+  // `python -m pytest` with pytest not installed. One line, no traceback, no location,
+  // and the whole log of a CI step that never ran a test - which read as nothing at all.
+  { file: "python_nomodule_fail.txt", tool: "python", n: 1, check: (r) => {
+      assert.equal(r.failures[0].subject, "notarealmodule123");
+      assert.equal(r.failures[0].message, "No module named notarealmodule123");
+      // No location: the interpreter named a module, not a line of anybody's source.
+      assert.equal("file" in r.failures[0], false);
+    } },
 ];
 
 let pass = 0, fail = 0;
@@ -601,6 +609,29 @@ FAILED test_x.py::test_x
   console.log("  ok   a pytest block with only a trailing exception keeps what it raised");
   pass++;
 } catch (e) { console.log(`  FAIL trailing exception kind\n       ${e.message}`); fail++; }
+
+// The interpreter's own path at the start is what tells this from a traceback's
+// "ModuleNotFoundError: No module named 'x'", which is quoted, has a stack above it, and
+// is already read - and from any other program that says the same words.
+try {
+  const { EXTRACTORS } = await import("../../src/index.js");
+  const py = EXTRACTORS.find((e) => e.name === "python");
+  assert.equal(py.detect("/usr/bin/python3: No module named pytest\n"), true);
+  assert.equal(py.detect("python3.12: No module named pip\n"), true);
+  assert.equal(py.detect("ansible-playbook: No module named yaml\n"), false,
+    "another program saying the same words is not the interpreter");
+  // And a traceback that ends in one is still one failure, not two.
+  const tb = `Traceback (most recent call last):
+  File "a.py", line 1, in <module>
+    import nope
+ModuleNotFoundError: No module named 'nope'
+`;
+  const r = analyse(tb);
+  assert.equal(r.failures.length, 1);
+  assert.match(r.failures[0].message, /ModuleNotFoundError/);
+  console.log("  ok   the interpreter refusing to start is not a traceback, and not read twice");
+  pass++;
+} catch (e) { console.log(`  FAIL python -m refusal\n       ${e.message}`); fail++; }
 
 console.log(`\n  ${pass} passed, ${fail} failed`);
 process.exit(fail ? 1 : 0);

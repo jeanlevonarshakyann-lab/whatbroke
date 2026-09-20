@@ -80,6 +80,12 @@ const PROBABLE_DIAGNOSTIC = new RegExp([
   "^Invalid option '",
   "^The \\S+ formatter is no longer part of core\\b",
   "^No files matching the pattern\\b",
+  // ...and three more of the same kind, each the whole log of a command that never ran.
+  // None of them carries a failure word: the interpreter could not find a module, the go
+  // tool was handed a flag it does not have, terraform a subcommand it does not ship.
+  "^\\S*python[\\d.]*(?:\\.exe)?: No module named ",
+  "^flag provided but not defined: -",
+  "^(?:Terraform|OpenTofu|Tofu) has no command named \"",
   // ...and a reporter told to write to a file says so and prints nothing else, so that
   // one line is the entire log of a failed run.
   "^[A-Z][A-Z-]* report written to ",
