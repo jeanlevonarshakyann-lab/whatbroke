@@ -2,6 +2,14 @@
 
 ## Unreleased
 
+- A command that will not start says what the shell would have said. `whatbroke -- pyest`
+  reported "spawn pyest ENOENT", which is node's wording for a typo where every shell says
+  "command not found". It now reads `pyest: command not found (ENOENT)`, with the errno
+  kept on the end because that is what a bug report needs and what `error` has always
+  carried. A directory, an unreadable file and a file the kernel will not exec each get
+  the same treatment, and `whatbroke -- $CMD` with CMD unset says "no command given"
+  rather than repeating node's complaint about its own API.
+
 - A tool refusing an argument says so, whether or not it names itself. A typo'd flag in a
   CI script is one of the cheapest failures there is and none of these was read: "curl:
   option --x: is unknown", "awk: unknown option --x ignored", "jq: Unknown option --x",
