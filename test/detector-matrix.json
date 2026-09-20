@@ -925,6 +925,15 @@
     ],
     "shadow": {}
   },
+  "docker_buildkit_run_missing_fail.txt": {
+    "winner": "output",
+    "parser": "generic",
+    "failures": 2,
+    "claimants": [
+      "generic"
+    ],
+    "shadow": {}
+  },
   "docker_copy_fail.txt": {
     "winner": "docker",
     "parser": "docker",
@@ -4537,7 +4546,9 @@
       "stylelint",
       "generic"
     ],
-    "shadow": {}
+    "shadow": {
+      "generic": 3
+    }
   },
   "stylelint_fail.txt": {
     "winner": "stylelint",
@@ -4612,7 +4623,9 @@
       "stylelint",
       "generic"
     ],
-    "shadow": {}
+    "shadow": {
+      "generic": 2
+    }
   },
   "stylelint_warn_json_fail.txt": {
     "winner": "stylelint",

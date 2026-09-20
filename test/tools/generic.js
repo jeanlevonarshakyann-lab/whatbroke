@@ -153,6 +153,31 @@ try {
   console.log("  ok   a tool refusing an argument says so, named or not");
   pass++;
 } catch (e) { console.log(`  FAIL refused argument\n       ${e.message}`); fail++; }
+// A program is as often named by its path as by its name. A shell says
+// "/bin/sh: nosuchcommand: not found", env says "/usr/bin/env: node: No such file or
+// directory", and Docker BuildKit quotes the first of those for every RUN that fails -
+// which is the cause of the build failing, under BuildKit's own line saying it did.
+// Requiring the line to start with the program's name meant none of them were read.
+try {
+  const byPath = [
+    "/bin/sh: nosuchcommand: not found",
+    "/usr/bin/env: node: No such file or directory",
+    "/bin/bash: line 3: deploy: command not found",
+    "./scripts/deploy.sh: permission denied",
+  ];
+  for (const l of byPath) {
+    const r = analyse(`Starting\n${l}\n`);
+    assert.ok(r?.failures.length, `should have recognised: ${l}`);
+  }
+  // ...and the vocabulary is still what keeps an ordinary path with a colon after it out,
+  // which is the whole reason the line could not simply start with anything.
+  for (const l of ["/home/dev/app.py: all is well", "src/main.rs: nothing wrong here",
+    "/etc/hosts: 127.0.0.1 localhost"]) {
+    assert.ok(!analyse(`Starting\n${l}\n`), `should have ignored: ${l}`);
+  }
+  console.log("  ok   a program named by its path reports failures like any other");
+  pass++;
+} catch (e) { console.log(`  FAIL program named by path\n       ${e.message}`); fail++; }
 
 console.log(`\n  ${pass} passed, ${fail} failed`);
 process.exit(fail ? 1 : 0);
