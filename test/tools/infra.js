@@ -278,6 +278,18 @@ const CASES = [
       assert.equal(r.summary, "the command was refused");
       assert.equal(r.failures[0].subject, "notasubcommand");
     } },
+  // cmake refusing before it reads a script: the message is on the banner's own line and
+  // there is no location, so the pattern that ends at the colon matched none of it.
+  { file: "cmake_nosource_fail.txt", tool: "cmake", n: 1, check: (r) => {
+      assert.equal(r.failures[0].title, "cmake error");
+      assert.match(r.failures[0].message, /does not appear to contain CMakeLists\.txt/);
+      assert.equal("file" in r.failures[0], false, "nothing was read, so there is no location");
+    } },
+  { file: "cmake_generator_fail.txt", tool: "cmake", n: 1, check: (r) => {
+      assert.match(r.failures[0].message, /Could not create named generator NoSuchGenerator/);
+      // The list of generators it prints underneath is help, not more failures.
+      assert.equal(r.failures.length, 1);
+    } },
 ];
 
 let pass = 0, fail = 0;
@@ -374,6 +386,13 @@ try {
   assert.equal(tf.detect('Terraform has no command named "wibble".\n'), true);
   assert.equal(tf.detect('OpenTofu has no command named "wibble".\n'), true);
   assert.equal(tf.detect('kubectl has no command named "wibble".\n'), false);
+  // cmake names itself on its own banner, which is what makes a location-less sentence
+  // claimable at all.
+  const cm = EXTRACTORS.find((e) => e.name === "cmake");
+  assert.equal(cm.detect("CMake Error: The source directory does not exist.\n"), true);
+  assert.equal(cm.detect("CMake Warning: something minor.\n"), true);
+  assert.equal(cm.detect("Error: the source directory does not exist.\n"), false);
+  assert.equal(cm.detect("CMake Error:\n"), true, "the located form still reads");
   console.log("  ok   a refused subcommand is terraform's only when terraform says so");
   pass++;
 } catch (e) { console.log(`  FAIL terraform refused command\n       ${e.message}`); fail++; }

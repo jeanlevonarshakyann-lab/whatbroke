@@ -2,6 +2,15 @@
 
 ## Unreleased
 
+- go and CMake name themselves when they refuse to run, and are read as themselves rather
+  than falling to the generic reader or to nothing. go has four such sentences: a flag it
+  does not have, a subcommand it does not have, one it ends by pointing at `go help`, and
+  a package pattern that resolves to nothing because there is no module here - running go
+  in the wrong directory, which is a CI staple. CMake has one shape: a source directory
+  that is not there, one with no `CMakeLists.txt`, a generator it does not have. Its
+  message sits on the banner's own line with no location, because nothing has been read
+  yet, and the pattern that ends at the colon matched none of it.
+
 - Three tools that refuse to start now say so, instead of reading as nothing. `python -m
   pytest` with pytest not installed prints the interpreter's path and the module it could
   not find, and that is the whole log of a step that never ran a test. `go` handed a flag

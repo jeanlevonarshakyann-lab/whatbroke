@@ -85,6 +85,7 @@ const PROBABLE_DIAGNOSTIC = new RegExp([
   // tool was handed a flag it does not have, terraform a subcommand it does not ship.
   "^\\S*python[\\d.]*(?:\\.exe)?: No module named ",
   "^flag provided but not defined: -",
+  "^go \\S+: unknown command[^\\S\\n]*$",
   "^(?:Terraform|OpenTofu|Tofu) has no command named \"",
   // ...and a reporter told to write to a file says so and prints nothing else, so that
   // one line is the entire log of a failed run.
