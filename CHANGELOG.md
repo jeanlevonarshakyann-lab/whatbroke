@@ -29,6 +29,13 @@
   successfully: exit code: 127" - the consequence, with the cause sitting unread two
   lines above it. The path must start at a root or at the directory, because a bare
   relative one is the same shape as a source file.
+- A pytest quote belongs to the explanation under it. A block runs from its own banner
+  to the next one, so in a log where two printings of one run are interleaved it absorbs
+  its neighbour's lines - including the `>` pytest puts in front of the failing
+  statement - and quoted whichever it found first. pytest writes the marked line, at
+  most a caret row under the part it evaluated, then the `E` lines, so a marked line
+  further away than that is one the block picked up. Every capture quotes exactly what
+  it quoted before.
 
 - One diagnosis read by two parsers from the same lines is reported once. Two readings
   that agree on file, line, column, title and message are one diagnosis unless the
@@ -42,6 +49,15 @@
   repeated diagnosis before this and one after - and that one is the cargo pair, whose
   two readings quote two different real source lines and are genuinely two. The corpus
   itself is byte-identical.
+- `git merge <missing-branch>`, `git pull` on a branch with no upstream, and `git stash
+  pop` with an empty stash are read. All three came back as "could not identify a
+  diagnostic" with the log handed back: git says each of them plainly, with no `fatal:`
+  or `error:` in front, and detection is written around that word - which is what stops
+  a bare severity line in a multi-tool log being claimed as git's. Each of the three
+  phrases is git's alone, so each can stand where a bare `fatal:` cannot. The eight
+  lines of advice under the pull one explain how to set an upstream and are not eight
+  more failures. Measured over fourteen real git failures, exactly these three change;
+  the other eleven read as they did.
 
 - `whatbroke -- python -m pytest` reads as pytest rather than as python. Naming the
   command that ran is evidence for breaking ties between parsers, ranked by where each
@@ -217,6 +233,24 @@
   ever shortened and every diagnostic showed its full absolute path.
 - The exhaustive phases of `npm run test:heavy` report where they are. They take minutes,
   and a suite that prints nothing for minutes cannot be told from one that has hung.
+- `composer install` is read. It is to a PHP CI job what `bundle install` is to a Ruby
+  one, and none of the ways it fails was read at all. composer says almost everything
+  twice: a resolution failure is a headline, then the numbered problems, then "Potential
+  causes:" with four guesses and a link to a manual, and it opens with two lines about
+  the root version and the missing lock file - one of which contains "could not". Only
+  the numbered problems say what happened, so only those are read, and the package that
+  cannot be had is the subject, platform packages like `php` and `ext-mbstring`
+  included. A boxed fatal gives the file named inside the message rather than the
+  composer source file the box is headed with.
+- uv and Poetry are read. Poetry's failures came back as nothing at all; uv's came back
+  as a labelled guess holding the half that says nothing - "error: No solution found
+  when resolving dependencies", with the `cause:` line under it, which names the package
+  and why it cannot be had, never reaching the reader. uv's explanation is rejoined
+  where uv wraps it at a deeper indent, except where what it wrapped is an echo of the
+  source drawn in a gutter. A headline with no cause under it is not read at all, since
+  `error:` at the start of a line belongs to half the tools in existence and uv's own
+  always carries its cause. Poetry's chain is read from its first `Because` to the
+  `version solving failed.` that closes it, and not at all without that line.
 - A command that cannot be executed is reported rather than thrown. node delivers some
   spawn failures by raising from `spawn()` itself instead of emitting `error` on the
   child, so the handler attached to the returned child never saw them: a file with no

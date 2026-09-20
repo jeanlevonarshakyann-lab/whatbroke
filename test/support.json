@@ -78,6 +78,9 @@
     "npm": ["npm", "npm `--json`"],
     "pnpm": ["pnpm", "pnpm's boxed errors"],
     "yarn": ["yarn"],
+    "composer": ["composer"],
+    "uv": ["uv"],
+    "poetry": ["Poetry"],
     "bundler": ["bundle"],
     "pip": ["pip"],
     "generic": ["anything else"]

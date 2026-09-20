@@ -29,20 +29,37 @@ const ADVICE = [
 // "failed to push some refs" restates a rejection the ! line already explained.
 const RESTATES = /^failed to push some refs/;
 
+// Three things git says with no `fatal:` or `error:` in front of them. The clause in
+// detect below is what keeps a bare severity word from claiming another tool's log, and
+// it is written around that word - so these never reached this parser at all, and
+// `git merge <missing-branch>`, `git pull` with no upstream and `git stash pop` with an
+// empty stash each came back as "whatbroke could not identify a diagnostic" and the log
+// handed back. Each phrase is git's own and no other tool's, which is what lets it
+// stand on its own where a bare `fatal:` cannot; and each IS the whole diagnostic. What
+// follows the pull one is eight lines of advice on how to set an upstream, which is the
+// remedy, not a second thing that went wrong - none of it starts with a severity word,
+// so nothing below reads it.
+const PLAIN = [
+  [/^merge: (.+? - not something we can merge)$/m, "merge"],
+  [/^(There is no tracking information for the current branch\.)$/m, "pull"],
+  [/^(No stash entries found\.)$/m, "stash"],
+];
+
 const GIT_MARKERS = /(not a git repository|CONFLICT \(|failed to push some refs|would be overwritten by|did not match any file\(s\) known to git|not something we can merge|No configured push destination|unknown revision or path not in the working tree|Automatic merge failed|unmerged files)/;
 
 export default {
   name: "git",
   // Strings a log has to hold for this parser to read anything from it - see src/router.js.
-  signals: ["not a git repository", "CONFLICT (", "failed to push some refs", "would be overwritten by", "did not match any file(s) known to git", "not something we can merge", "No configured push destination", "unknown revision or path not in the working tree", "Automatic merge failed", "unmerged files"],
+  signals: ["not a git repository", "CONFLICT (", "failed to push some refs", "would be overwritten by", "did not match any file(s) known to git", "not something we can merge", "No configured push destination", "unknown revision or path not in the working tree", "Automatic merge failed", "unmerged files", "There is no tracking information for the current branch.", "No stash entries found."],
   category: "vcs",
   commands: ["git"],
 
   // `fatal:` and `error:` belong to half the tools in existence, so one of git's own
   // phrases has to be present too.
   detect: (s) =>
-    (/^(?:fatal|error): /m.test(s) || /^CONFLICT \(/m.test(s) || /^[^\S\n]*!\s+\[rejected\]/m.test(s)) &&
-    GIT_MARKERS.test(s),
+    PLAIN.some(([re]) => re.test(s)) ||
+    ((/^(?:fatal|error): /m.test(s) || /^CONFLICT \(/m.test(s) || /^[^\S\n]*!\s+\[rejected\]/m.test(s)) &&
+      GIT_MARKERS.test(s)),
 
   extract(s) {
     const lines = s.split("\n");
@@ -60,6 +77,14 @@ export default {
     for (let i = 0; i < lines.length; i++) {
       const l = lines[i];
       if (ADVICE.some((re) => re.test(l))) continue;
+
+      // Structural, like a conflict: git named the one thing that went wrong, and said
+      // it without a severity word. It is not a `bare` fallback line.
+      const plain = PLAIN.map(([re, label]) => [l.match(re), label]).find(([m]) => m);
+      if (plain) {
+        failures.push(withSource({ title: plain[1], label: plain[1], severity: "error", message: plain[0][1] }, i, i + 1));
+        continue;
+      }
 
       const c = l.match(CONFLICT);
       if (c) {

@@ -1,0 +1,4 @@
+Updating dependencies
+Resolving dependencies...
+
+Because shop depends on definitely-not-a-real-package-xyzzy (>=1.0) which doesn't match any versions, version solving failed.

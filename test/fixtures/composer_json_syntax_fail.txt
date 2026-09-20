@@ -1,0 +1,12 @@
+
+In JsonFile.php line 398:
+                                                                    
+  "./composer.json" does not contain valid JSON                     
+  Parse error on line 4:                                            
+  ...monolog": "^3.0",  }}                                          
+  ---------------------^                                            
+  Expected: 'STRING' - It appears you have an extra trailing comma  
+                                                                    
+
+install [--prefer-source] [--prefer-dist] [--prefer-install PREFER-INSTALL] [--dry-run] [--download-only] [--dev] [--no-suggest] [--no-dev] [--no-security-blocking] [--no-blocking] [--no-autoloader] [--no-progress] [--no-install] [--audit] [--audit-format AUDIT-FORMAT] [-v|vv|vvv|--verbose] [-o|--optimize-autoloader] [-a|--classmap-authoritative] [--strict-psr-autoloader] [--apcu-autoloader] [--apcu-autoloader-prefix APCU-AUTOLOADER-PREFIX] [--ignore-platform-req IGNORE-PLATFORM-REQ] [--ignore-platform-reqs] [--] [<packages>...]
+

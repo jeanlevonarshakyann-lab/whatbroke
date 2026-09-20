@@ -103,6 +103,27 @@ const CASES = [
       assert.equal(r.failures[0].label, "fatal");
       assert.match(r.failures[0].message, /not a git repository/);
     } },
+  // Three git refuses plainly, with no "fatal:" or "error:" in front of it. Detection is
+  // written around that word - it is what stops a bare severity line in a multi-tool log
+  // being claimed as git's - so none of these reached the parser, and all three came back
+  // as "could not identify a diagnostic" with the log handed back. Captured with git
+  // 2.50.1 against a fresh repository.
+  { file: "git_merge_missing_fail.txt", tool: "git", n: 1, check: (r) => {
+      assert.equal(r.failures[0].label, "merge");
+      assert.match(r.failures[0].message, /feature\/pricing - not something we can merge/);
+    } },
+  { file: "git_pull_no_upstream_fail.txt", tool: "git", n: 1, check: (r) => {
+      assert.equal(r.failures[0].label, "pull");
+      assert.match(r.failures[0].message, /no tracking information for the current branch/);
+      // Eight of this capture's ten lines explain how to SET an upstream. That is the
+      // remedy, and a remedy repeated as eight more failures is worse than no reading.
+      assert.doesNotMatch(JSON.stringify(r.failures),
+        /Please specify|See git-pull|set-upstream-to|If you wish/);
+    } },
+  { file: "git_stash_empty_fail.txt", tool: "git", n: 1, check: (r) => {
+      assert.equal(r.failures[0].label, "stash");
+      assert.match(r.failures[0].message, /No stash entries found/);
+    } },
   // Captured with shellcheck 0.9 and yamllint 1.35 on Debian, each in both the format it
   // prints by default and its machine-readable one. Neither default format was readable:
   // the location and the message are on different lines, so no parser claimed either and
