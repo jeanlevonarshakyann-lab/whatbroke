@@ -97,6 +97,9 @@ const PROBABLE_DIAGNOSTIC = new RegExp([
   // underneath. Losing the header loses every place in that file, because nothing else
   // in the diff says which file it is about.
   "^diff [^\\s]+\\.orig [^\\s]+[^\\S\\n]*$",
+  // `terraform fmt -check -diff` is the same problem a third time. Its header is the pair
+  // `--- old/<path>` / `+++ new/<path>`, and the file is named nowhere else in the diff.
+  "^--- old/[^\\s][^\\n]*$",
   // VSTest's console is translated into the SDK's thirteen UI languages, and every
   // failure word above is English. What survives translation is the shape: a result line
   // is an indented word or two, the test, and its timing in brackets; the run's tally

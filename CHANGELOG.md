@@ -2,6 +2,25 @@
 
 ## Unreleased
 
+- Reads `terraform fmt -check -diff`, which is in nearly every Terraform pipeline and was
+  read as nothing: the job exited 3 and the diff came back handed over whole. Each `@@` is
+  a place, so one file with two unformatted regions is two of them, each at the line its
+  change starts on rather than the number the hunk carries, and the source as it
+  stands is quoted with each. terraform spells its diff's halves `old/<path>` and
+  `new/<path>` with the same path in both, which is what tells it from git's `a/` and `b/`
+  and from a test runner's `--- expected` / `+++ actual`; a file's diff ends where another
+  one begins. Not a plain `terraform fmt -check`, which lists bare filenames and nothing
+  else - there is no shape in a list of paths to claim safely.
+- Two diffs in one pipe no longer report one place twice. `cargo fmt --check`, `gofmt -d`
+  and `terraform fmt -check -diff` all read a unified diff, and a `@@` is nothing but a
+  line number: read under another file's header it becomes a place in a file that has
+  nothing wrong there, and where that number collides with a real one the same place was
+  counted twice. A job that formats and then tests puts a format check beside minitest's
+  or PHPUnit's `--- expected` / `+++ actual` / `@@`, which is all it takes. A diff's hunks
+  are ordered and disjoint - each starts after the last one ended - so a hunk that does
+  not is not that file's, and is refused. Every ordered pair of the corpus's diff
+  captures, woven at twelve block sizes, is held to it.
+
 - Reads `dotnet format --verify-no-changes`, the format gate most .NET CI runs. It reports
   through MSBuild in the same shape the compiler uses, so the same reader should always
   have read it - but its rule names are `WHITESPACE`, `IMPORTS` and `ANALYZERS`, and the

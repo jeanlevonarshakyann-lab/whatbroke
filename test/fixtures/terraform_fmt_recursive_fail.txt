@@ -1,0 +1,26 @@
+modules/billing/main.tf
+--- old/modules/billing/main.tf
++++ new/modules/billing/main.tf
+@@ -1,7 +1,7 @@
+ variable "rate" {
+-  type=number
++  type = number
+ }
+ 
+-output "due"{
+-  value = var.rate*100
++output "due" {
++  value = var.rate * 100
+ }
+providers.tf
+--- old/providers.tf
++++ new/providers.tf
+@@ -7,6 +7,6 @@
+   }
+ }
+ 
+-provider  "aws"  {
+-  region="eu-west-1"
++provider "aws" {
++  region = "eu-west-1"
+ }

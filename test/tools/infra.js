@@ -250,6 +250,29 @@ const CASES = [
       assert.equal(r.failures[0].stmt, "COPY missing-file.txt /tmp/");
       assert.match(r.failures[0].message, /"\/missing-file\.txt": not found/);
     } },
+  // Captured with Terraform v1.16.1. `terraform fmt -check` is in nearly every Terraform
+  // pipeline, and with -diff it says where; without it, only which files. None of it was
+  // read: the job exited 3 and whatbroke handed the diff back whole.
+  { file: "terraform_fmt_fail.txt", tool: "terraform fmt", n: 1, check: (r) => {
+      assert.equal(r.summary, "1 file failed the format check");
+      assert.equal(r.failures[0].file, "main.tf");
+      assert.equal(r.failures[0].line, 2, "the line the change starts at, not the hunk's");
+      assert.equal(r.failures[0].stmt, `bucket = "shop-invoices"`);
+    } },
+  { file: "terraform_fmt_hunks_fail.txt", tool: "terraform fmt", n: 2, check: (r) => {
+      // One file, two regions: a hunk is a place, and the headline still counts files.
+      assert.equal(r.summary, "1 file failed the format check");
+      assert.deepEqual(r.failures.map((f) => `${f.file}:${f.line}`), ["network.tf:2", "network.tf:20"]);
+      assert.equal(r.failures[1].stmt, 'resource  "aws_route_table"  "private" {');
+    } },
+  { file: "terraform_fmt_recursive_fail.txt", tool: "terraform fmt", n: 2, check: (r) => {
+      // -recursive walks into modules, and each file names its own path from the root.
+      assert.equal(r.summary, "2 files failed the format check");
+      assert.deepEqual(r.failures.map((f) => f.file),
+        ["modules/billing/main.tf", "providers.tf"]);
+      assert.equal(r.failures[0].stmt, "type=number");
+      assert.equal(r.failures[1].line, 10, "a hunk in the middle of a file says where");
+    } },
 ];
 
 let pass = 0, fail = 0;
@@ -292,6 +315,52 @@ try {
   console.log("  ok   terraform validate -json says what its text report says");
   pass++;
 } catch (e) { console.log(`  FAIL terraform json vs text\n       ${e.message}`); fail++; }
+
+// terraform spells its diff's halves `old/<path>` and `new/<path>`, and the path is the
+// same in both. That pair is the whole defence against every other diff a build prints:
+// git writes `a/<path>` and `b/<path>`, minitest and PHPUnit write `--- expected` and
+// `+++ actual`, and either would otherwise be read as unformatted HCL.
+try {
+  const { EXTRACTORS } = await import("../../src/index.js");
+  const tf = EXTRACTORS.find((e) => e.name === "terraform fmt");
+  const hunk = "@@ -1,4 +1,4 @@\n-old\n+new\n";
+  assert.equal(tf.detect(`diff --git a/x b/x\n--- a/x\n+++ b/x\n${hunk}`), false, "git's diff is not terraform's");
+  assert.equal(tf.detect(`--- expected\n+++ actual\n${hunk}`), false, "a test runner's value diff is not terraform's");
+  assert.equal(tf.detect(`--- old/x.tf\n+++ new/y.tf\n${hunk}`), false, "two different files are not one file's change");
+  assert.equal(tf.detect(`--- old/x.tf\n+++ new/x.tf\n${hunk}`), true);
+  const claimed = readdirSync(join(here, "fixtures")).sort()
+    .filter((n) => { try { return tf.detect(fx(n)); } catch { return false; } });
+  assert.deepEqual(claimed, ["terraform_fmt_fail.txt", "terraform_fmt_hunks_fail.txt",
+    "terraform_fmt_recursive_fail.txt"]);
+  console.log("  ok   terraform fmt reads its own diffs and nobody else's");
+  pass++;
+} catch (e) { console.log(`  FAIL terraform fmt diff shape\n       ${e.message}`); fail++; }
+
+// And a file's diff ends where another one begins, so a pipeline that formats and then
+// tests does not have the test runner's value diff read as more unformatted HCL.
+try {
+  const tf = fx("terraform_fmt_fail.txt"), minitest = fx("minitest_invoice_fail.txt");
+  const count = (r) => (r?.failures.length ?? 0) + (r?.others ?? []).reduce((n, o) => n + o.failures.length, 0);
+  const apart = count(analyse(tf)) + count(analyse(minitest));
+  assert.equal(count(analyse(`${tf}\n${minitest}`)), apart,
+    "a terraform fmt diff must not read on into another tool's diff");
+  console.log("  ok   a terraform fmt diff stops where its own diff stops");
+  pass++;
+} catch (e) { console.log(`  FAIL terraform fmt diff bound\n       ${e.message}`); fail++; }
+
+// Another tool can insert indented output inside a hunk. It resembles unchanged diff
+// context but cannot move a removed line outside the hunk's declared old-file range.
+try {
+  const clean = fx("terraform_fmt_hunks_fail.txt");
+  const interleaved = clean.replace("@@ -1,5 +1,5 @@\n",
+    `@@ -1,5 +1,5 @@\n${'    "tests": 2,\n'.repeat(18)}`);
+  const findings = analyse(interleaved).failures;
+  assert.deepEqual(findings.map((f) => [f.file, f.line, f.stmt]),
+    [["network.tf", 20, 'resource  "aws_route_table"  "private" {']],
+    "interleaved context must not invent another finding at the next hunk's location");
+  console.log("  ok   interleaved terraform fmt context stays within its hunk");
+  pass++;
+} catch (e) { console.log(`  FAIL terraform fmt interleaving\n       ${e.message}`); fail++; }
 
 console.log(`\n  ${pass} passed, ${fail} failed`);
 process.exit(fail ? 1 : 0);

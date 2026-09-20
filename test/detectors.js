@@ -328,6 +328,47 @@ test("naming the wrong tool cannot damage a clear log", () => {
 // or changing bytes behind Swift's declared byte count, corrupts the serialization
 // rather than re-indenting a diagnostic. Their decoded human output is exercised by
 // the same mutation through the paired text fixtures.
+// Three parsers here read a unified diff - `cargo fmt --check`, `gofmt -d` and
+// `terraform fmt -check -diff` - and a diff is the one shape where a foreign line can be
+// mistaken for one of your own. A `@@` is nothing but a line number: read under another
+// file's header it becomes a place in a file that has nothing wrong there, and if that
+// number collides with one of yours, the same place is reported twice. A count a reader
+// cannot trust is the one thing a shredded log still has to get right.
+//
+// Two rules keep it: a diff ends at the first line that is not part of one, and a diff's
+// hunks are ordered and disjoint, so a hunk that does not start after the last one ended
+// is not this file's. Every ordered pair of diff captures, woven at twelve block sizes.
+test("two diffs in one pipe never report one place twice", () => {
+  const weave = (a, b, size) => {
+    const A = a.split("\n"), B = b.split("\n"), out = [];
+    for (let i = 0; i < Math.max(A.length, B.length); i += size) {
+      out.push(...A.slice(i, i + size), ...B.slice(i, i + size));
+    }
+    return out.join("\n");
+  };
+  const diffs = readdirSync(fixtures).filter((name) => {
+    const r = safely(() => analyse(readFileSync(join(fixtures, name), "utf8")), null);
+    return r && ["cargo fmt", "gofmt", "terraform fmt"].includes(r.tool);
+  }).sort();
+  assert.ok(diffs.length >= 6, `only ${diffs.length} diff captures to pair`);
+  const twice = [];
+  for (const x of diffs) for (const y of diffs) {
+    if (x === y) continue;
+    for (let size = 1; size <= 12; size++) {
+      const r = safely(() => analyse(weave(readFileSync(join(fixtures, x), "utf8"),
+        readFileSync(join(fixtures, y), "utf8"), size)), null);
+      const seen = new Map();
+      for (const f of r?.failures ?? []) {
+        const key = `${f.file}:${f.line}`;
+        seen.set(key, (seen.get(key) ?? 0) + 1);
+      }
+      for (const [key, n] of seen) if (n > 1) twice.push(`${x} + ${y} at ${size}: ${key}`);
+    }
+  }
+  assert.deepEqual(twice.slice(0, 6), []);
+  console.log(`  ok   ${diffs.length} diff captures, every ordered pair woven twelve ways, no place twice`);
+});
+
 const SERIALIZED_FIXTURES = new Set([
   "swiftc_parseable_fail.txt", "terraform_validate_json_fail.txt",
   // A pretty-printed JSON report is a document, not a stream of lines: splicing another
