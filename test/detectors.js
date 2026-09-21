@@ -16,6 +16,7 @@ import { fileURLToPath } from "node:url";
 import { dirname, join } from "node:path";
 import assert from "node:assert/strict";
 import { EXTRACTORS, analyse } from "../src/index.js";
+import { parserOf } from "../src/ownership.js";
 import { stripAnsi, stripCiPrefix } from "../src/util.js";
 
 const here = dirname(fileURLToPath(import.meta.url));
@@ -53,7 +54,7 @@ export function survey(raw) {
   const s = normalise(raw);
   const result = safely(() => analyse(raw), null);
   const claims = EXTRACTORS.filter((e) => safely(() => e.detect(s), false));
-  // Mirror analyse(): first claimant that actually finds something owns the log.
+  // Who the losers are is decided here, against the same text they were asked about.
   const winner = claims.find((e) => safely(() => e.extract(s)?.failures?.length ?? 0, 0) > 0) ?? null;
   const shadow = {};
   for (const ex of claims) {
@@ -63,7 +64,12 @@ export function survey(raw) {
   }
   return {
     winner: result?.tool ?? null,
-    parser: winner?.name ?? null,
+    // Which parser actually read the log is analyse's answer, not one re-derived here.
+    // Re-deriving it was wrong for every wrapped log: the text above still carries
+    // BuildKit's `#8 0.251 ` on every line, npm's parser does not match through it, and
+    // this reported `generic` for a log analyse reads as npm. It matters more now that a
+    // parser can be asked again after the rest have passed.
+    parser: parserOf(result)?.name ?? null,
     failures: result?.failures.length ?? 0,
     claimants: claims.map((e) => e.name),
     shadow,

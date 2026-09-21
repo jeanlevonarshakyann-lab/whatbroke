@@ -43,6 +43,36 @@ function printedOutput(lines, step) {
   return lines.some((l) => re.test(l));
 }
 
+// BuildKit ends a failed build by quoting the failing step's own output between two
+// rules, which is the only place that output appears without its `#5 0.070 ` tag:
+//
+//   ------
+//    > [2/2] RUN nosuchcommand --help:
+//   0.070 /bin/sh: nosuchcommand: not found
+//   ------
+//
+// Read from here rather than from the tagged lines, because the tags do not always
+// survive: a log that arrived with a stray carriage return in it has the per-line shape
+// stripped off before any parser sees it, and `#5 ERROR:` becomes `ERROR:`. The quoted
+// block comes through either way, and normalize.js already describes it as the cause
+// verbatim from whatever tool actually failed.
+const QUOTED_STEP = /^[^\S\n]*>[^\S\n]*\[\d+\/\d+\][^\S\n]*(.*):[^\S\n]*$/;
+const STAMP = /^\d+\.\d+[^\S\n]/;
+
+/** What the failing step said for itself, and the line it was read from. When the command
+ *  inside is not a tool anything here knows, this is the only account of the failure that
+ *  exists - the relayed line names the command and its exit code, and neither says why. */
+function quotedCause(lines) {
+  const head = lines.findIndex((l) => QUOTED_STEP.test(l));
+  if (head < 0) return null;
+  let last = null;
+  for (let i = head + 1; i < lines.length && !FENCE.test(lines[i]); i++) {
+    const text = lines[i].replace(STAMP, "").trim();
+    if (text) last = { text, at: i };
+  }
+  return last;
+}
+
 export default {
   name: "docker",
   // Strings a log has to hold for this parser to read anything from it - see src/router.js.
@@ -63,11 +93,27 @@ export default {
     });
   },
 
+  // Asked only once src/index.js has established that no parser read this log. `detect`
+  // above turns down a relayed failure whose step printed something, because that
+  // something is usually a tool's own diagnostic and better than anything docker can
+  // say. When it is `/bin/sh: nosuchcommand: not found`, no parser reads it, and docker
+  // is the only thing in the log that knows which Dockerfile line was running.
+  lastResort(s) {
+    const lines = s.split("\n");
+    const relayed = lines.some((l) => {
+      const st = l.match(STEP_ERROR);
+      if (st) return RELAYED.test(st[2]);
+      const fin = l.match(FINAL_ERROR);
+      return !!fin && RELAYED.test(fin[1]);
+    });
+    return relayed && !!quotedCause(lines);
+  },
+
   extract(s) {
     const lines = s.split("\n");
-    let file, line, stmt, step, final, relayed, excerpt;
+    let file, line, stmt, step, final, relayed, excerpt, said;
     // Where each part was read: the step's error, docker's closing one, the relayed exit.
-    let stepAt, finalAt, relayedAt;
+    let stepAt, finalAt, relayedAt, saidAt;
     for (let i = 0; i < lines.length; i++) {
       // A location is only docker's if the fenced excerpt follows it, which is also what
       // keeps `foo.py:3` from somewhere else in the log being read as one.
@@ -93,15 +139,21 @@ export default {
       const fin = lines[i].match(FINAL_ERROR);
       if (fin && !RELAYED.test(fin[1]) && final === undefined) { final = fin[1]; finalAt = i; }
     }
-    const message = step ?? final ?? relayed;
+    // Last: the failing step's own words, for a relayed failure nothing else explained.
+    // Its last line is the cause; the ones above it are progress.
+    const spoke = (step ?? final ?? relayed) === undefined ? quotedCause(lines) : null;
+    if (spoke) { said = spoke.text; saidAt = spoke.at; }
+    const message = step ?? final ?? relayed ?? said;
     if (!message) return null;
     // The line the message was read from, and the fenced excerpt that located it.
-    const said = step !== undefined ? stepAt : final !== undefined ? finalAt : relayedAt;
+    const from = step !== undefined ? stepAt
+      : final !== undefined ? finalAt
+      : relayed !== undefined ? relayedAt : saidAt;
     const failure = withSource({
       ...(file ? { file, line } : {}),
       title: "build failed", label: "build failed", severity: "error",
       message, ...(stmt ? { stmt } : {}),
-    }, said, said + 1);
+    }, from, from + 1);
     return {
       tool: "docker",
       summary: "1 error",

@@ -270,9 +270,18 @@ const CASES = [
   // so itself - "/bin/sh: nosuchcommand: not found" - and BuildKit says underneath it
   // that the process did not complete. The first is the cause and is what you act on;
   // it is named by its path, which is why it went unread.
-  { file: "docker_buildkit_run_missing_fail.txt", tool: "output", n: 1, check: (r) => {
+  { file: "docker_buildkit_run_missing_fail.txt", tool: "docker", n: 1, check: (r) => {
       assert.match(r.failures[0].message, /nosuchcommand: not found/,
         "the step's own diagnostic is what leads");
+      // docker turns this log down in the normal pass - a RUN that printed something is
+      // usually a tool explaining itself, and docker build running pytest stays pytest's.
+      // `/bin/sh: nosuchcommand: not found` is not a tool anything here knows, so nobody
+      // read it, and the run came back as the fallback's guess with no location at all -
+      // while docker had printed `Dockerfile:2` and marked the line. It is asked again
+      // once the pipeline has established that nothing read the log.
+      assert.equal(r.failures[0].file, "Dockerfile");
+      assert.equal(r.failures[0].line, 2, "the Dockerfile line docker marked with >>>");
+      assert.equal(r.failures[0].stmt, "RUN nosuchcommand --help");
       // And it is the only one. docker restates it as `process "..." did not complete
       // successfully: exit code: 127`, once for the step and again at the end, which is
       // the exit status the report already carries - the same consequence make's
@@ -282,6 +291,11 @@ const CASES = [
       assert.equal(r.failures.length, 1, "one failure, not docker restating the cause");
       assert.ok(!r.failures.some((f) => /did not complete successfully/.test(f.message ?? "")),
         "the relayed exit status is not a failure of its own");
+      // Still reported as wrapped, which is why the cause is read from the block BuildKit
+      // quotes rather than from its `#5 0.070 ` tagged lines: the tags do not survive a
+      // log that arrived with a stray carriage return in it, and the quoted block does.
+      // Reading the tags made this fixture come back as docker clean and as the fallback
+      // with a progress bar in front of it, which test/reading.js exists to forbid.
       assert.deepEqual(r.wrappers, ["docker"]);
     } },
   { file: "docker_copy_fail.txt", tool: "docker", n: 1, check: (r) => {
