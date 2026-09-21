@@ -1,7 +1,7 @@
 # Reading source files: a policy question, for review
 
-**Nothing in this document is implemented.** It is here to be decided on, separately from
-the fixes it ships beside. No behaviour changed.
+The disclosure warning is now in the README. The behavioral options below are still here
+to be decided on separately; no source-reading behavior changed.
 
 ## What happens today
 

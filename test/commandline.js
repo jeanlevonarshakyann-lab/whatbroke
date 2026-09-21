@@ -74,6 +74,33 @@ try {
   pass++;
 } catch (e) { console.log(`  FAIL GitHub Actions summary\n       ${e.message}`); fail++; }
 
+// Source context is useful in an interactive terminal, but lines beside a diagnostic can
+// contain information the failing tool never printed. GitHub's summary is durable output,
+// so it must stay limited to the tool's own diagnosis rather than reading nearby lines.
+try {
+  const { mkdtempSync, readFileSync, rmSync, writeFileSync } = await import("node:fs");
+  const { tmpdir } = await import("node:os");
+  const { join } = await import("node:path");
+  const dir = mkdtempSync(join(tmpdir(), "whatbroke-source-summary-"));
+  const summary = join(dir, "summary.md");
+  const secret = "WHATBROKE_AUDIT_SECRET_MUST_NOT_APPEAR";
+  writeFileSync(join(dir, ".env"), `${secret}=one\nALSO_PRIVATE=two\nPORT=bad\n`);
+  const r = spawnSync(process.execPath, [cli, "--format", "github"], {
+    cwd: dir,
+    input: ".env:3:1: error: PORT must be an integer\n",
+    encoding: "utf8",
+    env: { ...process.env, GITHUB_STEP_SUMMARY: summary },
+  });
+  const md = readFileSync(summary, "utf8");
+  assert.match(r.stdout, /::error file=\.env,line=3,col=1::error: PORT must be an integer/);
+  assert.match(md, /PORT must be an integer/);
+  assert.equal(r.stdout.includes(secret), false, "annotation must not add adjacent source");
+  assert.equal(md.includes(secret), false, "job summary must not add adjacent source");
+  rmSync(dir, { recursive: true, force: true });
+  console.log("  ok   GitHub output never adds neighboring source from disk");
+  pass++;
+} catch (e) { console.log(`  FAIL GitHub source disclosure boundary\n       ${e.message}`); fail++; }
+
 // The step summary is what a human reads in CI, so it leads with causes like the
 // terminal does - while the annotations below it stay one per failure, because each
 // one is a marker on a line and dropping one hides a line.

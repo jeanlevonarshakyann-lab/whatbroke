@@ -99,6 +99,12 @@ Use `--no-source` when logs come from another machine, contain untrusted paths,
 or when a CI job should not read the checkout after the command finishes. The
 failure location, statement, and parser message are still shown.
 
+Terminal source context can include neighboring lines that the failing tool did not
+print. Those lines may contain secrets even when the reported line does not. Use
+`--no-source` before saving or sharing terminal output, and in checkouts where nearby
+lines may be sensitive. `--format github` never adds source read from disk to its
+annotations or job summary.
+
 ### GitHub Actions
 
 Keep the raw command available in the job log while adding a compact failure
@@ -688,6 +694,12 @@ whatbroke reads source context from disk to show you the lines around a failure.
 Output can come from anywhere — a pasted log, a CI artifact, someone else's machine —
 so it will only ever read files **inside the directory you ran it in**. Crafted output
 naming `/etc/passwd` or `~/.ssh/id_rsa` gets the error printed, never the file.
+
+That boundary protects files outside the checkout; it does not classify files inside it.
+Terminal source context may include neighboring lines the original tool never printed,
+including secrets beside a reported setting. Use `--no-source` for shared terminal output
+or sensitive checkouts. GitHub-format annotations and summaries do not add source read
+from disk.
 
 Containment is enforced on the *canonical* path, so a symlink inside the tree pointing
 somewhere else — or a symlinked parent directory — is refused rather than followed. A

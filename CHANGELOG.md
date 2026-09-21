@@ -5,7 +5,7 @@
 ## 0.5.0 — 2026-09-21
 
 This is the first npm release since 0.1.1 and includes the previously unpublished
-0.2.0–0.4.0 work. The release is backed by 475 real captured logs, 833 fast tests,
+0.2.0–0.4.0 work. The release is backed by 475 real captured logs, 834 fast tests,
 213,600 ordered cross-parser pairs, 112,101 interleavings, and a live benchmark in
 which all 63 installed failing commands are read by a parser that knows the tool.
 
@@ -20,6 +20,9 @@ Highlights:
   version-1 JSON contract.
 - The npm tarball is installed offline and exercised through both command shims on every
   supported Node line in CI: 18, 20, 22 and 24.
+- The README now states the source-context disclosure boundary: terminal context can show
+  neighboring lines the failing tool never printed, so shared output and sensitive
+  checkouts should use `--no-source`. GitHub-format output does not add on-disk source.
 
 - The live coverage benchmark now runs Gradle tests, RSpec, PHPUnit and a Docker command
   against an unreachable daemon. These paths had only captured-fixture coverage before,
