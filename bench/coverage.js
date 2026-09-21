@@ -53,6 +53,14 @@ const CASES = [
   ["test", "prove", { "shop.t": "use strict;\nuse warnings;\nuse Test::More tests => 1;\n\nis(total(), 1050, 'invoice total');\n\nsub total { 1049 }\n" }, ["prove", "shop.t"]],
   // Maven fetches its dependencies on a cold ~/.m2, which is why the read timeout is
   // generous. gradle reaches the same parser by the same surefire-shaped report.
+  // Six runners whose parsers the corpus covers and no live command did. Each was run by
+  // hand against the real tool first. The three that import their own framework in the
+  // test file need it installed before the command means anything.
+  ["test", "mocha", { "package.json": "{\"name\":\"t\",\"version\":\"1.0.0\"}\n", "test/a.test.js": "const assert = require(\"assert\");\ndescribe(\"shop\", () => { it(\"adds\", () => { assert.strictEqual(1 + 1, 3); }); });\n" }, ["mocha"]],
+  ["test", "vitest", { "package.json": "{\"name\":\"t\",\"version\":\"1.0.0\",\"type\":\"module\"}\n", "a.test.js": "import { test, expect } from \"vitest\";\ntest(\"adds\", () => { expect(1 + 1).toBe(3); });\n" }, ["vitest", "run"]],
+  ["test", "ava", { "package.json": "{\"name\":\"t\",\"version\":\"1.0.0\",\"type\":\"module\"}\n", "test/a.js": "import test from \"ava\";\ntest(\"adds\", t => { t.is(1 + 1, 3); });\n" }, ["npx", "ava"], undefined, ["npm", "install", "--silent", "--no-audit", "--no-fund", "ava"]],
+  ["test", "node-tap", { "package.json": "{\"name\":\"t\",\"version\":\"1.0.0\"}\n", "test/a.test.js": "const t = require(\"tap\");\nt.equal(1 + 1, 3, \"adds\");\n" }, ["npx", "tap"], undefined, ["npm", "install", "--silent", "--no-audit", "--no-fund", "tap"]],
+  ["test", "playwright", { "package.json": "{\"name\":\"t\",\"version\":\"1.0.0\"}\n", "a.spec.js": "const { test, expect } = require(\"@playwright/test\");\ntest(\"adds\", async () => { expect(1 + 1).toBe(3); });\n" }, ["npx", "playwright", "test"], undefined, ["npm", "install", "--silent", "--no-audit", "--no-fund", "@playwright/test"]],
   ["test", "mvn", { "pom.xml": "<project xmlns=\"http://maven.apache.org/POM/4.0.0\">\n  <modelVersion>4.0.0</modelVersion>\n  <groupId>shop</groupId><artifactId>shop</artifactId><version>1.0</version>\n  <properties><maven.compiler.source>17</maven.compiler.source><maven.compiler.target>17</maven.compiler.target></properties>\n  <dependencies><dependency>\n    <groupId>org.junit.jupiter</groupId><artifactId>junit-jupiter</artifactId>\n    <version>5.10.2</version><scope>test</scope>\n  </dependency></dependencies>\n</project>\n", "src/test/java/ShopTest.java": "import org.junit.jupiter.api.Test;\nimport static org.junit.jupiter.api.Assertions.*;\n\nclass ShopTest {\n  @Test void invoiceTotal() { assertEquals(1050, 1049); }\n}\n" }, ["mvn", "-q", "-B", "test"], ["mvn", "-v"]],
   ["runtime", "python", { "boom.py": "raise KeyError(\"missing config key\")\n" }, ["python3", "boom.py"]],
   ["runtime", "ruby", { "r.rb": "def f\n  x = \nend\n" }, ["ruby", "r.rb"]],
@@ -64,7 +72,7 @@ const CASES = [
   ["build", "esbuild", { "e.js": "const x = {a:1,\n" }, ["esbuild", "e.js"]],
   ["package", "npm", { "package.json": "{\"name\":\"x\",\"private\":true,\"scripts\":{\"build\":\"true\"}}\n" }, ["npm", "run", "nosuchscript"]],
   ["package", "pip", {}, ["pip", "install", "nonexistent-package-xyzzy-12345==9.9.9"]],
-  ["vcs", "git", {}, ["git", "pull"]],
+  ["vcs", "git", {}, ["git", "pull"], undefined, ["git", "init", "-q", "."]],
 
   // Tools that read a project rather than a single file. Each still writes only what it
   // needs; anything wanting an install step is left out, because a measurement that has
@@ -126,7 +134,7 @@ const tally = { read: 0, guess: 0, none: 0, skip: 0 };
 const order = [...new Set(CASES.map(([g]) => g))];
 const grouped = order.flatMap((g) => CASES.filter(([c]) => c === g));
 let group = "";
-for (const [g, name, files, argv, probe] of grouped) {
+for (const [g, name, files, argv, probe, setup] of grouped) {
   if (g !== group) { group = g; console.log(`\n  ${group}`); }
   if (!have(argv, probe)) { console.log(`    skip  ${name.padEnd(17)} not installed`); tally.skip++; continue; }
   const dir = mkdtempSync(join(tmpdir(), "whatbroke-coverage-"));
@@ -135,7 +143,23 @@ for (const [g, name, files, argv, probe] of grouped) {
       mkdirSync(join(dir, dirname(path)), { recursive: true });
       writeFileSync(join(dir, path), body);
     }
-    if (name === "git") spawnSync("git", ["init", "-q", "."], { cwd: dir });
+    // Some tools need the directory to be a project before the failing command means
+    // anything - a git repository, or a node_modules the test file can import its own
+    // framework from. This was one hardcoded `git init`; naming it per case is what lets
+    // ava, playwright and tap be run at all, since each imports itself in the test.
+    //
+    // A setup that did not succeed is not a measurement. Without this an install that
+    // could not reach the registry would leave the command failing on a missing module,
+    // whatbroke would read that honestly, and the run would be counted as a gap in
+    // coverage - the same false gap `which` produced for javac.
+    if (setup) {
+      const r = spawnSync(setup[0], setup.slice(1), { cwd: dir, timeout: 300000 });
+      if (r.error || r.status !== 0) {
+        console.log(`    skip  ${name.padEnd(17)} could not be set up`);
+        tally.skip++;
+        continue;
+      }
+    }
     const got = read(dir, argv);
     const mark = got.state === "read" ? "ok  " : got.state === "guess" ? "GUESS" : "NONE";
     console.log(`    ${mark.padEnd(6)}${name.padEnd(17)}${got.tool ? `${got.tool}, ${got.n} failure(s)` : "nothing read"}`);
