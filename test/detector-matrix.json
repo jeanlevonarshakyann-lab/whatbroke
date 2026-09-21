@@ -940,7 +940,7 @@
   },
   "docker_buildkit_npm_fail.txt": {
     "winner": "npm",
-    "parser": "generic",
+    "parser": "npm",
     "failures": 1,
     "claimants": [
       "generic"
@@ -949,7 +949,7 @@
   },
   "docker_buildkit_pytest_fail.txt": {
     "winner": "pytest",
-    "parser": "generic",
+    "parser": "pytest",
     "failures": 2,
     "claimants": [
       "generic"
@@ -957,8 +957,8 @@
     "shadow": {}
   },
   "docker_buildkit_run_missing_fail.txt": {
-    "winner": "output",
-    "parser": "generic",
+    "winner": "docker",
+    "parser": "docker",
     "failures": 1,
     "claimants": [
       "generic"

@@ -408,14 +408,36 @@ function ordered(command, extractors) {
   return hinted.length ? [...hinted, ...extractors.filter((ex) => !hinted.includes(ex))] : extractors;
 }
 
-/** The extractor loop: first parser that claims the text AND finds something owns it. */
+/** The extractor loop: first parser that claims the text AND finds something owns it.
+ *
+ *  A parser may also decline a log on the grounds that somebody better will read it.
+ *  docker does exactly that: a failing `RUN` that printed its own diagnostic is the
+ *  inner tool's to explain, and `docker build` running pytest stays pytest's. But when
+ *  the inner command is not a tool anything here knows - `/bin/sh: nosuchcommand: not
+ *  found` - nobody reads it, and the run came back as the fallback's best guess with no
+ *  location, while docker had printed `Dockerfile:2` and marked the line.
+ *
+ *  Whether another parser read the log is not something a parser can know, and it is the
+ *  only thing that separates those two cases. It is known here. So a parser that
+ *  declined for that reason is asked again, once it is established that nobody did -
+ *  which is the same place the generic fallback already sits, and for the same reason. */
 function parse(s, command, extractors) {
+  let hit = null;
   for (const ex of ordered(command, extractors)) {
     let r = null;
     try { if (ex.detect(s)) r = ex.extract(s); } catch { r = null; }
-    if (r?.failures?.length) return { extractor: ex, result: r };
+    if (r?.failures?.length) { hit = { extractor: ex, result: r }; break; }
   }
-  return null;
+  if (hit && hit.extractor.name !== "generic") return hit;
+  for (const ex of extractors) {
+    if (typeof ex.lastResort !== "function") continue;
+    let r = null;
+    try { if (ex.lastResort(s)) r = ex.extract(s); } catch { r = null; }
+    // Marked, because a reading only taken because nothing else could read the log must
+    // not go on to outrank a wrapper candidate where something can - see better().
+    if (r?.failures?.length) return { extractor: ex, result: r, lastResort: true };
+  }
+  return hit;
 }
 
 // A parse only counts if a real parser produced it. The generic fallback scores nothing
@@ -457,8 +479,14 @@ function better(candidate, cand, current) {
   if (!real(cand)) return !anything(current);
   // A region candidate keeps only part of the log, so it must never displace a reading
   // of the whole. It is for the case where the whole says nothing worth having.
-  if (candidate.kind === "region") return !real(current);
-  if (!real(current)) return true;
+  // A last-resort reading says only that nothing else could read the log AS IT STANDS.
+  // That is not a claim about the log with a wrapper taken off it, and it must never be
+  // the thing that keeps the wrapper on. docker reads a failed `RUN` this way, and a
+  // capped log of `docker build` running pytest is exactly the case: the region BuildKit
+  // quotes is where pytest's two failures are, and holding docker's one build failure
+  // against it kept the whole diagnosis out.
+  if (candidate.kind === "region") return !real(current) || !!current.lastResort;
+  if (!real(current) || current.lastResort) return true;
   if (cand.result.tool !== current.result.tool) {
     // A different tool owning the log is usually the clearest evidence a wrapper came
     // off. It is not evidence when the strip DESTROYED the reading that was there: npm
