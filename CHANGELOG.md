@@ -2,6 +2,10 @@
 
 ## Unreleased
 
+- The live coverage benchmark now runs Gradle tests, RSpec, PHPUnit and a Docker command
+  against an unreachable daemon. These paths had only captured-fixture coverage before,
+  so a future tool format change could stay green without a current command exercising it.
+
 - A Docker command run while the daemon is stopped is read as one environment failure.
   Docker 28 can print two tar-writer errors before the useful `failed to connect to the
   docker API` line; those are fallout and are no longer returned as an unidentified log.
