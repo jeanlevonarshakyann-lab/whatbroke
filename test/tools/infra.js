@@ -303,6 +303,15 @@ const CASES = [
       assert.equal(r.failures[0].stmt, "COPY missing-file.txt /tmp/");
       assert.match(r.failures[0].message, /"\/missing-file\.txt": not found/);
     } },
+  // Captured from Docker 28 on macOS while Docker Desktop was stopped. The two tar
+  // writer messages are fallout; the final line is the single actionable failure.
+  { file: "docker_daemon_fail.txt", tool: "docker", n: 1, check: (r) => {
+      assert.equal(r.failures[0].label, "docker daemon");
+      assert.match(r.failures[0].message, /failed to connect to the docker API/);
+      assert.match(r.failures[0].message, /daemon is running/);
+      assert.doesNotMatch(JSON.stringify(r.failures), /tar writer|Can't add file/);
+      assert.equal(r.failures[0].file, undefined);
+    } },
   // Captured with Terraform v1.16.1. `terraform fmt -check` is in nearly every Terraform
   // pipeline, and with -diff it says where; without it, only which files. None of it was
   // read: the job exited 3 and whatbroke handed the diff back whole.

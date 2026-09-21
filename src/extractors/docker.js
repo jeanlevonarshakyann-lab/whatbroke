@@ -34,6 +34,11 @@ const STEP_ERROR = /^#(\d+)[^\S\n]+ERROR:[^\S\n]+(.+?)[^\S\n]*$/;
 const FINAL_ERROR = /^ERROR:[^\S\n]+(?:failed to build:[^\S\n]+)?failed to solve:[^\S\n]+(.+?)[^\S\n]*$/;
 // docker saying that the command it ran exited non-zero. The command said why.
 const RELAYED = /^process[^\S\n]+".*"[^\S\n]+did not complete successfully:[^\S\n]+exit code:[^\S\n]*\d+[^\S\n]*$/;
+// Docker CLI 28 on macOS uses the first form; Linux commonly uses the second,
+// and older Windows clients put the same diagnosis behind `error during connect`.
+// These lines are Docker's own failure. Earlier tar-writer errors are consequences of
+// the missing daemon and must not become extra diagnoses.
+const DAEMON = /^(?:failed to connect to the docker API at .+?(?:daemon is running|connect: .+)|Cannot connect to the Docker daemon at .+|error during connect: .*(?:docker daemon|docker_engine).*)$/i;
 
 /** Did this build step print anything of its own? BuildKit tags a step's output with
  *  the step number and the elapsed time - `#9 0.211 FF.` - and nothing else it writes
@@ -76,7 +81,7 @@ function quotedCause(lines) {
 export default {
   name: "docker",
   // Strings a log has to hold for this parser to read anything from it - see src/router.js.
-  signals: ["ERROR:"],
+  signals: ["ERROR:", "failed to connect to the docker API", "Cannot connect to the Docker daemon", "error during connect:"],
   category: "build",
   commands: ["docker", "buildx", "podman"],
 
@@ -85,6 +90,7 @@ export default {
   // will not read those. Claim only what it can actually answer.
   detect(s) {
     const lines = s.split("\n");
+    if (lines.some((l) => DAEMON.test(l))) return true;
     return lines.some((l) => {
       const st = l.match(STEP_ERROR);
       if (st) return !RELAYED.test(st[2]) || !printedOutput(lines, st[1]);
@@ -111,6 +117,18 @@ export default {
 
   extract(s) {
     const lines = s.split("\n");
+    const daemonAt = lines.findIndex((l) => DAEMON.test(l));
+    if (daemonAt >= 0) {
+      const message = lines[daemonAt].trim();
+      return {
+        tool: "docker",
+        summary: "1 docker error",
+        failures: [withSource({
+          title: "docker daemon unavailable", label: "docker daemon",
+          severity: "error", category: "build", message,
+        }, daemonAt, daemonAt + 1)],
+      };
+    }
     let file, line, stmt, step, final, relayed, excerpt, said;
     // Where each part was read: the step's error, docker's closing one, the relayed exit.
     let stepAt, finalAt, relayedAt, saidAt;

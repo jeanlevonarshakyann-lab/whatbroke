@@ -2,6 +2,10 @@
 
 ## Unreleased
 
+- A Docker command run while the daemon is stopped is read as one environment failure.
+  Docker 28 can print two tar-writer errors before the useful `failed to connect to the
+  docker API` line; those are fallout and are no longer returned as an unidentified log.
+
 - A command that will not start says what the shell would have said. `whatbroke -- pyest`
   reported "spawn pyest ENOENT", which is node's wording for a typo where every shell says
   "command not found". It now reads `pyest: command not found (ENOENT)`, with the errno
