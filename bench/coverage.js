@@ -51,17 +51,20 @@ const CASES = [
   ["test", "node --test tap", { "t.test.js": "const { test } = require(\"node:test\");\nconst a = require(\"node:assert\");\ntest(\"adds\", () => { a.strictEqual(1 + 1, 3); });\n" }, ["node", "--test", "--test-reporter=tap"]],
   // And TAP as prove leaves it: no plan and no results, only Test::More's diagnostics.
   ["test", "prove", { "shop.t": "use strict;\nuse warnings;\nuse Test::More tests => 1;\n\nis(total(), 1050, 'invoice total');\n\nsub total { 1049 }\n" }, ["prove", "shop.t"]],
-  // Maven fetches its dependencies on a cold ~/.m2, which is why the read timeout is
-  // generous. gradle reaches the same parser by the same surefire-shaped report.
-  // Six runners whose parsers the corpus covers and no live command did. Each was run by
-  // hand against the real tool first. The three that import their own framework in the
-  // test file need it installed before the command means anything.
+  // Maven and Gradle fetch their test dependencies on a cold cache, which is why the
+  // read timeout is generous. The framework-backed cases install into their disposable
+  // project before running, so the command measures the runner rather than a missing gem.
+  // Runners whose parsers the corpus covers. Each was run by hand against the real tool
+  // first. A test that imports its framework installs it before the command runs.
   ["test", "mocha", { "package.json": "{\"name\":\"t\",\"version\":\"1.0.0\"}\n", "test/a.test.js": "const assert = require(\"assert\");\ndescribe(\"shop\", () => { it(\"adds\", () => { assert.strictEqual(1 + 1, 3); }); });\n" }, ["mocha"]],
   ["test", "vitest", { "package.json": "{\"name\":\"t\",\"version\":\"1.0.0\",\"type\":\"module\"}\n", "a.test.js": "import { test, expect } from \"vitest\";\ntest(\"adds\", () => { expect(1 + 1).toBe(3); });\n" }, ["vitest", "run"]],
   ["test", "ava", { "package.json": "{\"name\":\"t\",\"version\":\"1.0.0\",\"type\":\"module\"}\n", "test/a.js": "import test from \"ava\";\ntest(\"adds\", t => { t.is(1 + 1, 3); });\n" }, ["npx", "ava"], undefined, ["npm", "install", "--silent", "--no-audit", "--no-fund", "ava"]],
   ["test", "node-tap", { "package.json": "{\"name\":\"t\",\"version\":\"1.0.0\"}\n", "test/a.test.js": "const t = require(\"tap\");\nt.equal(1 + 1, 3, \"adds\");\n" }, ["npx", "tap"], undefined, ["npm", "install", "--silent", "--no-audit", "--no-fund", "tap"]],
   ["test", "playwright", { "package.json": "{\"name\":\"t\",\"version\":\"1.0.0\"}\n", "a.spec.js": "const { test, expect } = require(\"@playwright/test\");\ntest(\"adds\", async () => { expect(1 + 1).toBe(3); });\n" }, ["npx", "playwright", "test"], undefined, ["npm", "install", "--silent", "--no-audit", "--no-fund", "@playwright/test"]],
   ["test", "mvn", { "pom.xml": "<project xmlns=\"http://maven.apache.org/POM/4.0.0\">\n  <modelVersion>4.0.0</modelVersion>\n  <groupId>shop</groupId><artifactId>shop</artifactId><version>1.0</version>\n  <properties><maven.compiler.source>17</maven.compiler.source><maven.compiler.target>17</maven.compiler.target></properties>\n  <dependencies><dependency>\n    <groupId>org.junit.jupiter</groupId><artifactId>junit-jupiter</artifactId>\n    <version>5.10.2</version><scope>test</scope>\n  </dependency></dependencies>\n</project>\n", "src/test/java/ShopTest.java": "import org.junit.jupiter.api.Test;\nimport static org.junit.jupiter.api.Assertions.*;\n\nclass ShopTest {\n  @Test void invoiceTotal() { assertEquals(1050, 1049); }\n}\n" }, ["mvn", "-q", "-B", "test"], ["mvn", "-v"]],
+  ["test", "gradle", { "settings.gradle": "rootProject.name = 'shop'\n", "build.gradle": "plugins { id 'java' }\nrepositories { mavenCentral() }\ndependencies { testImplementation 'junit:junit:4.13.2' }\n", "src/test/java/shop/ShopTest.java": "package shop;\n\nimport org.junit.Test;\nimport static org.junit.Assert.*;\n\npublic class ShopTest {\n  @Test public void invoiceTotal() { assertEquals(1050, 1049); }\n}\n" }, ["gradle", "--no-daemon", "test"], ["gradle", "--version"]],
+  ["test", "rspec", { "Gemfile": "source 'https://rubygems.org'\ngem 'rspec', '~> 3.13'\n", "spec/shop_spec.rb": "RSpec.describe 'shop' do\n  it 'adds' do\n    expect(1 + 1).to eq(3)\n  end\nend\n" }, ["bundle", "exec", "rspec"], ["bundle", "--version"], ["bundle", "install", "--quiet"]],
+  ["test", "phpunit", { "composer.json": "{\"require-dev\":{\"phpunit/phpunit\":\"^13.0\"}}\n", "tests/ShopTest.php": "<?php\nuse PHPUnit\\Framework\\TestCase;\n\nfinal class ShopTest extends TestCase\n{\n    public function testAdds(): void\n    {\n        $this->assertSame(3, 1 + 1);\n    }\n}\n" }, ["php", "vendor/bin/phpunit", "tests"], ["composer", "--version"], ["composer", "install", "--no-interaction", "--no-progress", "--quiet"]],
   ["runtime", "python", { "boom.py": "raise KeyError(\"missing config key\")\n" }, ["python3", "boom.py"]],
   ["runtime", "ruby", { "r.rb": "def f\n  x = \nend\n" }, ["ruby", "r.rb"]],
   ["runtime", "perl", { "p.pl": "use strict;\nmy $x = ;\n" }, ["perl", "p.pl"]],
@@ -98,6 +101,9 @@ const CASES = [
   ["infra", "terraform", { "main.tf": "output \"o\" {\n  value = var.undefined_one\n}\n" }, ["terraform", "validate"]],
   ["infra", "kubectl", { "bad.yaml": "apiVersion: v1\nkind: Pod\nmetadata:\n  name: shop\nspec:\n  containers:\n  - name: api\n    image: nginx\n    ports:\n    - containerPort: \"80\"\n" }, ["kubectl", "apply", "--dry-run=client", "-f", "bad.yaml"]],
   ["infra", "docker", { "Dockerfile": "FROM alpine:3.19\nRUN nosuchcommand --help\n" }, ["docker", "build", "."]],
+  // A host that cannot exist makes the daemon failure reproducible even on a machine
+  // whose real Docker engine is running.
+  ["infra", "docker daemon", {}, ["docker", "--host", "unix:///tmp/whatbroke-no-docker.sock", "version"]],
 ];
 
 /** `which` proves a name resolves. It does not prove the tool runs, and this machine is
