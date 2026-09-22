@@ -8,7 +8,7 @@ import { analyse } from "../src/index.js";
 
 const here = dirname(fileURLToPath(import.meta.url));
 const fx = (n) => readFileSync(join(here, "fixtures", n), "utf8");
-const cli = join(here, "..", "bin", "whatbroke.js");
+const cli = join(here, "..", "bin", "whyitbroke.js");
 
 let pass = 0, fail = 0;
 
@@ -83,7 +83,7 @@ try {
 try {
   const { render, setColor } = await import("../src/render.js");
   setColor(false);
-  const matcher = JSON.parse(readFileSync(join(here, "..", ".github", "whatbroke.problem-matcher.json"), "utf8"));
+  const matcher = JSON.parse(readFileSync(join(here, "..", ".github", "whyitbroke.problem-matcher.json"), "utf8"));
   const re = new RegExp(matcher.problemMatcher[0].pattern[0].regexp);
   // what the renderer emits for a located failure: two spaces, "file:line[:col]", a name
   const LOCATION_LINE = /^  (\S.*?):(\d+)(?::(\d+))?(?:  (.*))?$/;
@@ -112,7 +112,7 @@ try {
   const { writeFileSync } = await import("node:fs");
   const { tmpdir } = await import("node:os");
   setColor(false);
-  const outside = join(tmpdir(), "whatbroke-must-not-read.txt");
+  const outside = join(tmpdir(), "whyitbroke-must-not-read.txt");
   writeFileSync(outside, "TOP SECRET CONTENTS\n");
   resetSnippetCache();
   const out = render({ tool: "tsc", failures: [{ file: outside, line: 1, title: "TS1", message: "x" }] }, {});
@@ -339,7 +339,7 @@ try {
   const file = join(dir, "a.py");
 
   // The check above needs the tool to have quoted the line it saw. mypy, and plenty of
-  // others, print only a location - and a log read after the fact (`whatbroke < build.log`,
+  // others, print only a location - and a log read after the fact (`whyitbroke < build.log`,
   // or a suite still running while the file is edited) can name a line the file no longer
   // reaches. The window clamped to the end of the file and printed whatever was there
   // under the heading of the line that failed, containing no hit line at all.

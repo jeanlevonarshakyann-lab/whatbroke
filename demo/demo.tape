@@ -10,7 +10,7 @@ Set Theme "Catppuccin Mocha"
 Set TypingSpeed 55ms
 
 Hide
-Type 'cd /tmp/whatbroke-demo'
+Type 'cd /tmp/whyitbroke-demo'
 Enter
 Type 'export PS1="$ "'
 Enter
@@ -31,6 +31,6 @@ Type 'clear'
 Enter
 Sleep 400ms
 
-Type 'whatbroke -q pytest'
+Type 'whyitbroke -q pytest'
 Enter
 Sleep 6s

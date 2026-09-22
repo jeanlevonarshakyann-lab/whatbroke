@@ -1,6 +1,6 @@
 // The two promises everything else is subordinate to.
 //
-//   1. The exit code whatbroke returns is the one the command returned.
+//   1. The exit code whyitbroke returns is the one the command returned.
 //   2. A command that failed is never presented as anything else.
 //
 // Both were true when this file was written; neither was pinned, so any change to the
@@ -15,7 +15,7 @@ import { spawnSync } from "node:child_process";
 import assert from "node:assert/strict";
 
 const here = dirname(fileURLToPath(import.meta.url));
-const cli = join(here, "..", "bin", "whatbroke.js");
+const cli = join(here, "..", "bin", "whyitbroke.js");
 
 let pass = 0, fail = 0;
 const results = [];
@@ -30,7 +30,7 @@ const cache = mkdtempSync(join(tmpdir(), "wb-guarantee-"));
 const MODES = [[], ["--json"], ["--format", "github"], ["-q"], ["--since-last"], ["--no-cluster"], ["--all"]];
 const run = (args) => spawnSync(process.execPath, [cli, ...args], {
   encoding: "utf8", timeout: 20000,
-  env: { ...process.env, NO_COLOR: "1", GITHUB_STEP_SUMMARY: "", WHATBROKE_CACHE_DIR: cache },
+  env: { ...process.env, NO_COLOR: "1", GITHUB_STEP_SUMMARY: "", WHYITBROKE_CACHE_DIR: cache },
 });
 
 // ------------------------------------------------------------- exit codes
@@ -44,7 +44,7 @@ test("the exit code is the command's own, in every output mode", () => {
     [["definitely-not-a-binary-xyz"], 127, "command not found"],
     // Not every way of failing to start arrives as an "error" event on the child. node
     // rejects an empty name from spawn() itself, and a throw there used to escape as a
-    // stack trace under whatbroke's own exit code - the one thing this promise forbids.
+    // stack trace under whyitbroke's own exit code - the one thing this promise forbids.
     [[""], 127, "an empty command name"],
   ];
   const wrong = [];
@@ -59,7 +59,7 @@ test("the exit code is the command's own, in every output mode", () => {
 
 test("a signal becomes the shell's code for that signal", () => {
   // Windows has no POSIX signals: a killed process reports 1, not 128 + signal number.
-  // The guarantee is that whatbroke passes on whatever the platform gives it, not that
+  // The guarantee is that whyitbroke passes on whatever the platform gives it, not that
   // it invents a Unix convention where none exists.
   const windows = process.platform === "win32";
   for (const [signal, want] of [["SIGKILL", windows ? 1 : 137], ["SIGTERM", windows ? 1 : 143]]) {
@@ -93,7 +93,7 @@ test("a failed command is never presented as anything else", () => {
       if (!said) silent.push(`${what} under ${JSON.stringify(mode)}: ${JSON.stringify((r.stdout + r.stderr).slice(0, 60))}`);
     }
   }
-  assert.deepEqual(silent, [], "whatbroke said nothing about a command that failed");
+  assert.deepEqual(silent, [], "whyitbroke said nothing about a command that failed");
 });
 
 test("a successful command is left alone", () => {
@@ -170,7 +170,7 @@ test("the headline guard catches the wordings it was written for", () => {
 
 // ------------------------------------------------------------- the project
 
-// Everything whatbroke writes goes somewhere you asked for: its cache under --since-last,
+// Everything whyitbroke writes goes somewhere you asked for: its cache under --since-last,
 // the step summary GitHub Actions names. The directory it runs in is only ever read - for
 // the source lines around a failure - so a run in every mode, over a log that names the
 // project's own files, leaves every file in it byte for byte and every timestamp as it was.
@@ -211,7 +211,7 @@ test("the directory it runs in is never written to, in any mode", () => {
     ].join("\n");
     const failing = ["node", "-e", `process.stdout.write(${JSON.stringify(log + "\n")}); process.exit(1)`];
     for (const mode of MODES) {
-      const env = { ...process.env, NO_COLOR: "1", WHATBROKE_CACHE_DIR: join(outside, "cache"), GITHUB_STEP_SUMMARY: join(outside, "summary.md") };
+      const env = { ...process.env, NO_COLOR: "1", WHYITBROKE_CACHE_DIR: join(outside, "cache"), GITHUB_STEP_SUMMARY: join(outside, "summary.md") };
       spawnSync(process.execPath, [cli, ...mode, ...failing], { cwd: project, encoding: "utf8", timeout: 20000, env });
       spawnSync(process.execPath, [cli, ...mode], { cwd: project, input: log, encoding: "utf8", timeout: 20000, env });
     }

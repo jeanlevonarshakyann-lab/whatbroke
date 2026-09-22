@@ -1,6 +1,6 @@
-// What whatbroke reads, and what stands behind each claim that it does.
+// What whyitbroke reads, and what stands behind each claim that it does.
 //
-// The README's table says which tools whatbroke reads and what you get from each: a row
+// The README's table says which tools whyitbroke reads and what you get from each: a row
 // is a promise, a parser is the code that keeps it, and a fixture is a real capture it is
 // kept against. test/support.json says which rows each parser answers for. This holds the
 // three to each other - no parser without a row, no row without a parser, no capture that

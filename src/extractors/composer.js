@@ -1,6 +1,6 @@
 // `composer install` is to a PHP CI job what `bundle install` is to a Ruby one: the
 // first thing it runs and the first thing that fails. None of the ways it fails was
-// read - each came back as "whatbroke could not identify a diagnostic".
+// read - each came back as "whyitbroke could not identify a diagnostic".
 //
 // composer says almost everything twice. A resolution failure is a headline, then the
 // numbered problems, then "Potential causes:" with four guesses, then a link to the

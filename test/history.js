@@ -20,7 +20,7 @@ import { causeId, fingerprint } from "../src/cluster.js";
 import { analyse } from "../src/index.js";
 
 const here = dirname(fileURLToPath(import.meta.url));
-const cli = join(here, "..", "bin", "whatbroke.js");
+const cli = join(here, "..", "bin", "whyitbroke.js");
 const fx = (n) => readFileSync(join(here, "fixtures", n), "utf8");
 
 let pass = 0, fail = 0;
@@ -49,7 +49,7 @@ function cache() {
 const run = (store, input, args = []) => spawnSync(process.execPath,
   [cli, "--since-last", ...(args.includes("--id") ? [] : ["--id", "suite"]), ...args], {
   input, encoding: "utf8",
-  env: { ...process.env, NO_COLOR: "1", WHATBROKE_CACHE_DIR: store },
+  env: { ...process.env, NO_COLOR: "1", WHYITBROKE_CACHE_DIR: store },
 });
 const stored = (store) => readdirSync(store).filter((f) => f.endsWith(".json"));
 
@@ -181,7 +181,7 @@ const ECHO = (text) => [process.execPath, "-e",
   `process.stdout.write(${JSON.stringify(text)}); process.exit(1)`];
 const wrapped = (store, text, args = ["--json"]) => spawnSync(process.execPath,
   [cli, "--since-last", ...args, ...ECHO(text)], {
-    encoding: "utf8", env: { ...process.env, NO_COLOR: "1", WHATBROKE_CACHE_DIR: store },
+    encoding: "utf8", env: { ...process.env, NO_COLOR: "1", WHYITBROKE_CACHE_DIR: store },
   });
 
 test("the last 32-bit history record migrates without inventing new causes", () => {
@@ -304,14 +304,14 @@ test("history distinguishes identical diagnostic text from different tools", () 
 
 test("state is kept outside the working directory", () => {
   assert.ok(!resolve(cacheDir({})).startsWith(resolve(process.cwd()) + "/"),
-    "whatbroke promises it writes nothing into your project");
+    "whyitbroke promises it writes nothing into your project");
 });
 
 test("without --since-last nothing is written at all", () => {
   const store = cache();
   spawnSync(process.execPath, [cli], {
     input: fx("pytest_fail.txt"), encoding: "utf8",
-    env: { ...process.env, NO_COLOR: "1", WHATBROKE_CACHE_DIR: store },
+    env: { ...process.env, NO_COLOR: "1", WHYITBROKE_CACHE_DIR: store },
   });
   assert.equal(stored(store).length, 0, "tracking must be opt-in");
 });
@@ -322,7 +322,7 @@ test("an unwritable cache degrades quietly instead of failing the run", () => {
   const r = run(store, fx("pytest_fail.txt"), []);
   const blocked = spawnSync(process.execPath, [cli, "--since-last"], {
     input: fx("pytest_fail.txt"), encoding: "utf8",
-    env: { ...process.env, NO_COLOR: "1", WHATBROKE_CACHE_DIR: join(store, "blocker", "sub") },
+    env: { ...process.env, NO_COLOR: "1", WHYITBROKE_CACHE_DIR: join(store, "blocker", "sub") },
   });
   assert.equal(blocked.status, 0, "a cache problem must never change the outcome of a run");
   assert.match(blocked.stdout, /3 failed/, "the diagnosis is still printed");
@@ -333,7 +333,7 @@ test("an unwritable cache degrades quietly instead of failing the run", () => {
 
 // The same command, run three times: it fails, it passes, it fails the same way again.
 // A green run used to write nothing at all, so the record still held the first failure -
-// and when that failure came back, whatbroke compared it against the run that found it
+// and when that failure came back, whyitbroke compared it against the run that found it
 // and said nothing was new. A passing run in between is exactly when a reader most wants
 // the next break called new.
 const CHILD = `
@@ -349,7 +349,7 @@ const CHILD = `
 const suite = (store, mode, args = ["--json"]) => spawnSync(process.execPath,
   [cli, "--since-last", ...args, process.execPath, "-e", CHILD], {
     encoding: "utf8",
-    env: { ...process.env, NO_COLOR: "1", WHATBROKE_CACHE_DIR: store,
+    env: { ...process.env, NO_COLOR: "1", WHYITBROKE_CACHE_DIR: store,
       QUIET: mode === "pass" ? "1" : "", RC: mode === "fail" ? "1" : "0" },
   });
 
@@ -368,7 +368,7 @@ test("a failure that returns after a green run is new again", () => {
   assert.equal(again.fresh.length, 1, "the failure came back after a run that passed: it is new");
 });
 
-test("a command that worked prints nothing of whatbroke's own", () => {
+test("a command that worked prints nothing of whyitbroke's own", () => {
   const store = cache();
   const green = suite(store, "pass", []);
   assert.equal(green.status, 0);
@@ -426,7 +426,7 @@ test("the baseline a green run leaves does not depend on the output format", () 
 
 // ------------------------------------------------- a pipe nobody named is nobody's
 
-// `pytest tests/unit | whatbroke --since-last` and `pytest tests/api | whatbroke
+// `pytest tests/unit | whyitbroke --since-last` and `pytest tests/api | whyitbroke
 // --since-last` run from one directory carry no argv at all, so they shared a single
 // record: each overwrote the other, and each reported the other's failures as GONE - a
 // claim that something was fixed, about a suite that had not even run.
@@ -440,7 +440,7 @@ FAILED tests/api/b.py::t2 - ConnectionRefusedError: billing gateway
 ======== 1 failed in 0.01s ========`;
   const bare = (input) => spawnSync(process.execPath, [cli, "--since-last", "--json"], {
     input, encoding: "utf8",
-    env: { ...process.env, NO_COLOR: "1", WHATBROKE_CACHE_DIR: store },
+    env: { ...process.env, NO_COLOR: "1", WHYITBROKE_CACHE_DIR: store },
   });
   for (const log of [unit, api, unit]) {
     const since = JSON.parse(bare(log).stdout).since;
@@ -485,7 +485,7 @@ test("an unnamed pipe says why it was not tracked", () => {
   const store = cache();
   const r = spawnSync(process.execPath, [cli, "--since-last"], {
     input: fx("pytest_fail.txt"), encoding: "utf8",
-    env: { ...process.env, NO_COLOR: "1", WHATBROKE_CACHE_DIR: store },
+    env: { ...process.env, NO_COLOR: "1", WHYITBROKE_CACHE_DIR: store },
   });
   // Printing nothing would read as "nothing new", which is the claim being refused.
   assert.match(r.stdout, /not tracked/);
@@ -497,7 +497,7 @@ test("--id is what makes two pipelines two", () => {
   const named = (input, id) => JSON.parse(spawnSync(process.execPath,
     [cli, "--since-last", "--json", "--id", id], {
       input, encoding: "utf8",
-      env: { ...process.env, NO_COLOR: "1", WHATBROKE_CACHE_DIR: store },
+      env: { ...process.env, NO_COLOR: "1", WHYITBROKE_CACHE_DIR: store },
     }).stdout).since;
   assert.equal(named(fx("pytest_fail.txt"), "unit").reason, "no-previous-run");
   assert.equal(named(fx("pytest_tb_short_fail.txt"), "api").reason, "no-previous-run");

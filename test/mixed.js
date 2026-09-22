@@ -4,7 +4,7 @@
 // one log. Only one extractor can own that output — so for a long time the other tools'
 // failures were extracted, counted, and thrown away. An eslint-plus-jest log showed 2
 // failures out of 92 and a line saying the other 90 existed somewhere, which left the
-// reader doing exactly the work whatbroke is for.
+// reader doing exactly the work whyitbroke is for.
 //
 // `failures` still means "what the winning tool reported" and is unchanged. Everything
 // else arrives under `others`, attributed to the tool that produced it.
@@ -19,7 +19,7 @@ import { analyse } from "../src/index.js";
 import { parserOf, sourceRange } from "../src/ownership.js";
 
 const here = dirname(fileURLToPath(import.meta.url));
-const cli = join(here, "..", "bin", "whatbroke.js");
+const cli = join(here, "..", "bin", "whyitbroke.js");
 const fx = (n) => readFileSync(join(here, "fixtures", n), "utf8");
 
 let pass = 0, fail = 0;
@@ -503,7 +503,7 @@ test("a pair of logs never yields more failures than the two apart", () => {
 // gets found: every ordered pair of fixtures, counted the same way.
 //
 // It began as a ratchet at 136 and came down one parser at a time. It is now a plain
-// assertion, because zero is the only number that means what the tool claims: whatbroke
+// assertion, because zero is the only number that means what the tool claims: whyitbroke
 // never reports a failure it cannot point at. A pair that over-claims is a parser
 // reading another tool's line, and the fix is that parser - not this number.
 // Logs whose owner is not go, but whose content is partly go's own output.

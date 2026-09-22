@@ -1,6 +1,6 @@
-// A JSON Schema validator for the one schema whatbroke publishes, and no more.
+// A JSON Schema validator for the one schema whyitbroke publishes, and no more.
 //
-// whatbroke has no dependencies and its tests take none either, so this implements only
+// whyitbroke has no dependencies and its tests take none either, so this implements only
 // the keywords report.schema.json uses, with draft 2020-12's meaning. A validator that
 // meets a keyword it does not know skips it, and then passes everything the keyword was
 // written to refuse - so `unknownKeywords` lists any the schema uses that are not here,
@@ -46,7 +46,7 @@ function resolve(root, ref) {
 /** Every way `value` breaks `schema`, as "path: what is wrong".
  *
  *  `strict` also refuses a property that an object's schema does not list. The published
- *  schema allows one, since version 1 may gain fields - but a field whatbroke itself
+ *  schema allows one, since version 1 may gain fields - but a field whyitbroke itself
  *  writes and nothing documents is exactly what the tests are for. */
 export function validate(value, schema = REPORT_SCHEMA, { strict = false } = {}) {
   const at = (path) => path || "/";

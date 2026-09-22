@@ -13,8 +13,8 @@
 //     sends it is a guess, and is written as one.
 //   - An exit code is a number a program chose, and 126, 127 and 124 mean something only
 //     by convention - a shell's, and GNU coreutils'. They are described as conventions,
-//     and only for a command whatbroke ran itself, where the shell in question is the one
-//     it spawned. A piped log's upstream status is not whatbroke's to interpret.
+//     and only for a command whyitbroke ran itself, where the shell in question is the one
+//     it spawned. A piped log's upstream status is not whyitbroke's to interpret.
 //
 // Nothing here is invented from an exit code alone: 1 and 2 are what every program in the
 // world returns, and grep returns 1 for finding nothing.
@@ -49,7 +49,7 @@ const CODES = {
 /** What the exit status says on its own, or null when it says nothing worth printing.
  *
  *  `signal` is the name node reports for a child killed by one, and is the only part of
- *  this that is a fact. `inputMode` gates the exit codes: whatbroke ran the command, or it
+ *  this that is a fact. `inputMode` gates the exit codes: whyitbroke ran the command, or it
  *  did not, and a piped log's number belongs to whoever produced it. */
 export function exitStatus({ code = null, signal = null, inputMode = "command" } = {}) {
   if (signal) return { signal, code, says: SIGNALS[signal] ?? `Stopped by ${signal}.` };

@@ -1,6 +1,6 @@
 // Infrastructure: docker, kubectl, terraform, git, shellcheck, yamllint.
 //
-// Each case is a real capture in test/fixtures/, read the way whatbroke reads it; each
+// Each case is a real capture in test/fixtures/, read the way whyitbroke reads it; each
 // format group is one run captured in several formats, which have to agree. The checks
 // below them are about how this family's tools print what they print.
 import { readFileSync, readdirSync } from "node:fs";
@@ -287,7 +287,7 @@ const CASES = [
       // the exit status the report already carries - the same consequence make's
       // `*** [all] Error 1` is, and make's parser has never read those. The count above
       // said 2 while the comment said "the first is the cause": for the same shape
-      // through make, whatbroke says one.
+      // through make, whyitbroke says one.
       assert.equal(r.failures.length, 1, "one failure, not docker restating the cause");
       assert.ok(!r.failures.some((f) => /did not complete successfully/.test(f.message ?? "")),
         "the relayed exit status is not a failure of its own");
@@ -314,7 +314,7 @@ const CASES = [
     } },
   // Captured with Terraform v1.16.1. `terraform fmt -check` is in nearly every Terraform
   // pipeline, and with -diff it says where; without it, only which files. None of it was
-  // read: the job exited 3 and whatbroke handed the diff back whole.
+  // read: the job exited 3 and whyitbroke handed the diff back whole.
   { file: "terraform_fmt_fail.txt", tool: "terraform fmt", n: 1, check: (r) => {
       assert.equal(r.summary, "1 file failed the format check");
       assert.equal(r.failures[0].file, "main.tf");

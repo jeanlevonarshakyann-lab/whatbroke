@@ -13,7 +13,7 @@ concurrency:
   cancel-in-progress: ${{ github.event_name == 'pull_request' }}
 
 jobs:
-  # Everything but the shredded-log suite, on every platform and Node version whatbroke
+  # Everything but the shredded-log suite, on every platform and Node version whyitbroke
   # supports: capture, the CLI, paths and line endings are where platforms differ.
   fast:
     runs-on: ${{ matrix.os }}

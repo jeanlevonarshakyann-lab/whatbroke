@@ -71,7 +71,7 @@ const unnamed = (message, cop) => {
 function offenses(s) {
   // Every format writes the cop's name followed by a colon somewhere - before the message,
   // or inside it. A log without one is not read line by line at all: this runs on every
-  // log whatbroke is handed, however large.
+  // log whyitbroke is handed, however large.
   if (!COP_SAID.test(s)) return [];
   const lines = s.split("\n");
   const found = [];

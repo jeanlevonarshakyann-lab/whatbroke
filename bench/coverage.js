@@ -1,4 +1,4 @@
-// What share of real failing commands whatbroke reads: `npm run coverage`.
+// What share of real failing commands whyitbroke reads: `npm run coverage`.
 //
 // Every other measurement in this repo runs against the corpus, which is captures taken
 // once and committed. This one runs the tools. It writes a small broken project for each
@@ -20,7 +20,7 @@ import { join, dirname } from "node:path";
 import { spawnSync } from "node:child_process";
 import { fileURLToPath } from "node:url";
 
-const cli = join(dirname(fileURLToPath(import.meta.url)), "..", "bin", "whatbroke.js");
+const cli = join(dirname(fileURLToPath(import.meta.url)), "..", "bin", "whyitbroke.js");
 
 /** [group, tool, files to write, argv that fails on them] */
 const CASES = [
@@ -43,7 +43,7 @@ const CASES = [
   ["test", "pytest", { "test_shop.py": "def test_one():\n    assert 1 == 2\n" }, ["python3", "-m", "pytest", "-q"]],
   ["test", "unittest", { "test_u.py": "import unittest\n\nclass T(unittest.TestCase):\n    def test_a(self):\n        self.assertEqual(1, 2)\n" }, ["python3", "-m", "unittest"]],
   // The nine parsers below were the ones no case here ran: without them the share was a
-  // claim about the tools that happened to be listed, not about what whatbroke reads.
+  // claim about the tools that happened to be listed, not about what whyitbroke reads.
   ["test", "jest", { "package.json": "{\"name\":\"j\",\"version\":\"1.0.0\"}\n", "a.test.js": "test(\"adds\", () => { expect(1 + 1).toBe(3); });\n" }, ["jest"]],
   ["test", "jasmine", { "package.json": "{\"name\":\"j\",\"version\":\"1.0.0\"}\n", "spec/support/jasmine.json": "{\"spec_dir\":\"spec\",\"spec_files\":[\"*.spec.js\"]}\n", "spec/a.spec.js": "describe(\"math\", function () { it(\"adds\", function () { expect(1 + 1).toBe(3); }); });\n" }, ["jasmine"]],
   // TAP as a stream. node's own parser wins this one, which is the right answer and the
@@ -103,14 +103,14 @@ const CASES = [
   ["infra", "docker", { "Dockerfile": "FROM alpine:3.19\nRUN nosuchcommand --help\n" }, ["docker", "build", "."]],
   // A host that cannot exist makes the daemon failure reproducible even on a machine
   // whose real Docker engine is running.
-  ["infra", "docker daemon", {}, ["docker", "--host", "unix:///tmp/whatbroke-no-docker.sock", "version"]],
+  ["infra", "docker daemon", {}, ["docker", "--host", "unix:///tmp/whyitbroke-no-docker.sock", "version"]],
 ];
 
 /** `which` proves a name resolves. It does not prove the tool runs, and this machine is
  *  the case in point: macOS ships /usr/bin/javac whether or not a JDK is installed, and
  *  without one it prints where to download Java and exits 1. The bench ran it, read
- *  nothing out of that, and reported javac as a tool whatbroke cannot read - a gap in the
- *  headline number that was not whatbroke's and pointed at a parser nobody needs.
+ *  nothing out of that, and reported javac as a tool whyitbroke cannot read - a gap in the
+ *  headline number that was not whyitbroke's and pointed at a parser nobody needs.
  *
  *  So a case may name a probe that has to succeed too. Only the ones where `which` is
  *  known to lie carry one; a probe on every tool would be 47 more guesses about exit
@@ -143,7 +143,7 @@ let group = "";
 for (const [g, name, files, argv, probe, setup] of grouped) {
   if (g !== group) { group = g; console.log(`\n  ${group}`); }
   if (!have(argv, probe)) { console.log(`    skip  ${name.padEnd(17)} not installed`); tally.skip++; continue; }
-  const dir = mkdtempSync(join(tmpdir(), "whatbroke-coverage-"));
+  const dir = mkdtempSync(join(tmpdir(), "whyitbroke-coverage-"));
   try {
     for (const [path, body] of Object.entries(files)) {
       mkdirSync(join(dir, dirname(path)), { recursive: true });
@@ -156,7 +156,7 @@ for (const [g, name, files, argv, probe, setup] of grouped) {
     //
     // A setup that did not succeed is not a measurement. Without this an install that
     // could not reach the registry would leave the command failing on a missing module,
-    // whatbroke would read that honestly, and the run would be counted as a gap in
+    // whyitbroke would read that honestly, and the run would be counted as a gap in
     // coverage - the same false gap `which` produced for javac.
     if (setup) {
       const r = spawnSync(setup[0], setup.slice(1), { cwd: dir, timeout: 300000 });

@@ -3,7 +3,7 @@
 // `--json` prints a report, the terminal and GitHub Actions render the same one, and
 // report.schema.json says what it holds. A schema nothing checks is a description of what
 // the code did on the day it was written, so these hold every report the corpus produces
-// to it - strictly, so that a field whatbroke writes and the schema does not document is
+// to it - strictly, so that a field whyitbroke writes and the schema does not document is
 // refused - and to what a report says of itself that a schema cannot: that each group
 // holds its own failures once, that its exit codes agree, that nothing unread is reported.
 import assert from "node:assert/strict";
@@ -26,7 +26,7 @@ import { sourceRange } from "../src/ownership.js";
 const here = dirname(fileURLToPath(import.meta.url));
 const root = join(here, "..");
 const fixtures = join(here, "fixtures");
-const cli = join(root, "bin", "whatbroke.js");
+const cli = join(root, "bin", "whyitbroke.js");
 
 let pass = 0, fail = 0;
 const test = (name, fn) => {
@@ -45,7 +45,7 @@ const problems = (report) => [...validate(asJson(report), REPORT_SCHEMA, { stric
 const cache = mkdtempSync(join(tmpdir(), "wb-report-"));
 const run = (args, input = "") => spawnSync(process.execPath, [cli, ...args], {
   input, encoding: "utf8", timeout: 20000, maxBuffer: 64 * 1024 * 1024,
-  env: { ...process.env, NO_COLOR: "1", GITHUB_STEP_SUMMARY: "", WHATBROKE_CACHE_DIR: cache },
+  env: { ...process.env, NO_COLOR: "1", GITHUB_STEP_SUMMARY: "", WHYITBROKE_CACHE_DIR: cache },
 });
 
 console.log("\nreport");
@@ -57,7 +57,7 @@ test("the schema uses no keyword its validator would skip", () => {
 test("the schema is published with the package, at the address it names", () => {
   const manifest = JSON.parse(readFileSync(join(root, "package.json"), "utf8"));
   assert.ok(manifest.files.includes("report.schema.json"), "report.schema.json is not in package.json's files");
-  assert.equal(REPORT_SCHEMA.$id, "https://raw.githubusercontent.com/jeanlevonarshakyann-lab/whatbroke/main/report.schema.json");
+  assert.equal(REPORT_SCHEMA.$id, "https://raw.githubusercontent.com/jeanlevonarshakyann-lab/whyitbroke/main/report.schema.json");
   assert.equal(REPORT_SCHEMA.properties.version.const, 1);
 });
 
@@ -215,7 +215,7 @@ test("everything the command line prints as JSON keeps to the schema", () => {
     ["a failed command it cannot read", ["--json", ...command(unknown, 7)], ""],
     ["a failed command with no output", ["--json", ...command("", 9)], ""],
     ["a command that succeeded", ["--json", ...command(unknown, 0)], ""],
-    ["a command that could not start", ["--json", "definitely-not-a-command-whatbroke"], ""],
+    ["a command that could not start", ["--json", "definitely-not-a-command-whyitbroke"], ""],
     ["a truncated capture", ["--json", "--max-bytes", "1024"], "chatter\n".repeat(400) + pytest],
     ["unclustered", ["--json", "--no-cluster"], pytest],
     ["a piped log nobody named", ["--json", "--since-last"], pytest],
@@ -415,7 +415,7 @@ test("a status is claimed only where there is a status to claim", () => {
   assert.equal(createReport({ analysis: null, raw: "", exitCode: 0, inputMode: "command" }).status, null);
   // A number every program returns is not evidence of anything.
   assert.equal(createReport({ analysis: null, raw: "x", exitCode: 1, inputMode: "command" }).status, null);
-  // A piped log's upstream number never reached whatbroke.
+  // A piped log's upstream number never reached whyitbroke.
   assert.equal(createReport({ analysis: null, raw: "x", exitCode: 127, inputMode: "pipe" }).status, null);
   // A command that could not be started never ran, so `error` is the whole story.
   assert.equal(createReport({ analysis: null, raw: "", exitCode: 127, inputMode: "command", error: "spawn x ENOENT" }).status, null);
@@ -432,7 +432,7 @@ test("output that went unread is still said to have gone unread beside a status"
   assert.equal(empty.includes("could not identify a diagnostic"), false);
 });
 
-test("every signal whatbroke names is named, and an unknown one is still reported", () => {
+test("every signal whyitbroke names is named, and an unknown one is still reported", () => {
   const named = ["SIGKILL", "SIGTERM", "SIGINT", "SIGQUIT", "SIGHUP", "SIGSEGV", "SIGBUS",
     "SIGILL", "SIGFPE", "SIGABRT", "SIGPIPE", "SIGXCPU", "SIGXFSZ"];
   for (const signal of named) {

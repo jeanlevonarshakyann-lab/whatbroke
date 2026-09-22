@@ -21,7 +21,7 @@ import { githubOutput } from "../src/github.js";
 import { createReport } from "../src/report.js";
 const { version } = createRequire(import.meta.url)("../package.json");
 
-// A reader that goes away first — `whatbroke npm test | head`, or `| less` closed before
+// A reader that goes away first — `whyitbroke npm test | head`, or `| less` closed before
 // the end — closes the pipe under us. node ignores SIGPIPE and raises EPIPE on the stream
 // instead, and an unhandled 'error' event on stdout is a node stack trace printed by the
 // tool whose whole job is to keep those off the screen. There is nothing left to say to a
@@ -35,12 +35,12 @@ for (const stream of [process.stdout, process.stderr]) {
 }
 
 const argv = process.argv.slice(2);
-const HELP = `whatbroke — you ran a command, it printed 400 lines. these are the ones that matter.
+const HELP = `whyitbroke — you ran a command, it printed 400 lines. these are the ones that matter.
 
-  whatbroke <command...>     run it, then distil the failure
-  whatbroke -q <command...>  hide the command's own output; show only the distillation
-  <command> |& whatbroke     distil output piped in (optional trailing -)
-  whatbroke < build.log      distil a log file you already have
+  whyitbroke <command...>     run it, then distil the failure
+  whyitbroke -q <command...>  hide the command's own output; show only the distillation
+  <command> |& whyitbroke     distil output piped in (optional trailing -)
+  whyitbroke < build.log      distil a log file you already have
 
   -q, --quiet   suppress the wrapped command's output
   -a, --all     don't cap the number of failures shown
@@ -104,7 +104,7 @@ while (argv.length && /^-/.test(argv[0])) {
 }
 const has = (...names) => names.some((n) => flags.has(n));
 if (parseError) {
-  process.stderr.write(`whatbroke: ${parseError}\n`);
+  process.stderr.write(`whyitbroke: ${parseError}\n`);
   process.exit(2);
 }
 format ??= has("-j", "--json") ? "json" : has("-g", "--github-actions") ? "github" : "terminal";
@@ -129,7 +129,7 @@ function appendGithubSummary(text) {
   const target = process.env.GITHUB_STEP_SUMMARY;
   if (!target || !text) return;
   try { appendFileSync(target, text); }
-  catch (error) { process.stderr.write(`whatbroke: could not write GitHub summary: ${error.message}\n`); }
+  catch (error) { process.stderr.write(`whyitbroke: could not write GitHub summary: ${error.message}\n`); }
 }
 
 /** Compare this run's causes with the last recorded one, then record this one.
@@ -141,7 +141,7 @@ function appendGithubSummary(text) {
  *  A command that EXITED ZERO is the one run that can be recorded without having parsed
  *  anything: nothing is failing, and that is the whole list. Before, a green run wrote
  *  nothing at all, so the record still held yesterday's failure - and when that failure
- *  came back the next day, whatbroke compared it against itself and said nothing was new.
+ *  came back the next day, whyitbroke compared it against itself and said nothing was new.
  *  A passing run in between is exactly when a reader most wants the next break called new. */
 function track(r, truncated, executionError, code = null) {
   const succeeded = code === 0 && !executionError && inputMode === "command";
@@ -234,8 +234,8 @@ if (argv.length === 0) {
   // string where every shell they have ever used says "command not found". The errno is
   // kept on the end, because it is what a bug report needs and what the schema's `error`
   // has always carried.
-  // A log already on disk is not on $PATH, so `whatbroke build.log` misses with ENOENT
-  // and `whatbroke ./build.log` with EACCES. Either way the file is sitting right there.
+  // A log already on disk is not on $PATH, so `whyitbroke build.log` misses with ENOENT
+  // and `whyitbroke ./build.log` with EACCES. Either way the file is sitting right there.
   // Reading it unasked would make a mistyped command name silently distil whatever file
   // happens to share it, so say how instead of guessing. Only a file that cannot be run
   // qualifies: a script that failed on its shebang is one the user meant to execute.
@@ -271,9 +271,9 @@ if (argv.length === 0) {
       : plain ? `${argv[0]}: ${plain} (${e.code})`
       : e.message.includes(argv[0]) ? e.message
       : `spawn ${argv[0]} ${e.code ?? e.message}`;
-    process.stderr.write(`whatbroke: ${said}\n`);
+    process.stderr.write(`whyitbroke: ${said}\n`);
     if (savedLog()) {
-      process.stderr.write(`whatbroke: ${argv[0]} is a file, not a command — to distil it: whatbroke < ${shellArg(argv[0])}\n`);
+      process.stderr.write(`whyitbroke: ${argv[0]} is a file, not a command — to distil it: whyitbroke < ${shellArg(argv[0])}\n`);
     }
     report("", 127, false, said);
   };

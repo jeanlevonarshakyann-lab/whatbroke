@@ -12,7 +12,7 @@ import { createCapture, elision } from "../src/capture.js";
 import { analyse, EXTRACTORS } from "../src/index.js";
 
 const here = dirname(fileURLToPath(import.meta.url));
-const cli = join(here, "..", "bin", "whatbroke.js");
+const cli = join(here, "..", "bin", "whyitbroke.js");
 const fx = (n) => readFileSync(join(here, "fixtures", n), "utf8");
 
 let pass = 0, fail = 0;
@@ -42,7 +42,7 @@ function capture(text, maxBytes, chunk = 0) {
   return lines ? { ...result, lines: lines(0, result.text.split("\n").length - 1) } : result;
 }
 
-const MARKER = /\n~~~ whatbroke: \d+ bytes of output elided here[^\n]*~~~\n/g;
+const MARKER = /\n~~~ whyitbroke: \d+ bytes of output elided here[^\n]*~~~\n/g;
 
 // ------------------------------------------------------------- under the cap
 
@@ -107,7 +107,7 @@ test("a diagnostic in the middle survives clean output on both sides", () => {
   assert.equal(parsed?.tool, "pytest", "the middle diagnostic must still reach its parser");
   assert.equal(parsed?.failures.length, 3);
   assert.match(r.text, /cleanup completed\n$/, "the tail remains available for shutdown errors");
-  const gaps = [...r.text.matchAll(/whatbroke: (\d+) bytes of output elided here/g)];
+  const gaps = [...r.text.matchAll(/whyitbroke: (\d+) bytes of output elided here/g)];
   assert.ok(gaps.length >= 2, "separate missing regions must remain visibly separate");
   assert.equal(gaps.reduce((sum, match) => sum + Number(match[1]), 0), r.elided);
   assert.equal(r.elided + Buffer.byteLength(r.text.replace(MARKER, "")), Buffer.byteLength(text));
@@ -121,7 +121,7 @@ test("a diagnostic in the middle survives clean output on both sides", () => {
   let markers = 0;
   kept.split("\n").forEach((line, k) => {
     const runs = lines(k, k);
-    if (!runs.length) { if (line && !/^~~~ whatbroke: \d+ bytes of output elided here/.test(line)) wrong.push(`${k}: ${line}`); else markers++; return; }
+    if (!runs.length) { if (line && !/^~~~ whyitbroke: \d+ bytes of output elided here/.test(line)) wrong.push(`${k}: ${line}`); else markers++; return; }
     if (runs.length !== 1 || runs[0].start !== runs[0].end || original[runs[0].start] !== line) {
       wrong.push(`${k}: ${JSON.stringify(line)} is not line ${JSON.stringify(runs)} of the output`);
     }
@@ -179,7 +179,7 @@ test("output with no newline at all is still cut safely", () => {
 
 test("the marker declares how much went missing", () => {
   const r = capture("z\n".repeat(100000), 5000);
-  const said = Number(r.text.match(/whatbroke: (\d+) bytes/)[1]);
+  const said = Number(r.text.match(/whyitbroke: (\d+) bytes/)[1]);
   assert.equal(said, r.elided);
   const kept = Buffer.byteLength(r.text.replace(MARKER, ""));
   assert.equal(said + kept, 200000, "elided plus kept must account for the whole input");

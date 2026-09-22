@@ -1,13 +1,13 @@
 // Copying the wrapped command's output to the terminal, at the terminal's pace.
 //
-// `whatbroke -- <command>` streams the command's own output through live, so a build that
+// `whyitbroke -- <command>` streams the command's own output through live, so a build that
 // prints for two minutes still looks like a build that prints for two minutes. The copy
 // kept for diagnosis is capped by --max-bytes; the live copy was not capped by anything.
 //
 // write() returns false when the destination's buffer is full - a pipe into a slow
 // reader, a file on a busy disk, a terminal that is not being drained - and the old code
 // ignored it. Node then queued every later chunk in this process's memory, so wrapping a
-// command that writes faster than the reader reads grew whatbroke's heap without limit,
+// command that writes faster than the reader reads grew whyitbroke's heap without limit,
 // which is the one thing --max-bytes exists to prevent.
 //
 // A stream nobody is reading has to stop being read. Pausing the child's pipe fills the
@@ -19,7 +19,7 @@
 export function relay(stream, out, { suppress = false, tee } = {}) {
   let waiting = false;
   let gone = false;
-  // A destination that goes away cannot be written to and will never drain. `whatbroke
+  // A destination that goes away cannot be written to and will never drain. `whyitbroke
   // npm test | head` closes the pipe as soon as head has its lines, and without this the
   // pause below waits for a drain that never comes: the child's pipe stays full, the
   // child blocks on its next write, and the run hangs for good. Until now the unhandled

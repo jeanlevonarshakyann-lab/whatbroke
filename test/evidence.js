@@ -1,6 +1,6 @@
 // Where each failure was read from.
 //
-// When a log holds two tools, whatbroke decides that two readings are one diagnosis when
+// When a log holds two tools, whyitbroke decides that two readings are one diagnosis when
 // they came from the same lines. Every parser says which lines it read each failure from,
 // which makes that a fact. It used to be a guess - every line of the log scored against
 // the failure - and the guess was wrong in ways that cost a failure or showed one twice.

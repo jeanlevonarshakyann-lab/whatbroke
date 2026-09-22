@@ -2,6 +2,14 @@
 
 ## Unreleased
 
+## 0.6.0 — 2026-09-22
+
+- Renamed the package, command, GitHub integration, cache location, and project from
+  `whatbroke` to `whyitbroke`. The former npm package was unpublished after a separate,
+  older project using the same project and command name was found.
+- Changed the license for this and later releases to Apache License 2.0 with the Commons
+  Clause License Condition v1.0.
+
 ## 0.5.0 — 2026-09-21
 
 This is the first npm release since 0.1.1 and includes the previously unpublished
