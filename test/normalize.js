@@ -217,7 +217,7 @@ test("normalisation is not slow on a large or hostile log", () => {
 
 // ------------------------------------------------ the way a log leaves CI
 
-// The commonest way a log reaches whatbroke is not a monorepo runner. It is a CI or a
+// The commonest way a log reaches whyitbroke is not a monorepo runner. It is a CI or a
 // log collector stamping every line, and each of these writes a shape that is known in
 // advance rather than a prefix that has to be inferred by comparing lines. That is the
 // whole difference: a hand-written shape is proven against the corpus to match nothing
@@ -310,7 +310,7 @@ test("a CI-stamped redraw blob survives bare carriage returns", () => {
     for (const [runner, fn] of Object.entries(CI_STAMPS)) {
       checked++;
       // The collector sees one physical line and stamps it once. The tool's redraws
-      // become logical lines only after whatbroke receives the byte stream.
+      // become logical lines only after whyitbroke receives the byte stream.
       const got = analyse(fn(fx(name).replace(/\n/g, "\r"), 0));
       if (got?.tool !== base.tool || !isDeepStrictEqual(got?.failures, base.failures)) {
         changed.push(`${name} + ${runner}: ${base.tool}/${base.failures.length} -> ${got?.tool ?? "none"}/${got?.failures.length ?? 0}`);

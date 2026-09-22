@@ -212,7 +212,7 @@ export function stripRedrawnCiPrefix(text) {
 //   ...
 //   ERROR: failed to solve: process "/bin/sh -c npm test" did not complete successfully
 //
-// That last line is what whatbroke reported, and it names the mechanism rather than the
+// That last line is what whyitbroke reported, and it names the mechanism rather than the
 // cause. The block above it is the cause, verbatim, from whatever tool actually failed.
 // A coverage ratio cannot find it - a short npm failure is five lines inside a frame of
 // twenty - so the block is located by its own markers instead.

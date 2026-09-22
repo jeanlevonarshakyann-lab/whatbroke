@@ -8,7 +8,7 @@ import { analyse } from "../../src/index.js";
 
 export const here = join(dirname(fileURLToPath(import.meta.url)), "..");
 export const fx = (n) => readFileSync(join(here, "fixtures", n), "utf8");
-export const cli = join(here, "..", "bin", "whatbroke.js");
+export const cli = join(here, "..", "bin", "whyitbroke.js");
 
 /** Each case names a fixture, the tool that has to read it and how many failures it holds,
  *  and checks what else has to be true of the reading. */

@@ -9,9 +9,9 @@
 // enough to lose a failure or show one twice; test/evidence.js and test/fuzz.js now hold
 // every parser to writing its own. A failure that somehow carries none overlaps nothing,
 // so both readings of it are kept: a finding shown twice rather than one hidden.
-export const SOURCE_RANGE = Symbol("whatbroke.sourceRange");
-const PARSER = Symbol("whatbroke.parser");
-const LINES = Symbol("whatbroke.lines");
+export const SOURCE_RANGE = Symbol("whyitbroke.sourceRange");
+const PARSER = Symbol("whyitbroke.parser");
+const LINES = Symbol("whyitbroke.lines");
 
 /** Record that `failure` was read from lines [start, end) of the text its parser was given.
  *  A parser knows this as it reads. Written ranges are what `test/evidence.js` holds to the

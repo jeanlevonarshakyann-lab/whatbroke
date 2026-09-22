@@ -8,7 +8,7 @@ import { analyse } from "../src/index.js";
 
 const here = dirname(fileURLToPath(import.meta.url));
 const fx = (n) => readFileSync(join(here, "fixtures", n), "utf8");
-const cli = join(here, "..", "bin", "whatbroke.js");
+const cli = join(here, "..", "bin", "whyitbroke.js");
 
 let pass = 0, fail = 0;
 
@@ -62,12 +62,12 @@ try {
   const { mkdtempSync, readFileSync, rmSync } = await import("node:fs");
   const { tmpdir } = await import("node:os");
   const { join } = await import("node:path");
-  const dir = mkdtempSync(join(tmpdir(), "whatbroke-summary-"));
+  const dir = mkdtempSync(join(tmpdir(), "whyitbroke-summary-"));
   const summary = join(dir, "summary.md");
   const r = spawnSync(process.execPath, [cli, "--github-actions", "node", "-e",
     "null.x"], { encoding: "utf8", env: { ...process.env, GITHUB_STEP_SUMMARY: summary } });
   assert.equal(r.status, 1);
-  assert.match(readFileSync(summary, "utf8"), /## whatbroke/);
+  assert.match(readFileSync(summary, "utf8"), /## whyitbroke/);
   assert.ok(!/[^\n]\\\*/.test(readFileSync(summary, "utf8")), "summary should remain valid markdown");
   rmSync(dir, { recursive: true, force: true });
   console.log("  ok   GitHub Actions summary is written");
@@ -81,9 +81,9 @@ try {
   const { mkdtempSync, readFileSync, rmSync, writeFileSync } = await import("node:fs");
   const { tmpdir } = await import("node:os");
   const { join } = await import("node:path");
-  const dir = mkdtempSync(join(tmpdir(), "whatbroke-source-summary-"));
+  const dir = mkdtempSync(join(tmpdir(), "whyitbroke-source-summary-"));
   const summary = join(dir, "summary.md");
-  const secret = "WHATBROKE_AUDIT_SECRET_MUST_NOT_APPEAR";
+  const secret = "WHYITBROKE_AUDIT_SECRET_MUST_NOT_APPEAR";
   writeFileSync(join(dir, ".env"), `${secret}=one\nALSO_PRIVATE=two\nPORT=bad\n`);
   const r = spawnSync(process.execPath, [cli, "--format", "github"], {
     cwd: dir,
@@ -108,7 +108,7 @@ try {
   const { mkdtempSync, readFileSync, rmSync } = await import("node:fs");
   const { tmpdir } = await import("node:os");
   const { join } = await import("node:path");
-  const dir = mkdtempSync(join(tmpdir(), "whatbroke-cluster-summary-"));
+  const dir = mkdtempSync(join(tmpdir(), "whyitbroke-cluster-summary-"));
   const summary = join(dir, "summary.md");
   const raw = fx("eslint_bulk_fail.txt");
   const r = spawnSync(process.execPath, [cli, "--format", "github"], {
@@ -125,7 +125,7 @@ try {
   // nothing is hidden: every failure still reaches the summary and the annotations
   for (const f of analysed.failures) assert.ok(md.includes(`${f.file}:${f.line}`), `${f.file}:${f.line} missing`);
   assert.equal((r.stdout.match(/^::error /gm) ?? []).length, analysed.failures.length);
-  assert.match(r.stdout, /^::notice title=whatbroke::.* likely causes, \d+ sites$/m);
+  assert.match(r.stdout, /^::notice title=whyitbroke::.* likely causes, \d+ sites$/m);
   rmSync(dir, { recursive: true, force: true });
   console.log("  ok   GitHub summary leads with clusters and hides nothing");
   pass++;
@@ -138,7 +138,7 @@ try {
   const { mkdtempSync, readFileSync, rmSync } = await import("node:fs");
   const { tmpdir } = await import("node:os");
   const { join } = await import("node:path");
-  const dir = mkdtempSync(join(tmpdir(), "whatbroke-labels-"));
+  const dir = mkdtempSync(join(tmpdir(), "whyitbroke-labels-"));
   let checked = 0;
   for (const name of readdirSync(join(here, "fixtures"))) {
     const summary = join(dir, `${name}.md`);
@@ -228,12 +228,12 @@ try {
 } catch (e) { console.log(`  FAIL missing format\n       ${e.message}`); fail++; }
 
 try {
-  const r = spawnSync(process.execPath, [cli, "--format", "json", "whatbroke-command-does-not-exist"], { encoding: "utf8" });
+  const r = spawnSync(process.execPath, [cli, "--format", "json", "whyitbroke-command-does-not-exist"], { encoding: "utf8" });
   assert.equal(r.status, 127);
-  assert.match(r.stderr, /whatbroke-command-does-not-exist/);
+  assert.match(r.stderr, /whyitbroke-command-does-not-exist/);
   const json = JSON.parse(r.stdout);
   assert.equal(json.exitCode, 127);
-  assert.match(json.error, /whatbroke-command-does-not-exist/);
+  assert.match(json.error, /whyitbroke-command-does-not-exist/);
   console.log("  ok   command-not-found preserves a distinct 127 failure");
   pass++;
 } catch (e) { console.log(`  FAIL command-not-found\n       ${e.message}`); fail++; }
@@ -321,7 +321,7 @@ try {
   pass++;
 } catch (e) { console.log(`  FAIL exit code conventions\n       ${e.message}`); fail++; }
 
-// A piped log's number belongs to whoever produced it, and whatbroke never saw it.
+// A piped log's number belongs to whoever produced it, and whyitbroke never saw it.
 try {
   const r = spawnSync(process.execPath, [cli, "--json"], { encoding: "utf8", input: "nothing here explains anything\n" });
   const report = JSON.parse(r.stdout);
@@ -345,7 +345,7 @@ try {
 // was capped by nothing: write() returns false when the destination cannot take more, and
 // ignoring it makes node queue every later chunk in this process's memory. A command that
 // prints faster than the terminal, the file or the pipe on the other side can read it then
-// grows whatbroke's heap without limit - the one thing --max-bytes exists to prevent.
+// grows whyitbroke's heap without limit - the one thing --max-bytes exists to prevent.
 try {
   const { PassThrough } = await import("node:stream");
   const { relay } = await import("../src/stream.js");
@@ -368,7 +368,7 @@ try {
   await new Promise((r) => setImmediate(r));
   assert.deepEqual(seen, ["one", "two", "three"], "everything is captured, paused or not");
 
-  // A destination that is full drains eventually. One that is gone - `whatbroke npm test
+  // A destination that is full drains eventually. One that is gone - `whyitbroke npm test
   // | head`, the reader closing the pipe - never does, and waiting for it leaves the
   // child blocked on its next write for good. Until the write error was handled at all,
   // the crash reached this first and the wait was never observed.
@@ -388,7 +388,7 @@ try {
 } catch (e) { console.log(`  FAIL relay backpressure\n       ${e.message}`); fail++; }
 
 // And end to end: a reader that is not reading must slow the wrapped command down rather
-// than be queued up in whatbroke.
+// than be queued up in whyitbroke.
 try {
   const { mkdtempSync, rmSync, writeFileSync: write } = await import("node:fs");
   const { tmpdir } = await import("node:os");

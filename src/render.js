@@ -199,7 +199,7 @@ export function render(result, { max = 5, cwd = true, source = true, cluster = t
     const loc = f.file
       ? `${C.cyan}${cwd ? relPath(f.file) : f.file}${C.reset}${f.line ? `${C.dim}:${f.line}${C.reset}` : ""}`
       : "";
-    // `title` is what whatbroke calls the failure; `label` is the constant the tool
+    // `title` is what whyitbroke calls the failure; `label` is the constant the tool
     // printed for its class. A parser can set the second without the first - cargo does
     // for a manifest that will not parse - and the line then rendered as a bare
     // "Cargo.toml:1", which reads as though nothing was found there and which the
@@ -305,7 +305,7 @@ export function render(result, { max = 5, cwd = true, source = true, cluster = t
         if (!shown.length) shown.push(elsewhere[0]);
         out.push(`      ${C.grey}also ${shown.join(", ")}${C.reset}`);
         if (elsewhere.length > shown.length) {
-          out.push(`      ${C.grey}+ ${elsewhere.length - shown.length} more places (whatbroke --all)${C.reset}`);
+          out.push(`      ${C.grey}+ ${elsewhere.length - shown.length} more places (whyitbroke --all)${C.reset}`);
         }
       }
     }
@@ -329,8 +329,8 @@ export function render(result, { max = 5, cwd = true, source = true, cluster = t
     const hiddenFails = hidden.reduce((n, u) => n + u.size, 0);
     const causes = hidden.filter((u) => u.reported).length;
     out.push(causes
-      ? `  ${C.dim}… ${causes} more cause${causes > 1 ? "s" : ""}, ${hiddenFails} more failures (whatbroke --all)${C.reset}`
-      : `  ${C.dim}… ${hiddenFails} more (whatbroke --all)${C.reset}`);
+      ? `  ${C.dim}… ${causes} more cause${causes > 1 ? "s" : ""}, ${hiddenFails} more failures (whyitbroke --all)${C.reset}`
+      : `  ${C.dim}… ${hiddenFails} more (whyitbroke --all)${C.reset}`);
     out.push("");
   }
   return out.join("\n");
@@ -356,11 +356,11 @@ export function renderReport(report, { quiet = false, ...options } = {}) {
   // was killed with nothing written it is the only thing there is to say. It does not
   // replace that sentence where output was captured: something was there and went unread.
   const status = report.status;
-  let out = `\n${fallback.message}\n${error ?? status?.says ?? "whatbroke could not identify a diagnostic."}\n`;
-  if (status && !error && raw) out += "whatbroke could not identify a diagnostic.\n";
+  let out = `\n${fallback.message}\n${error ?? status?.says ?? "whyitbroke could not identify a diagnostic."}\n`;
+  if (status && !error && raw) out += "whyitbroke could not identify a diagnostic.\n";
   if (!raw) out += "No output was captured.\n";
   else if (report.inputMode === "pipe" || quiet) out += `\nCaptured output:\n${raw}${raw.endsWith("\n") ? "" : "\n"}`;
   else out += "Raw command output was streamed above.\n";
-  if (truncated) out += `\nwhatbroke: ${TRUNCATION_NOTICE}\n`;
+  if (truncated) out += `\nwhyitbroke: ${TRUNCATION_NOTICE}\n`;
   return out;
 }

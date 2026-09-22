@@ -6,7 +6,7 @@ import { join } from "node:path";
 import { fileURLToPath } from "node:url";
 
 // Keep CLI contract tests separate from parser fixtures and source-safety tests.
-export async function runCliTests(cli = fileURLToPath(new URL("../bin/whatbroke.js", import.meta.url))) {
+export async function runCliTests(cli = fileURLToPath(new URL("../bin/whyitbroke.js", import.meta.url))) {
   let pass = 0, fail = 0;
   const raw = "The operation did not complete.\nSee the attached report.\n";
   const run = (args = [], input = "", env = {}, cwd) => {
@@ -138,7 +138,7 @@ export async function runCliTests(cli = fileURLToPath(new URL("../bin/whatbroke.
   });
 
   await check("spawn failures emit exactly one valid JSON envelope", () => {
-    const r = run(["--json", "whatbroke-missing-cli-test-command"]);
+    const r = run(["--json", "whyitbroke-missing-cli-test-command"]);
     assert.equal(r.status, 127);
     const result = JSON.parse(r.stdout);
     assert.equal(result.exitCode, 127);
@@ -147,8 +147,8 @@ export async function runCliTests(cli = fileURLToPath(new URL("../bin/whatbroke.
     // What the shell would have said, with the errno kept for a bug report. A command
     // that will not start is most often a typo, and "spawn x ENOENT" is node's wording
     // for it where every shell says "command not found".
-    assert.equal(result.error, "whatbroke-missing-cli-test-command: command not found (ENOENT)");
-    assert.match(r.stderr, /whatbroke-missing-cli-test-command/);
+    assert.equal(result.error, "whyitbroke-missing-cli-test-command: command not found (ENOENT)");
+    assert.match(r.stderr, /whyitbroke-missing-cli-test-command/);
   });
 
   await check("a command that cannot be executed is reported, not thrown", () => {
@@ -157,13 +157,13 @@ export async function runCliTests(cli = fileURLToPath(new URL("../bin/whatbroke.
     // script with no shebang is - is raised by spawn() itself, before any handler can be
     // attached to a child that was never created. Both mean the command never started,
     // so both have to produce the same report rather than a node stack trace. pnpm ships
-    // a placeholder binary with no shebang, so `whatbroke -- pnpm test` reached this.
+    // a placeholder binary with no shebang, so `whyitbroke -- pnpm test` reached this.
     //
     // A shebang is a POSIX idea: Windows decides how to run a file from its extension,
     // so there is no ENOEXEC to provoke there. The synchronous path this covers is still
     // exercised on every platform by the empty-name case below.
     if (process.platform === "win32") return;
-    const dir = mkdtempSync(join(tmpdir(), "whatbroke-noexec-"));
+    const dir = mkdtempSync(join(tmpdir(), "whyitbroke-noexec-"));
     const script = join(dir, "no-shebang-cli-test");
     writeFileSync(script, "echo hello\n", { mode: 0o755 });
     try {
@@ -171,7 +171,7 @@ export async function runCliTests(cli = fileURLToPath(new URL("../bin/whatbroke.
       // What happens next is node's choice, not this tool's: posix_spawn reports
       // ENOEXEC, while execvp retries the file under /bin/sh and runs it. Both are
       // legitimate and both ship in supported node versions, so the assertion is the
-      // part that is whatbroke's to keep - it never throws, and stdout is always one
+      // part that is whyitbroke's to keep - it never throws, and stdout is always one
       // valid report.
       assert.doesNotMatch(r.stderr, /internal\/child_process/, "the failure escaped as a stack trace");
       const result = JSON.parse(r.stdout);
@@ -181,7 +181,7 @@ export async function runCliTests(cli = fileURLToPath(new URL("../bin/whatbroke.
       assert.equal(result.commandExitCode, null);
       // Not the errno's name: node calls this one ENOEXEC on some versions and
       // "Unknown system error -8" on others, which is the same number unmapped. What is
-      // asserted is what belongs to whatbroke - that the report says which command
+      // asserted is what belongs to whyitbroke - that the report says which command
       // could not start, whatever node called the reason. On the versions that DO name
       // it, node leaves the file out of the message, so this is not free either way.
       assert.match(result.error, /no-shebang-cli-test/);
@@ -190,9 +190,9 @@ export async function runCliTests(cli = fileURLToPath(new URL("../bin/whatbroke.
   });
 
   await check("an empty command name is a spawn failure, not a crash", () => {
-    // `whatbroke -- $CMD` in a script where CMD is unset. node rejects the empty name
+    // `whyitbroke -- $CMD` in a script where CMD is unset. node rejects the empty name
     // from spawn() itself, the same synchronous path as ENOEXEC, and the report it used
-    // to produce was a stack trace and an exit code that belonged to whatbroke.
+    // to produce was a stack trace and an exit code that belonged to whyitbroke.
     const r = run(["--json", ""]);
     assert.equal(r.status, 127);
     const result = JSON.parse(r.stdout);
@@ -206,10 +206,10 @@ export async function runCliTests(cli = fileURLToPath(new URL("../bin/whatbroke.
   });
 
   await check("a saved log mistaken for a command is told how to be read", () => {
-    // `whatbroke build.log` is the first thing someone with a log already on disk tries.
+    // `whyitbroke build.log` is the first thing someone with a log already on disk tries.
     // The working directory is not on $PATH, so it misses with ENOENT and the answer the
     // tool gave was about $PATH - while the file it could have distilled sat right there.
-    const dir = mkdtempSync(join(tmpdir(), "whatbroke-savedlog-"));
+    const dir = mkdtempSync(join(tmpdir(), "whyitbroke-savedlog-"));
     const log = "src/app.py:3: error: boom\n";
     writeFileSync(join(dir, "build.log"), log);
     writeFileSync(join(dir, "runme.sh"), "echo hello\n", { mode: 0o755 });
@@ -218,7 +218,7 @@ export async function runCliTests(cli = fileURLToPath(new URL("../bin/whatbroke.
       assert.equal(r.status, 127);
       assert.match(r.stderr, /build\.log is a file, not a command/);
       // The suggestion has to be a command that works, not a gesture at one.
-      const suggested = /to distil it: whatbroke < (.+)\n/.exec(r.stderr);
+      const suggested = /to distil it: whyitbroke < (.+)\n/.exec(r.stderr);
       assert.ok(suggested, `no suggestion in stderr: ${r.stderr}`);
       assert.equal(suggested[1], "build.log");
       const piped = run(["--json"], log, {}, dir);
@@ -231,7 +231,7 @@ export async function runCliTests(cli = fileURLToPath(new URL("../bin/whatbroke.
       // extension and calls one it cannot run EFTYPE on node 22 and 24 - and UNKNOWN on
       // 18 and 20, the same Win32 error left untranslated. The plain wording is pinned
       // by the missing-command test above, where every platform agrees on ENOENT. What
-      // is whatbroke's here is that the report names the file that would not start,
+      // is whyitbroke's here is that the report names the file that would not start,
       // whatever the platform called the reason. This is the same split the ENOEXEC
       // test makes, for the same reason.
       const result = JSON.parse(r.stdout);
@@ -246,7 +246,7 @@ export async function runCliTests(cli = fileURLToPath(new URL("../bin/whatbroke.
     // told to pipe themselves in - `< file` would drop the arguments, and the other
     // three are not logs. Windows has no execute bit, so runnability is the extension
     // there; a .sh is not runnable on Windows and is correctly offered as a log.
-    const dir = mkdtempSync(join(tmpdir(), "whatbroke-notalog-"));
+    const dir = mkdtempSync(join(tmpdir(), "whyitbroke-notalog-"));
     writeFileSync(join(dir, "build.log"), "boom\n");
     writeFileSync(join(dir, "runme.sh"), "echo hello\n", { mode: 0o755 });
     mkdirSync(join(dir, "adir"));
@@ -264,7 +264,7 @@ export async function runCliTests(cli = fileURLToPath(new URL("../bin/whatbroke.
   });
 
   await check("a reader that stops reading ends the run quietly", async () => {
-    // `whatbroke npm test | head` - the reader has the lines it wanted and closes the
+    // `whyitbroke npm test | head` - the reader has the lines it wanted and closes the
     // pipe. node ignores SIGPIPE and raises EPIPE on the stream instead, and the
     // unhandled 'error' event was a node stack trace from the tool that exists to keep
     // those off the screen.
@@ -290,14 +290,14 @@ export async function runCliTests(cli = fileURLToPath(new URL("../bin/whatbroke.
     });
     assert.doesNotMatch(stderr, /EPIPE|Unhandled .error.|internal\/stream|node:internal/,
       `a write error reached the terminal: ${stderr}`);
-    // The command's exit code is whatbroke's promise to a Makefile. Who was reading its
+    // The command's exit code is whyitbroke's promise to a Makefile. Who was reading its
     // output is not the command's business and must not change what it reports.
     assert.equal(code, 3, "the wrapped command's exit code survives the reader going away");
   });
 
   await check("a closed pipe on a piped log is quiet too", async () => {
     // The other half of the same fault, and the half relay cannot cover: `cat build.log |
-    // whatbroke | head` never wraps a command, so nothing attaches a listener to stdout
+    // whyitbroke | head` never wraps a command, so nothing attaches a listener to stdout
     // and the report write raises EPIPE on its own. The log has to be big enough that
     // the report does not fit in the pipe buffer, or the write lands before the reader
     // has gone and there is nothing to survive.
@@ -336,7 +336,7 @@ export async function runCliTests(cli = fileURLToPath(new URL("../bin/whatbroke.
       const r = run([...args, ...command("COMMAND RAN", 0)]);
       assert.equal(r.status, 2, JSON.stringify(args));
       assert.equal(r.stdout, "", JSON.stringify(args));
-      assert.match(r.stderr, /whatbroke:/);
+      assert.match(r.stderr, /whyitbroke:/);
     }
     for (const args of [["--format"], ["--max-bytes"]]) {
       const r = run(args);
@@ -357,7 +357,7 @@ export async function runCliTests(cli = fileURLToPath(new URL("../bin/whatbroke.
   });
 
   await check("command arguments survive both positional and explicit separators", () => {
-    const values = ["--not-a-whatbroke-option", "-q", "--format", "bad", "a b", "$(literal)", ""];
+    const values = ["--not-a-whyitbroke-option", "-q", "--format", "bad", "a b", "$(literal)", ""];
     const args = [process.execPath, "-e", "console.log(JSON.stringify(process.argv.slice(1)))", "--", ...values];
     for (const prefix of [[], ["--"]]) {
       const r = run([...prefix, ...args]);
@@ -375,7 +375,7 @@ export async function runCliTests(cli = fileURLToPath(new URL("../bin/whatbroke.
     // on top of it rather than eating into what was kept.
     const captured = result.fallback.rawOutput;
     assert.match(captured, /bytes of output elided here/, "the gap must be declared");
-    const payload = captured.replace(/\n~~~ whatbroke:[^\n]*~~~\n/, "");
+    const payload = captured.replace(/\n~~~ whyitbroke:[^\n]*~~~\n/, "");
     assert.equal(Buffer.byteLength(payload), 1024);
     for (const flags of [[], ["--github-actions"]]) {
       const r = run([...flags, "--max-bytes=1024"], text);
@@ -386,7 +386,7 @@ export async function runCliTests(cli = fileURLToPath(new URL("../bin/whatbroke.
   });
 
   await check("GitHub fallback preserves raw text without executing workflow commands", () => {
-    const dir = mkdtempSync(join(tmpdir(), "whatbroke-cli-summary-"));
+    const dir = mkdtempSync(join(tmpdir(), "whyitbroke-cli-summary-"));
     const summary = join(dir, "summary.md");
     // A payload with nothing that looks like a diagnostic, so this really does reach
     // the fallback path - which is the path being tested. `::error::` is covered by the
@@ -397,7 +397,7 @@ export async function runCliTests(cli = fileURLToPath(new URL("../bin/whatbroke.
       assert.equal(r.status, 0);
       assert.match(r.stdout, /Upstream command exit status is unknown/);
       assert.doesNotMatch(r.stdout, /^::error/gm);
-      assert.match(r.stdout, /::notice title=whatbroke captured output::```%0A::set-output name=a::b%0A```%0A/);
+      assert.match(r.stdout, /::notice title=whyitbroke captured output::```%0A::set-output name=a::b%0A```%0A/);
       const markdown = readFileSync(summary, "utf8");
       assert.ok(markdown.includes("````\n" + text + "\n````"));
       assert.match(markdown, /exit status is unknown/);
@@ -416,13 +416,13 @@ export async function runCliTests(cli = fileURLToPath(new URL("../bin/whatbroke.
   });
 
   await check("GitHub raw previews stay bounded while summaries retain full output", () => {
-    const dir = mkdtempSync(join(tmpdir(), "whatbroke-cli-preview-"));
+    const dir = mkdtempSync(join(tmpdir(), "whyitbroke-cli-preview-"));
     try {
       for (const [index, text] of ["x".repeat(500000), "%\r\n😀".repeat(100000)].entries()) {
         const summary = join(dir, `${index}.md`);
         const r = run(["--github-actions"], text, { GITHUB_STEP_SUMMARY: summary });
         assert.equal(r.status, 0);
-        const preview = r.stdout.split("\n").find(l => l.startsWith("::notice title=whatbroke captured output::"));
+        const preview = r.stdout.split("\n").find(l => l.startsWith("::notice title=whyitbroke captured output::"));
         assert.ok(preview);
         assert.ok(Buffer.byteLength(preview + "\n") <= 3500);
         assert.match(preview, /preview truncated/);
@@ -433,13 +433,13 @@ export async function runCliTests(cli = fileURLToPath(new URL("../bin/whatbroke.
   });
 
   await check("GitHub failed-command fallback includes a failure annotation and summary", () => {
-    const dir = mkdtempSync(join(tmpdir(), "whatbroke-cli-summary-"));
+    const dir = mkdtempSync(join(tmpdir(), "whyitbroke-cli-summary-"));
     try {
       for (const text of [raw, ""]) {
         const summary = join(dir, text ? "raw.md" : "empty.md");
         const r = run(["--github-actions", "-q", ...command(text, 8)], "", { GITHUB_STEP_SUMMARY: summary });
         assert.equal(r.status, 8);
-        assert.match(r.stdout, /^::error title=whatbroke::Command failed with exit code 8/gm);
+        assert.match(r.stdout, /^::error title=whyitbroke::Command failed with exit code 8/gm);
         const markdown = readFileSync(summary, "utf8");
         assert.match(markdown, /Command failed with exit code 8/);
         assert.ok(markdown.includes(text || "No output was captured."));
@@ -448,7 +448,7 @@ export async function runCliTests(cli = fileURLToPath(new URL("../bin/whatbroke.
   });
 
   await check("summary write failures do not replace command exit codes", () => {
-    const dir = mkdtempSync(join(tmpdir(), "whatbroke-cli-summary-"));
+    const dir = mkdtempSync(join(tmpdir(), "whyitbroke-cli-summary-"));
     try {
       for (const text of [raw, "fatal: broken\n"]) {
         const r = run(["--github-actions", ...command(text, 7)], "", { GITHUB_STEP_SUMMARY: dir });

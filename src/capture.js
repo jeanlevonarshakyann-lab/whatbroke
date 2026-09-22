@@ -207,7 +207,7 @@ function trimStartToLine(buf) {
  *  head of one failure and the tail of another as a single block and report a diagnosis
  *  that never happened. This line says what is missing and matches no extractor. */
 export const elision = (bytes) =>
-  `\n~~~ whatbroke: ${bytes} bytes of output elided here (raise --max-bytes to keep them) ~~~\n`;
+  `\n~~~ whyitbroke: ${bytes} bytes of output elided here (raise --max-bytes to keep them) ~~~\n`;
 
 /** Accumulate bounded output, keeping the head, probable diagnostic windows and tail.
  *

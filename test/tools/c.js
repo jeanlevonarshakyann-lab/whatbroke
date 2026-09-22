@@ -1,6 +1,6 @@
 // C, C++ and Swift: clang, gcc, swiftc, cmake, make.
 //
-// Each case is a real capture in test/fixtures/, read the way whatbroke reads it; each
+// Each case is a real capture in test/fixtures/, read the way whyitbroke reads it; each
 // format group is one run captured in several formats, which have to agree. The checks
 // below them are about how this family's tools print what they print.
 import { readFileSync, readdirSync } from "node:fs";
@@ -335,7 +335,7 @@ try {
   pass++;
 } catch (e) { console.log(`  FAIL compiler header vs make include\n       ${e.message}`); fail++; }
 
-// clang's own count is a claim whatbroke can be checked against, so it is. Every log
+// clang's own count is a claim whyitbroke can be checked against, so it is. Every log
 // where the two agree must keep agreeing, and any log where they do not must say so in
 // the headline rather than quietly reporting the smaller number. The disagreement only
 // happens on a log something has damaged - `make -j` interleaving two compilers - and

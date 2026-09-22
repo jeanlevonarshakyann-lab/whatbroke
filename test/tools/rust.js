@@ -1,6 +1,6 @@
 // Rust: cargo and rustc, cargo test, clippy.
 //
-// Each case is a real capture in test/fixtures/, read the way whatbroke reads it; each
+// Each case is a real capture in test/fixtures/, read the way whyitbroke reads it; each
 // format group is one run captured in several formats, which have to agree. The checks
 // below them are about how this family's tools print what they print.
 import { readFileSync, readdirSync } from "node:fs";
@@ -156,7 +156,7 @@ const CASES = [
       assert.equal(r.summary, "2 errors — 2 warnings hidden");
     } },
   // Captured with rustfmt 1.9.0 under cargo 1.98.0. `cargo fmt --check` is the format gate
-  // almost every Rust CI job runs, and none of this was read: the job failed and whatbroke
+  // almost every Rust CI job runs, and none of this was read: the job failed and whyitbroke
   // said there was no parser for it. rustfmt numbers the line each region starts at, so a
   // file with two unformatted regions is two places - which is more than the other format
   // checks in this repository can say, because they only ever name files.

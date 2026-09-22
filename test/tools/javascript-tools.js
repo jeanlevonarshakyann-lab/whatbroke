@@ -1,6 +1,6 @@
 // JavaScript tooling: eslint, tsc, biome, oxlint, prettier, stylelint, markdownlint, sass, less, webpack, babel, swc, esbuild, vite, deno lint, fmt and check, npm, pnpm, yarn.
 //
-// Each case is a real capture in test/fixtures/, read the way whatbroke reads it; each
+// Each case is a real capture in test/fixtures/, read the way whyitbroke reads it; each
 // format group is one run captured in several formats, which have to agree. The checks
 // below them are about how this family's tools print what they print.
 import { readFileSync, readdirSync } from "node:fs";
@@ -375,7 +375,7 @@ const CASES = [
     } },
   // Captured with esbuild 0.27 and vite 8.2. Both wrap their real diagnostic in a Node
   // CLI stack reporting that the bundler exited non-zero; that stack is the same failure
-  // told worse, and before these parsers it was the only thing whatbroke showed.
+  // told worse, and before these parsers it was the only thing whyitbroke showed.
   { file: "esbuild_syntax_fail.txt", tool: "esbuild", n: 1, check: (r) => {
       const f = r.failures[0];
       assert.equal(f.file, "src/app.js");

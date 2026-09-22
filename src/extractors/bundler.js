@@ -1,5 +1,5 @@
 // Bundlers report a build failure and then their CLI wrapper reports that the bundler
-// exited non-zero. The second one is louder, longer, and says nothing: whatbroke used
+// exited non-zero. The second one is louder, longer, and says nothing: whyitbroke used
 // to read an esbuild failure as `Command failed: .../esbuild --bundle` pointing at
 // node:internal/errors, with the actual syntax error nowhere on screen.
 

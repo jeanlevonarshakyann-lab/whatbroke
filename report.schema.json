@@ -1,8 +1,8 @@
 {
   "$schema": "https://json-schema.org/draft/2020-12/schema",
-  "$id": "https://raw.githubusercontent.com/jeanlevonarshakyann-lab/whatbroke/main/report.schema.json",
-  "title": "whatbroke report",
-  "description": "What `whatbroke --json` prints: one report per run. Version 1 only ever gains fields, and a field it has keeps its meaning, so an object here may carry fields this schema does not list yet.",
+  "$id": "https://raw.githubusercontent.com/jeanlevonarshakyann-lab/whyitbroke/main/report.schema.json",
+  "title": "whyitbroke report",
+  "description": "What `whyitbroke --json` prints: one report per run. Version 1 only ever gains fields, and a field it has keeps its meaning, so an object here may carry fields this schema does not list yet.",
   "type": "object",
   "required": ["version", "tool", "summary", "guessed", "wrappers", "clusters", "others", "exitCode", "inputMode", "commandExitCode", "status", "fallback", "truncated", "error", "since", "failures"],
   "properties": {
@@ -16,7 +16,7 @@
       "minLength": 1
     },
     "summary": {
-      "description": "The run's tally as the tool stated it, or as whatbroke counted it where the tool states none.",
+      "description": "The run's tally as the tool stated it, or as whyitbroke counted it where the tool states none.",
       "type": ["string", "null"]
     },
     "guessed": {
@@ -39,12 +39,12 @@
       "items": { "$ref": "#/$defs/other" }
     },
     "exitCode": {
-      "description": "whatbroke's own exit code: the wrapped command's, 0 for piped input it processed, 127 for a command that could not be started.",
+      "description": "whyitbroke's own exit code: the wrapped command's, 0 for piped input it processed, 127 for a command that could not be started.",
       "type": "integer",
       "minimum": 0
     },
     "inputMode": {
-      "description": "Whether whatbroke ran the command itself or read piped input.",
+      "description": "Whether whyitbroke ran the command itself or read piped input.",
       "enum": ["command", "pipe"]
     },
     "commandExitCode": {
@@ -53,7 +53,7 @@
       "minimum": 0
     },
     "status": {
-      "description": "What the exit status says by itself, when it says anything. A signal is a fact the operating system reported; an exit code means something only by a shell's convention, and only for a command whatbroke ran. null when the number says nothing.",
+      "description": "What the exit status says by itself, when it says anything. A signal is a fact the operating system reported; an exit code means something only by a shell's convention, and only for a command whyitbroke ran. null when the number says nothing.",
       "anyOf": [{ "type": "null" }, { "$ref": "#/$defs/status" }]
     },
     "fallback": {
@@ -272,7 +272,7 @@
           "type": "boolean"
         },
         "migrated": {
-          "description": "The previous run was saved by an older version of whatbroke and compared through its identifiers.",
+          "description": "The previous run was saved by an older version of whyitbroke and compared through its identifiers.",
           "type": "boolean"
         }
       }

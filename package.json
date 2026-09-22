@@ -1,11 +1,10 @@
 {
-  "name": "@jeanlevon/whatbroke",
-  "version": "0.5.0",
-  "description": "You ran a command. It printed 400 lines. whatbroke prints the ones that matter.",
+  "name": "whyitbroke",
+  "version": "0.6.0",
+  "description": "You ran a command. It printed 400 lines. whyitbroke prints the ones that matter.",
   "type": "module",
   "bin": {
-    "whatbroke": "bin/whatbroke.js",
-    "wb": "bin/whatbroke.js"
+    "whyitbroke": "bin/whyitbroke.js"
   },
   "files": [
     "bin",
@@ -38,13 +37,13 @@
   "engines": {
     "node": ">=18"
   },
-  "license": "MIT",
+  "license": "SEE LICENSE IN LICENSE",
   "repository": {
     "type": "git",
-    "url": "git+https://github.com/jeanlevonarshakyann-lab/whatbroke.git"
+    "url": "git+https://github.com/jeanlevonarshakyann-lab/whyitbroke.git"
   },
-  "homepage": "https://github.com/jeanlevonarshakyann-lab/whatbroke#readme",
+  "homepage": "https://github.com/jeanlevonarshakyann-lab/whyitbroke#readme",
   "bugs": {
-    "url": "https://github.com/jeanlevonarshakyann-lab/whatbroke/issues"
+    "url": "https://github.com/jeanlevonarshakyann-lab/whyitbroke/issues"
   }
 }

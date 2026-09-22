@@ -5,10 +5,10 @@ to be decided on separately; no source-reading behavior changed.
 
 ## What happens today
 
-When a tool reports `file:line`, whatbroke opens that file and quotes a few lines around
+When a tool reports `file:line`, whyitbroke opens that file and quotes a few lines around
 it. That is the feature: the point of `tsc:312` is the code at line 312.
 
-It also means whatbroke prints lines the tool itself never printed. With a `.env` in the
+It also means whyitbroke prints lines the tool itself never printed. With a `.env` in the
 working directory containing
 
 ```
@@ -29,7 +29,7 @@ a validator that says `.env:3:1: error: PORT must be an integer` produces:
         │ ^
 ```
 
-The tool disclosed one line number. whatbroke disclosed two secrets.
+The tool disclosed one line number. whyitbroke disclosed two secrets.
 
 Where that lands matters more than that it happens. A terminal is ephemeral and already
 had the tool's output in it. `--format github` writes the same block into
@@ -38,7 +38,7 @@ the run — including, on a public repository, everyone.
 
 The rest of the report does not have this property. `evidence`, `fallback.rawOutput` and
 every message are quotations from the output the tool produced. Source context is the one
-place whatbroke adds information the tool did not give it.
+place whyitbroke adds information the tool did not give it.
 
 ## Two fixes to refuse
 
@@ -54,7 +54,7 @@ to make a risk disappear from the changelog would be solving the wrong problem.
 
 ## The principle worth arguing from
 
-*Whatbroke should be reluctant to disclose, in durable output, anything the tool did not
+*WhyItBroke should be reluctant to disclose, in durable output, anything the tool did not
 already disclose.* That is a rule about the class of information, not about filenames, so
 it does not need to know what a secret looks like.
 

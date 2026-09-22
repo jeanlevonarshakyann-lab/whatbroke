@@ -1,7 +1,7 @@
 {
   "problemMatcher": [
     {
-      "owner": "whatbroke",
+      "owner": "whyitbroke",
       "pattern": [
         {
           "regexp": "^\\s*(?:[^:]+:)?([^:]+):(\\d+)(?::(\\d+))?\\s+(.+)$",

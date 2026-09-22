@@ -47,7 +47,7 @@ function summaryOf(report) {
     ?? fails.map((_, i) => ({ size: 1, members: [i], exemplar: i, reported: false }));
   const reported = units.filter((u) => u.reported);
 
-  const lines = ["## whatbroke", ""];
+  const lines = ["## whyitbroke", ""];
   if (report.summary) lines.push(`**${markdown(report.summary)}**`, "");
   // Which package or container the output came through - `api:test:` says which of a
   // monorepo's packages failed, and nothing else in the summary does.
@@ -106,7 +106,7 @@ function summaryOf(report) {
 // Bound the encoded preview too: newlines/percent signs expand during escaping,
 // and Unicode characters can occupy several bytes. Never split an escape or code point.
 function capturedOutputAnnotation(raw) {
-  const prefix = "::notice title=whatbroke captured output::";
+  const prefix = "::notice title=whyitbroke captured output::";
   const suffix = " [preview truncated; use --json for full captured output]";
   const budget = 3500 - Buffer.byteLength(prefix + suffix + "\n");
   let preview = "", bytes = 0;
@@ -140,7 +140,7 @@ export function githubOutput(report, { quiet = false } = {}) {
       report.since?.reason === "unidentified-pipe"
         && "not tracked: a piped log carries no command to tell it from another (name it with --id NAME)"]
       .filter(Boolean).join(" — ");
-    if (lead) stdout += `::notice title=whatbroke::${escapeData(lead)}\n`;
+    if (lead) stdout += `::notice title=whyitbroke::${escapeData(lead)}\n`;
     return { stdout, summary: summaryOf(report) };
   }
   const { fallback, truncated, error } = report;
@@ -148,18 +148,18 @@ export function githubOutput(report, { quiet = false } = {}) {
   const piped = report.inputMode === "pipe";
   const raw = fallback.rawOutput;
   const status = report.status;
-  const explanation = [error ?? status?.says ?? "whatbroke could not identify a diagnostic.",
-    ...(status && !error && raw ? ["whatbroke could not identify a diagnostic."] : [])].join("\n");
+  const explanation = [error ?? status?.says ?? "whyitbroke could not identify a diagnostic.",
+    ...(status && !error && raw ? ["whyitbroke could not identify a diagnostic."] : [])].join("\n");
   // Unknown upstream status is a notice, not an invented failed command.
   const level = piped ? "notice" : "error";
-  let stdout = `::${level} title=whatbroke::${escapeData(fallback.message + "\n" + explanation)}\n`;
+  let stdout = `::${level} title=whyitbroke::${escapeData(fallback.message + "\n" + explanation)}\n`;
   if (raw && (piped || quiet)) {
     // Escaped annotation data keeps raw workflow-command syntax inert.
     stdout += capturedOutputAnnotation(raw);
   } else if (!raw) {
-    stdout += "::notice title=whatbroke::No output was captured.\n";
+    stdout += "::notice title=whyitbroke::No output was captured.\n";
   }
-  if (truncated) stdout += `::warning title=whatbroke::${TRUNCATION_NOTICE}\n`;
+  if (truncated) stdout += `::warning title=whyitbroke::${TRUNCATION_NOTICE}\n`;
 
   const context = error ?? (raw || "No output was captured.");
   // A log may itself contain fenced Markdown. Use a longer fence so its text
@@ -169,7 +169,7 @@ export function githubOutput(report, { quiet = false } = {}) {
   const fence = "`".repeat(fenceLength);
   // The annotation says what the status was; a job summary that left it out would be the
   // one place a reader looks and does not find it.
-  const summary = ["## whatbroke", "", fallback.message, ...(status && !error ? ["", status.says] : []), "",
+  const summary = ["## whyitbroke", "", fallback.message, ...(status && !error ? ["", status.says] : []), "",
     error ? "Launch error:" : "Captured output:", "", fence, context, fence, "",
     ...(truncated ? [`> ${TRUNCATION_NOTICE}`, ""] : []),
   ].join("\n");

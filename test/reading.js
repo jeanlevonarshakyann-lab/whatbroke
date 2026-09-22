@@ -1,4 +1,4 @@
-// Reading any log: the ways a log reaches whatbroke, what is refused, and what holds for every parser.
+// Reading any log: the ways a log reaches whyitbroke, what is refused, and what holds for every parser.
 import { readFileSync, readdirSync } from "node:fs";
 import { fileURLToPath } from "node:url";
 import { dirname, join } from "node:path";
@@ -8,7 +8,7 @@ import { analyse } from "../src/index.js";
 
 const here = dirname(fileURLToPath(import.meta.url));
 const fx = (n) => readFileSync(join(here, "fixtures", n), "utf8");
-const cli = join(here, "..", "bin", "whatbroke.js");
+const cli = join(here, "..", "bin", "whyitbroke.js");
 
 let pass = 0, fail = 0;
 
@@ -108,7 +108,7 @@ try {
 // "would reformat x.py", which has to be explained rather than quoted. Eight parsers do,
 // each deliberately and each saying so where it does it.
 //
-// A LOCATION is different. It is a fact, not a phrasing: whatbroke tells the reader
+// A LOCATION is different. It is a fact, not a phrasing: whyitbroke tells the reader
 // which file and line to open, and a file it made up sends them nowhere. Every located
 // failure in the corpus must name a file the log actually contains.
 try {

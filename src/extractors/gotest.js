@@ -172,7 +172,7 @@ export default {
         // Go writes no severity word at all, so there is no constant of its own to put
         // in `label` - but the line still needs a name, or it renders as a bare
         // "broken.go:4" that the problem matcher cannot read and CI never annotates.
-        // "compile error" is what whatbroke calls it, which is what `title` is for.
+        // "compile error" is what whyitbroke calls it, which is what `title` is for.
         failures.push(withSource({ file: m[2], line: +m[3], col: +m[4], title: "compile error", severity: "error", message: m[5] }, i, i + 1));
       }
     });

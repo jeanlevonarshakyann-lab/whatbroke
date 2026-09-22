@@ -1,6 +1,6 @@
 // Go: go build, go vet, go test in every encoding, golangci-lint.
 //
-// Each case is a real capture in test/fixtures/, read the way whatbroke reads it; each
+// Each case is a real capture in test/fixtures/, read the way whyitbroke reads it; each
 // format group is one run captured in several formats, which have to agree. The checks
 // below them are about how this family's tools print what they print.
 import { readFileSync, readdirSync } from "node:fs";
@@ -236,7 +236,7 @@ const CASES = [
       assert.ok(test && test.line === 17, "the assertion failure is still there");
     } },
   // Captured with go 1.27.1. `gofmt -d` is the other half of Go's format gate, and it was
-  // read as nothing: the job failed and whatbroke said there was no parser for it. The
+  // read as nothing: the job failed and whyitbroke said there was no parser for it. The
   // file is named once in the header and each @@ hunk says where in it.
   { file: "gofmt_fail.txt", tool: "gofmt", n: 2, check: (r) => {
       assert.equal(r.summary, "2 files failed the format check");

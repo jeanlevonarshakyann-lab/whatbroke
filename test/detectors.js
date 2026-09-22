@@ -1,6 +1,6 @@
 // The detector collision matrix.
 //
-// whatbroke picks a parser by asking each one "is this yours?" in a fixed order and
+// whyitbroke picks a parser by asking each one "is this yours?" in a fixed order and
 // taking the first that answers yes AND finds something. That means a detector which
 // wrongly claims another tool's log is harmless only for as long as its extractor
 // happens to come back empty - an invisible condition that a future change to that
@@ -235,7 +235,7 @@ test("no fixture carries the path of the machine it was captured on", () => {
   // ...and the paths CI runners really print are not leaks. Windows writes C:\Users with
   // backslashes, and a runner's workspace is D:/a/<repo>.
   for (const fine of ["/home/dev/app/a.js:1:2", "C:\\Users\\runneradmin\\x.go:3",
-    "D:/a/whatbroke/t/shop_test.go:13", "C:/hostedtoolcache/windows/go/src/testing/testing.go:1631"]) {
+    "D:/a/whyitbroke/t/shop_test.go:13", "C:/hostedtoolcache/windows/go/src/testing/testing.go:1631"]) {
     assert.ok(!LEAKED_PATH.test(fine), `${JSON.stringify(fine)} is a path a tool really prints`);
   }
   const leaked = readdirSync(fixtures).filter((name) => LEAKED_PATH.test(readFileSync(join(fixtures, name), "utf8")));
@@ -274,7 +274,7 @@ test("every failure carries a category", () => {
   }
 });
 
-// A leaf command is strong evidence: someone typing `whatbroke vitest` is saying which
+// A leaf command is strong evidence: someone typing `whyitbroke vitest` is saying which
 // tool is about to fail. It only reorders, so it can improve an ambiguous log without
 // being able to damage an unambiguous one.
 test("the command that was run breaks a tie between two parsers", () => {

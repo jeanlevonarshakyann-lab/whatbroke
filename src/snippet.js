@@ -26,7 +26,7 @@ function safePath(file) {
 
 // O_NOFOLLOW: the canonical path contains no links by construction, so this only has
 // to survive the window between realpath and open. O_NONBLOCK: opening a FIFO for
-// reading otherwise waits for a writer that never comes, and whatbroke hangs forever
+// reading otherwise waits for a writer that never comes, and whyitbroke hangs forever
 // on a log that merely names one. Neither constant exists on Windows.
 const READ_FLAGS = constants.O_RDONLY
   | (constants.O_NOFOLLOW ?? 0)

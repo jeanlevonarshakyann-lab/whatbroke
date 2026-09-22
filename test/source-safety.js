@@ -1,4 +1,4 @@
-// Source context is the only thing whatbroke reads from disk, and the log asking for
+// Source context is the only thing whyitbroke reads from disk, and the log asking for
 // it is untrusted by definition — a pasted paste, a CI artifact, someone else's
 // machine. These cases pin the boundary: what may be opened, how much of it, and what
 // happens to the diagnostic when the answer is "nothing".
@@ -17,7 +17,7 @@ import { spawnSync } from "node:child_process";
 import assert from "node:assert/strict";
 
 const here = dirname(fileURLToPath(import.meta.url));
-const cli = join(here, "..", "bin", "whatbroke.js");
+const cli = join(here, "..", "bin", "whyitbroke.js");
 
 let pass = 0, fail = 0;
 const test = (name, fn) => {

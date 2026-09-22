@@ -33,7 +33,7 @@ const RESTATES = /^failed to push some refs/;
 // detect below is what keeps a bare severity word from claiming another tool's log, and
 // it is written around that word - so these never reached this parser at all, and
 // `git merge <missing-branch>`, `git pull` with no upstream and `git stash pop` with an
-// empty stash each came back as "whatbroke could not identify a diagnostic" and the log
+// empty stash each came back as "whyitbroke could not identify a diagnostic" and the log
 // handed back. Each phrase is git's own and no other tool's, which is what lets it
 // stand on its own where a bare `fatal:` cannot; and each IS the whole diagnostic. What
 // follows the pull one is eight lines of advice on how to set an upstream, which is the

@@ -1,6 +1,6 @@
 // `bundle install` is the first thing a Ruby CI job runs and the first thing that
 // fails, and none of the three ways it fails was read at all - each came back as
-// "whatbroke could not identify a diagnostic" with the log handed back.
+// "whyitbroke could not identify a diagnostic" with the log handed back.
 //
 // What makes them hard is that bundler writes prose, not diagnostics: no severity word,
 // no `file:line`, and a sentence that wraps across lines mid-clause. So each shape is

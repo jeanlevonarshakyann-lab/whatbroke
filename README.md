@@ -1,8 +1,8 @@
-# whatbroke
+# whyitbroke
 
 **You ran a command. It printed 400 lines. These are the ones that matter.**
 
-![whatbroke turning 38 lines of pytest output into 20](https://raw.githubusercontent.com/jeanlevonarshakyann-lab/whatbroke/main/demo/demo.gif)
+![whyitbroke turning 38 lines of pytest output into 20](https://raw.githubusercontent.com/jeanlevonarshakyann-lab/whyitbroke/main/demo/demo.gif)
 
 ```
   ✗ 3 failed, 2 passed in 0.01s
@@ -40,43 +40,43 @@ Real reductions, measured on the fixtures in this repo:
 ## Install
 
 ```bash
-npm install -g @jeanlevon/whatbroke
+npm install -g whyitbroke
 ```
 
 Or don't install anything:
 
 ```bash
-npx @jeanlevon/whatbroke pytest
+npx whyitbroke pytest
 ```
 
-Either way the command is `whatbroke` (or `wb`).
+Either way the command is `whyitbroke`.
 
 ## Use
 
 ```bash
-whatbroke npm test        # run it, print the distillation after
-whatbroke -q cargo build  # hide the command's own output entirely
-npm test 2>&1 | whatbroke # or pipe into it
-whatbroke < build.log     # or distil a log file you already saved
-whatbroke --json npm test # emit a stable result for CI and editor integrations
-whatbroke --github-actions npm test # add clickable errors to GitHub Actions logs
-whatbroke --format github npm test # equivalent long-form format selector
-whatbroke --no-source npm test # show failures without reading source files
-whatbroke --max-bytes 2000000 npm test # bound captured logs for large CI jobs
+whyitbroke npm test        # run it, print the distillation after
+whyitbroke -q cargo build  # hide the command's own output entirely
+npm test 2>&1 | whyitbroke # or pipe into it
+whyitbroke < build.log     # or distil a log file you already saved
+whyitbroke --json npm test # emit a stable result for CI and editor integrations
+whyitbroke --github-actions npm test # add clickable errors to GitHub Actions logs
+whyitbroke --format github npm test # equivalent long-form format selector
+whyitbroke --no-source npm test # show failures without reading source files
+whyitbroke --max-bytes 2000000 npm test # bound captured logs for large CI jobs
 ```
 
-When wrapping a command, its exit code is passed straight through, so `whatbroke`
+When wrapping a command, its exit code is passed straight through, so `whyitbroke`
 can be left in a Makefile or a CI step. Piped input does not carry the upstream
-command's exit status: whatbroke exits `0` after processing it, which does not mean
+command's exit status: whyitbroke exits `0` after processing it, which does not mean
 the upstream command succeeded. Wrap the command when you need its exit status.
-An optional `-` supports explicit piped input (`cmd | whatbroke -`).
+An optional `-` supports explicit piped input (`cmd | whyitbroke -`).
 
 Unknown options and invalid option values exit `2` without starting the command.
 Options belong before the command; its own arguments are passed through unchanged.
-Use `--` to explicitly end whatbroke's options. `--max-bytes` takes a decimal
+Use `--` to explicitly end whyitbroke's options. `--max-bytes` takes a decimal
 integer of at least 1024.
 
-If a failed command produces no recognized diagnostic, whatbroke reports its exit
+If a failed command produces no recognized diagnostic, whyitbroke reports its exit
 code and shows captured output (or points to output already streamed above).
 If nothing was captured, it says so. Unrecognized piped text is also shown, with
 the upstream status labelled unknown. In GitHub Actions, failed commands get an
@@ -85,7 +85,7 @@ assumed command failure. Captured output remains subject to `--max-bytes` and is
 labelled incomplete when truncated. GitHub fallback annotations show a preview
 capped at 3,500 encoded bytes; job summaries and JSON retain the captured output.
 
-Use `whatbroke --help` for all options. `--json` suppresses the wrapped command's
+Use `whyitbroke --help` for all options. `--json` suppresses the wrapped command's
 output so stdout remains valid JSON, and emits a versioned report — `tool`, `summary`,
 `exitCode`, `failures` and the rest, [described below](#github-actions). It is intended
 for CI wrappers and scripts. The wrapped command's stderr remains available on
@@ -112,14 +112,14 @@ summary to the step:
 
 ```yaml
 - name: Test
-  run: npx --yes @jeanlevon/whatbroke npm test
+  run: npx --yes whyitbroke npm test
 ```
 
 To turn parsed failures into clickable annotations in the Actions UI:
 
 ```yaml
 - name: Test with annotations
-  run: npx --yes @jeanlevon/whatbroke --github-actions npm test
+  run: npx --yes whyitbroke --github-actions npm test
 ```
 
 When GitHub provides `GITHUB_STEP_SUMMARY`, the same mode also writes a report to the
@@ -128,18 +128,18 @@ their sites folded behind a disclosure — the same shape the terminal prints. F
 that were not grouped follow it, so the summary stays a complete account of the run.
 
 For workflows that prefer GitHub's problem matcher protocol, add
-`.github/whatbroke.problem-matcher.json` with:
+`.github/whyitbroke.problem-matcher.json` with:
 
 ```yaml
-- run: echo "::add-matcher::.github/whatbroke.problem-matcher.json"
-- run: npx --yes @jeanlevon/whatbroke --quiet npm test
+- run: echo "::add-matcher::.github/whyitbroke.problem-matcher.json"
+- run: npx --yes whyitbroke --quiet npm test
 ```
 
 For scripts that need to inspect the result without parsing terminal formatting:
 
 ```yaml
 - name: Test (JSON)
-  run: npx --yes @jeanlevon/whatbroke --json npm test > whatbroke.json
+  run: npx --yes whyitbroke --json npm test > whyitbroke.json
 ```
 
 The JSON report is versioned, and [`report.schema.json`](report.schema.json) — a JSON
@@ -194,7 +194,7 @@ has keeps its meaning. Spawn failures set `error` and use exit code `127`.
 
 - `inputMode` is `"command"` or `"pipe"`.
 - `commandExitCode` is the wrapped command's shell-compatible exit code, or `null`
-  for piped input and commands that could not be started. `exitCode` is whatbroke's
+  for piped input and commands that could not be started. `exitCode` is whyitbroke's
   own process exit code, including `0` for processed pipes and `127` for spawn failures.
 - `status` is what the exit status says on its own, or `null` when it says nothing:
   `signal` (the signal that killed the command, as the operating system names it, or
@@ -223,10 +223,10 @@ command success: check `commandExitCode`, and treat `null` as unknown.
 Repositories can use the bundled composite action:
 
 ```yaml
-- uses: jeanlevonarshakyann-lab/whatbroke/.github/actions/whatbroke@v0.5.0
+- uses: jeanlevonarshakyann-lab/whyitbroke/.github/actions/whyitbroke@v0.6.0
   with:
     command: npm test
-    version: 0.5.0
+    version: 0.6.0
 ```
 
 Pin `version` to a known npm release for reproducible CI. The action preserves
@@ -255,12 +255,12 @@ true.
   log the fuzz suite damages, and every way the command line can end.
   *(test/report.js, test/fuzz.js)*
 
-One limit, stated rather than hidden: when whatbroke runs the command, stdout and stderr
+One limit, stated rather than hidden: when whyitbroke runs the command, stdout and stderr
 arrive on two pipes, so their order relative to each other is the order they reached
-whatbroke, not the order the command wrote them. A program that buffers stdout when it is
+whyitbroke, not the order the command wrote them. A program that buffers stdout when it is
 not writing to a terminal — Python does, and so do most C programs — can look reordered.
 Where the interleaving matters, merge the streams in the command itself:
-`whatbroke sh -c 'pytest 2>&1'`, or set `PYTHONUNBUFFERED=1` for Python.
+`whyitbroke sh -c 'pytest 2>&1'`, or set `PYTHONUNBUFFERED=1` for Python.
 
 ## What it reads
 
@@ -441,7 +441,7 @@ grow.
 CI and log viewers stamp every line — GitHub Actions prefixes an ISO timestamp, Azure
 Pipelines uses `##[debug]`, and `kubectl logs --prefix` identifies the source as
 `[pod/name/container]`. Every parser here anchors on the start of a line, so a stamped
-log would match nothing at all. whatbroke strips vetted shapes before parsing; inferred
+log would match nothing at all. whyitbroke strips vetted shapes before parsing; inferred
 prefixes are removed only when nearly every line carries one and parsing improves, so a
 log that merely mentions a timestamp is left exactly as it is. Paste a CI log straight
 in.
@@ -479,7 +479,7 @@ their `title` happened to mean.
 Change one string in a library and eighty tests fail. They are one bug. Every tool
 in this space will show you the first five and let you work out the rest.
 
-whatbroke groups failures that share a likely cause and leads with the count:
+whyitbroke groups failures that share a likely cause and leads with the count:
 
 ```
   ✗ 85 failed, 1973 passed, 25 skipped in 3.58s
@@ -522,7 +522,7 @@ slots, the job summary's sections, and the run's notice line. `--no-cluster` tur
 off everywhere.
 
 Source context is read from the file on disk. If the file has changed since the command
-ran — you edited it, or you piped in saved output — whatbroke says so and shows the line
+ran — you edited it, or you piped in saved output — whyitbroke says so and shows the line
 the tool itself reported, rather than confidently pointing a caret at the wrong code. Most
 tools count a tab as one column and a terminal draws it wider, so the line under the source
 keeps the source's tabs, and the caret lands under the character the tool pointed at.
@@ -534,7 +534,7 @@ command, so a wall of red you have already read does not look the same as a wall
 just grew.
 
 ```console
-$ whatbroke --since-last pytest
+$ whyitbroke --since-last pytest
 
   ✗ 3 failed, 2 passed in 0.01s
     1 new since your last run
@@ -565,18 +565,18 @@ printed is still reported in full; only the baseline is empty. Without it, a fai
 against the run that first found it and called nothing new — which is exactly the moment a
 reader wants to be told. Nothing is printed for a command that worked.
 
-**A piped log has to be named.** `pytest tests/unit | whatbroke --since-last` carries no
-command at all, so nothing tells it from `pytest tests/api | whatbroke --since-last` in the
+**A piped log has to be named.** `pytest tests/unit | whyitbroke --since-last` carries no
+command at all, so nothing tells it from `pytest tests/api | whyitbroke --since-last` in the
 same directory: they shared one record, overwrote each other, and each reported the other's
 failures as fixed. Guessing the upstream command from its output is not available either —
 the log is the thing in question. So an unnamed pipe is not compared and not recorded, and
 says so; `--id NAME` is how a pipeline says which one it is.
 
 ```console
-$ pytest tests/unit | whatbroke --since-last
+$ pytest tests/unit | whyitbroke --since-last
     not tracked: a piped log carries no command to tell it from another. Name it with --id NAME
 
-$ pytest tests/unit | whatbroke --since-last --id unit
+$ pytest tests/unit | whyitbroke --since-last --id unit
     1 new since your last run
 ```
 
@@ -603,17 +603,17 @@ is never recorded: storing its short list would make the next run announce every
 lost as newly appeared.
 
 Nothing about tracking can change the outcome of a run. If the cache cannot be read or
-written, whatbroke says nothing about history and prints the same diagnosis it always
+written, whyitbroke says nothing about history and prints the same diagnosis it always
 would.
 
 ## When something else is printing your log
 
 Turborepo puts `api:test: ` in front of every line. Docker BuildKit puts `#12 1.234 `.
 pnpm names the package and script, kubectl names the pod. Every parser here anchors on
-the start of a line, so before whatbroke understood these, a wrapped pytest run produced
+the start of a line, so before whyitbroke understood these, a wrapped pytest run produced
 *nothing* — not a worse answer, no answer at all.
 
-whatbroke finds the prefix and removes it, then says which one it removed, because
+whyitbroke finds the prefix and removes it, then says which one it removed, because
 knowing the failure came from `api:test:` is worth keeping.
 
 Nothing is stripped on a hunch. A candidate prefix is removed only if removing it
@@ -632,14 +632,14 @@ tool and the same failures out the other side.
 Docker gets the same treatment. A failing `docker build` ends with
 `ERROR: failed to solve: process "/bin/sh -c npm test" did not complete successfully`,
 which names the mechanism and not the cause — the cause is the step's own output, either
-under BuildKit's `#8 0.234 ` stamps or quoted in the block above that line. whatbroke
+under BuildKit's `#8 0.234 ` stamps or quoted in the block above that line. whyitbroke
 reads whichever is there and hands it to the tool that actually failed.
 
 Wrappers stack, too: a monorepo runner relaying a container relaying a test run is peeled
 a layer at a time, and each layer is named on the result.
 
 Tools that redraw progress with bare carriage returns pack many logical lines into one
-physical line. A CI collector stamps that blob once, so whatbroke removes a vetted CI
+physical line. A CI collector stamps that blob once, so whyitbroke removes a vetted CI
 stamp before expanding the redraws into lines.
 
 A prefix with no vetted shape — a pod name, a compose service — has to be inferred by
@@ -659,7 +659,7 @@ allows. If there are no middle diagnostics, the tail keeps its full share as bef
 What is dropped is stated, never silently stitched:
 
 ```
-~~~ whatbroke: 1743102 bytes of output elided here (raise --max-bytes to keep them) ~~~
+~~~ whyitbroke: 1743102 bytes of output elided here (raise --max-bytes to keep them) ~~~
 ```
 
 Cuts land on line boundaries, so a parser is never handed half a line, and multi-byte
@@ -690,7 +690,7 @@ as a copy of something it was never compared with.
 
 ## Safety
 
-whatbroke reads source context from disk to show you the lines around a failure.
+whyitbroke reads source context from disk to show you the lines around a failure.
 Output can come from anywhere — a pasted log, a CI artifact, someone else's machine —
 so it will only ever read files **inside the directory you ran it in**. Crafted output
 naming `/etc/passwd` or `~/.ssh/id_rsa` gets the error printed, never the file.
@@ -724,7 +724,7 @@ or argument is expanded. It has zero dependencies and makes no network calls.
 It writes to disk in exactly two cases, both of which you have to ask for. When
 `GITHUB_STEP_SUMMARY` is set — which GitHub Actions sets for you — `--format github`
 appends a run summary to that file. And `--since-last` records a list of fingerprints
-under your OS cache directory (`WHATBROKE_CACHE_DIR` overrides it). Never inside your
+under your OS cache directory (`WHYITBROKE_CACHE_DIR` overrides it). Never inside your
 project, never anywhere else, and never at all unless you pass the flag or set the
 variable.
 
@@ -740,7 +740,7 @@ extension — each ends with an empty log and a number, and there is no diagnost
 parser to find. The number is not nothing:
 
 ```
-$ whatbroke -- cargo build
+$ whyitbroke -- cargo build
 
 Command failed with exit code 137.
 Killed by SIGKILL, which no program can catch or shut down cleanly for. On a build
@@ -748,8 +748,8 @@ machine that is usually the kernel running out of memory, or a runner enforcing 
 No output was captured.
 ```
 
-Two different kinds of thing are said there, and whatbroke keeps them apart. **A signal is
-a fact**: the operating system reports which one ended the process, and whatbroke names
+Two different kinds of thing are said there, and whyitbroke keeps them apart. **A signal is
+a fact**: the operating system reports which one ended the process, and whyitbroke names
 it. **What usually sends that signal is a guess**, written as one — it is the second
 sentence, and it says "usually".
 
@@ -757,9 +757,9 @@ An **exit code** is a number a program chose, so almost none of them mean anythi
 their own: `1` and `2` are what every program in the world returns, and `grep` returns `1`
 for finding nothing. Three are read, as the conventions they are — `127` and `126`, which
 a shell returns for a command that does not exist and one it could not run, and `124`,
-which `timeout` returns when its deadline passed — and only for a command whatbroke ran
+which `timeout` returns when its deadline passed — and only for a command whyitbroke ran
 itself, where the shell in question is the one it spawned. A piped log's upstream status
-never reached whatbroke and is never guessed at.
+never reached whyitbroke and is never guessed at.
 
 A run that was killed part-way still printed whatever it got to print, and that is read as
 usual. The signal is reported beside the diagnosis rather than instead of it, because a
@@ -775,9 +775,9 @@ diagnosis from a run that did not finish is not the whole story:
     machine that is usually the kernel running out of memory, or a runner enforcing a limit.
 ```
 
-## When whatbroke runs the command itself
+## When whyitbroke runs the command itself
 
-`whatbroke vitest` tells whatbroke which leaf tool is about to fail, and that is strong
+`whyitbroke vitest` tells whyitbroke which leaf tool is about to fail, and that is strong
 evidence when two parsers recognise the same log. Each parser declares the commands that
 imply it, and a named leaf tool is tried first — including through a path or launcher, so
 `npx vitest run` and `./node_modules/.bin/vitest` both count.
@@ -821,4 +821,9 @@ Linux with the oldest and newest Node, and everywhere once a night.
 
 ## License
 
-MIT
+WhyItBroke 0.6.0 and later are source-available under the Apache License 2.0 with
+the Commons Clause. You may use, modify, and redistribute the software, including
+inside a commercial organization, but you may not sell the software itself or a
+product or service whose value derives substantially from its functionality.
+
+This is not an OSI-approved open-source license. See [`LICENSE`](LICENSE) for the terms.

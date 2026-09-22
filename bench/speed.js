@@ -1,6 +1,6 @@
 // How long reading takes: `npm run bench`.
 //
-// Logs of three sizes, each of a kind whatbroke meets: build output nothing reads, a
+// Logs of three sizes, each of a kind whyitbroke meets: build output nothing reads, a
 // failure at the start of it or at the end, a large lint run, a large test run, every
 // log in the corpus at once, and a shape that used to take time growing as its square.
 // Every line differs from the ones around it, because a log that repeats itself exactly

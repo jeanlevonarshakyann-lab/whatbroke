@@ -1,6 +1,6 @@
 // The JVM: Maven, Gradle, javac and JUnit reports.
 //
-// Each case is a real capture in test/fixtures/, read the way whatbroke reads it; each
+// Each case is a real capture in test/fixtures/, read the way whyitbroke reads it; each
 // format group is one run captured in several formats, which have to agree. The checks
 // below them are about how this family's tools print what they print.
 import { readFileSync, readdirSync } from "node:fs";
@@ -181,7 +181,7 @@ const CASES = [
   { file: "gradle_script_fail.txt", tool: "gradle", n: 1, check: (r) => {
       // real `gradle test` on stleary/JSON-java under Gradle 9, which removed the
       // sourceCompatibility property. The build script fails to evaluate - a very
-      // common failure - and whatbroke printed NOTHING at all: jvm.js detected the
+      // common failure - and whyitbroke printed NOTHING at all: jvm.js detected the
       // output but extracted no failure, and the generic fallback does not match
       // "FAILURE:" (no word boundary after FAIL) or "with an exception." (no colon).
       const f = r.failures[0];

@@ -374,8 +374,8 @@ function dropEchoes(mine, others) {
   return kept;
 }
 
-/** When whatbroke launches a leaf tool itself, its name is useful evidence for breaking
- *  ties: `whatbroke pytest tests/` says which parser should lead. A script launcher is
+/** When whyitbroke launches a leaf tool itself, its name is useful evidence for breaking
+ *  ties: `whyitbroke pytest tests/` says which parser should lead. A script launcher is
  *  different. `npm test`, `pnpm test`, and `yarn build` name the parent process while
  *  Jest, Vitest, Vite, or another child prints the actionable failure. Promoting the
  *  launcher would bury that cause beneath a generic non-zero-exit message.

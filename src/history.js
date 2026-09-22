@@ -20,7 +20,7 @@ import { fingerprint, legacyFingerprint, causeId, keyOf } from "./cluster.js";
 // 6: the tool leaves the key and a weak signature gains a discriminator. The tool had to
 // go because a command that SUCCEEDS prints no output to name a tool with, so a green run
 // could not write the empty baseline that says "nothing is failing here now" - and the
-// next time the same failure came back, whatbroke called it nothing new. What the command
+// next time the same failure came back, whyitbroke called it nothing new. What the command
 // was is already in its argv. A v5 record is not migrated: its causes were fingerprinted
 // before `historyKeyOf` existed, so half of them would be read as different bugs. It is
 // ignored instead, and the run after an upgrade says it is the first tracked one.
@@ -35,23 +35,23 @@ const legacyCauseId = (failure) => legacyFingerprint(keyOf(failure));
 export const legacyTrackedCauseId = (failure, tool = failure.tool) =>
   legacyFingerprint(JSON.stringify([tool ?? "", legacyCauseId(failure)]));
 
-/** Where a run's fingerprints live. Never the project: whatbroke promises it writes
+/** Where a run's fingerprints live. Never the project: whyitbroke promises it writes
  *  nothing into your working directory, and a tool that quietly drops a state file
  *  next to your source has broken that promise however useful the feature is. */
 export function cacheDir(env = process.env) {
-  if (env.WHATBROKE_CACHE_DIR) return env.WHATBROKE_CACHE_DIR;
+  if (env.WHYITBROKE_CACHE_DIR) return env.WHYITBROKE_CACHE_DIR;
   if (process.platform === "win32") {
-    return join(env.LOCALAPPDATA || env.APPDATA || tmpdir(), "whatbroke");
+    return join(env.LOCALAPPDATA || env.APPDATA || tmpdir(), "whyitbroke");
   }
-  if (process.platform === "darwin") return join(homedir(), "Library", "Caches", "whatbroke");
-  return join(env.XDG_CACHE_HOME || join(homedir(), ".cache"), "whatbroke");
+  if (process.platform === "darwin") return join(homedir(), "Library", "Caches", "whyitbroke");
+  return join(env.XDG_CACHE_HOME || join(homedir(), ".cache"), "whyitbroke");
 }
 
 /** A stable name for "this command, in this directory" - or for a pipeline the user
  *  named with --id.
  *
  *  null where there is nothing honest to key on. A piped log carries no argv: every
- *  `... | whatbroke --since-last` run from one directory used to share a single record,
+ *  `... | whyitbroke --since-last` run from one directory used to share a single record,
  *  so `pytest tests/unit` and `pytest tests/api` overwrote each other's history and each
  *  reported the other's failures as newly gone - a claim that something was FIXED, made
  *  about a suite that had not run. Guessing the upstream command from its output is not

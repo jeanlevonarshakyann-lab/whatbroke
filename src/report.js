@@ -4,7 +4,7 @@
 // capture was cut short, what changed since last time - used to be put together three
 // times: once into the object `--json` printed, and twice more by the terminal and the
 // GitHub writers, each from the analysis and a handful of loose arguments. Each could
-// drift from the others without a test noticing, and one had: the wrapper whatbroke took
+// drift from the others without a test noticing, and one had: the wrapper whyitbroke took
 // off a log, which the README promised it would name, reached none of the three.
 //
 // Now there is one object, built here, in the shape `--json` prints. The terminal and
@@ -39,7 +39,7 @@ function evidenceOf(failure, lines, captured) {
   return apart.map(({ start, end }) => ({ start: start + 1, end: end + 1 }));
 }
 
-/** Everything whatbroke says about one run.
+/** Everything whyitbroke says about one run.
  *
  *  `analysis` is what analyse() read from the output, or null when nothing could be read;
  *  `raw` is the captured output; `error` is why a command could not be started; `lines` is
