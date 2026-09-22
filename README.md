@@ -223,10 +223,10 @@ command success: check `commandExitCode`, and treat `null` as unknown.
 Repositories can use the bundled composite action:
 
 ```yaml
-- uses: jeanlevonarshakyann-lab/whyitbroke/.github/actions/whyitbroke@v0.6.1
+- uses: jeanlevonarshakyann-lab/whyitbroke/.github/actions/whyitbroke@v0.5.0
   with:
     command: npm test
-    version: 0.6.1
+    version: 0.5.0
 ```
 
 Pin `version` to a known npm release for reproducible CI. The action preserves

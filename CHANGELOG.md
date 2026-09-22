@@ -2,18 +2,7 @@
 
 ## Unreleased
 
-## 0.6.1 — 2026-09-22
-
-- Removed the former project name from current documentation, fixtures, and package tests.
-
-## 0.6.0 — 2026-09-22
-
-- Renamed the package, command, GitHub integration, cache location, and repository to
-  `whyitbroke` after discovering a separate, older project using the former name.
-- Changed the license for this and later releases to Apache License 2.0 with the Commons
-  Clause License Condition v1.0.
-
-## 0.5.0 — 2026-09-21
+## 0.5.0 — 2026-09-22
 
 This is the first npm release since 0.1.1 and includes the previously unpublished
 0.2.0–0.4.0 work. The release is backed by 475 real captured logs, 834 fast tests,
