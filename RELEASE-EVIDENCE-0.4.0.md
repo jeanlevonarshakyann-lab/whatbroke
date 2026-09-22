@@ -7,7 +7,7 @@ release, or update the bundled Action pin until the audit is deliberately closed
 ## Fresh command gate
 
 Run on 2026-09-10 on macOS 26.6.2 arm64. Each command was launched through the local
-`whatbroke --json` CLI. The command's non-zero status was preserved in every case.
+`whyitbroke --json` CLI. The command's non-zero status was preserved in every case.
 Temporary paths and the deliberately invalid package name are local test data.
 
 | # | Family and version | Failing command shape | Expected parser | Extracted | Outcome |
@@ -84,11 +84,11 @@ reading across an adjacent tool or retry; those boundaries are now exact.
 ## Misses and dispositions
 
 - `npm run boom`, whose script only called `process.exit(7)`, emitted two npm notice
-  lines and no diagnostic. whatbroke correctly preserved exit 7 and returned its
+  lines and no diagnostic. whyitbroke correctly preserved exit 7 and returned its
   bounded `unrecognized-output` fallback. It is not counted above because there is no
   failure text for a parser to extract.
 - `perl -e 'die <arbitrary text>'` likewise emitted arbitrary prose with no error shape.
-  whatbroke preserved exit 255 and returned the fallback. The undefined-subroutine run
+  whyitbroke preserved exit 255 and returned the fallback. The undefined-subroutine run
   replaced it in the counted gate.
 - The first `go test` attempt could not write the host Go build cache in the restricted
   test environment. It was rerun with `GOCACHE` inside the temporary workspace and then
