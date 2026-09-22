@@ -82,6 +82,7 @@ try {
   const metadata = entries[0];
   assert.equal(metadata.name, manifest.name);
   assert.equal(metadata.version, manifest.version);
+  assert.deepEqual(manifest.bin, { whyitbroke: "bin/whyitbroke.js" });
   const files = new Set(metadata.files.map(({ path }) => path));
   for (const required of [
     "package.json",
@@ -92,7 +93,6 @@ try {
   ]) {
     assert.equal(files.has(required), true, `${required} is missing from the npm package`);
   }
-  assert.equal(files.has("bin/whatbroke.js"), false, "old command was included in the npm package");
 
   const tarball = join(packDir, metadata.filename);
   assert.equal(existsSync(tarball), true, "npm did not create the package tarball");
@@ -110,13 +110,6 @@ try {
     const version = runShim(command, ["--version"]);
     assert.equal(version.stdout.trim(), metadata.version);
   }
-  const oldSuffix = process.platform === "win32" ? ".cmd" : "";
-  assert.equal(
-    existsSync(join(installDir, "node_modules", ".bin", `whatbroke${oldSuffix}`)),
-    false,
-    "old command shim was installed",
-  );
-
   const fixture = readFileSync(join(here, "fixtures", "pytest_fail.txt"), "utf8");
   const analysed = runShim("whyitbroke", ["--json"], { input: fixture });
   const result = JSON.parse(analysed.stdout);

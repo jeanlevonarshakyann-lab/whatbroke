@@ -88,7 +88,7 @@ export default {
 
     if (!failures.length) return null;
     // The count is of distinct failures, which is not known until the pipeline has
-    // collapsed PHP's doubled output - so the headline says what broke, not how many.
+    // collapsed PHP's doubled output - so the headline says what failed, not how many.
     // The warnings PHP printed first are context, not the headline: "2 warnings before
     // it" over a fatal error reads as though nothing broke, which is the one thing a
     // headline must never do. The count of what failed leads, and the warnings follow it.

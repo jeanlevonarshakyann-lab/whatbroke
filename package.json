@@ -1,6 +1,6 @@
 {
   "name": "whyitbroke",
-  "version": "0.6.0",
+  "version": "0.6.1",
   "description": "You ran a command. It printed 400 lines. whyitbroke prints the ones that matter.",
   "type": "module",
   "bin": {

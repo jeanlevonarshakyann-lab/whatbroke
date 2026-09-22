@@ -223,10 +223,10 @@ command success: check `commandExitCode`, and treat `null` as unknown.
 Repositories can use the bundled composite action:
 
 ```yaml
-- uses: jeanlevonarshakyann-lab/whyitbroke/.github/actions/whyitbroke@v0.6.0
+- uses: jeanlevonarshakyann-lab/whyitbroke/.github/actions/whyitbroke@v0.6.1
   with:
     command: npm test
-    version: 0.6.0
+    version: 0.6.1
 ```
 
 Pin `version` to a known npm release for reproducible CI. The action preserves
@@ -821,7 +821,7 @@ Linux with the oldest and newest Node, and everywhere once a night.
 
 ## License
 
-WhyItBroke 0.6.0 and later are source-available under the Apache License 2.0 with
+WhyItBroke is source-available under the Apache License 2.0 with
 the Commons Clause. You may use, modify, and redistribute the software, including
 inside a commercial organization, but you may not sell the software itself or a
 product or service whose value derives substantially from its functionality.

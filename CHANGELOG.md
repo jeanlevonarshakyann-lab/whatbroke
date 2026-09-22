@@ -2,11 +2,14 @@
 
 ## Unreleased
 
+## 0.6.1 — 2026-09-22
+
+- Removed the former project name from current documentation, fixtures, and package tests.
+
 ## 0.6.0 — 2026-09-22
 
-- Renamed the package, command, GitHub integration, cache location, and project from
-  `whatbroke` to `whyitbroke`. The former npm package was unpublished after a separate,
-  older project using the same project and command name was found.
+- Renamed the package, command, GitHub integration, cache location, and repository to
+  `whyitbroke` after discovering a separate, older project using the former name.
 - Changed the license for this and later releases to Apache License 2.0 with the Commons
   Clause License Condition v1.0.
 
@@ -40,12 +43,12 @@ Highlights:
   Docker 28 can print two tar-writer errors before the useful `failed to connect to the
   docker API` line; those are fallout and are no longer returned as an unidentified log.
 
-- A command that will not start says what the shell would have said. `whatbroke -- pyest`
+- A command that will not start says what the shell would have said. `whyitbroke -- pyest`
   reported "spawn pyest ENOENT", which is node's wording for a typo where every shell says
   "command not found". It now reads `pyest: command not found (ENOENT)`, with the errno
   kept on the end because that is what a bug report needs and what `error` has always
   carried. A directory, an unreadable file and a file the kernel will not exec each get
-  the same treatment, and `whatbroke -- $CMD` with CMD unset says "no command given"
+  the same treatment, and `whyitbroke -- $CMD` with CMD unset says "no command given"
   rather than repeating node's complaint about its own API.
 
 - A tool refusing an argument says so, whether or not it names itself. A typo'd flag in a
@@ -105,7 +108,7 @@ Highlights:
   more failures. Measured over fourteen real git failures, exactly these three change;
   the other eleven read as they did.
 
-- `whatbroke -- python -m pytest` reads as pytest rather than as python. Naming the
+- `whyitbroke -- python -m pytest` reads as pytest rather than as python. Naming the
   command that ran is evidence for breaking ties between parsers, ranked by where each
   tool is mentioned - and that put `python3` ahead of the module it was launching. It only
   showed where a second parser claimed the same log, which `--tb=native` does by printing
@@ -148,13 +151,13 @@ Highlights:
 - Says what the exit status means when the output says nothing. A command that is killed
   writes nothing on the way out - `cargo build` stopped by the kernel's out-of-memory
   killer, a suite cancelled by a job timeout, a crash in a C extension - and every parser
-  here had nothing to read, so the answer was "whatbroke could not identify a diagnostic".
+  here had nothing to read, so the answer was "whyitbroke could not identify a diagnostic".
   Node reports which signal ended the process, and a signal is a fact: `137` now reads as
   SIGKILL, `139` as a segfault, and each says what usually sends it, written as the guess
   it is. Exit codes are conventions and only three are read - `127` and `126`, which a
   shell returns for a command that does not exist and one it could not run, and `124`,
-  which `timeout` returns - and only for a command whatbroke ran itself. A piped log's
-  upstream status never reached whatbroke and is not guessed at. A run killed part-way
+  which `timeout` returns - and only for a command whyitbroke ran itself. A piped log's
+  upstream status never reached whyitbroke and is not guessed at. A run killed part-way
   still reports whatever it managed to print, with the signal beside the diagnosis rather
   than instead of it. `--json` gains a `status` field.
 
@@ -212,7 +215,7 @@ Highlights:
   points at nothing.
 
 - Reads `cargo fmt --check`, the format gate almost every Rust CI job runs. It was read as
-  nothing at all: the job failed, and whatbroke said there was no parser for it and handed
+  nothing at all: the job failed, and whyitbroke said there was no parser for it and handed
   the diff back whole. rustfmt numbers the line each region it would rewrite starts at, so
   a file with three unformatted regions is three places - which is more than the other
   format checks here can say, because prettier, black and deno fmt only ever name files.
@@ -251,8 +254,8 @@ Highlights:
   failing reported "nothing new" and the first being fixed reported nothing gone. The test
   or symbol is part of the identity when the shape is that thin, and identity still
   survives the code moving to another file or line.
-- A piped log is tracked only when it is named. `pytest tests/unit | whatbroke
-  --since-last` and `pytest tests/api | whatbroke --since-last` carry no command at all,
+- A piped log is tracked only when it is named. `pytest tests/unit | whyitbroke
+  --since-last` and `pytest tests/api | whyitbroke --since-last` carry no command at all,
   so in one directory they shared a record: each overwrote the other and each reported the
   other's failures as GONE - a claim that something was fixed, about a suite that had not
   run. An unnamed pipe is now neither compared nor recorded and says so in the terminal,
@@ -268,7 +271,7 @@ Highlights:
   says it could not find is now kept whatever it looks like.
 - The wrapped command's live output honours the terminal's backpressure. `write()`
   returning false was ignored, so a command printing faster than its destination could
-  read queued every later chunk in whatbroke's memory - unbounded, while `--max-bytes`
+  read queued every later chunk in whyitbroke's memory - unbounded, while `--max-bytes`
   carefully bounds the copy kept for diagnosis. The child's stream is paused until the
   destination drains.
 - Comparing two runs is linear. `--since-last` scanned the whole current list once per
@@ -301,12 +304,12 @@ Highlights:
   spawn failures by raising from `spawn()` itself instead of emitting `error` on the
   child, so the handler attached to the returned child never saw them: a file with no
   shebang (ENOEXEC) and an empty command name both escaped as a node stack trace under
-  whatbroke's own exit code. Both now produce the same `spawn-error` report and exit 127
+  whyitbroke's own exit code. Both now produce the same `spawn-error` report and exit 127
   that a missing command already did, and the message names the command, which the
-  ENOEXEC one does not. `whatbroke -- pnpm test` found this against a stock pnpm, whose
+  ENOEXEC one does not. `whyitbroke -- pnpm test` found this against a stock pnpm, whose
   installed placeholder binary has no shebang. What a shebang-less file does is node's
   choice and not the same everywhere - posix_spawn reports ENOEXEC, execvp retries it
-  under `/bin/sh` and runs it - so what is promised is the part that is whatbroke's:
+  under `/bin/sh` and runs it - so what is promised is the part that is whyitbroke's:
   it never throws, stdout is always one valid report, and the report says which command
   could not start. Not what node called the reason: the same errno is `ENOEXEC` on some
   versions and `Unknown system error -8` on others.
@@ -682,7 +685,7 @@ version-bumped but never published, so its entries ship here too.
   names are excluded.
 
 - Added esbuild and vite/rollup parsers. Both bundlers print their real diagnostic and
-  then their CLI wrapper reports that the bundler exited non-zero; whatbroke was reading
+  then their CLI wrapper reports that the bundler exited non-zero; whyitbroke was reading
   the second one, so an esbuild syntax error came back as
   `Command failed: …/esbuild --bundle` pointing at `node:internal/errors`, with the
   actual error nowhere on screen.
@@ -698,7 +701,7 @@ version-bumped but never published, so its entries ship here too.
 - Parsers declare their own `category` and the commands that imply them, and failures
   carry that category. Everything a parser needs to say about itself now lives in its
   own file.
-- When whatbroke launches the command, the command is used as detection evidence: a
+- When whyitbroke launches the command, the command is used as detection evidence: a
   named tool is tried first, including through a wrapper such as `npx`. It only
   reorders, so naming the wrong tool cannot damage a log that is already unambiguous,
   and piped logs are unaffected.
@@ -757,7 +760,7 @@ version-bumped but never published, so its entries ship here too.
 - Added version-1 JSON fields `inputMode`, `commandExitCode`, and `fallback` to distinguish unknown upstream status from success and expose unrecognized captured output.
 - Fixed: invalid CLI options and values exit `2` before the command starts; large fallback output drains completely, and GitHub summary-write errors no longer replace the command's exit code.
 - Fixed: source containment was enforced on the unresolved path, so a symlink inside
-  the working directory — or a symlinked parent — could make whatbroke read and print
+  the working directory — or a symlinked parent — could make whyitbroke read and print
   a file from anywhere on disk. Both sides are now canonicalised, which also fixes a
   working directory reached through a link rejecting its own files.
 - Source reads are now bounded before allocation: size is read from the descriptor
@@ -793,7 +796,7 @@ version-bumped but never published, so its entries ship here too.
 - Added stable `--json` output with exit-code preservation.
 - Added `--format terminal|json|github`.
 - Added clickable GitHub Actions annotations.
-- Added a reusable composite action at `.github/actions/whatbroke`.
+- Added a reusable composite action at `.github/actions/whyitbroke`.
 - Added `--version` and Node 18 support.
 - Added `--no-source` for logs and environments where source context should not be read.
 - Added a first-class `mypy` diagnostic parser.
