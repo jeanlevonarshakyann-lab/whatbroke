@@ -3,7 +3,9 @@
 ## Unreleased
 
 - \`--max-bytes\` is now a strict bound on the complete captured text, including
-  whyitbroke's generated elision markers.
+  whyitbroke's generated elision markers. Incomplete line fragments at a truncation
+  boundary are discarded so text inside a clipped structured record cannot become an
+  invented diagnosis.
 - Paths containing spaces are preserved across Deno, Jest, Vitest, Flake8, Oxlint,
   Webpack, Less and AVA output. They are no longer truncated or mistaken for runner
   prefixes, and Windows \`file:///\` stack locations are normalised portably.

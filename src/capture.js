@@ -150,44 +150,19 @@ const PROBABLE_DIAGNOSTIC = new RegExp([
   "^[^\\S\\n]*\\* \\*\\*Line # \\d+ - \\w+:\\*\\*",
 ].join("|"), "im");
 
-/** Drop a trailing character that the cut left half-written.
- *
- *  Looking at the byte AT the cut is not enough: when the cut is the end of the buffer
- *  there is no byte there to look at, and a buffer ending three bytes into a four-byte
- *  character looks perfectly fine from that angle. Walk back to the last lead byte and
- *  ask whether the character it starts actually finished. */
-function trimPartialTrailingChar(buf) {
-  let i = buf.length - 1;
-  for (let back = 0; i >= 0 && back < 3 && (buf[i] & 0xc0) === 0x80; back++) i--;
-  if (i < 0) return buf.subarray(0, 0);
-  const lead = buf[i];
-  const need = lead < 0x80 ? 1
-    : (lead & 0xe0) === 0xc0 ? 2
-    : (lead & 0xf0) === 0xe0 ? 3
-    : (lead & 0xf8) === 0xf0 ? 4
-    : 1;                                  // stray continuation byte: not our problem
-  return buf.length - i >= need ? buf : buf.subarray(0, i);
-}
-
-/** Byte offset at or after `at` that does not split a UTF-8 character. */
-function forwardToCharBoundary(buf, at) {
-  let n = Math.max(0, at);
-  while (n < buf.length && (buf[n] & 0xc0) === 0x80) n++;
-  return n;
-}
-
 const NL = 0x0a;
 
 /** Trim the end of `buf` back to the last newline.
  *
  *  A newline can never appear inside a multi-byte UTF-8 sequence - every continuation
  *  byte is >= 0x80 - so cutting on one is encoding-safe for free, and it also hands a
- *  parser whole lines instead of a severed one. Output with no newline at all (a
- *  progress bar, one enormous JSON blob) still has to be cut somewhere; fall back to a
- *  character boundary there. */
+ *  parser whole lines instead of a severed one. A fragment of one enormous line has
+ *  lost its grammar: after a marker gives it a new line boundary, text inside a JSON
+ *  string such as `error:` can become a diagnosis that never existed. Drop that
+ *  fragment rather than asking any parser to interpret it. */
 function trimEndToLine(buf) {
   const at = buf.lastIndexOf(NL);
-  return at === -1 ? trimPartialTrailingChar(buf) : buf.subarray(0, at + 1);
+  return at === -1 ? buf.subarray(0, 0) : buf.subarray(0, at + 1);
 }
 
 /** How many lines end in `buf`. */
@@ -200,7 +175,7 @@ function newlines(buf) {
 /** Drop the leading partial line, so the tail starts where a line does. */
 function trimStartToLine(buf) {
   const at = buf.indexOf(NL);
-  return at === -1 ? buf.subarray(forwardToCharBoundary(buf, 0)) : buf.subarray(at + 1);
+  return at === -1 ? buf.subarray(buf.length) : buf.subarray(at + 1);
 }
 
 /** The gap has to be visible. Joining two halves silently would let a parser read the
