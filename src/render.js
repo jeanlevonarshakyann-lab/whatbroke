@@ -20,7 +20,7 @@ function stale(file, line, toolText) {
   const disk = one[0].text.trim().replace(/\s+/g, " ");
   const tool = toolText.trim().replace(/\s+/g, " ").replace(/[…]+$/, "");
   if (!tool) return false;
-  return !(disk === tool || disk.startsWith(tool) || tool.startsWith(disk));
+  return disk !== tool;
 }
 
 const E = String.fromCharCode(27);
@@ -96,6 +96,29 @@ const columns = (ch) => {
   return within(WIDE, c) ? 2 : 1;
 };
 
+const graphemeSegmenter = typeof Intl?.Segmenter === "function"
+  ? new Intl.Segmenter(undefined, { granularity: "grapheme" })
+  : null;
+const graphemes = (text) => graphemeSegmenter
+  ? [...graphemeSegmenter.segment(text)].map(({ segment }) => segment)
+  : [...text];
+
+/** Terminal width of one grapheme cluster.
+ *
+ * ZWJ emoji, flags, skin-tone sequences and variation-selector emoji are one visible
+ * glyph even though they contain several code points. Summing code-point widths put a
+ * caret many cells past the expression. Ordinary graphemes retain wcwidth-style sums. */
+const graphemeColumns = (cluster) => {
+  const points = [...cluster];
+  const emoji = cluster.includes("\u200d") || cluster.includes("\ufe0f") ||
+    points.some((ch) => {
+      const cp = ch.codePointAt(0);
+      return (cp >= 0x1f1e6 && cp <= 0x1f1ff) || (cp >= 0x1f3fb && cp <= 0x1f3ff);
+    });
+  if (emoji) return 2;
+  return points.reduce((n, ch) => n + columns(ch), 0);
+};
+
 /** What goes under a line before its caret: as many blanks as that part of the line is
  *  drawn wide, and a tab where the line has a tab. A terminal draws a tab as wide as the
  *  next tab stop, which depends on where the tab starts - so one blank under it put the
@@ -108,10 +131,10 @@ const underneath = (text, col, start) => {
   const shown = windowed(text, start);
   const width = windowedCol(col, start) - 1;
   let units = 0, bar = "";
-  for (const ch of shown) {
+  for (const ch of graphemes(shown)) {
     if (units >= width) break;
     units += ch.length;
-    bar += ch === "\t" ? "\t" : " ".repeat(columns(ch));
+    bar += ch === "\t" ? "\t" : " ".repeat(graphemeColumns(ch));
   }
   // A column past the end of the line keeps its distance from it.
   return bar + " ".repeat(Math.max(0, width - units));

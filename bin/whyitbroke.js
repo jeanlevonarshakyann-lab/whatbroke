@@ -27,9 +27,11 @@ const { version } = createRequire(import.meta.url)("../package.json");
 // tool whose whole job is to keep those off the screen. There is nothing left to say to a
 // closed pipe, so say nothing; anything else that stops a write, a full disk say, cannot
 // be reported either and is left in the exit code.
+let outputFailed = false;
 for (const stream of [process.stdout, process.stderr]) {
   stream.on("error", (e) => {
     if (e?.code === "EPIPE" || e?.code === "ERR_STREAM_DESTROYED") return;
+    outputFailed = true;
     process.exitCode ||= 1;
   });
 }
@@ -143,8 +145,8 @@ function appendGithubSummary(text) {
  *  nothing at all, so the record still held yesterday's failure - and when that failure
  *  came back the next day, whyitbroke compared it against itself and said nothing was new.
  *  A passing run in between is exactly when a reader most wants the next break called new. */
-function track(r, truncated, executionError, code = null) {
-  const succeeded = code === 0 && !executionError && inputMode === "command";
+function track(r, truncated, executionError, code = null, signal = null) {
+  const succeeded = code === 0 && !executionError && !signal && inputMode === "command";
   if (!r && !succeeded) return { compared: false, reason: "nothing-parsed", fresh: [], gone: null };
   // What this run says is failing. A command that exited ZERO says nothing is, whatever
   // its output looked like - a runner echoing the previous run's summary, a suite printing
@@ -167,7 +169,7 @@ function track(r, truncated, executionError, code = null) {
   // A piped log nobody named cannot be told from any other piped log in the same
   // directory. Comparing them claims one pipeline's failures were fixed by another's run.
   if (!identity) return { compared: false, reason: "unidentified-pipe", fresh: [], gone: null, recorded: false };
-  const trustworthy = !truncated && !executionError;
+  const trustworthy = succeeded || (!truncated && !executionError && !signal);
   let previous = loadRun(identity);
   let comparisonIds = ids;
   let migrated = false;
@@ -178,7 +180,11 @@ function track(r, truncated, executionError, code = null) {
       migrated = true;
     }
   }
-  const result = compare(previous, comparisonIds, { truncated, trustworthy, tool: read?.tool ?? null });
+  const result = compare(previous, comparisonIds, {
+    truncated: succeeded ? false : truncated,
+    trustworthy,
+    tool: read?.tool ?? null,
+  });
   if (migrated) {
     const freshLegacy = new Set(result.fresh);
     result.fresh = [...pairs].filter(([, legacy]) => freshLegacy.has(legacy)).map(([current]) => current);
@@ -188,6 +194,9 @@ function track(r, truncated, executionError, code = null) {
   }
   if (trustworthy) {
     result.recorded = saveRun(identity, { ranAt: new Date().toISOString(), tool: read?.tool ?? null, causes: ids });
+    if (!result.recorded) {
+      return { compared: false, reason: "cache-unavailable", fresh: [], gone: null, recorded: false };
+    }
   } else {
     result.recorded = false;
   }
@@ -202,7 +211,7 @@ function report(raw, code, truncated = false, executionError = null, lines = nul
   reported = true;
   // argv is what the user actually ran; it is evidence for detection, not decoration.
   const analysis = analyse(raw, { cluster: !noCluster, command: inputMode === "command" ? argv : null });
-  const since = sinceLast ? track(analysis, truncated, executionError, code) : null;
+  const since = sinceLast ? track(analysis, truncated, executionError, code, signal) : null;
   const result = createReport({ analysis, raw, exitCode: code, inputMode, truncated, error: executionError, since, lines, signal });
   if (json) {
     process.stdout.write(JSON.stringify(result, null, 2) + "\n");
@@ -213,7 +222,7 @@ function report(raw, code, truncated = false, executionError = null, lines = nul
   } else {
     process.stdout.write(renderReport(result, { ...opts, source: !noSource, cluster: !noCluster, quiet }));
   }
-  process.exitCode = code;
+  process.exitCode = code || (outputFailed ? 1 : 0);
 }
 
 if (argv.length === 0) {
@@ -285,16 +294,28 @@ if (argv.length === 0) {
     // Both streams share one budget, so interleaved stdout/stderr keeps its ordering
     // within each stream and the cap still means what --max-bytes says it means.
     const capture = createCapture(maxBytes);
-    const tee = (d) => capture.push(d);
-    relay(child.stdout, process.stdout, { suppress: quiet, tee });
+    let capturedFrom = null;
+    let endedLine = true;
+    const tee = (source) => (d) => {
+      const bytes = Buffer.isBuffer(d) ? d : Buffer.from(d);
+      if (bytes.length && capturedFrom !== null && capturedFrom !== source && !endedLine && bytes[0] !== 0x0a) {
+        capture.push(Buffer.from("\n"));
+      }
+      capture.push(bytes);
+      if (bytes.length) {
+        capturedFrom = source;
+        endedLine = bytes[bytes.length - 1] === 0x0a;
+      }
+    };
+    relay(child.stdout, process.stdout, { suppress: quiet, tee: tee("stdout") });
     // Keep diagnostics visible on stderr while JSON remains clean on stdout.
-    relay(child.stderr, process.stderr, { suppress: quiet && !json, tee });
+    relay(child.stderr, process.stderr, { suppress: quiet && !json, tee: tee("stderr") });
     child.on("error", startFailed);
     child.on("close", (code, signal) => {
       if (code === 0 && !json) {
         // A successful command clears the previous failure baseline.
-        if (sinceLast) track(null, capture.finish().truncated, null, 0);
-        process.exitCode = 0;
+        if (sinceLast) track(null, capture.finish().truncated, null, 0, null);
+        process.exitCode = outputFailed ? 1 : 0;
         return;
       }
       const signalCode = signal ? 128 + (osConstants.signals?.[signal] ?? 1) : null;

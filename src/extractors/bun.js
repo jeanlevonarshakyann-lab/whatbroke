@@ -1,9 +1,10 @@
 import { elements, firstElement, isNoise, lineAt, xmlAttributes, xmlText } from "../util.js";
 import { joinSources, withSource } from "../ownership.js";
+import { fileReference } from "../location.js";
 
 // node writes stack paths as file:// URLs when a module throws; bun writes plain paths,
 // but a bun process running an ESM entry can produce either.
-const unfile = (p) => (p.startsWith("file://") ? decodeURIComponent(p.slice(7)) : p);
+const unfile = fileReference;
 
 // `bun test` prints the failure and THEN says whose it was:
 //
@@ -96,7 +97,7 @@ function junitCases(s) {
     // The test case, from its opening tag to its closing one.
     const at = doc.indices[1][0] + test.index;
     out.push(withSource({
-      file: a.file, line: /^\d+$/.test(a.line) ? +a.line : undefined,
+      file: a.file ? unfile(a.file) : undefined, line: /^\d+$/.test(a.line) ? +a.line : undefined,
       // The test's name is what identifies it; the outcome's `type` is a class name
       // with nothing behind it in this format, and a failure carries one handle or the
       // other, never both.
@@ -164,7 +165,7 @@ export default {
       const msg = [];
       for (let j = start; j < i; j++) {
         const at = lines[j].match(AT_RE);
-        if (at) { if (!file) { file = at[1]; line = +at[2]; col = +at[3]; } continue; }
+        if (at) { if (!file) { file = unfile(at[1]); line = +at[2]; col = +at[3]; } continue; }
         const t = lines[j].trim();
         if (!t || msg.length >= MAX_MESSAGE_LINES) continue;
         // the echoed source, its caret, and the diff's own tallies are not the message

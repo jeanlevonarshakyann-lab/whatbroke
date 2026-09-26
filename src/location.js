@@ -8,7 +8,19 @@
 export function fileReference(value) {
   let file = String(value ?? "");
   if (file.startsWith("file://")) {
-    try { file = decodeURIComponent(file.slice(7)); } catch { file = file.slice(7); }
+    const reference = file;
+    try {
+      const url = new URL(reference);
+      let path;
+      try { path = decodeURIComponent(url.pathname); }
+      catch { path = url.pathname; }
+      file = url.hostname && url.hostname.toLowerCase() !== "localhost"
+        ? `//${url.hostname}${path}`
+        : path;
+    } catch {
+      try { file = decodeURIComponent(reference.slice(7)); }
+      catch { file = reference.slice(7); }
+    }
   }
   if (/^\/[A-Za-z]:[\\/]/.test(file)) file = file.slice(1);
   return file;

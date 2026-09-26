@@ -2,7 +2,7 @@
 // tests care less about "does it group" than about "when does it refuse to speak".
 // A wrong "new" is noise; a wrong "no longer reported" tells you a bug is fixed when
 // it is not, and that is the claim this module has to earn.
-import { mkdtempSync, rmSync, readdirSync, writeFileSync, readFileSync } from "node:fs";
+import { chmodSync, mkdtempSync, rmSync, readdirSync, writeFileSync, readFileSync } from "node:fs";
 import { tmpdir } from "node:os";
 import { join, dirname, resolve } from "node:path";
 import { fileURLToPath } from "node:url";
@@ -541,6 +541,75 @@ test("comparing two large runs is linear, not quadratic", () => {
   assert.equal(result.fresh.length, n / 2);
   assert.equal(result.gone, n / 2);
   assert.ok(took < 400, `comparing ${n} causes with ${n} took ${took}ms`);
+});
+
+test("a signalled command cannot replace a complete history baseline", () => {
+  if (process.platform === "win32") return;
+  const store = cache();
+  const log = "TypeError: synthetic boom\n    at checkout (/app/pay.js:4:5)\n";
+  const child = `process.stdout.write(${JSON.stringify(log)}, () => {
+    if (process.env.WB_SIGNAL) process.kill(process.pid, "SIGTERM");
+    else process.exit(1);
+  });`;
+  const invoke = (signal = false) => spawnSync(process.execPath,
+    [cli, "--since-last", "--json", process.execPath, "-e", child], {
+      encoding: "utf8", env: {
+        ...process.env, NO_COLOR: "1", WHYITBROKE_CACHE_DIR: store,
+        ...(signal ? { WB_SIGNAL: "1" } : {}),
+      },
+    });
+  invoke();
+  const path = join(store, stored(store)[0]);
+  const before = readFileSync(path, "utf8");
+  const interrupted = JSON.parse(invoke(true).stdout);
+  assert.equal(interrupted.since.recorded, false);
+  assert.equal(interrupted.since.gone, null);
+  assert.equal(readFileSync(path, "utf8"), before, "the partial run overwrote the complete one");
+});
+
+test("a successful command records an empty baseline even when its output was capped", () => {
+  const store = cache();
+  const child = `if (process.env.WB_GREEN) process.stdout.write("x".repeat(5000));
+else { console.error("TypeError: synthetic boom\\n    at checkout (/app/pay.js:4:5)"); process.exitCode = 1; }`;
+  const invoke = (green = false) => spawnSync(process.execPath,
+    [cli, "--since-last", "--json", "--max-bytes", "1024", process.execPath, "-e", child], {
+      encoding: "utf8", env: {
+        ...process.env, NO_COLOR: "1", WHYITBROKE_CACHE_DIR: store,
+        ...(green ? { WB_GREEN: "1" } : {}),
+      },
+    });
+  invoke();
+  const passed = JSON.parse(invoke(true).stdout);
+  assert.equal(passed.exitCode, 0);
+  assert.equal(passed.truncated, true);
+  assert.equal(passed.since.recorded, true);
+  const brokeAgain = JSON.parse(invoke().stdout);
+  assert.equal(brokeAgain.since.fresh.length, 1,
+    "the passing run did not clear the old failure baseline");
+});
+
+test("a malformed current-version history record is ignored", () => {
+  const store = cache();
+  run(store, fx("pytest_fail.txt"), ["--json"]);
+  const path = join(store, stored(store)[0]);
+  const saved = JSON.parse(readFileSync(path, "utf8"));
+  writeFileSync(path, JSON.stringify({ ...saved, causes: ["corrupt-fingerprint"] }));
+  const next = JSON.parse(run(store, fx("pytest_fail.txt"), ["--json"]).stdout);
+  assert.equal(next.since.compared, false);
+  assert.equal(next.since.reason, "no-previous-run");
+});
+
+test("a cache that cannot save withholds stale comparison claims", () => {
+  if (process.platform === "win32") return;
+  const store = cache();
+  run(store, fx("pytest_fail.txt"), ["--json"]);
+  chmodSync(store, 0o500);
+  try {
+    const next = JSON.parse(run(store,
+      fx("pytest_fail.txt").replace("KeyError: 'exp'", "KeyError: 'changed'"), ["--json"]).stdout);
+    assert.equal(next.since.compared, false);
+    assert.equal(next.since.reason, "cache-unavailable");
+  } finally { chmodSync(store, 0o700); }
 });
 
 for (const d of caches) rmSync(d, { recursive: true, force: true });

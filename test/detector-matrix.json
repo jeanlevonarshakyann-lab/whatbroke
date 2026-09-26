@@ -806,6 +806,18 @@
       "generic": 2
     }
   },
+  "denotest_diff_tap_fail.txt": {
+    "winner": "deno test",
+    "parser": "deno test",
+    "failures": 1,
+    "claimants": [
+      "deno test",
+      "generic"
+    ],
+    "shadow": {
+      "generic": 2
+    }
+  },
   "denotest_junit_alongside_fail.txt": {
     "winner": "deno test",
     "parser": "deno test",
@@ -2617,6 +2629,18 @@
       "generic"
     ],
     "shadow": {}
+  },
+  "maven_cdata_close_fail.xml": {
+    "winner": "maven",
+    "parser": "junit jvm",
+    "failures": 1,
+    "claimants": [
+      "junit jvm",
+      "generic"
+    ],
+    "shadow": {
+      "generic": 1
+    }
   },
   "maven_dependency_fail.txt": {
     "winner": "maven",

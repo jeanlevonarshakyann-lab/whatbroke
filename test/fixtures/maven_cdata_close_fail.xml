@@ -1,0 +1,7 @@
+<testsuite xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" xsi:noNamespaceSchemaLocation="https://maven.apache.org/surefire/maven-surefire-plugin/xsd/surefire-test-report.xsd" name="p.C" tests="1" errors="0" skipped="0" failures="1">
+  <testcase name="test" classname="p.C" time="0.01">
+    <failure message="assertion failed" type="java.lang.AssertionError"><![CDATA[java.lang.AssertionError: expected </failure> but got other
+	at p.C.test(C.java:7)
+]]></failure>
+  </testcase>
+</testsuite>

@@ -36,6 +36,17 @@ const MAX_LITERAL_CANDIDATES = 4;   // bound the parses a single log can cost
 const TASK_LABEL = String.raw`[a-z0-9_@./-]+:(?:[a-z][a-z0-9_.-]*:)+`;
 const TASK_PREFIX = new RegExp(`^(?:${TASK_LABEL}[^\\S\\n])+`);
 const ONE_TASK_PREFIX = new RegExp(TASK_LABEL + `(?=[^\\S\\n])`, "g");
+const taskWrapperLabel = (text) => {
+  const labels = new Set();
+  let first;
+  for (const line of text.split("\n")) {
+    const head = line.match(TASK_PREFIX)?.[0];
+    if (!head) continue;
+    first ??= head;
+    for (const label of head.matchAll(ONE_TASK_PREFIX)) labels.add(label[0]);
+  }
+  return labels.size > 1 ? [...labels].sort().join(" | ") : first ?? "turborepo";
+};
 // These are tool syntax, not relay syntax. In a mixed log, stripping one can make a
 // different parser win and therefore look like an improvement even though it erased a
 // complete Maven or npm invocation.
@@ -96,6 +107,13 @@ function literalPrefix(text) {
 // every shape added here has to be proven against the whole fixture corpus.
 // Bare ISO CI timestamps are not here - stripCiPrefix in util.js already handles them.
 const SHAPES = [
+  // Turborepo and similar monorepo runners use `<package>:<task>: `. This grammar is
+  // already narrower than a source location above, so it can be treated as a vetted
+  // shape instead of relying on a before/after parse. That matters when a parser can
+  // read through the stamp but mistakes it for part of every file name (cargo did).
+  // TASK_PREFIX consumes consecutive labels, so nested runners come off atomically.
+  { name: "turborepo", re: TASK_PREFIX, label: taskWrapperLabel },
+
   // Azure Pipelines prefixes debug output with a workflow command rather than a
   // timestamp. It is adjacent to the relayed text: "##[debug]Error: ...".
   { name: "azure pipelines", re: /^##\[debug\]/ },
@@ -257,7 +275,9 @@ function buildkitBlock(text) {
 export function wrapperCandidates(text) {
   const out = [];
   for (const shape of SHAPES) {
-    if (uniform(text, shape.re, SHAPE_UNIFORM)) out.push({ kind: "shape", wrapper: shape.name, text: stripShape(text, shape.re) });
+    if (uniform(text, shape.re, SHAPE_UNIFORM)) out.push({
+      kind: "shape", wrapper: shape.label?.(text) ?? shape.name, text: stripShape(text, shape.re),
+    });
   }
   const block = buildkitBlock(text);
   // A region candidate throws away everything outside the block, so it is only ever

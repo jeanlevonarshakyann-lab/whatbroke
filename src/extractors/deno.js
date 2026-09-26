@@ -107,15 +107,6 @@ function blockMessage(value) {
   return msg.join("\n");
 }
 
-function usefulMessage(value) {
-  const messageLines = value.split("\n");
-  const first = messageLines[0]?.trim();
-  const caret = messageLines.findIndex((line) => /^\s*\^+\s*$/.test(line));
-  const candidate = caret > 0 ? messageLines[caret - 1].trim() : undefined;
-  const stmt = candidate && !/^throw new /.test(candidate) ? candidate : undefined;
-  return [first, stmt].filter(Boolean).join("\n");
-}
-
 /** Deno's TAP reporter puts one JSON diagnostic inside each TAP YAML block. */
 function denoTapFailures(text) {
   if (!TAP_VERSION_RE.test(text) || !/^error:[^\S\n]+Test failed[^\S\n]*$/m.test(text)) return [];
@@ -136,7 +127,7 @@ function denoTapFailures(text) {
       failures.push(withSource({
         file: value.at.file, line: value.at.line,
         title: head[1] || "test", subject: head[1] || "test", severity: "error",
-        message: usefulMessage(value.message),
+        message: blockMessage(value.message),
       }, i, j + 1));
       break;
     }
