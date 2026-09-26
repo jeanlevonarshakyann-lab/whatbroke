@@ -175,6 +175,31 @@ test("output with no newline at all is still cut safely", () => {
   assert.match(r.text, MARKER);
 });
 
+test("a clipped structured record cannot invent a diagnosis", () => {
+  // One valid one-line ESLint report, one byte over the public minimum cap. It contains
+  // a warning only. If the tail starts inside its message, `error: decoy text` looks
+  // like a new generic diagnostic after the marker gives the fragment its own line.
+  const text = JSON.stringify([{
+    filePath: "/tmp/bug.js",
+    messages: [{
+      ruleId: "no-thing", severity: 1, message: "x".repeat(258) + "error: decoy text",
+      line: 7, column: 3, endLine: 7, endColumn: 4,
+    }],
+    suppressedMessages: [], errorCount: 0, fatalErrorCount: 0, warningCount: 1,
+    fixableErrorCount: 0, fixableWarningCount: 0, source: "x".repeat(456),
+    usedDeprecatedRules: [],
+  }]);
+  assert.equal(Buffer.byteLength(text), 1025, "the boundary itself is part of the reproduction");
+  assert.equal(analyse(text), null, "the complete warning-only report has no failure");
+
+  for (const chunk of [0, 1, 257]) {
+    const kept = capture(text, 1024, chunk);
+    assert.equal(kept.truncated, true);
+    assert.equal(analyse(kept.text), null,
+      `a clipped warning must not become an error with ${chunk || "one"} input chunk`);
+  }
+});
+
 // ------------------------------------------------------------ the marker
 
 test("the marker declares how much went missing", () => {
