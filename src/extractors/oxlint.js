@@ -1,5 +1,6 @@
 import { elements, firstElement, githubAnnotations, jsonDocuments, jsonDocumentsAt, lineAt, xmlAttributes, xmlText } from "../util.js";
 import { joinSources, withSource } from "../ownership.js";
+import { locatedPrefix } from "../location.js";
 // oxlint prints one run ten ways, and it chooses among them itself: a terminal gets a
 // drawn report, a GitHub Actions job gets workflow annotations, an AI agent gets one line
 // per finding. Only that last one was read. The report a developer sees and the
@@ -18,7 +19,13 @@ const RULE_RE = /^([\w-]+)\(([\w/-]+)\)$/;
 const RULE = String.raw`([\w-]+)\(([\w/-]+)\)`;
 
 // -f agent: `lintme.js:1:5: error eslint(no-unused-vars): Variable 'unused' is ... help: ...`
-const FINDING_RE = /^(\S+?):(\d+):(\d+):[^\S\n]+(error|warning)[^\S\n]+(?:([\w-]+)\()?([\w-]+)\)?:[^\S\n]*(.+?)[^\S\n]*$/;
+const AGENT_DETAIL_RE = /^[^\S\n]+(error|warning)[^\S\n]+(?:([\w-]+)\()?([\w-]+)\)?:[^\S\n]*(.+?)[^\S\n]*$/;
+const agentFinding = (line) => locatedPrefix(line, (rest) => {
+  const match = rest.match(AGENT_DETAIL_RE);
+  return match ? {
+    severity: match[1], plugin: match[2], code: match[3], message: match[4],
+  } : null;
+});
 // "... help: Consider removing this declaration." - advice, not what happened.
 const HELP_RE = /[^\S\n]*\bhelp:[^\S\n].*$/;
 // The two lines every drawn report ends with, the second of which no other tool writes.
@@ -58,7 +65,14 @@ function reportsBelow(lines) {
 }
 
 // -f unix: `src/cart.js:2:1: `debugger` statement is not allowed [Error/eslint(no-debugger)]`
-const UNIX_RE = new RegExp(String.raw`^(\S+?):(\d+):(\d+):[^\S\n]+(.+?)[^\S\n]+\[(Error|Warning)\/${RULE}\][^\S\n]*$`);
+const UNIX_DETAIL_RE = /^[^\S\n]+(.+?)[^\S\n]+\[(Error|Warning)\/([\w-]+)\(([\w/-]+)\)\][^\S\n]*$/;
+const UNIX_TAIL_RE = /\[(?:Error|Warning)\/[\w-]+\([\w/-]+\)\][^\S\n]*$/;
+const unixFinding = (line) => UNIX_TAIL_RE.test(line) && locatedPrefix(line, (rest) => {
+  const match = rest.match(UNIX_DETAIL_RE);
+  return match ? {
+    message: match[1], severity: match[2].toLowerCase(), plugin: match[3], code: match[4],
+  } : null;
+});
 
 // -f stylish, which is eslint's table with oxlint's rule at the end of each row:
 //
@@ -111,16 +125,16 @@ function findings(s, placed = false) {
   let stylishFile, reports;
   for (let i = 0; i < lines.length; i++) {
     const line = lines[i];
-    const agent = line.match(FINDING_RE);
+    const agent = agentFinding(line);
     if (agent) {
-      out.push({ file: agent[1], line: +agent[2], col: +agent[3], severity: agent[4], code: agent[6],
-        message: agent[7].replace(HELP_RE, "").trim(), from: i, to: i + 1 });
+      out.push({ file: agent.file, line: agent.line, col: agent.col, severity: agent.severity, code: agent.code,
+        message: agent.message.replace(HELP_RE, "").trim(), from: i, to: i + 1 });
       continue;
     }
-    const unix = line.match(UNIX_RE);
+    const unix = unixFinding(line);
     if (unix) {
-      out.push({ file: unix[1], line: +unix[2], col: +unix[3], severity: unix[5].toLowerCase(), code: unix[7],
-        message: unix[4], from: i, to: i + 1 });
+      out.push({ file: unix.file, line: unix.line, col: unix.col, severity: unix.severity, code: unix.code,
+        message: unix.message, from: i, to: i + 1 });
       continue;
     }
     const head = line.match(DRAWN_HEAD_RE);

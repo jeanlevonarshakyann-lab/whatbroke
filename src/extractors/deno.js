@@ -21,7 +21,7 @@ import { xmlText, xmlAttributes } from "../util.js";
 // the location we need - the stack frames below it are inside the assert library.
 import { withSource } from "../ownership.js";
 
-const HEADER_RE = /^(\S.*?)[^\S\n]+=>[^\S\n]+(\S+?):(\d+):(\d+)[^\S\n]*$/;
+const HEADER_RE = /^(\S.*?)[^\S\n]+=>[^\S\n]+(.+?):(\d+):(\d+)[^\S\n]*$/;
 const SUMMARY_RE = /^(?:FAILED|ok)[^\S\n]*\|[^\S\n]*(\d+)[^\S\n]+passed[^\S\n]*\|[^\S\n]*(\d+)[^\S\n]+failed/m;
 const ERROR_RE = /^error:[^\S\n]*(.+)$/;
 const DIFF_LABEL_RE = /^\[Diff\]/;

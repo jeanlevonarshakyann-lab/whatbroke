@@ -134,14 +134,14 @@ test("diagnostics already in the tail do not spend the capture budget twice", ()
   const max = 20000;
   const r = capture("ordinary output\n".repeat(20000) + fx("pytest_fail.txt"), max, 997);
   const payload = Buffer.byteLength(r.text.replace(MARKER, ""));
-  assert.ok(payload > max - 100, `only ${payload} of ${max} available bytes were used`);
+  assert.ok(Buffer.byteLength(r.text) <= max, "capture exceeded " + max + " bytes");
+  assert.ok(payload > max - 250, "only " + payload + " of " + max + " available bytes were used");
   assert.equal(analyse(r.text)?.failures.length, 3);
 });
 
 test("the capture stays within its budget", () => {
   const r = capture("y\n".repeat(500000), 8192);
-  const payload = r.text.replace(MARKER, "");
-  assert.ok(Buffer.byteLength(payload) <= 8192, `kept ${Buffer.byteLength(payload)} bytes`);
+  assert.ok(Buffer.byteLength(r.text) <= 8192, "returned " + Buffer.byteLength(r.text) + " bytes");
 });
 
 // -------------------------------------------------------------- cut quality

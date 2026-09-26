@@ -11,10 +11,12 @@ const FRAME_RE = /^[^\S\n]*File "(.+?)", line (\d+), in (.+)$/;
 // interpreter at the start is what tells it from a traceback's "ModuleNotFoundError: No
 // module named 'x'", which is quoted, already read, and has a stack above it.
 const NO_MODULE_RE = /^(\S*python[\d.]*(?:\.exe)?):[^\S\n]+No module named[^\S\n]+(\S+)[^\S\n]*$/m;
+const BARE_EXCEPTION_RE = /^[A-Za-z_]\w*(?:\.[A-Za-z_]\w*)*$/;
 const errorLine = (line) => {
   const l = line.trim();
   return !!l && !/^File "/.test(l) && !/^\^+$/.test(l) && !/^~*\^+~*$/.test(l) &&
-    (/^\w[\w.]*(Error|Exception|Warning)\b/.test(l) || /^\w[\w.]*: /.test(l));
+    (/^\w[\w.]*(Error|Exception|Warning)\b/.test(l) || /^\w[\w.]*: /.test(l) ||
+      BARE_EXCEPTION_RE.test(l));
 };
 
 /**
@@ -110,7 +112,8 @@ function parseTraceback(body) {
   for (let i = body.length - 1; i >= 0; i--) {
     const l = body[i].trim();
     if (l && !/^File "/.test(l) && !/^\^+$/.test(l) && !/^~*\^+~*$/.test(l)) {
-      if (/^\w[\w.]*(Error|Exception|Warning)\b/.test(l) || /^\w[\w.]*: /.test(l)) { err = l; break; }
+      if (/^\w[\w.]*(Error|Exception|Warning)\b/.test(l) || /^\w[\w.]*: /.test(l) ||
+          BARE_EXCEPTION_RE.test(l)) { err = l; break; }
     }
   }
   const user = frames.filter((f) => !isNoise(f.file));

@@ -4,11 +4,16 @@
 //   lint_me.py:2:16: E231 missing whitespace after ','
 //
 import { joinSources, withSource } from "../ownership.js";
+import { locatedPrefix } from "../location.js";
 
 // Self-bounding: the whole finding is one line. The code is what you would put in a
 // noqa comment or a per-file ignore, so it is the code; its letter says what kind of
 // check it came from, and E9/F8 are the ones that stop a build rather than tidy it.
-const FINDING_RE = /^(\S+?):(\d+):(\d+):[^\S\n]+([A-Z]{1,4}\d{3,4})[^\S\n]+(.+?)[^\S\n]*$/;
+const DETAIL_RE = /^[^\S\n]+([A-Z]{1,4}\d{3,4})[^\S\n]+(.+?)[^\S\n]*$/;
+const finding = (line) => line.startsWith("::") ? null : locatedPrefix(line, (rest) => {
+  const match = rest.match(DETAIL_RE);
+  return match ? { code: match[1], message: match[2] } : null;
+});
 // --format=pylint moves the code into brackets and drops the column:
 //
 //   lint_me.py:1: [F401] 'os' imported but unused
@@ -16,7 +21,11 @@ const FINDING_RE = /^(\S+?):(\d+):(\d+):[^\S\n]+([A-Z]{1,4}\d{3,4})[^\S\n]+(.+?)
 // It went to the generic reader, which kept the file and line and put the code in the
 // message. pylint's own parseable format looks alike but always writes the check's name
 // in the bracket too - `[W0611(unused-import), ]` - so a bare code is flake8's.
-const PYLINT_FORM_RE = /^(\S+?):(\d+):[^\S\n]+\[([A-Z]{1,4}\d{3,4})\][^\S\n]+(.+?)[^\S\n]*$/;
+const PYLINT_DETAIL_RE = /^[^\S\n]+\[([A-Z]{1,4}\d{3,4})\][^\S\n]+(.+?)[^\S\n]*$/;
+const pylintFinding = (line) => line.startsWith("::") ? null : locatedPrefix(line, (rest) => {
+  const match = rest.match(PYLINT_DETAIL_RE);
+  return match ? { code: match[1], message: match[2] } : null;
+}, { column: false });
 
 export default {
   name: "flake8",
@@ -25,7 +34,7 @@ export default {
 
   // pylint writes the same shape with a colon after its code, so requiring NO colon
   // there is what keeps the two apart.
-  detect: (s) => s.split("\n").some((l) => FINDING_RE.test(l) || PYLINT_FORM_RE.test(l)),
+  detect: (s) => s.split("\n").some((line) => finding(line) || pylintFinding(line)),
 
   extract(s) {
     const failures = [];
@@ -33,10 +42,10 @@ export default {
     const lines = s.split("\n");
     for (let i = 0; i < lines.length; i++) {
       const line = lines[i];
-      const m = line.match(FINDING_RE);
-      const p = m ? null : line.match(PYLINT_FORM_RE);
+      const m = finding(line);
+      const p = m ? null : pylintFinding(line);
       if (!m && !p) continue;
-      const [file, row, col, code, message] = m ? m.slice(1) : [p[1], p[2], undefined, p[3], p[4]];
+      const { file, line: row, col, code, message } = m ?? p;
       const key = `${file}:${row}:${col ?? ""}:${code}`;
       const failure = withSource({
         file, line: +row, ...(col ? { col: +col } : {}),

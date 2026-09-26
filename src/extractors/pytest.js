@@ -17,7 +17,9 @@ import { alsoFrom, withSource } from "../ownership.js";
 // What every style does print is the short test summary, and it is authoritative: it
 // names each failed test and what it raised. So it is the backbone, and the traceback -
 // in whichever style - is only asked where.
-const SUMMARY_ENTRY_RE = /^(?:FAILED|ERROR)[^\S\n]+(\S+?)(?:[^\S\n]+-[^\S\n]+(.*))?[^\S\n]*$/;
+// A parameter id is arbitrary display text, and may contain spaces. The spaced dash is
+// pytest's separator between the complete node id and its one-line explanation.
+const SUMMARY_ENTRY_RE = /^(?:FAILED|ERROR)[^\S\n]+((?:.+?::.+?)|(?:.+?\.[A-Za-z0-9]+))(?:[^\S\n]+-[^\S\n]+(.*))?[^\S\n]*$/;
 const SUMMARY_HEAD_RE = /^=+[^\S\n]+short test summary info[^\S\n]+=+$/;
 // --tb=line writes one line per failure: "path:11: KeyError: 'taxrate'".
 const ONE_LINE_RE = /^(.+?):(\d+):[^\S\n]+(\S.*?)[^\S\n]*$/;

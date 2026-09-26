@@ -1,5 +1,6 @@
 import { isNoise } from "../util.js";
 import { alsoFrom, withSource } from "../ownership.js";
+import { fileReference, nodeFrame } from "../location.js";
 
 // ava lists what failed, then details each one under a rule:
 //
@@ -26,9 +27,9 @@ const TALLY_RE = /^[^\S\n]*(\d+) tests? failed\b/m;
 const UNCAUGHT_RE = /^[^\S\n]*Uncaught exception in[^\S\n]+(\S+)[^\S\n]*$/;
 const EXITED_RE = /^[^\S\n]*✘[^\S\n]+(\S+) exited with a non-zero exit code/m;
 // "av/sum.test.js:3" on its own line, under the repeated test name
-const WHERE_RE = /^[^\S\n]*(\S+\.\w+):(\d+)[^\S\n]*$/;
+const WHERE_RE = /^[^\S\n]*(.+?\.\w+):(\d+)[^\S\n]*$/;
 // "› file:///abs/av/sum.test.js:3:38" - the frame ava points at
-const FRAME_RE = /^[^\S\n]*›[^\S\n]+(?:file:\/\/)?(\S+?):(\d+):(\d+)[^\S\n]*$/;
+const FRAME_RE = /^[^\S\n]*›[^\S\n]+(.+?):(\d+):(\d+)[^\S\n]*$/;
 const CLASS_RE = /^[^\S\n]*(\w*(?:Error|Exception)):[^\S\n]*(.*)$/;
 const THREW_RE = /^[^\S\n]*(\w*(?:Error|Exception)) thrown in test:?[^\S\n]*$/;
 const DIFF_RE = /^[^\S\n]*Difference \(- actual, \+ expected\):/;
@@ -40,10 +41,8 @@ const SOURCE_RE = /^[^\S\n]*\d+:[^\S\n]/;
 // name, which tells the reader nothing they did not already have.
 const ASSERTION_RE = /^[^\S\n]*([A-Z][^:]{3,60}):[^\S\n]*$/;
 // A throw's location is in a node-style frame rather than ava's own pointer.
-const AT_RE = /^[^\S\n]+at[^\S\n]+(?:.+?[^\S\n]+\()?(?:file:\/\/)?(\/[^\s()]+?):(\d+):(\d+)\)?[^\S\n]*$/;
 const RULE_RE = /^[^\S\n]*─[^\S\n]*$/;
 const MAX_MESSAGE_LINES = 4;
-const unfile = (p) => (p.startsWith("file://") ? decodeURIComponent(p.slice(7)) : p);
 
 export default {
   name: "ava",
@@ -100,9 +99,11 @@ export default {
         if (SOURCE_RE.test(lines[j])) continue;
 
         const f = lines[j].match(FRAME_RE);
-        if (f && !isNoise(unfile(f[1]))) { where ??= { file: unfile(f[1]), line: +f[2], col: +f[3] }; end = j + 1; continue; }
-        const a = lines[j].match(AT_RE);
-        if (a) { if (!where && !isNoise(a[1])) { where = { file: a[1], line: +a[2], col: +a[3] }; end = j + 1; } continue; }
+        // The earlier "file:line" heading is useful as a fallback; this pointer names
+        // the same site with its exact column, so let it complete the location.
+        if (f && !isNoise(fileReference(f[1]))) { where = { file: fileReference(f[1]), line: +f[2], col: +f[3] }; end = j + 1; continue; }
+        const a = nodeFrame(lines[j]);
+        if (a) { if (!where && !isNoise(a.file)) { where = { file: a.file, line: a.line, col: a.col }; end = j + 1; } continue; }
         const w = lines[j].match(WHERE_RE);
         if (w && !where) { where = { file: w[1], line: +w[2] }; end = j + 1; continue; }
 

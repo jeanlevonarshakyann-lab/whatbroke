@@ -361,49 +361,81 @@ export function createCapture(maxBytes) {
         middle = next;
       }
 
-      const spans = [];
-      if (keptHead.length) spans.push({ start: 0, buf: keptHead, line: 0 });
-      spans.push(...middle);
-      if (keptTail.length) spans.push({ start: tailStart, buf: keptTail, line: linesEnded - newlines(keptTail) });
+      let headSpan = keptHead;
+      let middleSpans = middle;
+      let tailSpan = keptTail;
+      let tailAt = tailStart;
 
-      let text = "";
-      let cursor = 0;
-      let kept = 0;
-      // Which line of the output each line of the text is: runs of lines kept together.
-      // A marker's lines are the capture's own, and in no run.
-      const segments = [];
-      let lineAt = 0;
-      for (const span of spans) {
-        if (span.start > cursor) {
-          const marker = elision(span.start - cursor);
-          text += marker;
-          lineAt += marker.split("\n").length - 1;
+      const compose = () => {
+        const spans = [];
+        if (headSpan.length) spans.push({ start: 0, buf: headSpan, line: 0 });
+        spans.push(...middleSpans);
+        if (tailSpan.length) spans.push({
+          start: tailAt, buf: tailSpan, line: linesEnded - newlines(tailSpan),
+        });
+
+        let text = "";
+        let cursor = 0;
+        let kept = 0;
+        // Which line of the output each line of the text is: runs of lines kept together.
+        // A marker's lines are the capture's own, and in no run.
+        const segments = [];
+        let lineAt = 0;
+        for (const span of spans) {
+          if (span.start > cursor) {
+            const marker = elision(span.start - cursor);
+            text += marker;
+            lineAt += marker.split("\n").length - 1;
+          }
+          const overlap = Math.max(0, cursor - span.start);
+          if (overlap < span.buf.length) {
+            const part = span.buf.subarray(overlap);
+            const line = span.line + newlines(span.buf.subarray(0, overlap));
+            const ended = newlines(part);
+            const count = ended + (part[part.length - 1] === NL ? 0 : 1);
+            const last = segments.at(-1);
+            if (last && last.at + last.count === lineAt && last.line + last.count === line) last.count += count;
+            else segments.push({ at: lineAt, line, count });
+            text += part.toString("utf8");
+            lineAt += ended;
+            kept += part.length;
+            cursor = span.start + span.buf.length;
+          }
         }
-        const overlap = Math.max(0, cursor - span.start);
-        if (overlap < span.buf.length) {
-          const part = span.buf.subarray(overlap);
-          const line = span.line + newlines(span.buf.subarray(0, overlap));
-          const ended = newlines(part);
-          const count = ended + (part[part.length - 1] === NL ? 0 : 1);
-          const last = segments.at(-1);
-          if (last && last.at + last.count === lineAt && last.line + last.count === line) last.count += count;
-          else segments.push({ at: lineAt, line, count });
-          text += part.toString("utf8");
-          lineAt += ended;
-          kept += part.length;
-          cursor = span.start + span.buf.length;
+        if (cursor < totalBytes) text += elision(totalBytes - cursor);
+        return { text, kept, segments };
+      };
+
+      // The cap applies to the captured text a caller receives, including the markers
+      // generated here. Usually reclaiming one line from the tail pays for them. A log
+      // with hundreds of isolated diagnostic windows can need more: shed tail, then the
+      // least recent middle windows, and only then the head. Every iteration removes
+      // retained bytes or a whole span, so this is bounded by the number of spans.
+      let captured = compose();
+      while (Buffer.byteLength(captured.text) > maxBytes) {
+        const overflow = Buffer.byteLength(captured.text) - maxBytes;
+        if (tailSpan.length) {
+          const before = tailSpan.length;
+          tailSpan = trimStartToLine(tailSpan.subarray(Math.min(overflow, tailSpan.length)));
+          tailAt += before - tailSpan.length;
+        } else if (middleSpans.length) {
+          middleSpans = middleSpans.slice(0, -1);
+        } else if (headSpan.length) {
+          headSpan = trimEndToLine(headSpan.subarray(0, Math.max(0, headSpan.length - overflow)));
+        } else {
+          break;
         }
+        captured = compose();
       }
-      if (cursor < totalBytes) text += elision(totalBytes - cursor);
       return {
-        text,
+        text: captured.text,
         truncated: true,
-        elided: totalBytes - kept,
+        elided: totalBytes - captured.kept,
         /** Lines [start..end] of `text`, counting from 0, as the runs of the output's own
          *  lines they are - what was elided counted in, and the markers left out. */
         lines: (start, end) => {
           const runs = [];
-          for (const { at, line, count } of segments) {
+          for (const { at, line, count } of captured.segments) {
             const from = Math.max(start, at), to = Math.min(end, at + count - 1);
             if (from <= to) runs.push({ start: line + from - at, end: line + to - at });
           }

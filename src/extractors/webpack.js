@@ -11,7 +11,7 @@
 // The trace is how webpack looked, not what went wrong, and it is the bulk of the log.
 import { withSource } from "../ownership.js";
 
-const HEAD_RE = /^(ERROR|WARNING) in (\S+?)(?:[^\S\n]+(\d+):(\d+)(?:-\d+)?)?[^\S\n]*$/;
+const HEAD_RE = /^(ERROR|WARNING) in (.+?)(?:[^\S\n]+(\d+):(\d+)(?:-\d+)?)?[^\S\n]*$/;
 // The column in that heading counts from 0: `const x = ;` fails `1:10`, with the caret
 // webpack draws under the semicolon, the eleventh character. A column here counts from 1.
 const TALLY_RE = /^webpack [\d.]+ compiled with (\d+) errors?(?:[^\S\n]+and[^\S\n]+(\d+) warnings?)?/m;
@@ -31,7 +31,7 @@ export default {
   category: "compile",
   commands: ["webpack", "webpack-cli"],
 
-  detect: (s) => TALLY_RE.test(s) || /^ERROR in \S/m.test(s),
+  detect: (s) => TALLY_RE.test(s) || /^ERROR in .+/m.test(s),
 
   extract(s) {
     const lines = s.split("\n");
