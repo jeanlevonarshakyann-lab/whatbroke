@@ -106,8 +106,8 @@ function quoteDiffers(a, b) {
 function located(failure) {
   const { file, line, col, subject } = failure;
   const fileOk = file === undefined || (typeof file === "string" && file.length > 0);
-  const lineOk = line === undefined || (Number.isInteger(line) && line >= 1);
-  const colOk = col === undefined || (Number.isInteger(col) && col >= 1 && lineOk && line !== undefined);
+  const lineOk = line === undefined || (Number.isSafeInteger(line) && line >= 1);
+  const colOk = col === undefined || (Number.isSafeInteger(col) && col >= 1 && lineOk && line !== undefined);
   // `subject` is the name of the thing that failed, and an empty one names nothing. A
   // parser reaches this whenever the output it read had the name blank - Playwright's JSON
   // carries the test's title as a field, and a document whose titles are empty produced

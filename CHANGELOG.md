@@ -2,6 +2,12 @@
 
 ## Unreleased
 
+- Independent reliability audits now pin and fix eleven shared-boundary failures:
+  stdout/stderr fragments cannot combine into invented diagnostics; interrupted or
+  unpersistable history cannot make stale claims; nested task wrappers no longer enter
+  Cargo paths; file URLs preserve Windows drives and remote hosts; Deno TAP keeps diffs;
+  JUnit CDATA cannot close an element; source comparisons are exact; unsafe coordinates
+  are discarded; and emoji grapheme sequences keep terminal carets aligned.
 - \`--max-bytes\` is now a strict bound on the complete captured text, including
   whyitbroke's generated elision markers. Incomplete line fragments at a truncation
   boundary are discarded so text inside a clipped structured record cannot become an

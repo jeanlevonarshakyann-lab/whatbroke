@@ -1,5 +1,6 @@
 import { isNoise } from "../util.js";
 import { withSource } from "../ownership.js";
+import { fileReference } from "../location.js";
 
 // A frame is `at fn (file:line:col)`: `/^[^\S\n]+at .+\(.+:\d+:\d+\)$/m`. As `.+\(.+`, a
 // line holding many parentheses was split at each of them in turn, reading to the end of
@@ -10,7 +11,7 @@ export const FRAME_WITH_CALL = /^[^\S\n]+at .[^(\n\r\u2028\u2029]*\(.+:\d+:\d+\)
 const ERR_RE = /^(?:Uncaught )?((?:[A-Z]\w*)?(?:Error|Exception)(?:\s\[[\w_]+\])?): ?(.*)$/;
 // ESM reports every path as a file:// URL, which is not something that can be opened -
 // so source context was never shown for a module, and the location read as a URL.
-const unfile = (p) => (p?.startsWith("file://") ? decodeURIComponent(p.slice(7)) : p);
+const unfile = fileReference;
 
 /** Line numbers that sit inside a <failure>/<error> element's body. */
 function xmlBodyLines(lines) {

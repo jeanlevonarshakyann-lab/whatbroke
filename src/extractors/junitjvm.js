@@ -1,4 +1,4 @@
-import { elements, firstElement, lineAt, xmlAttributes, xmlText } from "../util.js";
+import { elements, firstElement, lineAt, xmlAttributes, xmlStructure, xmlText } from "../util.js";
 import { joinSources, withSource } from "../ownership.js";
 // The reports a JVM build leaves behind - Maven Surefire's target/surefire-reports and
 // Gradle's build/test-results - are what a CI job keeps and what every test dashboard
@@ -66,13 +66,25 @@ function said(lines) {
 function xmlCases(s) {
   if (!s.includes("<testcase")) return [];
   const out = [];
-  for (const test of elements(s, CASE_RE, CASE)) {
+  const structure = xmlStructure(s);
+  for (const test of elements(structure, CASE_RE, CASE)) {
     if (!test[2]) continue;
-    const outcome = firstElement(test[2], OUTCOME_RE, OUTCOME);
+    const testRaw = s.slice(test.index, test.index + test[0].length);
+    const testOpenEnd = testRaw.indexOf(">");
+    const testBody = testRaw.slice(testOpenEnd + 1, -CASE.close().length);
+    const outcome = firstElement(xmlStructure(testBody), OUTCOME_RE, OUTCOME);
     if (!outcome) continue;
-    const a = xmlAttributes(test[1]);
+    const outcomeRaw = testBody.slice(outcome.index, outcome.index + outcome[0].length);
+    const outcomeOpenEnd = outcomeRaw.indexOf(">");
+    const outcomeName = outcome[1];
+    const outcomeBody = outcomeRaw.endsWith("/>")
+      ? ""
+      : outcomeRaw.slice(outcomeOpenEnd + 1, -OUTCOME.close(outcomeName).length);
+    const testOpen = testRaw.slice(0, testOpenEnd + 1);
+    const outcomeOpen = outcomeRaw.slice(0, outcomeOpenEnd + 1);
+    const a = xmlAttributes(testOpen);
     if (!a.classname || !a.name) continue;
-    const raw = outcome[3] ?? "";
+    const raw = outcomeBody;
     // CDATA is literal text; everything outside it is escaped.
     const body = raw.includes("<![CDATA[")
       ? [...raw.matchAll(CDATA_RE)].map((m) => m[1]).join("\n")
@@ -92,7 +104,7 @@ function xmlCases(s) {
     // The test case, from its opening tag to its closing one.
     out.push({
       ...at, title: name, subject: name, category: "test", severity: "error",
-      message: said(lines) || xmlAttributes(outcome[2]).message || outcome[1],
+      message: said(lines) || xmlAttributes(outcomeOpen).message || outcomeName,
       origin: SUREFIRE_SCHEMA.test(root) ? "maven" : "junit",
       from: lineAt(s, test.index), to: lineAt(s, test.index + test[0].length - 1) + 1,
     });

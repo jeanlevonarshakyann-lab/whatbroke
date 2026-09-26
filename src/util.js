@@ -197,6 +197,17 @@ export function firstElement(text, re, options) {
   return null;
 }
 
+/** XML with literal sections made structurally inert, without moving any offsets.
+ *
+ * Regex-based bounded element readers are sufficient for the small report dialects in
+ * this project only when text inside CDATA and comments cannot impersonate a closing
+ * tag. Preserve line breaks and length so callers can scan this copy and slice the
+ * original document at the resulting offsets. */
+export function xmlStructure(text) {
+  return String(text).replace(/<!\[CDATA\[[\s\S]*?\]\]>|<!--[\s\S]*?-->/g,
+    (literal) => literal.replace(/[^\r\n]/g, " "));
+}
+
 // A line pattern of one shape - a head, whitespace, a lazy message, whitespace, and a tail
 // held to the end of the line - matched as the regex matches it, in time that grows with
 // the line instead of its square.

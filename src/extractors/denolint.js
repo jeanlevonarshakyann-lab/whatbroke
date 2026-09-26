@@ -1,5 +1,6 @@
 import { findJsonDocument, jsonDocumentsAt } from "../util.js";
 import { joinSources, preserveSourceRange, withSource } from "../ownership.js";
+import { fileReference } from "../location.js";
 // `deno lint` and `deno fmt --check` - deno's linter and formatter, as opposed to
 // `deno test` and `deno check`, which have their own parsers. Nothing read either:
 // `deno lint` came back from the generic reader holding one of its two findings, and in
@@ -31,10 +32,7 @@ const REPORT = (v) => !!v && typeof v === "object" && Number.isInteger(v.version
     d && typeof d.filename === "string" && typeof d.code === "string" &&
     Number.isInteger(d.range?.start?.line) && Number.isInteger(d.range?.start?.col));
 
-const unfile = (p) => {
-  if (!p.startsWith("file://")) return p;
-  try { return decodeURIComponent(p.slice(7)); } catch { return p.slice(7); }
-};
+const unfile = fileReference;
 
 function pretty(lines) {
   const out = [];

@@ -95,6 +95,10 @@ function readRun(identity, version) {
   try {
     const saved = JSON.parse(readFileSync(fileFor(identity), "utf8"));
     if (saved?.version !== version || !Array.isArray(saved.causes)) return null;
+    const id = version === IDENTITY_VERSION ? /^[0-9a-f]{24}$/ : /^[0-9a-f]{8}$/;
+    if (!saved.causes.every((cause) => typeof cause === "string" && id.test(cause))) return null;
+    if (saved.tool !== undefined && saved.tool !== null && typeof saved.tool !== "string") return null;
+    if (saved.ranAt !== undefined && saved.ranAt !== null && typeof saved.ranAt !== "string") return null;
     return saved;
   } catch { return null; }
 }

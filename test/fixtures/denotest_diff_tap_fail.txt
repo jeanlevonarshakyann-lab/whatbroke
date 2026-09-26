@@ -1,0 +1,8 @@
+TAP version 14
+# ./minimal_test.ts
+not ok 1 - addition differs
+  ---
+  {"message":"AssertionError: Values are not equal.\n\n\n    [Diff] Actual / Expected\n\n\n-   2\n+   3\n\n  throw new AssertionError(message);\n        ^\n    at assertEquals (https://jsr.io/@std/assert/1.0.19/equals.ts:67:9)\n    at file:///app/minimal_test.ts:2:37","severity":"fail","at":{"file":"./minimal_test.ts","line":2}}
+  ...
+1..1
+error: Test failed
