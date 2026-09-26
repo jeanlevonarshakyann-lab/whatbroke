@@ -1,5 +1,6 @@
 import { isNoise } from "../util.js";
 import { withSource } from "../ownership.js";
+import { nodeFrame } from "../location.js";
 
 // jasmine gathers its failures under a "Failures:" heading and gives each one a
 // message and a stack, both labelled:
@@ -21,9 +22,7 @@ const TALLY_RE = /^[^\S\n]*(\d+) specs?, (\d+) failures?(?:, (\d+) pending)?/m;
 const HEAD_RE = /^[^\S\n]*(\d+)\)[^\S\n]+(\S.*?)[^\S\n]*$/;
 const MESSAGE_RE = /^[^\S\n]*Message:[^\S\n]*$/;
 const STACK_RE = /^[^\S\n]*Stack:[^\S\n]*$/;
-const FRAME_RE = /^[^\S\n]+at[^\S\n]+(?:(.+?)[^\S\n]+\()?(?:file:\/\/)?(\/[^\s()]+?):(\d+):(\d+)\)?[^\S\n]*$/;
 const MAX_MESSAGE_LINES = 4;
-const unfile = (p) => (p.startsWith("file://") ? decodeURIComponent(p.slice(7)) : p);
 
 export default {
   name: "jasmine",
@@ -62,10 +61,10 @@ export default {
         if (MESSAGE_RE.test(lines[j])) { inMessage = true; inStack = false; end = j + 1; continue; }
         if (STACK_RE.test(lines[j])) { inStack = true; inMessage = false; end = j + 1; continue; }
         if (inStack) {
-          const f = lines[j].match(FRAME_RE);
+          const f = nodeFrame(lines[j]);
           // jasmine's own frames say "<Jasmine>" and name no file, so they never match
-          if (f && !isNoise(unfile(f[2]))) {
-            frames.push({ fn: f[1] ?? "<anonymous>", file: unfile(f[2]), line: +f[3], col: +f[4] });
+          if (f && !isNoise(f.file)) {
+            frames.push({ fn: f.fn ?? "<anonymous>", file: f.file, line: f.line, col: f.col });
           }
           if (lines[j].trim()) end = j + 1;
           continue;

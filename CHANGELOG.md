@@ -2,6 +2,14 @@
 
 ## Unreleased
 
+- \`--max-bytes\` is now a strict bound on the complete captured text, including
+  whyitbroke's generated elision markers.
+- Paths containing spaces are preserved across Deno, Jest, Vitest, Flake8, Oxlint,
+  Webpack, Less and AVA output. They are no longer truncated or mistaken for runner
+  prefixes, and Windows \`file:///\` stack locations are normalised portably.
+- Pytest keeps spaces in parameter IDs used for history, and Python tracebacks keep a
+  custom exception's type when it was raised without a message.
+
 ## 0.5.0 — 2026-09-22
 
 This is the first npm release since 0.1.1 and includes the previously unpublished

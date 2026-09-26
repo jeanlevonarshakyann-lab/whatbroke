@@ -38,21 +38,28 @@ const LOC_RE = /^[^\S\n]*[❯>][^\S\n]+(.+?):(\d+):(\d+)[^\S\n]*$/;
 // no function, would be read as a function called after it; a frame inside a named
 // function is the far commoner of the two. The frame in vitest's own bundler, or in a
 // dependency, is not where the failure is: the first frame in your code is.
-function frameOf(line) {
+function frameOf(line, expectedFile) {
   const m = line.match(LOC_RE);
   if (!m) return null;
   let file = m[1];
-  const space = file.indexOf(" ");
-  if (space > 0 && !/[\\/]/.test(file.slice(0, space)) && file.slice(space + 1).trim()) file = file.slice(space + 1).trim();
+  // The FAIL heading gives the exact file for this block. It resolves the otherwise
+  // ambiguous root-level path with spaces; without it, the first word looks exactly
+  // like the function in a named frame such as "lookup cart.js".
+  if (expectedFile && (file === expectedFile || file.endsWith(` ${expectedFile}`))) {
+    file = expectedFile;
+  } else {
+    const space = file.indexOf(" ");
+    if (space > 0 && !/[\\/]/.test(file.slice(0, space)) && file.slice(space + 1).trim()) file = file.slice(space + 1).trim();
+  }
   // vitest prints paths relative to the project, so a dependency's frame has no separator in
   // front of its node_modules.
   return { file, line: +m[2], col: +m[3], noise: isNoise(file) || /^node_modules[\\/]/.test(file) };
 }
 /** The first frame from `at` on that is in your code, before `until` - or null when every
  *  frame there is a dependency's or vitest's own, which points at nothing of yours. */
-function ownFrame(lines, at, until) {
+function ownFrame(lines, at, until, expectedFile) {
   for (let k = at; k < until; k++) {
-    const f = frameOf(lines[k]);
+    const f = frameOf(lines[k], expectedFile);
     if (f && !f.noise) return { ...f, at: k };
   }
   return null;
@@ -257,7 +264,7 @@ export default {
       for (; j < n; j++) {
         const l = lines[j];
         if (FAIL_RE.test(l) || j - i > MESSAGE_GAP) break;
-        const lm = frameOf(l);
+        const lm = frameOf(l, file);
         if (lm) { loc = lm.noise ? null : { file: lm.file, line: lm.line, col: lm.col }; break; }
         if (l.trim() && !SEP_RE.test(l)) { message = l.trim(); break; }
       }
@@ -269,7 +276,7 @@ export default {
       if (stop < n && nextFail[j + 1] !== stop) {
         // The first frame in your code, not the first frame: a file that would not load
         // unwinds through vitest's own bundler first, and those frames are not yours.
-        const own = ownFrame(lines, stop, nextFail[j + 1]);
+        const own = ownFrame(lines, stop, nextFail[j + 1], file);
         loc = own ? { file: own.file, line: own.line, col: own.col } : null;
         end = (own?.at ?? stop) + 1;
       }

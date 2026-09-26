@@ -1,11 +1,11 @@
 import { githubAnnotations } from "../util.js";
 import { joinSources, withSource } from "../ownership.js";
+import { nodeFrame } from "../location.js";
 // With multiple jest projects the display name comes first: "FAIL jsdom src/a.js".
 // Take the last token, which is always the path.
 const FILE_RE = /^[^\S\n]*(?:FAIL|PASS)[^\S\n]+(?:\S+[^\S\n]+)*?(\S+)[^\S\n]*$/;
 // jest uses the same bullet for config complaints as for failed tests
 const TEST_RE = /^[^\S\n]*●[^\S\n]+(?!Console|Validation Warning|Deprecation Warning|Invalid testPattern)(.+?)[^\S\n]*$/;
-const AT_RE = /^[^\S\n]+at .*?\(?([^\s()]+):(\d+):(\d+)\)?[^\S\n]*$/;
 // --reporters=github-actions writes one workflow annotation per failure and then repeats
 // the whole failure inside a ::group::. Neither was read: the tally jest's own reporter
 // prints is not there, and the repeated block is indented under the group, so a run with
@@ -19,7 +19,6 @@ const JEST_GROUP = /^[^\S\n]*::group::Errors thrown in[^\S\n]+(.+?)[^\S\n]*$/;
 // the end of the log and takes the next tool's frames with it.
 const WORKFLOW_LINE = /^[^\S\n]*::[a-z][\w-]*(?:[^\S\n][^\n]*?)?::/;
 // Inside the annotation the frame is written the way jest writes it everywhere else.
-const FRAME_IN_MESSAGE = /^[^\S\n]*at .*?\(?([^\s()]+):(\d+):(\d+)\)?[^\S\n]*$/;
 
 /** The first few meaningful lines of a failure block: the matcher summary and what it
  *  expected, without the source frame, the caret or the diff's own bookkeeping. */
@@ -71,8 +70,8 @@ function annotated(s) {
     // reporter shows and what the other formats of the same run agree on.
     let loc = null;
     for (const l of body) {
-      const am = l.match(FRAME_IN_MESSAGE);
-      if (am && !/node_modules|node:internal/.test(am[1])) loc = { file: am[1], line: +am[2], col: +am[3] };
+      const frame = nodeFrame(l);
+      if (frame && !/node_modules|node:internal/.test(frame.file)) loc = frame;
     }
     out.push(withSource({
       file: loc?.file ?? a.props.file, line: loc?.line ?? (+a.props.line || undefined), col: loc?.col,
@@ -116,8 +115,8 @@ export default {
       // location: last "at ..." frame that points at a real file
       let loc = null;
       for (const l of body) {
-        const am = l.match(AT_RE);
-        if (am && !/node_modules|node:internal/.test(am[1])) loc = { file: am[1], line: +am[2], col: +am[3] };
+        const frame = nodeFrame(l);
+        if (frame && !/node_modules|node:internal/.test(frame.file)) loc = frame;
       }
 
       if (!msg.length) continue;

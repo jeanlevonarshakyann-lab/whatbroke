@@ -7,7 +7,7 @@
 // Self-bounding: there is nothing to scan for, because the whole diagnostic is one line.
 import { withSource } from "../ownership.js";
 
-const HEAD_RE = /^(\w*(?:Error|Exception)):[^\S\n]*(.+?)[^\S\n]+in[^\S\n]+(\S+)[^\S\n]+on line[^\S\n]+(\d+)(?:,[^\S\n]+column[^\S\n]+(\d+))?:?[^\S\n]*$/;
+const HEAD_RE = /^(\w*(?:Error|Exception)):[^\S\n]*(.+?)[^\S\n]+in[^\S\n]+(.+?)[^\S\n]+on line[^\S\n]+(\d+)(?:,[^\S\n]+column[^\S\n]+(\d+))?:?[^\S\n]*$/;
 // "1 .a { color: @undefined-var; }" - the number, a space, the source.
 const SOURCE_RE = /^[^\S\n]*(\d+)[^\S\n](.*)$/;
 
